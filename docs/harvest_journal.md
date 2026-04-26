@@ -108,3 +108,13 @@
 **Commits:** 208541b
 **Security:** bandit 0 High findings | Foreign imports: clean
 
+## Cycle 217 — 2026-04-25
+**Scope:** Dashboard Deepening — Wire live backend data into Dashboard
+**Modules:**
+- `src/serving/aurelius_server.py` — Enhanced `GET /api/status` with aggregated `counts` object (agents_online, skills_active, plugins_total, notifications_unread)
+- `frontend/src/pages/Dashboard.tsx` — Live dashboard fetching `/api/status` and `/api/activity` with 10s polling, real agent list, activity feed, skills overview, dynamic health percentage
+- `tests/serving/test_aurelius_server.py` — Added `counts` field verification to `test_status`
+**Tests:** 28 aurelius_server tests pass; 829 total serving tests pass
+**Commits:** 0efeaed a11c375
+**Security:** bandit 0 High findings | Foreign imports: clean
+
