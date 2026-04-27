@@ -50,7 +50,7 @@ class OptimizerOffloader:
         for param_id, param_state in self.optimizer.state.items():
             for key, tensor in list(param_state.items()):
                 if isinstance(tensor, torch.Tensor) and tensor.numel() > 0:
-                    path = self.offload_dir / f"param_{param_id}_{key}.pt"
+                    path = self.offload_dir / f"param_{id(param_id)}_{key}.pt"
                     torch.save(tensor.detach().cpu(), path)
                     param_state[key] = tensor.new_zeros(1)  # Tiny placeholder
                     self._offloaded.append((param_id, key))
@@ -60,11 +60,11 @@ class OptimizerOffloader:
         for param_id, key in self._offloaded:
             if param_id not in self.optimizer.state:
                 continue
-            path = self.offload_dir / f"param_{param_id}_{key}.pt"
+            path = self.offload_dir / f"param_{id(param_id)}_{key}.pt"
             if path.exists():
                 device = next(
                     (p.device for p in self.optimizer.param_groups[0]["params"]
-                     if hash(p) == param_id),
+                     if p is param_id),
                     torch.device("cpu"),
                 )
                 state_tensor = torch.load(path, map_location=device, weights_only=True)
