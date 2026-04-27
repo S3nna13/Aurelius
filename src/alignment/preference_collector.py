@@ -54,7 +54,7 @@ class PreferenceCollector:
 
     def sample(self, n: int, seed: int = 42) -> list[PreferenceItem]:
         """Random sample without replacement (returns all if n >= len)."""
-        rng = random.Random(seed)
+        rng = random.Random(seed)  # noqa: S311
         if n >= len(self._items):
             result = list(self._items)
             rng.shuffle(result)

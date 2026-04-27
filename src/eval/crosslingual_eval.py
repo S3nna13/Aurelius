@@ -74,7 +74,7 @@ def generate_synthetic_parallel_data(
     Creates n_samples pairs, cycling through language combinations.
     Returns list of LanguagePair.
     """
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # noqa: S311
     pairs: list[LanguagePair] = []
 
     # Build all language combinations (src != tgt)

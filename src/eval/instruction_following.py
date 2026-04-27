@@ -233,7 +233,7 @@ class InstructionFollowingEvaluator:
 
 
 def create_instruction_test_suite(n: int = 20, seed: int = 42) -> list[tuple[Instruction, str]]:
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # noqa: S311
     format_types = ["json", "list", "numbered", "paragraph", None]
     keywords_pool = [
         ["important", "relevant"],

@@ -1,7 +1,7 @@
 import { WebSocketServer, type WebSocket } from 'ws'
 import type { Server } from 'http'
 import { getEngine } from '../engine.js'
-import { registerApiKey, type AuthUser } from '../middleware/auth.js'
+import { createRoom, joinRoom, leaveRoom, broadcastToRoom, broadcastToAll, getRoomList } from './rooms.js'
 
 interface WsMessage {
   type: string
@@ -13,9 +13,7 @@ const clients = new Set<WebSocket>()
 function broadcast(data: unknown): void {
   const msg = JSON.stringify(data)
   for (const ws of clients) {
-    if (ws.readyState === ws.OPEN) {
-      ws.send(msg)
-    }
+    if (ws.readyState === ws.OPEN) ws.send(msg)
   }
 }
 
@@ -31,6 +29,7 @@ export function setupWebSocket(server: Server): WebSocketServer {
       payload: {
         agents: engine.listAgents(),
         stats: engine.getNotificationStats(),
+        rooms: getRoomList(),
         timestamp: Date.now(),
       },
     }))
@@ -64,15 +63,43 @@ function handleMessage(ws: WebSocket, msg: WsMessage): void {
       ws.send(JSON.stringify({ type: 'pong', payload: { timestamp: Date.now() } }))
       break
 
+    case 'subscribe': {
+      const { room } = msg.payload || {}
+      if (room && typeof room === 'string') {
+        joinRoom(room, ws)
+        ws.send(JSON.stringify({ type: 'subscribed', payload: { room } }))
+      }
+      break
+    }
+
+    case 'unsubscribe': {
+      const { room } = msg.payload || {}
+      if (room && typeof room === 'string') {
+        leaveRoom(room, ws)
+        ws.send(JSON.stringify({ type: 'unsubscribed', payload: { room } }))
+      }
+      break
+    }
+
+    case 'room:message': {
+      const { room, data } = msg.payload || {}
+      if (room && typeof room === 'string') {
+        const count = broadcastToRoom(room, { type: 'room:message', payload: { room, data, timestamp: Date.now() } })
+        ws.send(JSON.stringify({ type: 'room:delivered', payload: { room, count } }))
+      }
+      break
+    }
+
+    case 'get:rooms':
+      ws.send(JSON.stringify({ type: 'rooms', payload: { rooms: getRoomList() } }))
+      break
+
     case 'get:agents':
       ws.send(JSON.stringify({ type: 'agents', payload: { agents: engine.listAgents() } }))
       break
 
     case 'get:activity':
-      ws.send(JSON.stringify({
-        type: 'activity',
-        payload: { entries: engine.getActivity(50) },
-      }))
+      ws.send(JSON.stringify({ type: 'activity', payload: { entries: engine.getActivity(50) } }))
       break
 
     case 'get:notifications':
@@ -101,14 +128,8 @@ function handleMessage(ws: WebSocket, msg: WsMessage): void {
       const { command } = msg.payload || {}
       if (command) {
         engine.appendActivity('ws.command', true, String(command))
-        ws.send(JSON.stringify({
-          type: 'command:ack',
-          payload: { command, timestamp: Date.now() },
-        }))
-        broadcast({
-          type: 'activity:new',
-          payload: { command, timestamp: Date.now() },
-        })
+        ws.send(JSON.stringify({ type: 'command:ack', payload: { command, timestamp: Date.now() } }))
+        broadcastToAll({ type: 'activity:new', payload: { command, timestamp: Date.now() } })
       }
       break
     }
@@ -119,9 +140,9 @@ function handleMessage(ws: WebSocket, msg: WsMessage): void {
 }
 
 export function broadcastNotification(notification: unknown): void {
-  broadcast({ type: 'notification', payload: notification })
+  broadcastToAll({ type: 'notification', payload: notification })
 }
 
 export function broadcastActivity(activity: unknown): void {
-  broadcast({ type: 'activity:new', payload: activity })
+  broadcastToAll({ type: 'activity:new', payload: activity })
 }

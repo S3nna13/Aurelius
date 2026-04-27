@@ -26,7 +26,10 @@ export default function Memory() {
         fetch('/api/memory/layers'),
         fetch(`/api/memory/entries?${params}`),
       ])
-      if (layersRes.ok) setLayers((await layersRes.json()).layers || [])
+      if (layersRes.ok) {
+        const data = await layersRes.json()
+        setLayers(data.layerList || [])
+      }
       if (entriesRes.ok) setEntries((await entriesRes.json()).entries || [])
     } catch { /* ignore */ }
     setLoading(false)
@@ -53,10 +56,12 @@ export default function Memory() {
     setAdding(false)
   }
 
+  const totalEntries = layers.reduce((s, l) => s + l.entries, 0)
+
   return (
     <div className="space-y-6 max-w-5xl">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h2 className="text-lg font-bold text-[#e0e0e0] flex items-center gap-2"><Brain size={20} className="text-[#4fc3f7]" /> Memory</h2>
+        <h2 className="text-lg font-bold text-[#e0e0e0] flex items-center gap-2"><Brain size={20} className="text-[#4fc3f7]" /> Memory <span className="text-xs font-normal text-[#9e9eb0]">{totalEntries.toLocaleString()} total entries</span></h2>
         <button onClick={fetchData} disabled={loading} className="aurelius-btn-outline flex items-center gap-1.5 text-sm disabled:opacity-50"><RefreshCw size={14} /> Refresh</button>
       </div>
 
@@ -109,7 +114,7 @@ export default function Memory() {
                       <div className="flex items-center gap-3 mt-2 text-[10px] text-[#9e9eb0]/60">
                         <span className="flex items-center gap-1"><Layers size={10} />{entry.layer}</span>
                         <span className="flex items-center gap-1"><Clock size={10} />{entry.timestamp}</span>
-                        <span className="flex items-center gap-1"><TrendingUp size={10} />{entry.importanceScore.toFixed(2)}</span>
+                        <span className="flex items-center gap-1"><TrendingUp size={10} />{entry.importanceScore?.toFixed(2)}</span>
                         <span>Access: {entry.accessCount}</span>
                       </div>
                     </div>

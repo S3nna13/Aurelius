@@ -109,7 +109,7 @@ _XML_OPEN_RE = re.compile(
     r"<tool_use\b(?P<attrs>[^>]*)>",
     re.DOTALL,
 )
-_XML_CLOSE_TOKEN = "</tool_use>"
+_XML_CLOSE_TOKEN = "</tool_use>"  # noqa: S105
 
 # Matches the start of an *unterminated* tool_use tag at EOF (streaming).
 _XML_OPEN_TRAIL_RE = re.compile(
@@ -131,7 +131,7 @@ _XML_INPUT_OPEN_RE = re.compile(
     r"<input\b[^>]*>",
     re.DOTALL,
 )
-_XML_INPUT_CLOSE_TOKEN = "</input>"
+_XML_INPUT_CLOSE_TOKEN = "</input>"  # noqa: S105
 
 
 class XMLToolCallParser:

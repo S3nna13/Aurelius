@@ -129,7 +129,7 @@ class RAFTDataCollator:
         Returns:
             List of (input_ids, labels) tensor tuples.
         """
-        rng = random.Random(seed)
+        rng = random.Random(seed)  # noqa: S311
         results: list[tuple[Tensor, Tensor]] = []
 
         for example in examples:
@@ -200,7 +200,7 @@ class RAFTTrainer:
         pairs = self.collator.collate(examples)
 
         # Determine oracle rate from included oracle docs (re-simulate with same seed)
-        rng_check = random.Random(42)
+        rng_check = random.Random(42)  # noqa: S311
         oracle_flags = [rng_check.random() < self.config.p_oracle for _ in examples]
         oracle_rate = sum(oracle_flags) / len(oracle_flags) if oracle_flags else 0.0
 
@@ -254,7 +254,7 @@ class RAFTTrainer:
             Dict with key: mean_output_len (float).
         """
         self.model.eval()
-        rng = random.Random(0)
+        rng = random.Random(0)  # noqa: S311
         eval_examples = examples[:n_eval]
         output_lens: list[int] = []
 

@@ -19,7 +19,7 @@ from enum import StrEnum
 class ShedPolicy(StrEnum):
     DROP_TAIL = "drop_tail"
     PRIORITY_QUEUE = "priority_queue"
-    TOKEN_BUCKET = "token_bucket"
+    TOKEN_BUCKET = "token_bucket"  # noqa: S105
     ADAPTIVE = "adaptive"
 
 

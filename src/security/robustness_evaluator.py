@@ -157,9 +157,9 @@ class RobustnessEvaluator:
                 output: tuple,
                 _sigma: float = sigma,
             ) -> tuple:
-                hidden, kv = output
+                hidden, kv, aux_loss = output
                 noise = torch.randn_like(hidden) * _sigma
-                return hidden + noise, kv
+                return hidden + noise, kv, aux_loss
 
             handle = last_layer.register_forward_hook(_hook)
             try:

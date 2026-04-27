@@ -51,7 +51,7 @@ def default_haystack_filler(char_budget: int, seed: int | None = None) -> str:
         return ""
     sentences = list(_BASE_SENTENCES)
     if seed is not None:
-        rng = random.Random(seed)
+        rng = random.Random(seed)  # noqa: S311
         rng.shuffle(sentences)
     # Repeat sentences until the budget is filled, joined by single spaces.
     parts: list[str] = []

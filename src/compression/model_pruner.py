@@ -33,7 +33,7 @@ class ModelPruner:
 
     def __init__(self, config: PruningConfig | None = None, seed: int = 42) -> None:
         self.config = config or PruningConfig()
-        self._rng = random.Random(seed)
+        self._rng = random.Random(seed)  # noqa: S311
 
     def compute_mask(
         self,

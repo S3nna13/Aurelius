@@ -97,7 +97,7 @@ def forward_with_embeds(model: nn.Module, embeds: Tensor) -> tuple:
 
     x = embeds
     for layer in model.layers:
-        x, _ = layer(x, freqs_cis, mask=None, past_kv=None)
+        x, _, _ = layer(x, freqs_cis, mask=None, past_kv=None)
 
     x = model.norm(x)
     logits = model.lm_head(x)  # (B, T, vocab_size)

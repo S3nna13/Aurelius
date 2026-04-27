@@ -275,7 +275,7 @@ class AlpacaEvalPipeline:
         if not results:
             return (0.0, 0.0)
 
-        rng = random.Random(42)
+        rng = random.Random(42)  # noqa: S311
         n = len(results)
         bootstrap_rates: list[float] = []
 

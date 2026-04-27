@@ -49,7 +49,7 @@ def _forward_from_embeddings(
     mask = None
     present_key_values: list = []
     for layer in model.layers:
-        x, kv = layer(x, freqs_cis, mask, None)
+        x, kv, _aux = layer(x, freqs_cis, mask, None)
         present_key_values.append(kv)
     x = model.norm(x)
     logits = model.lm_head(x)

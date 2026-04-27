@@ -385,6 +385,6 @@ def test_mamba_block_as_ffn_replacement(small_cfg):
     )
     freqs_cis = freqs[:L]
 
-    out, kv = block(x, freqs_cis)
+    out, kv, _aux = block(x, freqs_cis)
     assert out.shape == (B, L, small_cfg.d_model), f"Got {out.shape}"
     assert isinstance(kv, tuple) and len(kv) == 2

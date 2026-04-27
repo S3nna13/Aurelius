@@ -27,6 +27,8 @@ from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 from .auth_middleware import AuthMiddleware
+from .cors_middleware import CORS
+from .metrics_middleware import METRICS
 from .openapi_spec import openapi_spec, render_docs_page
 from .rate_limiter import RateLimiterChain, TokenBucketLimiter
 from .request_coalescer import RequestCoalescer
@@ -166,6 +168,23 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         logger.debug("%s - %s", self.address_string(), format % args)
 
+    def send_response(self, code: int, message: str | None = None) -> None:
+        super().send_response(code, message)
+        CORS.add_headers(self)
+
+    def do_OPTIONS(self):
+        CORS.handle_preflight(self)
+
+    def _record_metrics(self, start_time: float, status: int, error: str | None = None) -> None:
+        latency = (time.perf_counter() - start_time) * 1000
+        METRICS.record_request(
+            method=self.command,
+            path=self.path.split("?")[0],
+            status=status,
+            latency_ms=latency,
+            error_type=error,
+        )
+
     def _send_json(self, status: int, data: dict) -> None:
         body = json.dumps(data).encode("utf-8")
         self.send_response(status)
@@ -210,24 +229,47 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
         }
 
     def do_GET(self):
+        start = time.perf_counter()
+        if self.path == "/metrics":
+            METRICS.connection_opened()
+            try:
+                text = METRICS.prometheus_text()
+                body = text.encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "text/plain; version=0.0.4")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+                self._record_metrics(start, 200)
+            finally:
+                METRICS.connection_closed()
+            return
         if self.path == "/health":
             info = self._get_server_info()
             self._send_json(200, {"status": "ok", **info})
+            self._record_metrics(start, 200)
             return
         if self.path == "/healthz":
-            self._send_json(200, {"alive": True})
+            METRICS.connection_opened()
+            try:
+                self._send_json(200, {"alive": True})
+                self._record_metrics(start, 200)
+            finally:
+                METRICS.connection_closed()
             return
         if self.path == "/readyz":
             started = getattr(self.server, "_started_at", None)
             ready = started is not None
             status = 200 if ready else 503
             self._send_json(status, {"ready": ready})
+            self._record_metrics(start, status)
             return
         if self.path == "/openapi.json":
             host = self.server.server_address[0] if self.server else "localhost"
             port = self.server.server_address[1] if self.server else 8080
             spec = openapi_spec(host, port)
             self._send_json(200, spec)
+            self._record_metrics(start, 200)
             return
         if self.path == "/docs":
             host = self.server.server_address[0] if self.server else "localhost"
@@ -239,8 +281,10 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
+            self._record_metrics(start, 200)
             return
         if not _check_auth_and_rate_limit(self):
+            self._record_metrics(start, 401)
             return
         if self.path == "/v1/models":
             self._send_json(
@@ -257,36 +301,45 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
                     ],
                 },
             )
+            self._record_metrics(start, 200)
         else:
             self._send_error(404, "Not found")
+            self._record_metrics(start, 404)
 
     def do_POST(self):
+        start = time.perf_counter()
         if self.path != "/v1/chat/completions":
             self._send_error(404, "Not found")
+            self._record_metrics(start, 404)
             return
         if not _check_auth_and_rate_limit(self):
+            self._record_metrics(start, 401)
             return
 
         try:
             raw_body = self._read_body()
         except ValueError as exc:
             self._send_error(413, str(exc))
+            self._record_metrics(start, 413)
             return
 
         try:
             body = json.loads(raw_body)
         except json.JSONDecodeError as exc:
             self._send_error(400, f"Invalid JSON: {exc}")
+            self._record_metrics(start, 400)
             return
 
         if "messages" not in body:
             self._send_error(400, "Missing required field: messages")
+            self._record_metrics(start, 400)
             return
 
         try:
             request = _validate_chat_request(body)
         except ValueError as exc:
             self._send_error(400, f"Invalid request parameters: {exc}")
+            self._record_metrics(start, 400)
             return
 
         def _generate() -> str:
@@ -311,6 +364,7 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
                 except Exception:
                     logger.exception("generate_fn raised an exception")
                     self._send_error(500, "Internal server error")
+                    self._record_metrics(start, 500, "generation_error")
                     return
             else:
                 try:
@@ -318,6 +372,7 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
                 except Exception:
                     logger.exception("generate_fn raised an exception")
                     self._send_error(500, "Internal server error")
+                    self._record_metrics(start, 500, "generation_error")
                     return
         else:
             try:
@@ -325,6 +380,7 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
             except Exception:
                 logger.exception("generate_fn raised an exception")
                 self._send_error(500, "Internal server error")
+                self._record_metrics(start, 500, "generation_error")
                 return
 
         prompt_tokens = sum(len(m.get("content", "").split()) for m in request.messages)
@@ -350,6 +406,7 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
         )
 
         self._send_json(200, response.to_dict())
+        self._record_metrics(start, 200)
 
 
 class AureliusServer(HTTPServer):

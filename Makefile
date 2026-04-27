@@ -28,13 +28,82 @@ middle-lint: ## Lint the BFF server
 
 # --- Rust Crates ---
 
+benchmark: ## Run performance benchmarks
+	bash scripts/benchmark.sh
+
+benchmark-api: ## Run API benchmarks only
+	bash scripts/benchmark.sh api
+
+benchmark-report: ## Generate benchmark report
+	bash scripts/benchmark.sh report
+
+profile-memory: ## Profile memory at all model sizes
+	bash scripts/profile_memory.sh
+
+profile-memory-2.7b: ## Profile 2.7B memory
+	bash scripts/profile_memory.sh 2.7b
+
+train-2.7b: ## Start 2.7B training
+	bash scripts/train_2.7b.sh
+
+train-3b: ## Start 3.0B training
+	bash scripts/train_3b.sh
+
+mlx-train: ## Start MLX training
+	python -m src.training.mlx_trainer
+
+mlx-convert: ## Convert PyTorch checkpoint to MLX
+	python -m src.training.mlx_trainer --convert $(checkpoint) --output $(output)
+
 rust-build-data-engine: ## Build the Rust data-engine crate
 	cd crates/data-engine && npm run build
 
 rust-build-token-counter: ## Build the Rust token-counter crate
 	cd crates/token-counter && npm run build
 
-rust-build-all: rust-build-data-engine rust-build-token-counter ## Build all Rust crates
+rust-build-session-manager: ## Build the Rust session-manager crate
+	cd crates/session-manager && npm run build
+
+rust-build-gateway: ## Build the Rust API gateway binary
+	cd crates/api-gateway && cargo build --release
+
+rust-build-cli: ## Build the Rust data CLI tool
+	cd tools/data-cli && cargo build --release
+
+rust-build-search: ## Build the Rust search-index NAPI crate
+	cd crates/search-index && npm run build
+
+rust-build-redis: ## Build the Rust redis-client NAPI crate
+	cd crates/redis-client && npm run build
+
+rust-build-text: ## Build the Rust text-processor NAPI crate
+	cd crates/text-processor && npm run build
+
+rust-build-vector: ## Build the Rust vector-similarity NAPI crate
+	cd crates/vector-similarity && npm run build
+
+rust-build-prompt: ## Build the Rust prompt-templates NAPI crate
+	cd crates/prompt-templates && npm run build
+
+rust-build-json: ## Build the Rust json-validator NAPI crate
+	cd crates/json-validator && npm run build
+
+rust-build-uuid: ## Build the Rust uuid-gen NAPI crate
+	cd crates/uuid-gen && npm run build
+
+rust-build-all: rust-build-data-engine rust-build-token-counter rust-build-session-manager rust-build-search rust-build-redis rust-build-text rust-build-vector rust-build-prompt rust-build-json rust-build-uuid rust-build-gateway ## Build all Rust crates
+
+rust-test: ## Run all Rust crate tests
+	@for crate in crates/data-engine crates/token-counter crates/session-manager crates/search-index crates/redis-client crates/api-gateway tools/data-cli; do \
+		echo "Testing $$crate..."; \
+		(cd "$$crate" && cargo test --quiet 2>/dev/null) || true; \
+	done
+
+rust-lint: ## Run clippy on all Rust crates
+	@for crate in crates/data-engine crates/token-counter crates/session-manager crates/search-index crates/redis-client crates/api-gateway tools/data-cli; do \
+		echo "Linting $$crate..."; \
+		(cd "$$crate" && cargo clippy -- -D warnings 2>/dev/null) || true; \
+	done
 
 # --- Frontend ---
 
@@ -110,6 +179,12 @@ docker-up-full: ## Start all services with cache profile
 	docker compose -f deployment/compose.yaml --profile cache up -d
 
 # --- Dev Setup ---
+
+bootstrap: ## One-command full dev setup
+	bash scripts/bootstrap.sh
+
+bootstrap-fast: ## Quick setup (skip Rust builds)
+	bash scripts/bootstrap.sh --fast
 
 setup-dev: ## Install all development dependencies
 	pip install -e ".[dev,serve,train,db]"

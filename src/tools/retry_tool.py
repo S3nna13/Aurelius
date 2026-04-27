@@ -33,7 +33,7 @@ class RetryTool:
                     raise
                 delay = min(self.base_delay * (self.backoff_factor**attempt), self.max_delay)
                 if self.jitter:
-                    delay *= 0.5 + random.random() * 0.5
+                    delay *= 0.5 + random.random() * 0.5  # noqa: S311
                 time.sleep(delay)
         raise RuntimeError("unreachable")
 

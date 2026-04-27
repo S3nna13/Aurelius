@@ -30,7 +30,7 @@ N_FUTURE = 3
 
 class _PassthroughLayer(nn.Module):
     def forward(self, x, freqs_cis, mask=None, past_kv=None):
-        return x, None
+        return x, None, x.new_zeros(1)
 
 
 class _MockBackbone(nn.Module):

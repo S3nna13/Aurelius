@@ -226,7 +226,7 @@ class TokenLevelEarlyExit(nn.Module):
 
         for layer_idx, layer in enumerate(bm.layers):
             # Run the transformer layer
-            x, _kv = layer(x, freqs_cis)  # (B, T, D)
+            x, _kv, _aux = layer(x, freqs_cis)  # (B, T, D)
 
             # Skip exit checks until min_layers have been processed
             if layer_idx < self.config.min_layers - 1:

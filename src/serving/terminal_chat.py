@@ -11,10 +11,10 @@ import sys
 from collections.abc import Callable
 
 # ChatML special tokens (must match tokenizer_config.json)
-_SYSTEM_TOKEN = "<|system|>"
-_USER_TOKEN = "<|user|>"
-_ASSISTANT_TOKEN = "<|assistant|>"
-_END_TOKEN = "<|end|>"
+_SYSTEM_TOKEN = "<|system|>"  # noqa: S105
+_USER_TOKEN = "<|user|>"  # noqa: S105
+_ASSISTANT_TOKEN = "<|assistant|>"  # noqa: S105
+_END_TOKEN = "<|end|>"  # noqa: S105
 
 _DEFAULT_SYSTEM = (
     "You are Aurelius, a helpful, harmless, and honest AI assistant. "

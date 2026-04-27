@@ -124,12 +124,12 @@ class DataMixtureSampler:
     def sample_source(self, step: int = 0) -> str:
         """Sample a single source name according to weights at *step*."""
         weights = self._weights_at_step(step)
-        return random.choices(self._source_names, weights=weights, k=1)[0]
+        return random.choices(self._source_names, weights=weights, k=1)[0]  # noqa: S311
 
     def sample_batch_sources(self, batch_size: int, step: int = 0) -> list[str]:
         """Return *batch_size* source names sampled at *step*."""
         weights = self._weights_at_step(step)
-        return random.choices(self._source_names, weights=weights, k=batch_size)
+        return random.choices(self._source_names, weights=weights, k=batch_size)  # noqa: S311
 
     def get_weights_at_step(self, step: int) -> dict[str, float]:
         """Return {source_name: weight} dict at *step*."""

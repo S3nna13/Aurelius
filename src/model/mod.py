@@ -123,7 +123,7 @@ class MoDLayer(nn.Module):
         # frequencies as a proxy. For full correctness one would sort topk_idx
         # and reindex freqs_cis per-batch, but this is acceptable for a
         # standalone module and keeps the implementation clean and testable.
-        block_out, _present_kv = self.block(selected, freqs_cis[:k], mask=None, past_kv=None)
+        block_out, _present_kv, _aux = self.block(selected, freqs_cis[:k], mask=None, past_kv=None)
 
         # Scatter block outputs back into the full-sequence tensor
         output = x.clone()

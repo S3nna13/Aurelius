@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { LineChart, Activity, RefreshCw, Loader2, AlertTriangle, Play, CheckCircle, Clock } from 'lucide-react'
+import { LineChart, Activity, RefreshCw, Loader2, AlertTriangle, Play, CheckCircle, Clock, TrendingDown, Zap } from 'lucide-react'
 import { api } from '../api/AureliusClient'
+import { useWebSocket } from '../hooks/useWebSocket'
 import type { TrainingRunSummary } from '../api/types'
 
 const statusStyles: Record<string, string> = {
@@ -15,29 +16,21 @@ const statusIcons: Record<string, typeof Play> = {
   running: Activity, completed: CheckCircle, queued: Clock, failed: AlertTriangle,
 }
 
-function MiniSparkline({ data, color }: { data: number[]; color: string }) {
-  if (!data.length) return null
-  const max = Math.max(...data)
-  const min = Math.min(...data)
-  const range = max - min || 1
-  const w = 120; const h = 32
-  const pts = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - ((v - min) / range) * h}`).join(' ')
-  return (
-    <svg width={w} height={h} className="shrink-0">
-      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
-    </svg>
-  )
-}
-
 export default function Training() {
   const [runs, setRuns] = useState<TrainingRunSummary[]>([])
+  const [stats, setStats] = useState<{ total_runs: number; total_steps: number; avg_val_loss: number | null; best_val_loss: number | null; running_count: number } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const { connected, on, off, subscribe } = useWebSocket()
 
   const fetch = useCallback(async () => {
     try {
-      const res = await api.listTrainingRuns()
-      setRuns(res.runs)
+      const [runsRes, statsRes] = await Promise.all([
+        api.listTrainingRuns(),
+        api.get<{ total_runs: number; total_steps: number; avg_val_loss: number | null; best_val_loss: number | null; running_count: number }>('/training/stats'),
+      ])
+      setRuns(runsRes.runs)
+      setStats(statsRes as any)
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load')
@@ -48,14 +41,29 @@ export default function Training() {
 
   useEffect(() => { fetch() }, [fetch])
 
+  useEffect(() => {
+    if (!connected) return
+    subscribe('training')
+  }, [connected, subscribe])
+
+  useEffect(() => {
+    const handler = (data: unknown) => {
+      const d = data as Record<string, unknown>
+      if (d.type === 'created' || d.type === 'update') fetch()
+    }
+    on('training', handler)
+    return () => off('training', handler)
+  }, [on, off, fetch])
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold text-[#e0e0e0] flex items-center gap-2">
           <LineChart size={20} className="text-[#4fc3f7]" /> Training Monitor
+          {connected && <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 ml-2">LIVE</span>}
         </h2>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-[#9e9eb0]">{runs.filter(r => r.status === 'running').length} active</span>
+          <span className="text-xs text-[#9e9eb0]">{runs.filter(r => r.status === 'running').length} active · {runs.length} total</span>
           <button onClick={fetch} disabled={loading} className="aurelius-btn-outline flex items-center gap-1.5 text-sm disabled:opacity-50">
             {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} Refresh
           </button>
@@ -63,6 +71,31 @@ export default function Training() {
       </div>
 
       {error && <div className="aurelius-card border-rose-500/30 bg-rose-500/5 text-rose-300 text-sm flex items-center gap-2"><AlertTriangle size={16} />{error}</div>}
+
+      {stats && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="aurelius-card text-center py-3">
+            <Activity size={16} className="mx-auto mb-1 text-[#4fc3f7]" />
+            <p className="text-xl font-bold text-[#e0e0e0]">{stats.total_runs}</p>
+            <p className="text-[10px] text-[#9e9eb0] uppercase tracking-wider">Total Runs</p>
+          </div>
+          <div className="aurelius-card text-center py-3">
+            <TrendingDown size={16} className="mx-auto mb-1 text-emerald-400" />
+            <p className="text-xl font-bold text-emerald-400">{stats.avg_val_loss !== null ? stats.avg_val_loss.toFixed(3) : '—'}</p>
+            <p className="text-[10px] text-[#9e9eb0] uppercase tracking-wider">Avg Val Loss</p>
+          </div>
+          <div className="aurelius-card text-center py-3">
+            <Zap size={16} className="mx-auto mb-1 text-amber-400" />
+            <p className="text-xl font-bold text-amber-400">{stats.best_val_loss !== null ? stats.best_val_loss.toFixed(4) : '—'}</p>
+            <p className="text-[10px] text-[#9e9eb0] uppercase tracking-wider">Best Loss</p>
+          </div>
+          <div className="aurelius-card text-center py-3">
+            <Clock size={16} className="mx-auto mb-1 text-[#9e9eb0]" />
+            <p className="text-xl font-bold text-[#e0e0e0]">{stats.total_steps.toLocaleString()}</p>
+            <p className="text-[10px] text-[#9e9eb0] uppercase tracking-wider">Total Steps</p>
+          </div>
+        </div>
+      )}
 
       {loading && runs.length === 0 ? (
         <div className="aurelius-card text-center py-12 text-[#9e9eb0]"><Loader2 size={32} className="mx-auto mb-3 animate-spin opacity-60" /><p>Loading training runs...</p></div>
@@ -89,8 +122,6 @@ export default function Training() {
                     <span>{run.totalSteps} steps</span>
                   </div>
                 </div>
-                <MiniSparkline data={[]} color="#4fc3f7" />
-                <span className="text-[10px] text-[#9eeb0] opacity-0 group-hover:opacity-100 transition-opacity">&rarr;</span>
               </Link>
             )
           })}

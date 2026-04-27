@@ -1,0 +1,73 @@
+version: "3.9"
+
+services:
+  aurelius-api:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.dev
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../src:/app/src
+    environment:
+      - AURELIUS_LOG_LEVEL=debug
+      - AURELIUS_RELOAD=true
+    command: uvicorn src.serving.api_server:app --host 0.0.0.0 --port 8080 --reload
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz')"]
+      interval: 30s
+      timeout: 5s
+      start_period: 5s
+      retries: 3
+
+  middle:
+    build:
+      context: ..
+      dockerfile: middle/Dockerfile.dev
+    ports:
+      - "3001:3001"
+    volumes:
+      - ../middle/src:/app/src
+      - middle-node-modules:/app/node_modules
+    environment:
+      - MIDDLE_HOST=0.0.0.0
+      - MIDDLE_PORT=3001
+      - UPSTREAM_URL=http://aurelius-api:8080
+      - CORS_ORIGIN=http://localhost:5173
+      - MIDDLE_LOG_LEVEL=debug
+      - AURELIUS_API_KEY=dev-key
+      - NODE_ENV=development
+    depends_on:
+      - aurelius-api
+    command: npx tsx watch src/index.ts
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../frontend/src:/app/src
+      - frontend-node-modules:/app/node_modules
+    environment:
+      - VITE_API_BASE_URL=http://localhost:3001
+    depends_on:
+      - middle
+    command: npx vite --host 0.0.0.0 --port 5173
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    profiles:
+      - cache
+
+volumes:
+  middle-node-modules:
+  frontend-node-modules:

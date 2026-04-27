@@ -1,35 +1,29 @@
 ---
 name: Bug report
-about: Create a report to help us improve Aurelius
+about: Report a bug in Aurelius
 title: '[BUG] '
 labels: bug
-assignees: ''
-
+assignees: s3nna13
 ---
 
-**Describe the bug**
+## Describe the Bug
 A clear and concise description of what the bug is.
 
-**To Reproduce**
+## To Reproduce
 Steps to reproduce the behavior:
-1. Go to '...'
-2. Run command '....'
-3. See error
+1. 
+2. 
+3. 
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+## Expected Behavior
+A clear description of what you expected to happen.
 
-**Environment (please complete the following information):**
- - OS: [e.g. macOS, Ubuntu]
- - Python version: [e.g. 3.12]
- - PyTorch version: [e.g. 2.4.0]
- - Aurelius commit: [e.g. `git rev-parse --short HEAD`]
- - Hardware: [e.g. M1 Pro, RTX 4090]
+## Environment
+- **Layer**: Python API / Node.js BFF / Frontend / Rust crate
+- **OS**: macOS / Linux
+- **Python version**: 
+- **Node version**: 
+- **Rust version**: 
 
-**Stack trace / logs**
-```
-Paste any relevant logs or error messages here
-```
-
-**Additional context**
-Add any other context about the problem here.
+## Additional Context
+Add any other context about the problem here. Include relevant logs, stack traces, or screenshots.

@@ -215,7 +215,7 @@ class RULERBenchmark:
         """Multi-key NIAH: insert n_keys (key, value) pairs; query one."""
         if not isinstance(n_keys, int) or n_keys <= 0:
             raise ValueError(f"n_keys must be a positive int, got {n_keys!r}")
-        rng = random.Random(seed)
+        rng = random.Random(seed)  # noqa: S311
         budget = self._char_budget(context_tokens)
 
         # Generate distinct keys.
@@ -246,7 +246,7 @@ class RULERBenchmark:
         """Multi-value NIAH: one key, several values; retrieve them all."""
         if not isinstance(n_values, int) or n_values <= 0:
             raise ValueError(f"n_values must be a positive int, got {n_values!r}")
-        rng = random.Random(seed)
+        rng = random.Random(seed)  # noqa: S311
         budget = self._char_budget(context_tokens)
 
         target_key = _random_key(rng)
@@ -283,7 +283,7 @@ class RULERBenchmark:
             raise ValueError(f"n_vars must be a positive int, got {n_vars!r}")
         if not isinstance(chain_length, int) or chain_length <= 0:
             raise ValueError(f"chain_length must be a positive int, got {chain_length!r}")
-        rng = random.Random(seed)
+        rng = random.Random(seed)  # noqa: S311
         budget = self._char_budget(context_tokens)
 
         # Build n_vars independent chains; track the first chain as target.
@@ -322,7 +322,7 @@ class RULERBenchmark:
             raise ValueError(f"n_common must be a positive int, got {n_common!r}")
         if n_common > len(_WORD_POOL) // 2:
             raise ValueError(f"n_common={n_common} too large for pool of {len(_WORD_POOL)}")
-        rng = random.Random(seed)
+        rng = random.Random(seed)  # noqa: S311
         budget = self._char_budget(context_tokens)
 
         pool = list(_WORD_POOL)
@@ -354,7 +354,7 @@ class RULERBenchmark:
         """Aggregation: embed numbers; compute sum or max."""
         if operation not in ("sum", "max"):
             raise ValueError(f"operation must be 'sum' or 'max', got {operation!r}")
-        rng = random.Random(seed)
+        rng = random.Random(seed)  # noqa: S311
         budget = self._char_budget(context_tokens)
 
         n_numbers = 12

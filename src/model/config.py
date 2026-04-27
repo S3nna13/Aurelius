@@ -61,6 +61,14 @@ class AureliusConfig:
     # Training efficiency
     use_gradient_checkpointing: bool = False
 
+    # MoE (Mixture of Experts)
+    moe_enabled: bool = False
+    moe_num_experts: int = 8
+    moe_top_k: int = 2
+    moe_every_n_layers: int = 2
+    moe_capacity_factor: float = 1.25
+    moe_jitter_noise: float = 0.0
+
     # Context extension (moved from boolean-per-strategy to a single field)
     context_extension_strategy: str = "none"
     context_target_len: int = 8192
@@ -311,6 +319,43 @@ class AureliusConfig:
     @property
     def model_merging_enabled(self) -> bool:
         return FEATURE_FLAG_REGISTRY.is_enabled("model.merging")
+
+    @classmethod
+    def aurelius_1_3b(cls) -> "AureliusConfig":
+        """Default 1.3B dense config."""
+        return cls()
+
+    @classmethod
+    def aurelius_2_7b(cls) -> "AureliusConfig":
+        """2.7B dense: 32 layers, d_model=2560, GQA 20:5."""
+        return cls(
+            d_model=2560, n_layers=32, n_heads=20, n_kv_heads=5,
+            head_dim=128, d_ff=7168, vocab_size=128000,
+            max_seq_len=8192, rope_theta=500_000.0,
+            rms_norm_eps=1e-6, dropout=0.0, tie_embeddings=True,
+        )
+
+    @classmethod
+    def aurelius_3b(cls) -> "AureliusConfig":
+        """3.0B dense: 28 layers, d_model=3072, GQA 24:6, reduced seq_len."""
+        return cls(
+            d_model=3072, n_layers=28, n_heads=24, n_kv_heads=6,
+            head_dim=128, d_ff=8192, vocab_size=128000,
+            max_seq_len=4096, rope_theta=500_000.0,
+            rms_norm_eps=1e-6, dropout=0.0, tie_embeddings=True,
+        )
+
+    @classmethod
+    def aurelius_moe_5b(cls) -> "AureliusConfig":
+        """5-6B MoE: 24 layers, d_model=2048, 8 experts, top-2."""
+        return cls(
+            d_model=2048, n_layers=24, n_heads=16, n_kv_heads=8,
+            head_dim=128, d_ff=5632, vocab_size=128000,
+            max_seq_len=8192, rope_theta=500_000.0,
+            rms_norm_eps=1e-6, dropout=0.0, tie_embeddings=True,
+            moe_enabled=True, moe_num_experts=8, moe_top_k=2,
+            moe_every_n_layers=2, moe_capacity_factor=1.25,
+        )
 
     def __post_init__(self) -> None:
         assert self.d_model == self.n_heads * self.head_dim, (  # noqa: S101

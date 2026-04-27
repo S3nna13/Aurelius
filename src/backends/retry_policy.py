@@ -68,7 +68,7 @@ class RetryPolicy:
         raw = cfg.base_delay_s * (cfg.backoff_factor**attempt)
         clamped = min(raw, cfg.max_delay_s)
         if cfg.jitter:
-            clamped *= random.uniform(0.5, 1.0)
+            clamped *= random.uniform(0.5, 1.0)  # noqa: S311
         return clamped
 
     # ------------------------------------------------------------------

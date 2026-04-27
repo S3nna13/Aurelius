@@ -25,6 +25,7 @@ from src.training.structured_pruning import (
     PruningScheduler,
     # Soft-pruning StructuredPruner is shadowed; import the new hard-pruning one
     StructuredPruner,
+    UnifiedStructuredPruner,
     StructuredPruningConfig,
     apply_ffn_mask,
     apply_head_mask,
@@ -446,7 +447,7 @@ def test_pruning_scheduler_should_prune():
 def test_structured_pruner_train_step_returns_loss(tiny_model):
     cfg = PruningConfig(pruning_type="neuron", prune_ratio=0.2)
     optimizer = torch.optim.Adam(tiny_model.parameters(), lr=1e-4)
-    pruner = StructuredPruner(tiny_model, cfg, optimizer)
+    pruner = UnifiedStructuredPruner(tiny_model, cfg, optimizer)
     input_ids = torch.randint(0, 256, (2, 16))
     result = pruner.train_step(input_ids)
     assert "loss" in result, "train_step result must have 'loss' key"
@@ -457,7 +458,7 @@ def test_structured_pruner_train_step_returns_loss(tiny_model):
 def test_structured_pruner_parameter_count(tiny_model):
     cfg = PruningConfig()
     optimizer = torch.optim.Adam(tiny_model.parameters(), lr=1e-4)
-    pruner = StructuredPruner(tiny_model, cfg, optimizer)
+    pruner = UnifiedStructuredPruner(tiny_model, cfg, optimizer)
     count = pruner.parameter_count()
     assert isinstance(count, int), "parameter_count should return an int"
     assert count > 0, "parameter_count should be positive"

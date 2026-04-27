@@ -1,0 +1,73 @@
+model:
+  name: "aurelius-moe-5b"
+  d_model: 2048
+  n_layers: 24
+  n_heads: 16
+  n_kv_heads: 8
+  head_dim: 128
+  d_ff: 5632
+  vocab_size: 128000
+  max_seq_len: 8192
+  rope_theta: 500000.0
+  rms_norm_eps: 1.0e-6
+  dropout: 0.0
+  tie_embeddings: true
+  moe_enabled: true
+  moe_num_experts: 8
+  moe_top_k: 2
+  moe_every_n_layers: 2
+  moe_capacity_factor: 1.25
+
+optimizer:
+  use_muon: true
+  muon_lr: 0.02
+  muon_momentum: 0.95
+  lr: 3.0e-4
+  beta1: 0.9
+  beta2: 0.95
+  eps: 1.0e-8
+  weight_decay: 0.1
+
+scheduler:
+  type: "cosine"
+  warmup_steps: 2000
+  min_lr: 3.0e-5
+  total_steps: 143000
+
+batch:
+  global_batch_tokens: 2_097_152
+  micro_batch_size: 1
+  seq_len: 8192
+
+precision:
+  dtype: "bf16"
+  flash_attention: true
+  gradient_checkpointing: true
+
+gradient:
+  max_norm: 1.0
+  use_zclip: true
+  zclip_z_threshold: 2.5
+
+checkpoint:
+  save_interval_steps: 4800
+  save_dir: "checkpoints/aurelius-moe-5b"
+  max_checkpoints: 3
+  format: "safetensors"
+
+logging:
+  log_interval_steps: 10
+  wandb:
+    enabled: true
+    project: "aurelius-moe-5b"
+
+data:
+  train_data_dir: "data/pretrain/train"
+  val_data_dir: "data/pretrain/val"
+  num_workers: 4
+  pin_memory: false
+
+training:
+  total_tokens: 300_000_000_000
+  total_steps: 143000
+  seed: 42

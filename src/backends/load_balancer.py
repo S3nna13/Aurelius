@@ -76,7 +76,7 @@ class LoadBalancer:
         if self._algorithm is LBAlgorithm.LEAST_CONNECTIONS:
             return self._select_least_connections()
         if self._algorithm is LBAlgorithm.RANDOM:
-            return random.choice(self._instances)
+            return random.choice(self._instances)  # noqa: S311
 
         # Fallback (should not be reachable with a valid enum value)
         return self._select_round_robin()

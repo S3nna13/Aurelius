@@ -236,7 +236,7 @@ class DynamicDepthTransformer(nn.Module):
                         continue
 
             # Run the layer
-            x, _kv = layer(x, freqs_cis)  # (B, T, D)
+            x, _kv, _aux = layer(x, freqs_cis)  # (B, T, D)
 
             # --- Exit router (check only after min_layers) ---
             if layer_idx < min_layers - 1:

@@ -107,7 +107,7 @@ class RMTWrapper(nn.Module):
 
         # Run through transformer layers
         for layer in self.base_model.layers:
-            x, _ = layer(x, freqs_cis, mask=None, past_kv=None)
+            x, _, _ = layer(x, freqs_cis, mask=None, past_kv=None)
 
         # Apply final norm
         x = self.base_model.norm(x)

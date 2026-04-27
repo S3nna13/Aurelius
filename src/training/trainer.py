@@ -204,6 +204,23 @@ class TrainConfig:
     # Model
     model_name: str = "aurelius-1.3b"
 
+    # Model dimensions (read from YAML model section)
+    model_d_model: int = 2048
+    model_n_layers: int = 24
+    model_n_heads: int = 16
+    model_n_kv_heads: int = 8
+    model_head_dim: int = 128
+    model_d_ff: int = 5632
+    model_vocab_size: int = 128_000
+    model_max_seq_len: int = 8192
+    model_rope_theta: float = 500_000.0
+    model_tie_embeddings: bool = True
+    model_moe_enabled: bool = False
+    model_moe_num_experts: int = 8
+    model_moe_top_k: int = 2
+    model_moe_every_n_layers: int = 2
+    model_moe_capacity_factor: float = 1.25
+
     # Optimizer
     lr: float = 3e-4
     min_lr: float = 3e-5
@@ -272,8 +289,25 @@ class TrainConfig:
         with open(path) as f:
             raw = yaml.safe_load(f)
 
+        model = raw.get("model", {})
+
         return cls(
-            model_name=raw.get("model", {}).get("name", cls.model_name),
+            model_name=model.get("name", cls.model_name),
+            model_d_model=model.get("d_model", cls.model_d_model),
+            model_n_layers=model.get("n_layers", cls.model_n_layers),
+            model_n_heads=model.get("n_heads", cls.model_n_heads),
+            model_n_kv_heads=model.get("n_kv_heads", cls.model_n_kv_heads),
+            model_head_dim=model.get("head_dim", cls.model_head_dim),
+            model_d_ff=model.get("d_ff", cls.model_d_ff),
+            model_vocab_size=model.get("vocab_size", cls.model_vocab_size),
+            model_max_seq_len=model.get("max_seq_len", cls.model_max_seq_len),
+            model_rope_theta=model.get("rope_theta", cls.model_rope_theta),
+            model_tie_embeddings=model.get("tie_embeddings", cls.model_tie_embeddings),
+            model_moe_enabled=model.get("moe_enabled", cls.model_moe_enabled),
+            model_moe_num_experts=model.get("moe_num_experts", cls.model_moe_num_experts),
+            model_moe_top_k=model.get("moe_top_k", cls.model_moe_top_k),
+            model_moe_every_n_layers=model.get("moe_every_n_layers", cls.model_moe_every_n_layers),
+            model_moe_capacity_factor=model.get("moe_capacity_factor", cls.model_moe_capacity_factor),
             lr=raw.get("optimizer", {}).get("lr", cls.lr),
             min_lr=raw.get("scheduler", {}).get("min_lr", cls.min_lr),
             beta1=raw.get("optimizer", {}).get("beta1", cls.beta1),
@@ -905,7 +939,24 @@ def main() -> None:
     from src.model.config import AureliusConfig
     from src.model.transformer import AureliusTransformer
 
-    model = AureliusTransformer(AureliusConfig())
+    model_config = AureliusConfig(
+        d_model=cfg.model_d_model,
+        n_layers=cfg.model_n_layers,
+        n_heads=cfg.model_n_heads,
+        n_kv_heads=cfg.model_n_kv_heads,
+        head_dim=cfg.model_head_dim,
+        d_ff=cfg.model_d_ff,
+        vocab_size=cfg.model_vocab_size,
+        max_seq_len=cfg.model_max_seq_len,
+        rope_theta=cfg.model_rope_theta,
+        tie_embeddings=cfg.model_tie_embeddings,
+        moe_enabled=cfg.model_moe_enabled,
+        moe_num_experts=cfg.model_moe_num_experts,
+        moe_top_k=cfg.model_moe_top_k,
+        moe_every_n_layers=cfg.model_moe_every_n_layers,
+        moe_capacity_factor=cfg.model_moe_capacity_factor,
+    )
+    model = AureliusTransformer(model_config)
     train_loader, val_loader = build_dataloaders(cfg)
     trainer = AureliusTrainer(model, train_loader, val_loader, cfg)
     trainer.train()

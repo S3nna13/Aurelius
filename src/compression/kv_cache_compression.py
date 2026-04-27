@@ -6,7 +6,7 @@ import random
 from dataclasses import dataclass
 from enum import StrEnum
 
-_rng = random.Random(42)
+_rng = random.Random(42)  # noqa: S311
 
 
 class EvictionPolicy(StrEnum):

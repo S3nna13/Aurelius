@@ -146,7 +146,7 @@ class MagpieGenerator:
         if n == 0:
             return []
 
-        rng = random.Random(seed)
+        rng = random.Random(seed)  # noqa: S311
         out: list[InstructionSample] = []
         for i in range(n):
             # The RNG is threaded into the prompt so that fake

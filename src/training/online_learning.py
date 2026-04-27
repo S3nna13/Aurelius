@@ -54,7 +54,7 @@ class ReplayBuffer:
         if len(self._buffer) == 0:
             return []
         if n > len(self._buffer):
-            return random.choices(self._buffer, k=n)
+            return random.choices(self._buffer, k=n)  # noqa: S311
         return random.sample(self._buffer, n)
 
     def __len__(self) -> int:

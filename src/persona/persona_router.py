@@ -30,7 +30,7 @@ class RoutingResult:
 
 
 _CVE_RE = re.compile(r"CVE-\d{4}-\d{4,}", re.IGNORECASE)
-_MITRE_RE = re.compile(r"\bT\d{4}(?:\.\d{3})?\b")
+_MITRE_RE = re.compile(r"\bT\d{4}(?:\.\d{3})?\b", re.IGNORECASE)
 _ACTOR_RE = re.compile(
     r"\b("
     r"APT[- ]?\d+"
@@ -205,9 +205,9 @@ class PersonaRouter:
 def _extract_patterns(text: str) -> list[str]:
     patterns: list[str] = []
     for match in _CVE_RE.finditer(text):
-        patterns.append(f"cve:{match.group()}")
+        patterns.append(f"cve:{match.group().upper()}")
     for match in _MITRE_RE.finditer(text):
-        patterns.append(f"mitre:{match.group()}")
+        patterns.append(f"mitre:{match.group().upper()}")
     for match in _ACTOR_RE.finditer(text):
         patterns.append(f"actor:{match.group()}")
     return patterns

@@ -420,9 +420,9 @@ class PrefixTuningModel(nn.Module):
         # Pass through transformer layers
         for i, layer in enumerate(self.backbone.layers):
             if freqs_cis is not None:
-                x, _kv = layer(x, freqs_cis)
+                x, _kv, _aux = layer(x, freqs_cis)
             else:
-                x, _kv = layer(x, None)
+                x, _kv, _aux = layer(x, None)
 
         # Final norm + LM head
         x = self.backbone.norm(x)

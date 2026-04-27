@@ -107,7 +107,7 @@ def generate_attack_prompt(
     if rng is not None:
         template = rng.choice(templates)
     else:
-        template = random.choice(templates)
+        template = random.choice(templates)  # noqa: S311
     return template.format(action=action)
 
 
@@ -204,7 +204,7 @@ class AutoRedTeamer:
         seed: int = 42,
     ) -> AttackResult:
         """Generate attack prompt, get model response, score safety."""
-        rng = random.Random(seed)
+        rng = random.Random(seed)  # noqa: S311
         prompt = generate_attack_prompt(strategy, action, rng=rng)
         response = greedy_generate(
             model=self.model,
@@ -284,7 +284,7 @@ class AutoRedTeamer:
         seed: int = 0,
     ) -> list[AttackResult]:
         """Try n_trials random prompt variants, return those with safety_score < 0.5."""
-        rng = random.Random(seed)
+        rng = random.Random(seed)  # noqa: S311
         candidates: list[AttackResult] = []
 
         strategies = self.cfg.attack_strategies

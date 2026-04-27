@@ -126,7 +126,7 @@ def compute_hypervolume(pareto_front: list[list[float]], reference_point: list[f
 
     count = 0
     for _ in range(n_samples):
-        sample = [random.uniform(lower[k], upper[k]) for k in range(n_obj)]
+        sample = [random.uniform(lower[k], upper[k]) for k in range(n_obj)]  # noqa: S311
         # Point is dominated by the front (i.e. inside hypervolume) if any front
         # member dominates it (is no worse on all objectives)
         for fp in pareto_front:

@@ -37,7 +37,7 @@ def _get_last_hidden(model: nn.Module, input_ids: torch.Tensor) -> torch.Tensor:
     x = model.embed(input_ids)
     freqs_cis = model.freqs_cis[: input_ids.shape[1]]
     for layer in model.layers:
-        x, _ = layer(x, freqs_cis, mask=None, past_kv=None)
+        x, _, _ = layer(x, freqs_cis, mask=None, past_kv=None)
     x = model.norm(x)
     return x[0, -1]  # (d_model,)
 

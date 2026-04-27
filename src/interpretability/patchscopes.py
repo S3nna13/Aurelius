@@ -169,11 +169,11 @@ class Patchscope:
             inputs: tuple,
             output: tuple,
         ) -> tuple:
-            # output is (hidden_state, kv) from TransformerBlock.
-            h, kv = output[0], output[1]  # h: (B, T, d_model)
+            # output is (hidden_state, kv, aux_loss) from TransformerBlock.
+            h, kv, aux = output[0], output[1], output[2]  # h: (B, T, d_model)
             h = h.clone()
             h[:, tgt_pos_idx, :] = hidden
-            return (h, kv)
+            return (h, kv, aux)
 
         handle = self.model.layers[tgt_layer_idx].register_forward_hook(  # type: ignore[index]
             _injection_hook

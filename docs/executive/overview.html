@@ -1,0 +1,1501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aurelius — Executive Overview</title>
+<style>
+@page { size: A4; margin: 0; }
+@page :first { margin: 0; }
+
+:root {
+  --bg: #0a0e17;
+  --bg-light: #111827;
+  --bg-card: #1a2332;
+  --accent: #4fc3f7;
+  --accent-soft: rgba(79, 195, 247, 0.12);
+  --text: #e2e8f0;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  --border: rgba(148, 163, 184, 0.12);
+  --success: #34d399;
+  --warning: #fbbf24;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.page {
+  width: 210mm;
+  min-height: 297mm;
+  padding: 16mm 20mm;
+  margin: 0 auto;
+  page-break-after: always;
+  position: relative;
+  overflow: hidden;
+}
+
+.page:last-child { page-break-after: auto; }
+
+/* Cover */
+.cover {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  background: linear-gradient(160deg, #0a0e17 0%, #111827 40%, #0f172a 100%);
+}
+
+.cover::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  right: -30%;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(79,195,247,0.08) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
+.cover-badge {
+  display: inline-block;
+  padding: 6px 16px;
+  border-radius: 100px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 32px;
+  border: 1px solid rgba(79,195,247,0.2);
+}
+
+.cover h1 {
+  font-size: 56px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, #fff 30%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.cover-subtitle {
+  font-size: 18px;
+  color: var(--text-muted);
+  max-width: 440px;
+  margin-bottom: 48px;
+  line-height: 1.5;
+}
+
+.cover-meta {
+  display: flex;
+  gap: 40px;
+  margin-top: 24px;
+}
+
+.cover-meta-item {
+  text-align: center;
+}
+
+.cover-meta-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.cover-meta-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-top: 4px;
+}
+
+.cover-footer {
+  position: absolute;
+  bottom: 24mm;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.cover-footer span {
+  display: inline-block;
+  margin: 0 12px;
+}
+
+/* Section Headers */
+.section-header {
+  margin-bottom: 20px;
+}
+
+.section-number {
+  display: inline-block;
+  width: 32px;
+  height: 32px;
+  line-height: 32px;
+  text-align: center;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 700;
+  margin-right: 12px;
+  vertical-align: middle;
+}
+
+.section-header h2 {
+  display: inline;
+  font-size: 24px;
+  font-weight: 700;
+  vertical-align: middle;
+  letter-spacing: -0.01em;
+}
+
+.section-header p {
+  margin-top: 8px;
+  margin-left: 44px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+/* Cards */
+.card-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin: 16px 0;
+}
+
+.card-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px;
+  margin: 16px 0;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px;
+}
+
+.card h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.card p, .card li {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.card ul {
+  padding-left: 16px;
+  margin-top: 6px;
+}
+
+.card ul li {
+  margin-bottom: 3px;
+}
+
+.card-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+  font-size: 16px;
+}
+
+/* Stats Row */
+.stats-row {
+  display: flex;
+  gap: 14px;
+  margin: 16px 0;
+}
+
+.stat-box {
+  flex: 1;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px;
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--accent);
+  line-height: 1.1;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 6px;
+}
+
+/* Architecture Diagram */
+.arch-diagram {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 16px 0;
+}
+
+.arch-layer {
+  background: linear-gradient(90deg, rgba(79,195,247,0.08), rgba(79,195,247,0.02));
+  border: 1px solid rgba(79,195,247,0.15);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.arch-layer:last-child { margin-bottom: 0; }
+
+.arch-layer-title {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.arch-layer-desc {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-align: right;
+}
+
+.arch-arrow {
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 14px;
+  margin: 4px 0;
+}
+
+/* Tables */
+.table-wrap {
+  overflow: hidden;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  margin: 14px 0;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+thead {
+  background: var(--bg-light);
+}
+
+th {
+  text-align: left;
+  padding: 10px 14px;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border);
+}
+
+td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  vertical-align: top;
+}
+
+tr:last-child td { border-bottom: none; }
+
+/* Lists */
+.feature-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+}
+
+.feature-list li {
+  padding: 8px 0 8px 28px;
+  position: relative;
+  font-size: 13px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.feature-list li:last-child { border-bottom: none; }
+
+.feature-list li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: var(--success);
+  font-weight: 700;
+}
+
+/* Highlight Box */
+.highlight-box {
+  background: linear-gradient(135deg, rgba(79,195,247,0.08), rgba(52,211,153,0.05));
+  border: 1px solid rgba(79,195,247,0.2);
+  border-radius: 12px;
+  padding: 18px;
+  margin: 16px 0;
+}
+
+.highlight-box h4 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--accent);
+}
+
+.highlight-box p {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* Two Column Layout */
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+/* Quote */
+.quote {
+  border-left: 3px solid var(--accent);
+  padding-left: 16px;
+  margin: 16px 0;
+  font-style: italic;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+/* Tag */
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-right: 4px;
+}
+
+/* Footer on content pages */
+.page-footer {
+  position: absolute;
+  bottom: 10mm;
+  left: 20mm;
+  right: 20mm;
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--text-dim);
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+/* Confidential watermark */
+.confidential-stamp {
+  position: absolute;
+  top: 10mm;
+  right: 16mm;
+  padding: 4px 10px;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 4px;
+  color: var(--warning);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  background: rgba(251, 191, 36, 0.08);
+}
+
+/* Progress bar style for capabilities */
+.capability-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0;
+  font-size: 12px;
+}
+
+.capability-label {
+  width: 140px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.capability-track {
+  flex: 1;
+  height: 6px;
+  background: var(--bg-light);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.capability-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #34d399);
+  border-radius: 3px;
+}
+
+.capability-value {
+  width: 50px;
+  text-align: right;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 11px;
+}
+
+/* Page break helpers */
+.pb { page-break-before: always; }
+</style>
+</head>
+<body>
+
+<!-- ==================== COVER ==================== -->
+<div class="page cover">
+  <div class="cover-badge">Executive Briefing — Confidential</div>
+  <h1>Aurelius</h1>
+  <p class="cover-subtitle">A full-stack AI assistant platform built from first principles. Pure PyTorch. Production-ready. Enterprise-hardened.</p>
+
+  <div class="cover-meta">
+    <div class="cover-meta-item">
+      <div class="cover-meta-value">1.395B</div>
+      <div class="cover-meta-label">Parameters</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="cover-meta-value">1,720+</div>
+      <div class="cover-meta-label">Modules</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="cover-meta-value">32K+</div>
+      <div class="cover-meta-label">Tests</div>
+    </div>
+    <div class="cover-meta-item">
+      <div class="cover-meta-value">0</div>
+      <div class="cover-meta-label">High CVEs</div>
+    </div>
+  </div>
+
+  <div class="cover-footer">
+    <span>Aurelius Systems, Inc.</span>
+    <span>•</span>
+    <span>2025</span>
+    <span>•</span>
+    <span>github.com/S3nna13/Aurelius</span>
+  </div>
+</div>
+
+<!-- ==================== EXECUTIVE SUMMARY ==================== -->
+<div class="page">
+  <div class="confidential-stamp">Confidential</div>
+  <div class="section-header">
+    <span class="section-number">01</span>
+    <h2>Executive Summary</h2>
+    <p>What Aurelius is, why it matters, and where it is going.</p>
+  </div>
+
+  <div class="highlight-box">
+    <h4>The Elevator Pitch</h4>
+    <p>Aurelius is a vertically integrated AI platform that goes from a 1.4-billion-parameter transformer — trained entirely from scratch in pure PyTorch — all the way to a production-grade API server and a modern React dashboard. Unlike competitors who stitch together third-party libraries, every algorithm is handwritten. This gives us full control over performance, security, and intellectual property.</p>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-box">
+      <div class="stat-value">157+</div>
+      <div class="stat-label">Development Cycles</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value">33</div>
+      <div class="stat-label">Sub-systems</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value">3</div>
+      <div class="stat-label">Language Runtimes</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value">28</div>
+      <div class="stat-label">CVEs Closed</div>
+    </div>
+  </div>
+
+  <p style="margin-top:16px; font-size:13px; color:var(--text-muted);">
+    Aurelius sits at the intersection of <strong>research</strong> and <strong>product</strong>. On one side, it is a deep research codebase where novel architectures (Mamba, Mixture of Experts, State Space Models, diffusion language heads) can be prototyped and benchmarked without framework lock-in. On the other side, it is a deployable conversational AI with memory, multi-step tool use, safety guardrails, and a polished web interface that non-technical users can operate.
+  </p>
+
+  <p style="margin-top:12px; font-size:13px; color:var(--text-muted);">
+    The platform is released under the <strong>Aurelius Open License</strong>, which grants broad usage rights while preserving the underlying architecture as the company's intellectual property. This creates a dual benefit: community adoption drives ecosystem growth, while the core orchestration model, memory hierarchy, and design patterns remain competitively protected.
+  </p>
+
+  <div class="card-grid" style="margin-top:18px;">
+    <div class="card">
+      <div class="card-icon">🎯</div>
+      <h3>Full Stack Ownership</h3>
+      <p>From transformer weights to pixel-perfect UI, every layer is built in-house. No black-box dependencies on OpenAI, Anthropic, or HuggingFace at runtime.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🛡️</div>
+      <h3>Security-First Design</h3>
+      <p>28 CVEs tracked and closed. Bandit static analysis, pip-audit dependency scanning, adversarial robustness testing, and a full STRIDE threat model.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">⚡</div>
+      <h3>Performance at the Edge</h3>
+      <p>Rust native modules for hot paths (token counting, data engine). Speculative decoding, continuous batching, and paged KV cache for throughput.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🔮</div>
+      <h3>Future-Proof Architecture</h3>
+      <p>FamilyManifest + ModelVariant pattern lets us maintain base, chat, coding, long-context, retrieval, agent, and safety variants under one contract.</p>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>Aurelius Executive Overview</span>
+    <span>Page 2</span>
+  </div>
+</div>
+
+<!-- ==================== THE PRODUCT ==================== -->
+<div class="page">
+  <div class="confidential-stamp">Confidential</div>
+  <div class="section-header">
+    <span class="section-number">02</span>
+    <h2>The Product</h2>
+    <p>What Aurelius does and who it serves.</p>
+  </div>
+
+  <h3 style="font-size:15px; margin:14px 0 10px;">Three Entry Points, One Platform</h3>
+
+  <div class="card-grid-3">
+    <div class="card">
+      <div class="card-icon">💬</div>
+      <h3>Terminal Chat</h3>
+      <p>A developer-friendly command-line interface. Install with <code>pip</code>, type <code>aurelius chat</code>, and start conversing. Built-in personas (coding, security, research) adapt tone and expertise on the fly.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🔌</div>
+      <h3>API Server</h3>
+      <p>An OpenAI-compatible HTTP API that any existing client can drop into. WebSocket streaming for real-time token delivery. Session routing, rate limiting, and semantic memory built in.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🖥️</div>
+      <h3>Web Dashboard</h3>
+      <p>A "Mission Control" React application with real-time metrics, agent management, memory browser, workflow designer, and system health monitoring. Dark-mode native, PWA-ready.</p>
+    </div>
+  </div>
+
+  <h3 style="font-size:15px; margin:20px 0 10px;">Target Use Cases</h3>
+
+  <div class="two-col">
+    <div>
+      <ul class="feature-list">
+        <li><strong>Enterprise AI Assistant</strong> — Deploy on-premise with full data sovereignty. No third-party API calls required.</li>
+        <li><strong>Research Platform</strong> — Swap attention mechanisms, test novel architectures, and benchmark against 100+ metrics without framework migration.</li>
+        <li><strong>Agent Orchestration</strong> — Multi-step tool use with ReAct reasoning, budget-bounded execution, and automatic error recovery.</li>
+        <li><strong>Security Operations</strong> — MITRE ATT&CK classification, adversarial suffix detection, and red-team probe suites for AI safety.</li>
+      </ul>
+    </div>
+    <div>
+      <ul class="feature-list">
+        <li><strong>Code Intelligence</strong> — Built-in coding persona with AST analysis, patch synthesis, and sandboxed code execution.</li>
+        <li><strong>Knowledge Management</strong> — Layered semantic memory (L0–L4) with importance scoring, decay, and associative recall.</li>
+        <li><strong>Workflow Automation</strong> — Visual workflow designer with cron scheduling, dependency graphs, and execution monitoring.</li>
+        <li><strong>Federated Deployments</strong> — Docker, Kubernetes, and Ollama packaging for edge, cloud, and air-gapped environments.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="highlight-box" style="margin-top:16px;">
+    <h4>Why "Pure PyTorch" Matters to the Business</h4>
+    <p>Every major competitor relies on a stack of third-party libraries (HuggingFace Transformers, FlashAttention, DeepSpeed, vLLM, etc.). Each dependency is a supply-chain risk, a licensing constraint, and a performance ceiling. By writing every algorithm from scratch, Aurelius eliminates vendor lock-in, reduces the attack surface, and retains full freedom to optimize at the kernel level. When a customer needs a custom attention mechanism or a novel quantization scheme, we can ship it in days, not quarters.</p>
+  </div>
+
+  <div class="page-footer">
+    <span>Aurelius Executive Overview</span>
+    <span>Page 3</span>
+  </div>
+</div>
+
+<!-- ==================== ARCHITECTURE ==================== -->
+<div class="page">
+  <div class="confidential-stamp">Confidential</div>
+  <div class="section-header">
+    <span class="section-number">03</span>
+    <h2>System Architecture</h2>
+    <p>How the pieces fit together.</p>
+  </div>
+
+  <div class="arch-diagram">
+    <div class="arch-layer">
+      <span class="arch-layer-title">🖥️ React 19 Frontend Dashboard</span>
+      <span class="arch-layer-desc">Vite · TypeScript · Tailwind · Zustand · Framer Motion</span>
+    </div>
+    <div class="arch-arrow">↓ HTTP / WebSocket / SSE</div>
+    <div class="arch-layer">
+      <span class="arch-layer-title">🔗 Node.js Gateway + BFF Proxy</span>
+      <span class="arch-layer-desc">Express · Rate Limiting · Auth · WebSocket Hub</span>
+    </div>
+    <div class="arch-arrow">↓ REST / WebSocket / gRPC</div>
+    <div class="arch-layer">
+      <span class="arch-layer-title">🐍 Python API Server</span>
+      <span class="arch-layer-desc">FastAPI · OpenAI-compatible · Session Router · Tool Executor</span>
+    </div>
+    <div class="arch-arrow">↓ Model Forward Pass</div>
+    <div class="arch-layer">
+      <span class="arch-layer-title">🧠 Aurelius Transformer (1.395B params)</span>
+      <span class="arch-layer-desc">Pure PyTorch · GQA · RoPE · YaRN · SwiGLU · RMSNorm</span>
+    </div>
+  </div>
+
+  <h3 style="font-size:15px; margin:18px 0 10px;">The Transformer Core</h3>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Specification</th><th>Value</th><th>Business Impact</th></tr></thead>
+      <tbody>
+        <tr><td>Parameters</td><td>1.395 billion</td><td>Large enough for complex reasoning, small enough to run on commodity hardware</td></tr>
+        <tr><td>Architecture</td><td>Decoder-only transformer</td><td>Industry standard — proven at scale by GPT, Claude, and Llama families</td></tr>
+        <tr><td>Context Window</td><td>8,192 tokens (extendable to 128K+ via YaRN)</td><td>Process entire documents, multi-turn conversations, and code repositories</td></tr>
+        <tr><td>Vocabulary</td><td>128,000 tokens</td><td>Efficient compression of multilingual text, code, and technical notation</td></tr>
+        <tr><td>Attention</td><td>Grouped Query Attention (GQA)</td><td>2× faster inference vs. standard multi-head attention, lower memory footprint</td></tr>
+        <tr><td>Position Encoding</td><td>RoPE (θ = 500K) with YaRN</td><td>Stable long-context extrapolation without retraining</td></tr>
+        <tr><td>Activation</td><td>SwiGLU</td><td>State-of-the-art feed-forward efficiency used in PaLM and Llama-2</td></tr>
+        <tr><td>Normalization</td><td>RMSNorm (pre-norm)</td><td>Faster convergence, better stability at scale</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 style="font-size:15px; margin:18px 0 10px;">Family Architecture</h3>
+
+  <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">
+    The <code>FamilyManifest</code> + <code>ModelVariant</code> pattern is Aurelius's answer to model proliferation. Instead of maintaining separate codebases for a base model, a chat model, a coding model, and a safety model, all variants share one core and specialize through configurable heads, tokenizers, and prompt templates. This reduces maintenance burden by an order of magnitude and lets customers hot-swap personas without reloading weights.
+  </p>
+
+  <div class="card-grid-3">
+    <div class="card">
+      <h3>Base Variant</h3>
+      <p>General-purpose autoregressive language modeling. The foundation for all other variants.</p>
+    </div>
+    <div class="card">
+      <h3>Chat Variant</h3>
+      <p>Instruction-tuned with ChatML, Llama-3, and proprietary templates. Multi-turn conversation with tool awareness.</p>
+    </div>
+    <div class="card">
+      <h3>Coding Variant</h3>
+      <p>Fill-in-the-middle (FIM) support, AST-aware tooling, and patch synthesis for software engineering workflows.</p>
+    </div>
+    <div class="card">
+      <h3>Long-Context Variant</h3>
+      <p>YaRN-extended RoPE, attention sinks, and StreamingLLM for 128K+ token contexts.</p>
+    </div>
+    <div class="card">
+      <h3>Retrieval Variant</h3>
+      <p>BM25 + dense hybrid search, citation tracking, and RAG-optimized prompt assembly.</p>
+    </div>
+    <div class="card">
+      <h3>Safety Variant</h3>
+      <p>Constitutional AI filtering, refusal training, and red-team hardened output guardrails.</p>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>Aurelius Executive Overview</span>
+    <span>Page 4</span>
+  </div>
+</div>
+
+<!-- ==================== FRONTEND ==================== -->
+<div class="page">
+  <div class="confidential-stamp">Confidential</div>
+  <div class="section-header">
+    <span class="section-number">04</span>
+    <h2>Frontend Dashboard</h2>
+    <p>The face of the platform — designed for operators, not just developers.</p>
+  </div>
+
+  <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">
+    The Aurelius dashboard is a single-page application built with React 19, TypeScript, Vite, and Tailwind CSS. It serves as a "Mission Control" for the entire AI platform, giving non-technical stakeholders visibility into system health, agent activity, and conversational memory.
+  </p>
+
+  <h3 style="font-size:15px; margin:14px 0 10px;">15 Application Pages</h3>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Page</th><th>Purpose</th><th>Key Feature</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Dashboard</strong></td><td>System-wide "Mission Control" overview</td><td>Live charts, agent status, activity feed, export</td></tr>
+        <tr><td><strong>Chat</strong></td><td>Interactive agent conversation</td><td>SSE streaming, slash commands, persistent history</td></tr>
+        <tr><td><strong>Notifications</strong></td><td>Hermes notification center</td><td>Bulk actions, push notifications, priority filtering</td></tr>
+        <tr><td><strong>Skills</strong></td><td>Plugin & skill management</td><td>Favorites, risk scoring, live execution</td></tr>
+        <tr><td><strong>Workflows</strong></td><td>Orchestration monitor</td><td>Progress bars, start/stop controls</td></tr>
+        <tr><td><strong>Memory</strong></td><td>Layered memory browser</td><td>Search, importance scores, associative recall</td></tr>
+        <tr><td><strong>Agents</strong></td><td>Agent comparison & detail</td><td>Side-by-side metrics, color theming</td></tr>
+        <tr><td><strong>Models</strong></td><td>Model load/unload control</td><td>Parameter display, state transitions</td></tr>
+        <tr><td><strong>Training</strong></td><td>Training run monitor</td><td>Sparkline charts, epoch tracking</td></tr>
+        <tr><td><strong>Logs</strong></td><td>System log viewer</td><td>Level filtering, pagination, auto-refresh</td></tr>
+        <tr><td><strong>Health</strong></td><td>Health check dashboard</td><td>Live latency tests, component status</td></tr>
+        <tr><td><strong>API Docs</strong></td><td>Interactive documentation</td><td>Copy-to-clipboard, collapsible categories</td></tr>
+        <tr><td><strong>Settings</strong></td><td>Platform configuration</td><td>Dirty-state tracking, validation, import/export</td></tr>
+        <tr><td><strong>Tasks</strong></td><td>Scheduled cron jobs</td><td>Resume/pause, manual trigger</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 style="font-size:15px; margin:16px 0 10px;">User Experience Highlights</h3>
+
+  <div class="card-grid">
+    <div class="card">
+      <h3>Keyboard-First Navigation</h3>
+      <p>Cmd+K command palette, / for global search, ? for shortcuts, G+[key] for page jumps. Power users never need a mouse.</p>
+    </div>
+    <div class="card">
+      <h3>Progressive Web App</h3>
+      <p>Installable on desktop and mobile. Service worker for offline resilience. System-aware dark/light theme toggle.</p>
+    </div>
+    <div class="card">
+      <h3>Real-Time Everywhere</h3>
+      <p>SSE for chat streaming, polling for dashboards (5–15s intervals), WebSocket for bi-directional agent control.</p>
+    </div>
+    <div class="card">
+      <h3>Enterprise Security</h3>
+      <p>Session auto-lock after inactivity, API key auth, secure context detection, license activation gate.</p>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>Aurelius Executive Overview</span>
+    <span>Page 5</span>
+  </div>
+</div>
+
+<!-- ==================== BACKEND & API ==================== -->
+<div class="page">
+  <div class="confidential-stamp">Confidential</div>
+  <div class="section-header">
+    <span class="section-number">05</span>
+    <h2>Backend & API Infrastructure</h2>
+    <p>The engine room — where requests become intelligence.</p>
+  </div>
+
+  <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">
+    Aurelius runs on a three-tier backend: a React frontend, a Node.js gateway/BFF layer, and a Python API server. This separation lets each tier scale independently and fail gracefully.
+  </p>
+
+  <h3 style="font-size:15px; margin:14px 0 10px;">Python API Surface (30+ Endpoints)</h3>
+
+  <div class="two-col">
+    <div>
+      <div class="card" style="margin-bottom:10px;">
+        <h3>🤖 Agent Control</h3>
+        <p>List agents, send commands, change state (Active/Idle/Error), query per-agent activity feeds.</p>
+      </div>
+      <div class="card" style="margin-bottom:10px;">
+        <h3>💬 Conversations</h3>
+        <p>OpenAI-compatible <code>/v1/chat/completions</code>, WebSocket streaming, multi-turn history, tool calling.</p>
+      </div>
+      <div class="card" style="margin-bottom:10px;">
+        <h3>🧠 Memory</h3>
+        <p>Layered memory browser (L0–L4), semantic search, entry creation, importance scoring, access analytics.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:10px;">
+        <h3>🔧 Skills & Workflows</h3>
+        <p>Execute skills with variable injection, trigger workflows, monitor execution status in real time.</p>
+      </div>
+      <div class="card" style="margin-bottom:10px;">
+        <h3>📊 Observability</h3>
+        <p>500-record log ring buffer, health checks, SSE event stream, notification preferences, system stats.</p>
+      </div>
+      <div class="card" style="margin-bottom:10px;">
+        <h3>🔐 Security</h3>
+        <p>Optional API-key auth, license validation, rate limiting (100 rps / burst 200), HMAC timing-safe comparison.</p>
+      </div>
+    </div>
+  </div>
+
+  <h3 style="font-size:15px; margin:16px 0 10px;">Node.js Gateway Layer</h3>
+
+  <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">
+    The gateway sits between the React app and the Python API, handling cross-cutting concerns so the Python layer can focus on AI logic.
+  </p>
+
+  <div class="card-grid-3">
+    <div class="card">
+      <h3>Auth Middleware</h3>
+      <p>JWT validation, API key proxying, session management. Fail-closed defaults.</p>
+    </div>
+    <div class="card">
+      <h3>Rate Limiting</h3>
+      <p>Token-bucket algorithm with per-key, per-IP, per-route, and global chains.</p>
+    </div>
+    <div class="card">
+      <h3>WebSocket Hub</h3>
+      <p>Channel-based broadcasting. Chat rooms, agent status feeds, system events.</p>
+    </div>
+  </div>
+
+  <h3 style="font-size:15px; margin:16px 0 10px;">Rust Native Modules</h3>
+
+  <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">
+    Three Rust crates compiled with LTO and single codegen unit provide performance-critical paths that Python cannot match.
+  </p>
+
+  <div class="card-grid-3">
+    <div class="card">
+      <h3>data-engine</h3>
+      <p>In-memory CRUD engine for agents, notifications, memory, and workflows. NAPI-RS binding for Node.js.</p>
+    </div>
+    <div class="card">
+      <h3>token-counter</h3>
+      <p>Unicode-aware token estimation and budget truncation. 10× faster than Python equivalents.</p>
+    </div>
+    <div class="card">
+      <h3>usage-store</h3>
+      <p>Persistent event logging via <code>redb</code> embedded KV store. PyO3 binding for Python integration.</p>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>Aurelius Executive Overview</span>
+    <span>Page 6</span>
+  </div>
+</div>
+
+<!-- ==================== AI CAPABILITIES ==================== -->
+<div class="page">
+  <div class="confidential-stamp">Confidential</div>
+  <div class="section-header">
+    <span class="section-number">06</span>
+    <h2>AI Capabilities</h2>
+    <p>What the model can do, and how it does it safely.</p>
+  </div>
+
+  <h3 style="font-size:15px; margin:14px 0 10px;">Agent Framework</h3>
+
+  <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">
+    Aurelius is not just a chatbot — it is an agentic system that can plan, act, observe, and reflect. The ReAct (Reasoning + Acting) loop enables multi-step problem solving with tool use.
+  </p>
+
+  <div class="card-grid">
+    <div class="card">
+      <h3>ReAct Loop</h3>
+      <p>Plan → Act → Observe → Reflect. Per-tool wall-clock timeouts, argument validation via Python introspection, and budget-bounded termination prevent runaway execution.</p>
+    </div>
+    <div class="card">
+      <h3>Tool Calling</h3>
+      <p>Parses both XML (Anthropic-style) and JSON (OpenAI-style) tool calls. Injection-hardened state-machine scanning prevents prompt injection via tool outputs.</p>
+    </div>
+    <div class="card">
+      <h3>Multi-Step Chaining</h3>
+      <p>Tools can invoke other tools. Dependency DAGs with transitive skip logic. Parallelizable groups extracted automatically.</p>
+    </div>
+    <div class="card">
+      <h3>Error Recovery</h3>
+      <p>Per-step exception handling with retry logic. Graceful degradation when tools fail or time out.</p>
+    </div>
+  </div>
+
+  <h3 style="font-size:15px; margin:16px 0 10px;">Memory System</h3>
+
+  <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">
+    Most LLMs are stateless — they forget everything between sessions. Aurelius maintains a layered semantic memory that persists across conversations and evolves over time.
+  </p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Layer</th><th>Type</th><th>Lifespan</th><th>Use Case</th></tr></thead>
+      <tbody>
+        <tr><td><strong>L0 — Sensory</strong></td><td>Raw input buffer</td><td>Single turn</td><td>Immediate context for the current query</td></tr>
+        <tr><td><strong>L1 — Working</strong></td><td>TTL + LRU cache</td><td>Minutes to hours</td><td>Active conversation threads, recently used facts</td></tr>
+        <tr><td><strong>L2 — Episodic</strong></td><td>Event sequences with importance scores</td><td>Days to weeks</td><td>Conversation history, decision trails, user preferences</td></tr>
+        <tr><td><strong>L3 — Semantic</strong></td><td>Concept graph + associative links</td><td>Months</td><td>Domain knowledge, entity relationships, learned patterns</td></tr>
+        <tr><td><strong>L4 — Procedural</strong></td><td>Skill recipes + workflow templates</td><td>Indefinite</td><td>How-to knowledge, standard operating procedures</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 style="font-size:15px; margin:16px 0 10px;">Safety & Alignment</h3>
+
+  <div class="two-col">
+    <div>
+      <ul class="feature-list">
+        <li><strong>Jailbreak Detection</strong> — 6-category regex ensemble with risk scoring</li>
+        <li><strong>Prompt Injection Scanner</strong> — Detects indirect injection via HTML, homoglyphs, zero-width characters</li>
+        <li><strong>Output Filtering</strong> — PII redaction, email/phone/SSN masking, API key detection</li>
+        <li><strong>Constitutional AI</strong> — Self-critique and revision based on principled rules</li>
+      </ul>
+    </div>
+    <div>
+      <ul class="feature-list">
+        <li><strong>Red-Team Probes</strong> — 6-category adversarial test suite with refusal detection</li>
+        <li><strong>Hallucination Guard</strong> — Claim verification against retrieval sources</li>
+        <li><strong>Harm Taxonomy</strong> — 7-category content classification with confidence scoring</li>
+        <li><strong>Canary Tokens</strong> — One-shot exfiltration detection in model outputs</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>Aurelius Executive Overview</span>
+    <span>Page 7</span>
+  </div>
+</div>
+
+<!-- ==================== SECURITY ==================== -->
+<div class="page">
+  <div class="confidential-stamp">Confidential</div>
+  <div class="section-header">
+    <span class="section-number">07</span>
+    <h2>Security & Trust</h2>
+    <p>Enterprise-grade defense in depth.</p>
+  </div>
+
+  <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">
+    Security is not a feature added at the end — it is woven into every layer of Aurelius. The project maintains a full CVE ledger, a STRIDE threat model, and continuous static analysis.
+  </p>
+
+  <div class="stats-row">
+    <div class="stat-box">
+      <div class="stat-value">28</div>
+      <div class="stat-label">CVEs Tracked</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value">0</div>
+      <div class="stat-label">Open Critical</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value">0</div>
+      <div class="stat-label">Open High</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value">24</div>
+      <div class="stat-label">Security Modules</div>
+    </div>
+  </div>
+
+  <h3 style="font-size:15px; margin:16px 0 10px;">Defense-in-Depth Controls</h3>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Threat Category</th><th>Control</th><th>Standard</th></tr></thead>
+      <tbody>
+        <tr><td>Supply Chain</td><td>Hash-pinned lockfiles, pip-audit, SBOM generation</td><td>NIST SSDF</td></tr>
+        <tr><td>Deserialization</td><td>All <code>torch.load()</code> calls use <code>weights_only=True</code></td><td>CWE-502</td></tr>
+        <tr><td>Path Traversal</td><td>Regex-safe ID validation + resolved-path jail</td><td>CWE-22</td></tr>
+        <tr><td>DoS</td><td>1 MiB body cap, token-bucket rate limiter (100 rps, burst 200)</td><td>CWE-400</td></tr>
+        <tr><td>Authentication</td><td>HMAC timing-safe comparison, SHA-256 hashed keys, fail-closed default</td><td>CWE-287</td></tr>
+        <tr><td>Injection</td><td>Bounded regex quantifiers, no DOTALL on untrusted input</td><td>CWE-94</td></tr>
+        <tr><td>Exfiltration</td><td>Canary token pipeline, one-shot detection</td><td>MITRE ATT&CK T1041</td></tr>
+        <tr><td>Archive Safety</td><td>Zip-slip, tar-slip, bomb, and symlink guards</td><td>CWE-22/400</td></tr>
+        <tr><td>Sandbox Escape</td><td>Deny-list blocks <code>getattr</code>/<code>setattr</code>/<code>type</code> traversal</td><td>CWE-250</td></tr>
+        <tr><td>Adversarial Robustness</td><td>GCG adversarial suffix search, gradient inversion defense</td><td>MLSec</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 style="font-size:15px; margin:16px 0 10px;">MITRE ATT&CK Integration</h3>
+
+  <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">
+    The security subsystem includes a full MITRE ATT&CK taxonomy classifier covering all 12 enterprise tactics and 81 techniques. This enables security operations teams to map AI-generated threats to industry-standard frameworks and integrate Aurelius into existing SIEM workflows.
+  </p>
+
+  <div class="card-grid">
+    <div class="card">
+      <h3>YARA-Like Rule Engine</h3>
+      <p>Text, hex, and regex string matching with AND/OR/NOT logic, count operators, and filesize constraints for custom threat detection.</p>
+    </div>
+    <div class="card">
+      <h3>IOC Extractor</h3>
+      <p>Automatically extracts IPs, domains, URLs, emails, hashes, CVEs, registry keys, and Bitcoin addresses from unstructured text with defang/refang support.</p>
+    </div>
+  </div>
+
+  <div class="highlight-box" style="margin-top:14px;">
+    <h4>Continuous Security Monitoring</h4>
+    <p>Every commit triggers Bandit static analysis, pip-audit dependency scanning, and Ruff security linting. The CI pipeline fails on any new High-severity finding. Red-team scripts run adversarial probes against the model before every release.</p>
+  </div>
+
+  <div class="page-footer">
+    <span>Aurelius Executive Overview</span>
+    <span>Page 8</span>
+  </div>
+</div>
+
+<!-- ==================== DEPLOYMENT ==================== -->
+<div class="page">
+  <div class="confidential-stamp">Confidential</div>
+  <div class="section-header">
+    <span class="section-number">08</span>
+    <h2>Deployment & DevOps</h2>
+    <p>From laptop to data center.</p>
+  </div>
+
+  <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">
+    Aurelius is designed to run anywhere: a developer's laptop, a private cloud, an air-gapped data center, or a Kubernetes cluster. The deployment artifacts are as first-class as the source code.
+  </p>
+
+  <h3 style="font-size:15px; margin:14px 0 10px;">Deployment Options</h3>
+
+  <div class="card-grid">
+    <div class="card">
+      <h3>🐳 Docker Compose</h3>
+      <p>Three-tier stack (Python API + Node BFF + Nginx frontend) with optional Redis cache. Resource limits: 4 CPU / 16 GB RAM for the AI service.</p>
+    </div>
+    <div class="card">
+      <h3>☸️ Kubernetes</h3>
+      <p>Full Helm chart with Deployment, Service, and HPA templates. Defaults: 1 replica, 8 GB request / 16 GB limit. GPU node affinity and autoscaling optional.</p>
+    </div>
+    <div class="card">
+      <h3>🦙 Ollama</h3>
+      <p>GGUF conversion scripts for local desktop deployment. Run on Apple Silicon, consumer GPUs, or CPU with quantized weights.</p>
+    </div>
+    <div class="card">
+      <h3>☁️ Cloud-Native</h3>
+      <p>Multi-environment Docker Compose with GPU overrides, nginx reverse proxy, and health-checked rolling updates.</p>
+    </div>
+  </div>
+
+  <h3 style="font-size:15px; margin:16px 0 10px;">CI/CD Pipeline</h3>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Stage</th><th>Tools</th><th>Gate</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Test</strong></td><td>pytest (Python 3.12 & 3.13), Vitest (frontend)</td><td>All tests must pass</td></tr>
+        <tr><td><strong>Lint</strong></td><td>Ruff (Python), ESLint (TypeScript)</td><td>Zero lint errors</td></tr>
+        <tr><td><strong>Security</strong></td><td>Bandit, pip-audit</td><td>Zero High findings</td></tr>
+        <tr><td><strong>Build</strong></td><td>Vite (frontend), Docker Buildx</td><td>Successful artifact generation</td></tr>
+        <tr><td><strong>Deploy</strong></td><td>GHCR push, Helm upgrade</td><td>Tag-based or main-branch trigger</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 style="font-size:15px; margin:16px 0 10px;">Observability Stack</h3>
+
+  <div class="two-col">
+    <div>
+      <ul class="feature-list">
+        <li><strong>Health Probes</strong> — Readiness and liveness checks on every service</li>
+        <li><strong>Metrics</strong> — p50/p95/p99 latency histograms, throughput, error rates</li>
+        <li><strong>Tracing</strong> — Jaeger-format distributed trace export</li>
+        <li><strong>Log Aggregation</strong> — 500-record ring buffer with level filtering</li>
+      </ul>
+    </div>
+    <div>
+      <ul class="feature-list">
+        <li><strong>SLO Tracking</strong> — Burn-rate alerting for availability targets</li>
+        <li><strong>Anomaly Detection</strong> — z-score, IQR, and rolling-window outlier detection</li>
+        <li><strong>Dashboard Export</strong> — JSON, Prometheus, InfluxDB line protocol, CSV</li>
+        <li><strong>Capacity Planning</strong> — Linear regression trend analysis with days-to-limit forecasting</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>Aurelius Executive Overview</span>
+    <span>Page 9</span>
+  </div>
+</div>
+
+<!-- ==================== IP & LICENSING ==================== -->
+<div class="page">
+  <div class="confidential-stamp">Confidential</div>
+  <div class="section-header">
+    <span class="section-number">09</span>
+    <h2>Intellectual Property Strategy</h2>
+    <p>Open usage, protected architecture.</p>
+  </div>
+
+  <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">
+    Aurelius uses a novel licensing model that balances ecosystem growth with competitive moat. The software is free to use, modify, and distribute. The architecture is not.
+  </p>
+
+  <div class="highlight-box">
+    <h4>The Aurelius Open License</h4>
+    <p>Grants broad rights to use, copy, modify, merge, publish, distribute, sublicense, and sell the Software. Requires attribution. The underlying Aurelius architecture — including the agent orchestration model, memory hierarchy, and core design patterns — remains the exclusive intellectual property of Aurelius Systems, Inc. Users may not claim ownership of the architecture or file patents on it. The Aurelius name and logo are reserved trademarks.</p>
+  </div>
+
+  <h3 style="font-size:15px; margin:16px 0 10px;">What This Means for the Business</h3>
+
+  <div class="card-grid">
+    <div class="card">
+      <h3>✅ Community Adoption</h3>
+      <p>Developers can use Aurelius for free, which drives word-of-mouth, bug reports, and ecosystem plugins. Open-source is our best marketing channel.</p>
+    </div>
+    <div class="card">
+      <h3>✅ Enterprise Licensing</h3>
+      <p>Large customers who need indemnification, support SLAs, or custom variants pay for commercial licenses. The open core drives inbound enterprise leads.</p>
+    </div>
+    <div class="card">
+      <h3>🔒 Architecture Protection</h3>
+      <p>Competitors cannot simply fork the codebase and claim the architecture as their own. The IP clause preserves our technical differentiation.</p>
+    </div>
+    <div class="card">
+      <h3>🔒 Trademark Control</h3>
+      <p>Only official distributions can use the Aurelius brand. This prevents dilution and ensures customers know what they are getting.</p>
+    </div>
+  </div>
+
+  <h3 style="font-size:15px; margin:16px 0 10px;">Confidential Materials</h3>
+
+  <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">
+    The following categories are classified as <strong>internal use only</strong> and are not part of the open-source distribution:
+  </p>
+
+  <div class="two-col">
+    <div>
+      <ul class="feature-list">
+        <li>Training datasets and proprietary corpora</li>
+        <li>Pretraining and fine-tuning configurations</li>
+        <li>Model checkpoints and trained weights</li>
+        <li>Experiment logs and harvest journals</li>
+      </ul>
+    </div>
+    <div>
+      <ul class="feature-list">
+        <li>Data extraction and processing pipelines</li>
+        <li>Hyperparameter schedules and recipes</li>
+        <li>Internal benchmark results and evaluations</li>
+        <li>Strategic roadmaps and planning documents</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>Aurelius Executive Overview</span>
+    <span>Page 10</span>
+  </div>
+</div>
+
+<!-- ==================== COMPETITIVE POSITION ==================== -->
+<div class="page">
+  <div class="confidential-stamp">Confidential</div>
+  <div class="section-header">
+    <span class="section-number">10</span>
+    <h2>Competitive Position</h2>
+    <p>Where Aurelius fits in the landscape.</p>
+  </div>
+
+  <h3 style="font-size:15px; margin:14px 0 10px;">Capability Comparison</h3>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Capability</th><th>Aurelius</th><th>OpenAI API</th><th>Anthropic Claude</th><th>Local LLMs (Ollama)</th></tr></thead>
+      <tbody>
+        <tr><td>Full source ownership</td><td>✅ Yes</td><td>❌ No</td><td>❌ No</td><td>⚠️ Partial</td></tr>
+        <tr><td>On-premise / air-gapped</td><td>✅ Native</td><td>❌ No</td><td>❌ No</td><td>✅ Yes</td></tr>
+        <tr><td>Custom architecture research</td><td>✅ Native</td><td>❌ No</td><td>❌ No</td><td>⚠️ Limited</td></tr>
+        <tr><td>Agentic tool use + memory</td><td>✅ Built-in</td><td>⚠️ Add-ons</td><td>⚠️ Add-ons</td><td>⚠️ Community</td></tr>
+        <tr><td>Enterprise security hardening</td><td>✅ 28 CVEs closed</td><td>✅ SOC 2</td><td>✅ SOC 2</td><td>❌ Minimal</td></tr>
+        <tr><td>Modern web dashboard</td><td>✅ React 19 SPA</td><td>❌ No</td><td>❌ No</td><td>❌ CLI only</td></tr>
+        <tr><td>Multi-variant model family</td><td>✅ FamilyManifest</td><td>❌ Separate models</td><td>❌ Separate models</td><td>❌ Manual</td></tr>
+        <tr><td>Cost per 1M tokens</td><td>✅ Hardware only</td><td>❌ $2–$15</td><td>❌ $3–$75</td><td>✅ Hardware only</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 style="font-size:15px; margin:16px 0 10px;">Key Differentiators</h3>
+
+  <div class="card-grid">
+    <div class="card">
+      <h3>1. Vertical Integration</h3>
+      <p>From transformer weights to pixel-perfect UI, every layer is controlled. No black boxes, no vendor lock-in, no surprise API deprecations.</p>
+    </div>
+    <div class="card">
+      <h3>2. Security by Design</h3>
+      <p>28 tracked CVEs, zero open High findings, full STRIDE threat model, MITRE ATT&CK integration, and adversarial robustness testing. Enterprise security teams can trust this.</p>
+    </div>
+    <div class="card">
+      <h3>3. Research Agility</h3>
+      <p>150+ architecture modules (SSMs, MoE, diffusion heads) let researchers prototype novel ideas without migrating between frameworks. Ideas become products faster.</p>
+    </div>
+    <div class="card">
+      <h3>4. Total Cost of Ownership</h3>
+      <p>No per-token pricing. Run on existing hardware — Apple Silicon, consumer GPUs, or cloud instances. The only cost is infrastructure, not API credits.</p>
+    </div>
+  </div>
+
+  <div class="quote" style="margin-top:18px;">
+    "Aurelius is what you get when you combine the research depth of an academic lab with the product discipline of an enterprise SaaS company — and then make it runnable on a laptop."
+  </div>
+
+  <div class="page-footer">
+    <span>Aurelius Executive Overview</span>
+    <span>Page 11</span>
+  </div>
+</div>
+
+<!-- ==================== DEVELOPMENT METRICS ==================== -->
+<div class="page">
+  <div class="confidential-stamp">Confidential</div>
+  <div class="section-header">
+    <span class="section-number">11</span>
+    <h2>Development Velocity</h2>
+    <p>The numbers behind the platform.</p>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-box">
+      <div class="stat-value">157+</div>
+      <div class="stat-label">Implementation Cycles</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value">1,720+</div>
+      <div class="stat-label">Python Modules</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value">32,400+</div>
+      <div class="stat-label">Passing Tests</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-value">33</div>
+      <div class="stat-label">Sub-systems</div>
+    </div>
+  </div>
+
+  <h3 style="font-size:15px; margin:18px 0 10px;">Code Distribution</h3>
+
+  <div class="capability-bar">
+    <span class="capability-label">Model Architecture</span>
+    <div class="capability-track"><div class="capability-fill" style="width:85%"></div></div>
+    <span class="capability-value">150+</span>
+  </div>
+  <div class="capability-bar">
+    <span class="capability-label">Training Framework</span>
+    <div class="capability-track"><div class="capability-fill" style="width:92%"></div></div>
+    <span class="capability-value">200+</span>
+  </div>
+  <div class="capability-bar">
+    <span class="capability-label">Alignment</span>
+    <div class="capability-track"><div class="capability-fill" style="width:75%"></div></div>
+    <span class="capability-value">150+</span>
+  </div>
+  <div class="capability-bar">
+    <span class="capability-label">Inference Engine</span>
+    <div class="capability-track"><div class="capability-fill" style="width:95%"></div></div>
+    <span class="capability-value">200+</span>
+  </div>
+  <div class="capability-bar">
+    <span class="capability-label">Security</span>
+    <div class="capability-track"><div class="capability-fill" style="width:45%"></div></div>
+    <span class="capability-value">24</span>
+  </div>
+  <div class="capability-bar">
+    <span class="capability-label">Evaluation</span>
+    <div class="capability-track"><div class="capability-fill" style="width:70%"></div></div>
+    <span class="capability-value">170+</span>
+  </div>
+  <div class="capability-bar">
+    <span class="capability-label">Data Processing</span>
+    <div class="capability-track"><div class="capability-fill" style="width:55%"></div></div>
+    <span class="capability-value">80+</span>
+  </div>
+  <div class="capability-bar">
+    <span class="capability-label">Interpretability</span>
+    <div class="capability-track"><div class="capability-fill" style="width:30%"></div></div>
+    <span class="capability-value">20+</span>
+  </div>
+
+  <h3 style="font-size:15px; margin:18px 0 10px;">Quality Metrics</h3>
+
+  <div class="card-grid-3">
+    <div class="card">
+      <h3>Test Coverage</h3>
+      <p>Every module ships with 10–16 tests covering shape validation, gradient flow, determinism, edge cases, and numerical stability.</p>
+    </div>
+    <div class="card">
+      <h3>Static Analysis</h3>
+      <p>Ruff linting with security rules (E, F, I, UP, S). Bandit continuous scanning. pip-audit dependency vulnerability checks.</p>
+    </div>
+    <div class="card">
+      <h3>Registry Isolation</h3>
+      <p>pytest autouse fixtures snapshot and restore module-level singleton registries before every test, eliminating cross-test contamination.</p>
+    </div>
+  </div>
+
+  <h3 style="font-size:15px; margin:16px 0 10px;">Technology Footprint</h3>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Layer</th><th>Primary Languages</th><th>Key Frameworks</th></tr></thead>
+      <tbody>
+        <tr><td>AI Core</td><td>Python 3.12+</td><td>PyTorch 2.4+ (pure, no wrappers)</td></tr>
+        <tr><td>API Server</td><td>Python, TypeScript</td><td>FastAPI, Express, custom HTTP</td></tr>
+        <tr><td>Gateway / BFF</td><td>TypeScript</td><td>Express, WebSocket, Redis</td></tr>
+        <tr><td>Frontend</td><td>TypeScript</td><td>React 19, Vite, Tailwind, Zustand</td></tr>
+        <tr><td>Native Performance</td><td>Rust</td><td>NAPI-RS, PyO3, redb</td></tr>
+        <tr><td>Data & Migrations</td><td>Python, SQL</td><td>SQLAlchemy, Alembic</td></tr>
+        <tr><td>Infrastructure</td><td>YAML, Shell</td><td>Docker, Kubernetes, Helm, nginx</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="page-footer">
+    <span>Aurelius Executive Overview</span>
+    <span>Page 12</span>
+  </div>
+</div>
+
+<!-- ==================== INVESTMENT THESIS ==================== -->
+<div class="page">
+  <div class="confidential-stamp">Confidential</div>
+  <div class="section-header">
+    <span class="section-number">12</span>
+    <h2>Investment Thesis</h2>
+    <p>Why Aurelius represents a compelling opportunity.</p>
+  </div>
+
+  <h3 style="font-size:15px; margin:14px 0 10px;">Market Context</h3>
+
+  <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">
+    The generative AI market is projected to exceed $1.3 trillion by 2032. Yet most enterprises face a painful choice: rent intelligence from OpenAI/Anthropic and surrender data sovereignty, or cobble together open-source tools and accept operational fragility. Aurelius offers a third path: full ownership with production polish.
+  </p>
+
+  <div class="card-grid">
+    <div class="card">
+      <h3>🌊 The Sovereignty Wave</h3>
+      <p>Regulations (GDPR, HIPAA, SEC cybersecurity rules) and geopolitical tensions are driving demand for on-premise AI. Aurelius is built for air-gapped deployment from day one.</p>
+    </div>
+    <div class="card">
+      <h3>💰 The Cost Revolution</h3>
+      <p>At $2–$15 per million tokens, API costs scale linearly with usage. A busy enterprise can spend six figures monthly. Aurelius shifts that to a fixed hardware cost with no marginal token pricing.</p>
+    </div>
+    <div class="card">
+      <h3>🔬 The Research Premium</h3>
+      <p>Organizations that can customize their models — swap attention mechanisms, add safety layers, or compress for edge devices — gain compounding advantages. Framework-dependent competitors cannot match this agility.</p>
+    </div>
+    <div class="card">
+      <h3>🛡️ The Security Imperative</h3>
+      <p>AI systems are attack surfaces. Prompt injection, model extraction, and data poisoning are real threats. Aurelius's 24 security modules and adversarial testing suite make it the safest choice for regulated industries.</p>
+    </div>
+  </div>
+
+  <h3 style="font-size:15px; margin:18px 0 10px;">Revenue Model</h3>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Stream</th><th>Description</th><th>Target Customers</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Enterprise License</strong></td><td>Commercial use with indemnification, support SLA, and custom variants</td><td>Fortune 500, regulated industries</td></tr>
+        <tr><td><strong>Professional Services</strong></td><td>Custom model training, architecture consulting, integration support</td><td>Mid-market, government</td></tr>
+        <tr><td><strong>Managed Hosting</strong></td><td>Fully managed Aurelius deployment in customer's cloud account</td><td>Teams without ML ops expertise</td></tr>
+        <tr><td><strong>Training & Certification</strong></td><td>Workshops on safe AI deployment, red-team exercises, architecture deep-dives</td><td>Security teams, auditors</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight-box" style="margin-top:16px;">
+    <h4>The Open-Core Flywheel</h4>
+    <p>By open-sourcing the platform under the Aurelius Open License, we turn every developer into a potential advocate, contributor, and lead. The open core drives awareness and adoption. The proprietary architecture IP and commercial licenses capture value. This is the same model that built MongoDB, Elastic, and Confluent into multi-billion-dollar companies.</p>
+  </div>
+
+  <div class="page-footer">
+    <span>Aurelius Executive Overview</span>
+    <span>Page 13</span>
+  </div>
+</div>
+
+<!-- ==================== CONTACT ==================== -->
+<div class="page">
+  <div class="confidential-stamp">Confidential</div>
+  <div class="section-header">
+    <span class="section-number">13</span>
+    <h2>Contact & Next Steps</h2>
+    <p>How to engage with Aurelius Systems.</p>
+  </div>
+
+  <div class="card-grid">
+    <div class="card">
+      <h3>📧 General Inquiries</h3>
+      <p>hello@aurelius.systems</p>
+      <p style="margin-top:6px;">For partnership discussions, press inquiries, and general questions.</p>
+    </div>
+    <div class="card">
+      <h3>🔐 Security & Compliance</h3>
+      <p>security@aurelius.systems</p>
+      <p style="margin-top:6px;">For vulnerability reports, audit requests, and security assessments.</p>
+    </div>
+    <div class="card">
+      <h3>⚖️ Legal</h3>
+      <p>legal@aurelius.systems</p>
+      <p style="margin-top:6px;">For licensing negotiations, IP matters, and contractual questions.</p>
+    </div>
+    <div class="card">
+      <h3>💼 Investment</h3>
+      <p>investors@aurelius.systems</p>
+      <p style="margin-top:6px;">For funding discussions, due diligence, and board materials.</p>
+    </div>
+  </div>
+
+  <h3 style="font-size:15px; margin:20px 0 10px;">Suggested Next Steps</h3>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Audience</th><th>Recommended Action</th><th>Timeline</th></tr></thead>
+      <tbody>
+        <tr><td><strong>CTO / Engineering Lead</strong></td><td>Clone the repo, run <code>aurelius serve</code>, and evaluate the API compatibility with your existing stack</td><td>1 day</td></tr>
+        <tr><td><strong>CISO / Security Team</strong></td><td>Review the threat model, CVE ledger, and run Bandit + pip-audit against the codebase</td><td>2–3 days</td></tr>
+        <tr><td><strong>CEO / Board</strong></td><td>Schedule a live demo of the dashboard, agent tool use, and memory system</td><td>1 hour</td></tr>
+        <tr><td><strong>Investor</strong></td><td>Request access to the data room for financial projections, cap table, and technical deep-dive</td><td>Upon NDA</td></tr>
+        <tr><td><strong>Enterprise Buyer</strong></td><td>Pilot program: deploy on-premise with your data, measure against incumbent API costs</td><td>2–4 weeks</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight-box" style="margin-top:20px;">
+    <h4>About This Document</h4>
+    <p>This executive overview was generated on April 26, 2025, based on an extensive review of the Aurelius codebase. Training datasets, proprietary configurations, and internal experiment logs have been intentionally excluded in accordance with the Aurelius confidentiality policy. For access to confidential materials, contact legal@aurelius.systems.</p>
+  </div>
+
+  <div style="text-align:center; margin-top:32px; padding-top:24px; border-top:1px solid var(--border);">
+    <p style="font-size:18px; font-weight:700; color:var(--text);">Aurelius Systems, Inc.</p>
+    <p style="font-size:13px; color:var(--text-muted); margin-top:6px;">Pure PyTorch. No Compromises.</p>
+    <p style="font-size:12px; color:var(--text-dim); margin-top:12px;">github.com/S3nna13/Aurelius · hello@aurelius.systems</p>
+    <p style="font-size:11px; color:var(--text-dim); margin-top:20px;">© 2025 Aurelius Systems, Inc. All rights reserved. Confidential and proprietary.</p>
+  </div>
+
+  <div class="page-footer">
+    <span>Aurelius Executive Overview</span>
+    <span>Page 14</span>
+  </div>
+</div>
+
+</body>
+</html>

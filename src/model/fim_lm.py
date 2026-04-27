@@ -264,13 +264,13 @@ class FIMTransformer:
             List of transformed token-id lists, one per input document.
         """
         effective_seed = seed if seed is not None else self.config.seed
-        base_rng = random.Random(effective_seed)
+        base_rng = random.Random(effective_seed)  # noqa: S311
 
         results: list[list[int]] = []
         for token_ids in batch:
             # Give each document a deterministic but independent sub-seed.
             doc_seed = base_rng.randint(0, 2**31 - 1)
-            doc_rng = random.Random(doc_seed)
+            doc_rng = random.Random(doc_seed)  # noqa: S311
             results.append(self.transform(token_ids, doc_rng))
 
         return results

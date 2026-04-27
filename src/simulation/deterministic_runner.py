@@ -21,13 +21,13 @@ class DeterministicRunner:
     """Run simulations with determinism via fixed seed."""
 
     seed: int = 42
-    _rng: random.Random = field(default_factory=lambda: random.Random(42))
+    _rng: random.Random = field(default_factory=lambda: random.Random(42))  # noqa: S311
 
     def __post_init__(self) -> None:
-        self._rng = random.Random(self.seed if self.seed is not None else 42)
+        self._rng = random.Random(self.seed if self.seed is not None else 42)  # noqa: S311
 
     def reset(self, seed: int | None = None) -> None:
-        self._rng = random.Random(seed if seed is not None else self.seed)
+        self._rng = random.Random(seed if seed is not None else self.seed)  # noqa: S311
 
     def run(self, env_fn: Callable[[], Any], steps: int = 100) -> list[SimStep]:
         env_fn()

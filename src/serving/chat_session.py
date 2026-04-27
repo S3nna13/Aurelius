@@ -16,10 +16,10 @@ import torch.nn as nn
 logger = logging.getLogger(__name__)
 
 # ChatML special tokens (must match tokenizer_config.json)
-SYSTEM_TOKEN = "<|system|>"
-USER_TOKEN = "<|user|>"
-ASSISTANT_TOKEN = "<|assistant|>"
-END_TOKEN = "<|end|>"
+SYSTEM_TOKEN = "<|system|>"  # noqa: S105
+USER_TOKEN = "<|user|>"  # noqa: S105
+ASSISTANT_TOKEN = "<|assistant|>"  # noqa: S105
+END_TOKEN = "<|end|>"  # noqa: S105
 
 DEFAULT_SYSTEM = (
     "You are Aurelius, a helpful, harmless, and honest AI assistant. "

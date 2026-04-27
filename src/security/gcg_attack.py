@@ -136,7 +136,7 @@ class GCGAttack:
         freqs_cis = model.freqs_cis[:full_len]
 
         for layer in model.layers:
-            x, _ = layer(x, freqs_cis, None, None)
+            x, _, _ = layer(x, freqs_cis, None, None)
 
         x = model.norm(x)
         logits = model.lm_head(x)  # (1, full_len, vocab_size)

@@ -38,8 +38,8 @@ class EpsilonGreedyPolicy:
     def select_action(self, q_values: list[float]) -> int:
         if len(q_values) != self.n_actions:
             raise ValueError(f"q_values length {len(q_values)} != n_actions {self.n_actions}")
-        if random.uniform(0.0, 1.0) < self.epsilon:
-            return random.randint(0, self.n_actions - 1)
+        if random.uniform(0.0, 1.0) < self.epsilon:  # noqa: S311
+            return random.randint(0, self.n_actions - 1)  # noqa: S311
         # argmax
         best_idx = 0
         best_val = q_values[0]

@@ -74,7 +74,7 @@ def _make_moe_block_forward(block):
         x = x + attn_out
         ffn_out, _aux_loss = block.ffn(block.ffn_norm(x))
         x = x + ffn_out
-        return x, kv
+        return x, kv, x.new_zeros(1)
 
     return forward
 

@@ -849,6 +849,16 @@ def _build_parser() -> argparse.ArgumentParser:
     build_backend_parser(sub)
     build_session_parser(sub)
 
+    # config
+    config_p = sub.add_parser("config", help="manage runtime configuration")
+    config_p.add_argument("action", choices=["get", "set", "list", "path"])
+    config_p.add_argument("key", nargs="?", help="config key")
+    config_p.add_argument("value", nargs="?", help="config value")
+
+    # health
+    health_p = sub.add_parser("health", help="system health check")
+    health_p.add_argument("--verbose", "-v", action="store_true", help="detailed output")
+
     return parser
 
 
@@ -977,7 +987,140 @@ def main(argv: list[str] | None = None) -> int:
             print(f"error: {exc}", file=sys.stderr)
             return 1
 
+    elif args.command == "config":
+        _run_config(args)
+
+    elif args.command == "health":
+        _run_health(args)
+
     return 0
+
+
+def _run_config(args: argparse.Namespace) -> None:
+    """Handle config subcommand."""
+    from src.model.config import AureliusConfig
+
+    cfg = AureliusConfig()
+
+    if args.action == "list":
+        for key, value in sorted(cfg.__dataclass_fields__.items()):
+            val = getattr(cfg, key, "")
+            print(f"  {key:35s} = {val}")
+        print(f"\n  Total fields: {len(cfg.__dataclass_fields__)}")
+
+    elif args.action == "get":
+        if not args.key:
+            print("Usage: aurelius config get <key>")
+            return
+        if hasattr(cfg, args.key):
+            print(getattr(cfg, args.key))
+        else:
+            print(f"Unknown config key: {args.key}")
+            return 1
+
+    elif args.action == "set":
+        if not args.key or args.value is None:
+            print("Usage: aurelius config set <key> <value>")
+            return
+        print(f"Config key '{args.key}' is read-only at runtime")
+        print(f"  To change it, modify the source or pass --config to train")
+
+    elif args.action == "path":
+        config_dir = Path(__file__).parent.parent.parent / "configs"
+        print(f"Config directory: {config_dir.resolve()}")
+        for yaml_file in sorted(config_dir.glob("*.yaml")):
+            print(f"  {yaml_file.name}")
+
+
+def _run_health(args: argparse.Namespace) -> None:
+    """Run system health check and report status."""
+    import torch
+
+    results = []
+
+    # PyTorch / MPS / CUDA
+    try:
+        if torch.backends.mps.is_available():
+            mps_mem = torch.mps.current_allocated_memory() / 1e9
+            results.append(("PyTorch MPS", f"available ({mps_mem:.1f}GB allocated)", True))
+        elif torch.cuda.is_available():
+            cuda_mem = torch.cuda.memory_allocated() / 1e9
+            cuda_dev = torch.cuda.get_device_name(0)
+            results.append(("CUDA", f"{cuda_dev} ({cuda_mem:.1f}GB allocated)", True))
+        else:
+            results.append(("PyTorch", "CPU mode", True))
+    except Exception as e:
+        results.append(("PyTorch", f"error: {e}", False))
+
+    # Model config
+    try:
+        from src.model.config import AureliusConfig
+
+        cfg = AureliusConfig()
+        n_params = cfg.d_model * cfg.n_layers * cfg.d_ff  # rough estimate
+        results.append(
+            ("Model Config",
+             f"d_model={cfg.d_model}, n_layers={cfg.n_layers}, "
+             f"n_heads={cfg.n_heads}, n_kv_heads={cfg.n_kv_heads}, "
+             f"d_ff={cfg.d_ff}",
+             True),
+        )
+    except Exception as e:
+        results.append(("Model Config", f"error: {e}", False))
+
+    # Tokenizer
+    try:
+        from tokenizers import Tokenizer
+
+        tokenizer_path = Path(__file__).parent.parent.parent / "configs" / "tokenizer_config.json"
+        if tokenizer_path.exists():
+            results.append(("Tokenizer", f"config found at {tokenizer_path.name}", True))
+        else:
+            results.append(("Tokenizer", "config not found", False))
+    except ImportError:
+        results.append(("Tokenizer", "not installed (tokenizers package)", False))
+
+    # Serving
+    try:
+        from src.serving import api_server
+
+        results.append(("API Server", "module importable", True))
+    except Exception as e:
+        results.append(("API Server", f"import error: {e}", False))
+
+    # Data directories
+    data_dir = Path(__file__).parent.parent.parent / "data"
+    if data_dir.exists():
+        subdirs = [d.name for d in data_dir.iterdir() if d.is_dir()]
+        results.append(("Data Dirs", f"{len(subdirs)} found: {', '.join(subdirs[:5])}", True))
+    else:
+        results.append(("Data Dirs", "not found", False))
+
+    # Print report
+    if _RICH and _console:
+        table = Table(title="Aurelius Health Check", box=box.HEAVY, border_style="bright_red")
+        table.add_column("Component", style="bold")
+        table.add_column("Status", style="bold")
+        table.add_column("Detail")
+        for name, detail, ok in results:
+            status = "[aurelius.ok]OK[/aurelius.ok]" if ok else "[aurelius.error]FAIL[/aurelius.error]"
+            table.add_row(name, status, detail)
+        _console.print("\n")
+        _console.print(table)
+        _console.print("\n")
+    else:
+        print(f"\n{'=' * 60}")
+        print(f"  Aurelius Health Check")
+        print(f"{'=' * 60}")
+        for name, detail, ok in results:
+            status = "OK" if ok else "FAIL"
+            print(f"  [{status:5s}] {name:20s}  {detail}")
+        print(f"{'=' * 60}\n")
+
+    if args.verbose:
+        print(f"\nPython: {sys.version}")
+        print(f"Platform: {sys.platform}")
+        print(f"Config path: {Path(__file__).parent.parent.parent / 'configs'}")
 
 
 if __name__ == "__main__":

@@ -201,7 +201,7 @@ class EarlyExitTransformer(nn.Module):
             intermediate_losses: list[torch.Tensor] = []
 
             for layer_idx, layer in enumerate(self.layers):
-                x, _ = layer(x, freqs_cis)
+                x, _, _ = layer(x, freqs_cis)
 
                 if layer_idx in exit_pos_map:
                     clf_idx = exit_pos_map[layer_idx]
@@ -249,7 +249,7 @@ class EarlyExitTransformer(nn.Module):
             for layer_idx, layer in enumerate(self.layers):
                 if exited.all():
                     break
-                x, _ = layer(x, freqs_cis)
+                x, _, _ = layer(x, freqs_cis)
 
                 if layer_idx in exit_pos_map:
                     clf_idx = exit_pos_map[layer_idx]
@@ -283,7 +283,7 @@ class EarlyExitTransformer(nn.Module):
 
         # ---- Standard inference (no early exit) ----------------------------------
         for layer in self.layers:
-            x, _ = layer(x, freqs_cis)
+            x, _, _ = layer(x, freqs_cis)
 
         x_normed = self.norm(x)
         final_logits = self.lm_head(x_normed)

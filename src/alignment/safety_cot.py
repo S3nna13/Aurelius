@@ -42,9 +42,9 @@ class SafetyCoTConfig:
     effort: ReasoningEffort = ReasoningEffort.MEDIUM
     max_reasoning_tokens: int = 128  # tokens per reasoning step
     max_verdict_tokens: int = 10  # tokens for final verdict
-    verdict_token_safe: str = "SAFE"
-    verdict_token_unsafe: str = "UNSAFE"
-    verdict_token_uncertain: str = "UNCERTAIN"
+    verdict_token_safe: str = "SAFE"  # noqa: S105
+    verdict_token_unsafe: str = "UNSAFE"  # noqa: S105
+    verdict_token_uncertain: str = "UNCERTAIN"  # noqa: S105
     temperature: float = 0.0  # greedy for safety decisions
     safety_threshold: float = 0.5  # probability threshold for UNSAFE verdict
 

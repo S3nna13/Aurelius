@@ -99,7 +99,7 @@ class RateLimiterV2:
     ) -> float:
         """Exponential backoff with jitter for 429/5xx retries."""
         delay = min(cap, base * (2**attempt))
-        jitter_factor = 1.0 + random.uniform(-jitter, jitter)
+        jitter_factor = 1.0 + random.uniform(-jitter, jitter)  # noqa: S311
         return max(0.0, delay * jitter_factor)
 
 

@@ -1,4 +1,5 @@
 mod engine;
+mod persistence;
 
 use engine::DataEngineInner;
 use napi_derive::napi;
@@ -159,13 +160,17 @@ pub struct SystemStats {
 #[napi]
 pub struct DataEngine {
     inner: DataEngineInner,
+    persistence: std::sync::Mutex<Option<persistence::Persistence>>,
 }
 
 #[napi]
 impl DataEngine {
     #[napi(constructor)]
     pub fn new() -> Self {
-        DataEngine { inner: DataEngineInner::new() }
+        DataEngine {
+            inner: DataEngineInner::new(),
+            persistence: std::sync::Mutex::new(None),
+        }
     }
 
     #[napi]
@@ -297,6 +302,35 @@ impl DataEngine {
     pub fn clear_logs(&self) -> u32 {
         self.inner.clear_logs()
     }
+
+    #[napi]
+    pub fn export_json(&self) -> String {
+        use persistence::Persistence;
+        let p = Persistence::new("", 0);
+        p.export_json(&self.inner).unwrap_or_else(|e| format!("{{\"error\": \"{e}\"}}"))
+    }
+
+    #[napi]
+    pub fn import_json(&self, json: String) -> bool {
+        use persistence::Persistence;
+        let p = Persistence::new("", 0);
+        p.import_json(&self.inner, &json).is_ok()
+    }
+
+    #[napi]
+    pub fn save_to_file(&self, path: String) -> bool {
+        use persistence::Persistence;
+        let p = Persistence::new(&path, 0);
+        p.save(&self.inner).is_ok()
+    }
+
+    #[napi]
+    pub fn load_from_file(&self, path: String) -> bool {
+        use persistence::Persistence;
+        let p = Persistence::new(&path, 0);
+        p.load(&self.inner).is_ok()
+    }
+}
 
     // -- Skills --
 

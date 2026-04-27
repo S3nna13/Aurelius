@@ -40,7 +40,7 @@ class CrossValidator:
         """
         indices = list(range(n_samples))
         if self.shuffle:
-            rng = random.Random(self.seed)
+            rng = random.Random(self.seed)  # noqa: S311
             rng.shuffle(indices)
 
         folds: list[tuple[list[int], list[int]]] = []
@@ -116,7 +116,7 @@ class CrossValidator:
             class_indices.setdefault(label, []).append(idx)
 
         if self.shuffle:
-            rng = random.Random(self.seed)
+            rng = random.Random(self.seed)  # noqa: S311
             for cls_idx_list in class_indices.values():
                 rng.shuffle(cls_idx_list)
 

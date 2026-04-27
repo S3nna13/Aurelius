@@ -105,7 +105,7 @@ class FIMFormatter:
         self.mode = mode
         self.include_middle = include_middle
         self.random_mode = random_mode
-        self._rng = rng if rng is not None else random.Random()
+        self._rng = rng if rng is not None else random.Random()  # noqa: S311
 
     # ------------------------------------------------------------------ format
     def _render(

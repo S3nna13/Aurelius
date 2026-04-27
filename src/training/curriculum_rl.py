@@ -145,7 +145,7 @@ class CurriculumRLSampler:
         if not self._tasks:
             return []
 
-        rng = random.Random(rng_seed)
+        rng = random.Random(rng_seed)  # noqa: S311
         task_ids = list(self._tasks.keys())
 
         result: list[str] = []

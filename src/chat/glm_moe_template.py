@@ -13,8 +13,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
-GMASK_TOKEN = "[gMASK]"
-SOP_TOKEN = "<sop>"
+GMASK_TOKEN = "[gMASK]"  # noqa: S105
+SOP_TOKEN = "<sop>"  # noqa: S105
 
 ROLES: dict[str, str] = {
     "user": "<|user|>",

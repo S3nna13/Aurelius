@@ -47,7 +47,7 @@ class WeightSharing:
             return []
 
         k = min(self.config.num_clusters, len(weights))
-        rng = random.Random(seed)
+        rng = random.Random(seed)  # noqa: S311
 
         # Initialise centroids by sampling k values (without replacement when
         # possible, otherwise with replacement).

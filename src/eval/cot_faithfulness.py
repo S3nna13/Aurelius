@@ -20,7 +20,7 @@ class CoTFaithfulnessConfig:
 
     n_interventions: int = 5  # number of perturbation experiments
     perturbation_prob: float = 0.3  # prob of corrupting each reasoning step
-    answer_token: str = "Answer:"  # delimiter for final answer
+    answer_token: str = "Answer:"  # delimiter for final answer  # noqa: S105
     max_steps: int = 10  # max reasoning steps to analyze
 
 
@@ -192,7 +192,7 @@ def counterfactual_faithfulness(
     4. Run n_interventions on the full CoT (corrupt all steps), measure answer consistency.
     5. Return FaithfulnessResult.
     """
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # noqa: S311
     steps, original_answer = extract_cot_steps(text, cfg.answer_token)
 
     # Limit steps to max_steps

@@ -12,6 +12,9 @@ dependencies = [
     "rich>=13.0.0",
     "numpy>=1.26.0",
     "lxml>=6.1.0",
+    "langchain-core>=0.3.84",  # CVE-2026-40087
+    "langsmith>=0.7.31",       # GHSA-rr7j-v2q5-chgv
+    "pip>=26.1",               # CVE-2026-3219
 ]
 
 [project.optional-dependencies]
@@ -48,13 +51,14 @@ serve = [
     "openai>=1.50.0",
     "httpx>=0.27.0",
     "psutil>=6.0.0",
+    "python-multipart>=0.0.26",  # CVE-2026-40347
 ]
 db = [
     "alembic>=1.14.0",
     "sqlalchemy>=2.0.0",
 ]
 dev = [
-    "pytest>=8.0.0",
+    "pytest>=8.0.0",  # NOTE: CVE-2025-71176 fixed in >=9.0.3; upgrade when feasible
     "pytest-cov>=5.0.0",
     "ruff>=0.7.0",
 ]

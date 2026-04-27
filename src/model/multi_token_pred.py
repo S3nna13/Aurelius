@@ -143,7 +143,7 @@ class MTPModel(nn.Module):
         freqs_cis = self.backbone.freqs_cis[:S]
 
         for layer in self.backbone.layers:
-            x, _ = layer(x, freqs_cis, mask=None, past_kv=None)
+            x, _, _ = layer(x, freqs_cis, mask=None, past_kv=None)
 
         x = self.backbone.norm(x)
         return x

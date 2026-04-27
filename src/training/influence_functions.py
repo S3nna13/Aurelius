@@ -203,7 +203,7 @@ def lissa_inverse_hvp(
 
     for _ in range(config.n_recursion_depth):
         # Pick a random batch
-        idx = random.randint(0, n_batches - 1)
+        idx = random.randint(0, n_batches - 1)  # noqa: S311
         batch_in = train_inputs[idx]
         batch_tgt = train_targets[idx]
 

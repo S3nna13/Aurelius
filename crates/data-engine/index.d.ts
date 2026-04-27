@@ -28,6 +28,10 @@ export declare class DataEngine {
   clearActivity(): number
   clearNotifications(): number
   clearLogs(): number
+  exportJson(): string
+  importJson(json: string): boolean
+  saveToFile(path: string): boolean
+  loadFromFile(path: string): boolean
   listSkills(): Array<SkillEntry>
   getSkill(id: string): SkillEntry | null
   listWorkflows(): Array<WorkflowEntry>

@@ -13,12 +13,8 @@ service:
   port: 8080
 
 resources:
-  requests:
-    cpu: "2"
-    memory: "8Gi"
-  limits:
-    cpu: "4"
-    memory: "16Gi"
+  requests: { cpu: "2", memory: "8Gi" }
+  limits: { cpu: "4", memory: "16Gi" }
 
 ingress:
   enabled: false
@@ -33,3 +29,48 @@ autoscaling:
   targetCPUUtilizationPercentage: 80
 
 env: {}
+
+# --- Aurelius Gateway (Rust) ---
+gateway:
+  enabled: false
+  replicaCount: 1
+  image:
+    repository: ghcr.io/s3nna13/aurelius-gateway
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  service:
+    port: 8080
+  resources:
+    requests: { cpu: "1", memory: "512Mi" }
+    limits: { cpu: "2", memory: "1Gi" }
+
+# --- Middle Layer (Node.js BFF) ---
+middle:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ghcr.io/s3nna13/aurelius-middle
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  service:
+    port: 3001
+  resources:
+    requests: { cpu: "1", memory: "1Gi" }
+    limits: { cpu: "2", memory: "2Gi" }
+  env:
+    UPSTREAM_URL: "http://aurelius:8080"
+    MIDDLE_LOG_LEVEL: "info"
+
+# --- Frontend ---
+frontend:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ghcr.io/s3nna13/aurelius-frontend
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  service:
+    port: 80
+  resources:
+    requests: { cpu: "0.5", memory: "256Mi" }
+    limits: { cpu: "1", memory: "512Mi" }

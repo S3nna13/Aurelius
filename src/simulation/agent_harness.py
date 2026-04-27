@@ -59,7 +59,7 @@ class AgentHarness:
 
     @staticmethod
     def random_policy(state: EnvState, valid_actions: list[EnvAction]) -> EnvAction:
-        return random.choice(valid_actions)
+        return random.choice(valid_actions)  # noqa: S311
 
     @staticmethod
     def greedy_policy(goal: tuple) -> PolicyFn:

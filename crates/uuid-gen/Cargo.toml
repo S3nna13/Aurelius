@@ -1,0 +1,21 @@
+[package]
+name = "aurelius-uuid-gen"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+napi = { version = "3", features = ["napi9", "serde-json"] }
+napi-derive = "3"
+uuid = { version = "1", features = ["v4", "v7", "serde"] }
+
+[build-dependencies]
+napi-build = "2"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

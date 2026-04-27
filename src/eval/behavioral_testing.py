@@ -118,7 +118,7 @@ class PerturbationGenerator:
     """Generates text perturbations for robustness testing."""
 
     def random_deletion(self, text: str, p: float = 0.1, seed: int = 42) -> str:
-        rng = random.Random(seed)
+        rng = random.Random(seed)  # noqa: S311
         words = text.split()
         if len(words) == 1:
             return text
@@ -129,7 +129,7 @@ class PerturbationGenerator:
         return " ".join(kept)
 
     def random_swap(self, text: str, n: int = 1, seed: int = 42) -> str:
-        rng = random.Random(seed)
+        rng = random.Random(seed)  # noqa: S311
         words = text.split()
         if len(words) < 2:
             return text
@@ -139,7 +139,7 @@ class PerturbationGenerator:
         return " ".join(words)
 
     def add_typo(self, text: str, seed: int = 42) -> str:
-        rng = random.Random(seed)
+        rng = random.Random(seed)  # noqa: S311
         words = text.split()
         eligible = [i for i, w in enumerate(words) if len(w) > 3]
         if not eligible:

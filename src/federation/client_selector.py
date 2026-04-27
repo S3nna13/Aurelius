@@ -45,7 +45,7 @@ class ClientSelector:
         if k == 0:
             return []
 
-        rng = random.Random(seed)
+        rng = random.Random(seed)  # noqa: S311
 
         if self.strategy == SelectionStrategy.RANDOM:
             selected = rng.sample(profiles, k)

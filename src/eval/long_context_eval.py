@@ -252,7 +252,7 @@ class LongContextEvaluator:
         Returns:
             Dict with "mean_accuracy" and "acc_at_{pos}" for each position.
         """
-        rng = random.Random(self.config.seed)
+        rng = random.Random(self.config.seed)  # noqa: S311
         results: dict[str, float] = {}
         all_correct: list[bool] = []
 
@@ -293,7 +293,7 @@ class LongContextEvaluator:
         Returns:
             Dict with "mean_accuracy".
         """
-        rng = random.Random(self.config.seed)
+        rng = random.Random(self.config.seed)  # noqa: S311
         positions = [i / max(n_eval - 1, 1) for i in range(n_eval)]
         haystack_len = max(self.config.n_distractors, 4)
 

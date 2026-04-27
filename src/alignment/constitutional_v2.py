@@ -93,7 +93,7 @@ def sample_principles(
     Returns:
         List of sampled ConstitutionalPrinciple objects (length n).
     """
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # noqa: S311
     weights = [p.weight for p in principles]
     return rng.choices(principles, weights=weights, k=n)
 

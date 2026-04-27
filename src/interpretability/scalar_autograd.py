@@ -125,7 +125,7 @@ class ScalarNeuron:
     def __init__(self, nin: int, nonlin: bool = True):
         import random
 
-        self.w = [ScalarValue(random.uniform(-1, 1)) for _ in range(nin)]
+        self.w = [ScalarValue(random.uniform(-1, 1)) for _ in range(nin)]  # noqa: S311
         self.b = ScalarValue(0.0)
         self.nonlin = nonlin
 

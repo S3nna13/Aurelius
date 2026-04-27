@@ -141,7 +141,7 @@ class TextEncoder(nn.Module):
         freqs_cis = backbone.freqs_cis[:S]
 
         for layer in backbone.layers:
-            x, _ = layer(x, freqs_cis, mask=None, past_kv=None)
+            x, _, _ = layer(x, freqs_cis, mask=None, past_kv=None)
 
         x = backbone.norm(x)
         return x  # (B, T, d_model)

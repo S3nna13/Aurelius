@@ -11,7 +11,7 @@ class ActionSpace:
     discrete_n: int = 0
 
     def sample(self) -> int:
-        return random.randint(0, max(0, self.discrete_n - 1))
+        return random.randint(0, max(0, self.discrete_n - 1))  # noqa: S311
 
     def contains(self, action: int) -> bool:
         return 0 <= action < self.discrete_n
@@ -43,7 +43,7 @@ class EnvV2:
         self._step_count = 0
 
     def reset(self) -> list[float]:
-        self._state = [random.uniform(-0.1, 0.1) for _ in range(4)]
+        self._state = [random.uniform(-0.1, 0.1) for _ in range(4)]  # noqa: S311
         self._step_count = 0
         return self._state
 

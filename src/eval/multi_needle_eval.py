@@ -321,7 +321,7 @@ def build_sample(cfg: MultiNeedleConfig) -> MultiNeedleSample:
     """Construct a deterministic multi-needle sample from ``cfg``."""
     _validate_config(cfg)
 
-    rng = random.Random(cfg.seed)
+    rng = random.Random(cfg.seed)  # noqa: S311
 
     # 1) Generate K unique keys and K values. Done *first* so the RNG state
     # after this step is independent of the haystack length (useful for

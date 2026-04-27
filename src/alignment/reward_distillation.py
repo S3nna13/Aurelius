@@ -190,7 +190,7 @@ class RewardDistillationTrainer:
         x = model.embed(input_ids)
         freqs_cis = model.freqs_cis[: input_ids.shape[1]]
         for layer in model.layers:
-            x, _ = layer(x, freqs_cis, mask=None, past_kv=None)
+            x, _, _ = layer(x, freqs_cis, mask=None, past_kv=None)
         x = model.norm(x)  # (B, T, d_model)
         return self.reward_head(x)  # (B,)
 

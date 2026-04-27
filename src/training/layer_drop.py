@@ -116,7 +116,7 @@ def apply_layer_drop(model: nn.Module, mask: list[bool]) -> Tensor:
 
     for i, layer in enumerate(model.layers):
         if mask[i]:
-            x, _kv = layer(x, freqs_cis, None, None)
+            x, _kv, _aux = layer(x, freqs_cis, None, None)
 
     x = model.norm(x)
     logits = model.lm_head(x)

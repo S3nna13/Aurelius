@@ -44,7 +44,6 @@ function timeAgo(ts: number): string {
 export default function Dashboard() {
 
   const agents = useAgentStore((s) => s.agents);
-  const connected = useAgentStore((s) => s.connected);
   const health = useApiStore((s) => s.health);
   const [activity, setActivity] = useState<ActivityEntry[]>([]);
   const [activityLoading, setActivityLoading] = useState(true);
@@ -111,7 +110,7 @@ export default function Dashboard() {
         <h2 className="text-lg font-bold text-[#e0e0e0] flex items-center gap-2">
           <Activity size={20} className="text-[#4fc3f7]" />
           Mission Control
-          {connected && <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 ml-2">LIVE</span>}
+          {agents.length > 0 && <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 ml-2">LIVE</span>}
         </h2>
         <div className="flex gap-2 self-start sm:self-auto">
           <button
@@ -151,7 +150,7 @@ export default function Dashboard() {
           <HeartPulse size={16} className="text-emerald-400" />
           <span className="text-xs text-[#9e9eb0]">Server: <span className="text-emerald-400">{health.status}</span></span>
           <span className="text-xs text-[#9e9eb0]">Uptime: <span className="text-[#e0e0e0]">{(health.uptime / 3600).toFixed(1)}h</span></span>
-          {!connected && <span className="text-xs text-amber-400 ml-auto">Offline — polling health</span>}
+          {agents.length === 0 && <span className="text-xs text-amber-400 ml-auto">No data</span>}
         </div>
       )}
 

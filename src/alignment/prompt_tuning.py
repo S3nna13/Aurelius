@@ -360,7 +360,7 @@ class PromptTuner:
 
         # Run through transformer layers
         for layer in self.model.layers:
-            x, _ = layer(x, freqs_cis, mask=None, past_kv=None)
+            x, _, _ = layer(x, freqs_cis, mask=None, past_kv=None)
 
         # Final norm + head
         x = self.model.norm(x)

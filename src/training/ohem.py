@@ -14,7 +14,7 @@ import torch
 
 
 class OHEMMode(Enum):
-    TOKEN = "token"  # mine hardest individual tokens
+    TOKEN = "token"  # mine hardest individual tokens  # noqa: S105
     SEQUENCE = "sequence"  # mine hardest sequences (by mean loss), then use all their tokens
 
 

@@ -239,7 +239,7 @@ class CalibrationDataset:
 
     def get_batch(self, batch_size: int) -> Tensor:
         """Return random batch of sequences, padded to same length."""
-        chosen = random.choices(self._sequences, k=batch_size)
+        chosen = random.choices(self._sequences, k=batch_size)  # noqa: S311
         max_len = max(seq.shape[-1] for seq in chosen)
         # Pad each sequence to max_len (pad with 0 on the right)
         padded = []

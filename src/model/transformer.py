@@ -10,18 +10,32 @@ from torch.utils.checkpoint import checkpoint as ckpt
 from .attention import GroupedQueryAttention, precompute_rope_frequencies, yarn_rope_frequencies
 from .config import AureliusConfig
 from .ffn import SwiGLUFFN
+from .moe import SparseMoELayer
 from .rms_norm import RMSNorm
 
 
 class TransformerBlock(nn.Module):
-    """Single decoder layer: pre-norm attention + pre-norm FFN with residuals."""
+    """Single decoder layer: pre-norm attention + pre-norm FFN with residuals.
 
-    def __init__(self, config: AureliusConfig) -> None:
+    When config.moe_enabled is True and layer_idx % moe_every_n_layers == 0,
+    the FFN is replaced with a SparseMoELayer for Mixture-of-Experts routing.
+    """
+
+    def __init__(self, config: AureliusConfig, layer_idx: int = 0) -> None:
         super().__init__()
         self.attn = GroupedQueryAttention(config)
         self.attn_norm = RMSNorm(config.d_model, eps=config.rms_norm_eps)
         self.ffn_norm = RMSNorm(config.d_model, eps=config.rms_norm_eps)
-        self.ffn = SwiGLUFFN(config)
+        use_moe = config.moe_enabled and (
+            config.moe_every_n_layers > 0 and layer_idx % config.moe_every_n_layers == 0
+        )
+        if use_moe:
+            self.ffn = SparseMoELayer(
+                config.d_model, config.d_ff, config.moe_num_experts,
+                config.moe_top_k,
+            )
+        else:
+            self.ffn = SwiGLUFFN(config)
 
     def forward(
         self,
@@ -29,11 +43,15 @@ class TransformerBlock(nn.Module):
         freqs_cis: torch.Tensor,
         mask: torch.Tensor | None = None,
         past_kv: tuple[torch.Tensor, torch.Tensor] | None = None,
-    ) -> tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
+    ) -> tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor], torch.Tensor]:
         attn_out, kv = self.attn(self.attn_norm(x), freqs_cis, mask, past_kv)
         x = x + attn_out
-        x = x + self.ffn(self.ffn_norm(x))
-        return x, kv
+        if isinstance(self.ffn, SparseMoELayer):
+            x, aux_loss = self.ffn(self.ffn_norm(x))
+        else:
+            x = x + self.ffn(self.ffn_norm(x))
+            aux_loss = x.new_zeros(1)
+        return x, kv, aux_loss
 
 
 class AureliusTransformer(nn.Module):
@@ -56,9 +74,9 @@ class AureliusTransformer(nn.Module):
         # Token embedding
         self.embed = nn.Embedding(self.config.vocab_size, self.config.d_model)
 
-        # Transformer blocks
+        # Transformer blocks (with MoE support per layer)
         self.layers = nn.ModuleList(
-            [TransformerBlock(self.config) for _ in range(self.config.n_layers)]
+            [TransformerBlock(self.config, layer_idx=i) for i in range(self.config.n_layers)]
         )
 
         # Final norm
@@ -140,21 +158,21 @@ class AureliusTransformer(nn.Module):
             )
 
         present_key_values: list[tuple[torch.Tensor, torch.Tensor]] = []
+        moe_aux_loss = torch.tensor(0.0, device=x.device)
         for i, layer in enumerate(self.layers):
             past_kv = past_key_values[i] if past_key_values is not None else None
             if self.config.use_gradient_checkpointing and self.training:
-                # checkpoint needs all inputs as tensors; pass past_kv as None (no cache during training ckpt)  # noqa: E501
                 def make_ckpt_fn(item):
                     def fn(x, freqs_cis, mask):
-                        out, kv = item(x, freqs_cis, mask, None)  # noqa: E741
-                        return out, kv[0], kv[1]
-
+                        out, kv, aux = item(x, freqs_cis, mask, None)  # noqa: E741
+                        return out, kv[0], kv[1], aux
                     return fn
 
-                x, k, v = ckpt(make_ckpt_fn(layer), x, freqs_cis, mask, use_reentrant=False)
+                x, k, v, aux = ckpt(make_ckpt_fn(layer), x, freqs_cis, mask, use_reentrant=False)
                 kv = (k, v)
             else:
-                x, kv = layer(x, freqs_cis, mask, past_kv)
+                x, kv, aux = layer(x, freqs_cis, mask, past_kv)
+            moe_aux_loss = moe_aux_loss + aux
             present_key_values.append(kv)
 
         x = self.norm(x)
@@ -164,10 +182,11 @@ class AureliusTransformer(nn.Module):
         if labels is not None:
             shift_logits = logits[:, :-1, :].contiguous()
             shift_labels = labels[:, 1:].contiguous()
-            loss = F.cross_entropy(
+            ce_loss = F.cross_entropy(
                 shift_logits.view(-1, self.config.vocab_size),
                 shift_labels.view(-1),
             )
+            loss = ce_loss + 0.01 * moe_aux_loss
 
         return loss, logits, present_key_values
 

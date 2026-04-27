@@ -18,24 +18,30 @@ import {
   BookOpen,
   LineChart,
   Cpu,
+  Bot,
+  Database,
 } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 
 const navItems = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard', badge: null as string | null },
-  { to: '/chat', icon: MessageSquare, label: 'Agent Chat', badge: null },
-  { to: '/notifications', icon: Bell, label: 'Notifications', badgeKey: 'notifications' as const },
-  { to: '/skills', icon: Wrench, label: 'Skills', badge: null },
-  { to: '/workflows', icon: GitBranch, label: 'Workflows', badgeKey: 'workflows' as const },
-  { to: '/memory', icon: Brain, label: 'Memory', badge: null },
-  { to: '/tasks', icon: CalendarClock, label: 'Tasks', badge: null },
-  { to: '/training', icon: LineChart, label: 'Training', badge: null },
-  { to: '/models', icon: Cpu, label: 'Models', badge: null },
-  { to: '/agents', icon: BarChart3, label: 'Agents', badge: null },
-  { to: '/settings', icon: Settings, label: 'Settings', badge: null },
-  { to: '/health', icon: HeartPulse, label: 'Health', badge: null },
-  { to: '/api-docs', icon: BookOpen, label: 'API Docs', badge: null },
-  { to: '/logs', icon: ScrollText, label: 'Logs', badge: null },
+  { to: '/', icon: LayoutDashboard, label: 'Dashboard', badgeKey: undefined as undefined | string },
+  { to: '/chat', icon: MessageSquare, label: 'Agent Chat' },
+  { to: '/analytics', icon: BarChart3, label: 'Analytics' },
+  { to: '/data', icon: Database, label: 'Data Explorer' },
+  { to: '/notifications', icon: Bell, label: 'Notifications', badgeKey: 'notifications' },
+  { to: '/skills', icon: Wrench, label: 'Skills' },
+  { to: '/workflows', icon: GitBranch, label: 'Workflows', badgeKey: 'workflows' },
+  { to: '/memory', icon: Brain, label: 'Memory' },
+  { to: '/tasks', icon: CalendarClock, label: 'Tasks' },
+  { to: '/training', icon: LineChart, label: 'Training' },
+  { to: '/models', icon: Cpu, label: 'Models' },
+  { to: '/playground', icon: Bot, label: 'Playground' },
+  { to: '/agents', icon: Bot, label: 'Agents' },
+  { to: '/users', icon: Shield, label: 'Users' },
+  { to: '/logs', icon: ScrollText, label: 'Logs' },
+  { to: '/health', icon: HeartPulse, label: 'Health' },
+  { to: '/api-docs', icon: BookOpen, label: 'API Docs' },
+  { to: '/settings', icon: Settings, label: 'Settings' },
 ];
 
 export default function Sidebar() {
@@ -101,7 +107,7 @@ export default function Sidebar() {
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
             const active = isActive(item.to);
-            const badgeCount = item.badgeKey ? badges[item.badgeKey] || 0 : 0;
+            const badgeCount = item.badgeKey ? (badges[item.badgeKey] || 0) : 0;
             return (
               <NavLink
                 key={item.to}
