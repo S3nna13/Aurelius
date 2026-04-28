@@ -191,8 +191,8 @@ fn main() {
 
         Commands::Notifications { category, priority } => {
             let notifications = engine.get_notifications(
-                category.as_deref(),
-                priority.as_deref(),
+                category.clone(),
+                priority.clone(),
                 None,
                 Some(50),
             );
@@ -231,7 +231,7 @@ fn main() {
             let stats = engine.get_stats();
             let agents = engine.list_agents();
             println!("Aurelius Engine Health Check:");
-            println!("  Status: {}", if stats.agent_count > 0 { "\u{2705} Healthy" } else { "\u{26a0}\ufe0f No data" });
+            println!("  Status: {}", if stats.agent_count > 0 { "\u{2705} Healthy" } else { "\u{26a0}\u{fe0f} No data" });
             println!("  Agents: {} registered", stats.agent_count);
             println!("  Activity entries: {}", stats.activity_count);
             println!("  Notifications: {} ({} unread)", stats.notification_count, stats.notification_unread);
@@ -317,20 +317,20 @@ fn main() {
                 for a in &agents {
                     let icon = match a.state.as_str() {
                         "active" | "running" => "\u{2705}",
-                        "idle" => "\u{23f8}\ufe0f",
+                        "idle" => "\u{23f8}\u{fe0f}",
                         "error" => "\u{274c}",
                         _ => "\u{2753}",
                     };
                     println!("  {} {} ({})", icon, a.id, a.state);
                 }
-                std::thread::sleep(std::time::Duration::from_secs(interval));
+                std::thread::sleep(std::time::Duration::from_secs(*interval));
             }
         }
 
         Commands::Search { query, limit } => {
-            let activity = engine.search_activity(query, Some(*limit));
-            let logs = engine.search_logs(query, None, Some(*limit));
-            let memory = engine.get_memory_entries(None, Some(query), Some(*limit));
+            let activity = engine.search_activity(query.to_string(), Some(*limit));
+            let logs = engine.search_logs(query.to_string(), None, Some(*limit));
+            let memory = engine.get_memory_entries(None, Some(query.to_string()), Some(*limit));
             let agents = engine.list_agents();
 
             println!("Search results for '{query}':\n");

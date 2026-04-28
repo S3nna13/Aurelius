@@ -74,6 +74,7 @@ pub struct SkillEntry {
     pub category: String,
     pub risk_score: f64,
     pub allow_level: String,
+    pub source: String,
 }
 
 #[napi(object)]
@@ -84,6 +85,7 @@ pub struct WorkflowEntry {
     pub last_run: f64,
     pub duration: f64,
     pub event_count: u32,
+    pub source: String,
 }
 
 #[napi(object)]
@@ -95,6 +97,7 @@ pub struct ModelInfo {
     pub parameter_count: i64,
     pub state: String,
     pub loaded_at: Option<String>,
+    pub source: String,
 }
 
 #[napi(object)]
@@ -120,6 +123,7 @@ pub struct TrainingRunSummary {
     pub current_lr: f64,
     pub total_steps: u32,
     pub data_point_count: u32,
+    pub source: String,
 }
 
 #[napi(object)]
@@ -139,6 +143,7 @@ pub struct TrainingRunDetail {
     pub val_losses: Vec<f64>,
     pub learning_rates: Vec<f64>,
     pub accuracies: Vec<f64>,
+    pub source: String,
 }
 
 #[napi(object)]
@@ -320,6 +325,9 @@ impl DataEngine {
     #[napi]
     pub fn save_to_file(&self, path: String) -> bool {
         use persistence::Persistence;
+        if persistence::resolve_data_path(&path).is_err() {
+            return false;
+        }
         let p = Persistence::new(&path, 0);
         p.save(&self.inner).is_ok()
     }
@@ -327,10 +335,12 @@ impl DataEngine {
     #[napi]
     pub fn load_from_file(&self, path: String) -> bool {
         use persistence::Persistence;
+        if persistence::resolve_data_path(&path).is_err() {
+            return false;
+        }
         let p = Persistence::new(&path, 0);
         p.load(&self.inner).is_ok()
     }
-}
 
     // -- Skills --
 
