@@ -26,7 +26,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-from .auth_middleware import AuthMiddleware
+from .auth_middleware import DEFAULT_AUTH_MIDDLEWARE, AuthConfig, AuthMiddleware
 from .cors_middleware import CORS
 from .metrics_middleware import METRICS
 from .openapi_spec import openapi_spec, render_docs_page
@@ -218,6 +218,7 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
         version = os.environ.get("AURELIUS_VERSION", "0.1.0")
         try:
             import psutil
+
             mem = psutil.Process().memory_info()
             rss = mem.rss
         except ImportError:
@@ -287,18 +288,21 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
             self._record_metrics(start, 401)
             return
         if self.path == "/v1/models":
+            model_id = getattr(self.server, "model_id", "aurelius")
+            is_mock = getattr(self.server, "_is_mock", False)
+            entry = {
+                "id": model_id,
+                "object": "model",
+                "created": int(time.time()),
+                "owned_by": "aurelius",
+            }
+            if is_mock:
+                entry["metadata"] = {"mock": True}
             self._send_json(
                 200,
                 {
                     "object": "list",
-                    "data": [
-                        {
-                            "id": "aurelius",
-                            "object": "model",
-                            "created": int(time.time()),
-                            "owned_by": "aurelius",
-                        }
-                    ],
+                    "data": [entry],
                 },
             )
             self._record_metrics(start, 200)
@@ -416,6 +420,7 @@ class AureliusServer(HTTPServer):
         port: int,
         generate_fn: Callable[["ChatRequest"], str],
         *,
+        model_id: str = "aurelius",
         auth_middleware: AuthMiddleware | None = None,
         rate_limiter: TokenBucketLimiter | RateLimiterChain | None = None,
         coalescer: RequestCoalescer | None = None,
@@ -427,6 +432,7 @@ class AureliusServer(HTTPServer):
             bind_and_activate=bind_and_activate,
         )
         self.generate_fn = generate_fn
+        self.model_id = model_id
         self.auth_middleware = auth_middleware
         self.rate_limiter = rate_limiter
         self.coalescer = coalescer
@@ -437,15 +443,26 @@ def create_server(
     port: int,
     generate_fn: Callable[["ChatRequest"], str],
     *,
+    model_id: str = "aurelius",
     auth_middleware: AuthMiddleware | None = None,
     rate_limiter: TokenBucketLimiter | RateLimiterChain | None = None,
     coalescer: RequestCoalescer | None = None,
     bind_and_activate: bool = True,
 ) -> AureliusServer:
+    if host not in ("127.0.0.1", "localhost", "::1") and (
+        auth_middleware is None or not auth_middleware.is_configured
+    ):
+        logger.error(
+            "Aborting: non-loopback host %s requires at least one configured API key "
+            "(set AURELIUS_API_KEYS or AURELIUS_API_KEY env var).",
+            host,
+        )
+        sys.exit(1)
     return AureliusServer(
         host,
         port,
         generate_fn,
+        model_id=model_id,
         auth_middleware=auth_middleware,
         rate_limiter=rate_limiter,
         coalescer=coalescer,
@@ -465,19 +482,72 @@ def make_mock_generate_fn() -> Callable[["ChatRequest"], str]:
     return _generate
 
 
+def _load_auth_from_env() -> AuthMiddleware:
+    """Load AuthMiddleware from AURELIUS_API_KEYS environment variable.
+
+    Format: key_id:raw_key:scope1,scope2;...
+    Falls back to DEFAULT_AUTH_MIDDLEWARE if the variable is unset.
+    """
+    api_keys_env = os.environ.get("AURELIUS_API_KEYS", "")
+    if not api_keys_env:
+        single_key = os.environ.get("AURELIUS_API_KEY", "")
+        if single_key:
+            auth_config = AuthConfig(keys={}, require_auth=True)
+            auth_mw = AuthMiddleware(auth_config)
+            auth_mw.add_key("default", single_key, frozenset())
+            return auth_mw
+        return DEFAULT_AUTH_MIDDLEWARE
+    auth_config = AuthConfig(keys={}, require_auth=True)
+    auth_mw = AuthMiddleware(auth_config)
+    for key_def in api_keys_env.split(";"):
+        key_def = key_def.strip()
+        if not key_def:
+            continue
+        parts = key_def.split(":")
+        if len(parts) < 2:
+            logger.warning("Skipping malformed AURELIUS_API_KEYS entry: %s", key_def)
+            continue
+        key_id = parts[0]
+        raw_key = parts[1]
+        scopes = frozenset(parts[2].split(",")) if len(parts) > 2 and parts[2] else frozenset()
+        auth_mw.add_key(key_id, raw_key, scopes)
+    return auth_mw
+
+
 if __name__ == "__main__":
     import argparse
+    import sys
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
     parser = argparse.ArgumentParser(description="Aurelius API server")
     parser.add_argument("--host", default="127.0.0.1", help="Bind host (default: 127.0.0.1)")
-    parser.add_argument("--port", type=int, default=8080, help="Bind port (default: 8080)")
-    parser.add_argument("--timeout", type=int, default=30, help="Graceful shutdown timeout (default: 30s)")
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8080,
+        help="Bind port (default: 8080)",
+    )
+    parser.add_argument(
+        "--timeout", type=int, default=30, help="Graceful shutdown timeout (default: 30s)"
+    )
     args = parser.parse_args()
 
+    auth_mw = _load_auth_from_env()
+
+    # Security: require at least one API key when binding non-loopback
+    if args.host not in ("127.0.0.1", "localhost", "::1"):
+        if not auth_mw.is_configured:
+            logger.error(
+                "Aborting: non-loopback host %s requires at least one configured API key "
+                "(set AURELIUS_API_KEYS env var).",
+                args.host,
+            )
+            sys.exit(1)
+
     generate_fn = make_mock_generate_fn()
-    server = create_server(args.host, args.port, generate_fn)
+    server = create_server(args.host, args.port, generate_fn, auth_middleware=auth_mw)
+    server._is_mock = True
     server._started_at = time.time()
     logger.info("Aurelius API server listening on http://%s:%d", args.host, args.port)
 
