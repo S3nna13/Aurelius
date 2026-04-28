@@ -1,7 +1,8 @@
 import { Router } from 'express'
-import { registerApiKey, type AuthUser } from '../middleware/auth.js'
+import { registerApiKey, unregisterApiKey, type AuthUser } from '../middleware/auth.js'
 import { validateBody } from '../middleware/validation.js'
 import { v4 as uuidv4 } from 'uuid'
+import { config } from '../config.js'
 
 const router = Router()
 
@@ -15,16 +16,19 @@ interface User {
 
 const users = new Map<string, User>()
 const userSessions = new Map<string, { token: string; expiresAt: number }>()
+const inviteTokens = new Map<string, { role: 'admin' | 'user'; used: boolean }>()
 
-users.set('admin', {
-  id: 'user-admin',
-  username: 'admin',
-  role: 'admin',
-  apiKeys: ['dev-key'],
-  createdAt: new Date().toISOString(),
-})
-
-registerApiKey('dev-key', { id: 'user-admin', role: 'admin', scopes: ['*'] })
+const adminKey = process.env.AURELIUS_API_KEY || 'dev-key'
+if (adminKey) {
+  users.set('admin', {
+    id: 'admin',
+    username: 'admin',
+    role: 'admin',
+    apiKeys: [adminKey],
+    createdAt: new Date().toISOString(),
+  })
+  registerApiKey(adminKey, { id: 'admin', role: 'admin', scopes: ['*'] })
+}
 
 router.post('/login', validateBody([
   { field: 'apiKey', type: 'string', required: true, min: 1 },
@@ -37,7 +41,7 @@ router.post('/login', validateBody([
       const expiresAt = Date.now() + 86400000
       userSessions.set(token, { token, expiresAt })
 
-      registerApiKey(apiKey, { id: user.id, role: user.role, scopes: ['*'] })
+      registerApiKey(apiKey, { id: user.id, role: user.role, scopes: ['read', 'write'] })
 
       res.json({
         success: true,
@@ -56,6 +60,13 @@ router.post('/login', validateBody([
 router.post('/register', validateBody([
   { field: 'username', type: 'string', required: true, min: 3, max: 32 },
 ]), (req, res) => {
+  if (!config.allowPublicRegistration) {
+    if (!req.user || req.user.role !== 'admin') {
+      res.status(403).json({ error: 'Forbidden', message: 'Public registration is disabled' })
+      return
+    }
+  }
+
   const { username } = req.body
 
   for (const [, user] of users) {
@@ -77,7 +88,13 @@ router.post('/register', validateBody([
   }
 
   users.set(id, user)
-  registerApiKey(apiKey, { id, role: 'user', scopes: ['read', 'write'] })
+  registerApiKey(apiKey, { id, role: 'user', scopes: ['read'] })
+
+  // Mark invite token as used if provided
+  const inviteToken = req.body.inviteToken as string | undefined
+  if (inviteToken && inviteTokens.has(inviteToken)) {
+    inviteTokens.get(inviteToken)!.used = true
+  }
 
   res.json({
     success: true,
@@ -86,7 +103,20 @@ router.post('/register', validateBody([
   })
 })
 
+function cleanupExpiredSessions() {
+  const now = Date.now()
+  for (const [token, session] of userSessions) {
+    if (session.expiresAt < now) {
+      userSessions.delete(token)
+    }
+  }
+}
+
+// Run cleanup every 5 minutes
+setInterval(cleanupExpiredSessions, 300_000)
+
 router.get('/users', (_req, res) => {
+  cleanupExpiredSessions()
   const userList = Array.from(users.values()).map((u) => ({
     id: u.id,
     username: u.username,
@@ -112,7 +142,7 @@ router.post('/keys/generate', (req, res) => {
 
   const apiKey = `ak-${uuidv4().replace(/-/g, '')}`
   user.apiKeys.push(apiKey)
-  registerApiKey(apiKey, { id: userId, role: user.role, scopes: ['*'] })
+  registerApiKey(apiKey, { id: userId, role: user.role, scopes: req.user?.scopes || ['read'] })
 
   res.json({ success: true, apiKey })
 })
@@ -132,7 +162,6 @@ router.get('/keys', (req, res) => {
 
   res.json({ keys: user.apiKeys.map((k) => ({
     prefix: k.slice(0, 8) + '...',
-    full: k,
   })) })
 })
 
@@ -156,7 +185,9 @@ router.delete('/keys/:prefix', (req, res) => {
     return
   }
 
+  const removedKey = user.apiKeys[idx]
   user.apiKeys.splice(idx, 1)
+  unregisterApiKey(removedKey)
   res.json({ success: true })
 })
 

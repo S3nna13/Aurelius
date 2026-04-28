@@ -26,37 +26,66 @@ import statsRoutes from './routes/stats.js'
 import systemRoutes from './routes/system.js'
 import schedulerRoutes from './routes/scheduler.js'
 import searchRoutes from './routes/search.js'
+import tracesRoutes from './routes/traces.js'
+import registryRoutes from './routes/registry.js'
+import brainRoutes from './routes/brain.js'
+import { ProviderRouter } from './provider_router.js'
+
+const providerRouter = new ProviderRouter();
 
 export function buildApp() {
   const app = express()
 
   app.use(cors({ origin: config.corsOrigin, credentials: true }))
-  app.use(express.json({ limit: '1mb' }))
-  app.use(express.urlencoded({ extended: true, limit: '1mb' }))
+  app.use(express.json({ limit: '50mb' }))
   app.use(requestLogger)
   app.use(authMiddleware)
   app.use(rateLimiter)
 
-  // Public routes (no auth)
-  app.use('/api', healthRoutes)
+  // Public routes — exempted by auth middleware
+  app.use('/', healthRoutes)
   app.use('/api/auth', authRoutes)
-  app.use('/api/sse', sseRoutes)
 
-  // Authenticated routes
+  // Protected routes — mounted after auth middleware
+  app.use('/api/sse', sseRoutes)
   app.use('/api/agents', agentsRoutes)
   app.use('/api/activity', activityRoutes)
   app.use('/api/notifications', notificationsRoutes)
   app.use('/api/config', configRoutes)
   app.use('/api/memory', memoryRoutes)
   app.use('/api/logs', logsRoutes)
-  app.use('/api', chatRoutes)
-  app.use('/api/v1/models', modelsRoutes)
+  app.use('/api/chat', chatRoutes)
+  app.use('/api/models', modelsRoutes)
   app.use('/api/plugins', pluginsRoutes)
-  app.use('/api', filesRoutes)
+  app.use('/api/files', filesRoutes)
   app.use('/api/stats', statsRoutes)
   app.use('/api/system', systemRoutes)
   app.use('/api/scheduler', schedulerRoutes)
   app.use('/api/search', searchRoutes)
+  app.use('/api/traces', tracesRoutes)
+  app.use('/api/registry', registryRoutes)
+  app.use('/api/brain', brainRoutes)
+
+  // Stub routes for frontend expectations
+  app.get('/api/skills', (_req, res) => res.json({ skills: [], total: 0, enabled: 0, totalTools: 0, totalSkills: 0 }))
+  app.get('/api/skills/:id', (req, res) => res.status(404).json({ error: 'Skill not found' }))
+  app.post('/api/skills/execute', (_req, res) => res.status(501).json({ error: 'Not implemented' }))
+  app.get('/api/workflows', (_req, res) => res.json({ workflows: [], summary: { total: 0, running: 0, completed: 0, failed: 0 } }))
+  app.get('/api/workflows/:id', (req, res) => res.status(404).json({ error: 'Workflow not found' }))
+  app.post('/api/workflows/:id/trigger', (_req, res) => res.status(501).json({ error: 'Not implemented' }))
+  app.get('/api/status', (_req, res) => res.json({ status: 'ok', uptime: process.uptime() }))
+  app.post('/api/command', (_req, res) => res.status(501).json({ error: 'Not implemented' }))
+
+  // Provider router — unified Aurelius + OpenAI
+  app.get('/api/provider/status', (_req, res) => {
+    res.json({
+      primary: 'aurelius',
+      fallback: 'openai',
+      openai_configured: !!providerRouter.openaiApiKey,
+      stats: providerRouter.getStats(),
+      models: providerRouter.getAvailableModels(),
+    });
+  });
 
   // Error handling
   app.use(errorHandler)
