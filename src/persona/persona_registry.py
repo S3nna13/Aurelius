@@ -1,15 +1,23 @@
-"""Unified persona registry — single source of truth for all personas.
+"""Persona registries for Aurelius.
 
-Replaces: PersonaRegistry, PersonaSwitcher, SecurityPersonaRegistry,
-AgentModeRegistry. All persona lookups, registration, and routing
-go through this one registry.
+This module keeps the unified persona implementation as the canonical core,
+while also exposing a small backward-compatible ``Persona`` / ``PersonaRegistry``
+surface for legacy callers and tests that still expect the older API.
 """
 
 from __future__ import annotations
 
 from collections import defaultdict
+from dataclasses import dataclass, field
+from typing import Any
 
-from .unified_persona import PersonaDomain, UnifiedPersona
+from .unified_persona import (
+    OutputContract,
+    PersonaDomain,
+    PersonaTone,
+    ResponseStyle,
+    UnifiedPersona,
+)
 
 
 class PersonaNotFoundError(KeyError):
@@ -18,6 +26,39 @@ class PersonaNotFoundError(KeyError):
 
 class PersonaAlreadyRegisteredError(KeyError):
     pass
+
+
+@dataclass(slots=True)
+class Persona:
+    """Compatibility persona record used by older callers.
+
+    The unified persona model remains the source of truth internally.  This
+    wrapper keeps the public registry API small and stable.
+    """
+
+    id: str
+    name: str
+    system_prompt: str
+    description: str = ""
+    domain: PersonaDomain = PersonaDomain.GENERAL
+    tone: PersonaTone = PersonaTone.FORMAL
+    response_style: ResponseStyle = ResponseStyle.CONCISE
+    temperature: float = 0.7
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_unified(self) -> UnifiedPersona:
+        """Convert the compatibility record to the canonical persona type."""
+
+        return UnifiedPersona(
+            id=self.id,
+            name=self.name,
+            domain=self.domain,
+            description=self.description or self.name,
+            system_prompt=self.system_prompt,
+            tone=self.tone,
+            response_style=self.response_style,
+            temperature=self.temperature,
+        )
 
 
 class UnifiedPersonaRegistry:
@@ -34,9 +75,7 @@ class UnifiedPersonaRegistry:
 
     def register(self, persona: UnifiedPersona) -> None:
         if persona.id in self._personas:
-            raise PersonaAlreadyRegisteredError(
-                f"Persona {persona.id!r} is already registered"
-            )
+            raise PersonaAlreadyRegisteredError(f"Persona {persona.id!r} is already registered")
         self._personas[persona.id] = persona
         self._domain_index[persona.domain].append(persona.id)
 
@@ -51,8 +90,7 @@ class UnifiedPersonaRegistry:
     def get(self, persona_id: str) -> UnifiedPersona:
         if persona_id not in self._personas:
             raise PersonaNotFoundError(
-                f"Persona {persona_id!r} not found. "
-                f"Known: {sorted(self._personas)}"
+                f"Persona {persona_id!r} not found. Known: {sorted(self._personas)}"
             )
         return self._personas[persona_id]
 
@@ -99,9 +137,7 @@ class UnifiedPersonaRegistry:
         ]
 
     def find_by_facet(self, facet_type: str) -> list[UnifiedPersona]:
-        return [
-            p for p in self._personas.values() if p.has_facet(facet_type)
-        ]
+        return [p for p in self._personas.values() if p.has_facet(facet_type)]
 
     def find_by_domain(self, domain: PersonaDomain) -> list[UnifiedPersona]:
         ids = self._domain_index.get(domain, [])
@@ -145,17 +181,15 @@ class UnifiedPersonaRegistry:
     @staticmethod
     def _validate_against_contract(
         response_obj: dict | str,
-        contract: "OutputContract",
+        contract: OutputContract,
     ) -> tuple[bool, list[str]]:
-        from .unified_persona import OutputContract
-
         if isinstance(response_obj, str):
             return True, []
 
         errors: list[str] = []
-        for field in contract.required_fields:
-            if field not in response_obj:
-                errors.append(f"missing required field: {field}")
+        for required_field in contract.required_fields:
+            if required_field not in response_obj:
+                errors.append(f"missing required field: {required_field}")
         return (not errors), errors
 
     def __len__(self) -> int:
@@ -169,7 +203,69 @@ class UnifiedPersonaRegistry:
         return f"UnifiedPersonaRegistry({len(self._personas)} personas, domains={domains})"
 
 
+class PersonaRegistry:
+    """Backward-compatible wrapper for legacy persona registry callers."""
+
+    def __init__(self) -> None:
+        self._personas: dict[str, Persona] = {}
+        self._unified = UnifiedPersonaRegistry()
+
+    def register(self, persona: Persona | UnifiedPersona) -> None:
+        if isinstance(persona, UnifiedPersona):
+            compat = Persona(
+                id=persona.id,
+                name=persona.name,
+                system_prompt=persona.system_prompt,
+                description=persona.description,
+                domain=persona.domain,
+                tone=persona.tone,
+                response_style=persona.response_style,
+                temperature=persona.temperature,
+                metadata={},
+            )
+        elif isinstance(persona, Persona):
+            compat = persona
+        else:  # pragma: no cover - defensive branch
+            raise TypeError(
+                f"persona must be Persona or UnifiedPersona, got {type(persona).__name__}"
+            )
+
+        if compat.id in self._personas:
+            try:
+                self._unified.unregister(compat.id)
+            except PersonaNotFoundError:
+                pass
+
+        self._personas[compat.id] = compat
+        self._unified.register(compat.to_unified())
+
+    def get(self, persona_id: str) -> Persona | None:
+        return self._personas.get(persona_id)
+
+    def list(self) -> list[Persona]:
+        return list(self._personas.values())
+
+    def delete(self, persona_id: str) -> bool:
+        if persona_id not in self._personas:
+            return False
+        self._personas.pop(persona_id)
+        try:
+            self._unified.unregister(persona_id)
+        except PersonaNotFoundError:
+            pass
+        return True
+
+    @property
+    def count(self) -> int:
+        return len(self._personas)
+
+    def __len__(self) -> int:
+        return self.count
+
+
 __all__ = [
+    "Persona",
+    "PersonaRegistry",
     "PersonaNotFoundError",
     "PersonaAlreadyRegisteredError",
     "UnifiedPersonaRegistry",
