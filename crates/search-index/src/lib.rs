@@ -52,7 +52,9 @@ fn generate_snippet(text: &str, query: &str, window: usize) -> String {
         let start = pos.saturating_sub(window);
         let end = (pos + q_lower.len() + window).min(text.len());
         let mut snippet = &text[start..end];
-        if start > 0 { snippet = &snippet[..]; }
+        if start > 0 {
+            snippet = &snippet[..];
+        }
         let prefix = if start > 0 { "..." } else { "" };
         let suffix = if end < text.len() { "..." } else { "" };
         format!("{}{}{}", prefix, snippet, suffix)
@@ -94,10 +96,14 @@ impl SearchIndex {
             self.doc_lengths.insert(field_key.clone(), HashMap::new());
             self.avg_doc_length.insert(field_key.clone(), 0.0);
             self.total_docs.insert(field_key.clone(), 0);
-            self.autocomplete_trie.insert(field_key.clone(), Trie::new());
+            self.autocomplete_trie
+                .insert(field_key.clone(), Trie::new());
         }
 
-        self.doc_lengths.get_mut(&field_key).unwrap().insert(id.clone(), tokens.len() as u32);
+        self.doc_lengths
+            .get_mut(&field_key)
+            .unwrap()
+            .insert(id.clone(), tokens.len() as u32);
 
         let mut total: u32 = 0;
         let mut count: u32 = 0;
@@ -108,12 +114,14 @@ impl SearchIndex {
             }
         }
         if count > 0 {
-            self.avg_doc_length.insert(field_key.clone(), total as f64 / count as f64);
+            self.avg_doc_length
+                .insert(field_key.clone(), total as f64 / count as f64);
         }
         *self.total_docs.get_mut(&field_key).unwrap() = count;
 
         if !self.inverted_index.contains_key(&field_key) {
-            self.inverted_index.insert(field_key.clone(), HashMap::new());
+            self.inverted_index
+                .insert(field_key.clone(), HashMap::new());
         }
 
         // Count term frequency in this doc
@@ -143,14 +151,19 @@ impl SearchIndex {
         if !self.doc_store.contains_key(&field_key) {
             self.doc_store.insert(field_key.clone(), HashMap::new());
         }
-        self.doc_store.get_mut(&field_key).unwrap().insert(id.clone(), content.clone());
+        self.doc_store
+            .get_mut(&field_key)
+            .unwrap()
+            .insert(id.clone(), content.clone());
     }
 
     #[napi]
     pub fn search(&self, query: String, field: String, limit: Option<u32>) -> Vec<SearchResult> {
         let limit = limit.unwrap_or(10) as usize;
         let tokens = tokenize(&query);
-        if tokens.is_empty() { return vec![]; }
+        if tokens.is_empty() {
+            return vec![];
+        }
 
         let field_key = field;
         let index = match self.inverted_index.get(&field_key) {
@@ -158,7 +171,11 @@ impl SearchIndex {
             None => return vec![],
         };
 
-        let avgdl = self.avg_doc_length.get(&field_key).map(|v| *v).unwrap_or(1.0);
+        let avgdl = self
+            .avg_doc_length
+            .get(&field_key)
+            .map(|v| *v)
+            .unwrap_or(1.0);
         let total_docs = self.total_docs.get(&field_key).map(|v| *v).unwrap_or(1) as f64;
         let k1 = 1.2;
         let b = 0.75;
@@ -177,7 +194,8 @@ impl SearchIndex {
                         let doc_tokens = tokenize(doc_content);
                         let doc_len = doc_tokens.len() as f64;
                         let tf = doc_tokens.iter().filter(|t| *t == token).count() as f64;
-                        let score = idf * ((tf * (k1 + 1.0)) / (tf + k1 * (1.0 - b + b * (doc_len / avgdl))));
+                        let score = idf
+                            * ((tf * (k1 + 1.0)) / (tf + k1 * (1.0 - b + b * (doc_len / avgdl))));
                         *scores.entry(doc_id.clone()).or_insert(0.0) += score;
                     }
                 }
@@ -190,26 +208,31 @@ impl SearchIndex {
 
         results.truncate(limit);
 
-        results.into_iter().map(|(id, score)| {
-            let content = self
-                .doc_store
-                .get(&field_key)
-                .and_then(|docs| docs.get(&id).cloned())
-                .unwrap_or_default();
-            SearchResult {
-                id,
-                field: field_key.clone(),
-                score: (score * 1000.0).round() / 1000.0,
-                snippet: generate_snippet(&content, &query, 60),
-            }
-        }).collect()
+        results
+            .into_iter()
+            .map(|(id, score)| {
+                let content = self
+                    .doc_store
+                    .get(&field_key)
+                    .and_then(|docs| docs.get(&id).cloned())
+                    .unwrap_or_default();
+                SearchResult {
+                    id,
+                    field: field_key.clone(),
+                    score: (score * 1000.0).round() / 1000.0,
+                    snippet: generate_snippet(&content, &query, 60),
+                }
+            })
+            .collect()
     }
 
     #[napi]
     pub fn suggest(&self, prefix: String, field: String, limit: Option<u32>) -> Vec<Suggestion> {
         let limit = limit.unwrap_or(5) as usize;
         let stemmed = tokenize(&prefix);
-        if stemmed.is_empty() { return vec![]; }
+        if stemmed.is_empty() {
+            return vec![];
+        }
 
         let field_key = field;
         let trie = match self.autocomplete_trie.get(&field_key) {
@@ -220,13 +243,18 @@ impl SearchIndex {
         let q = stemmed[0].clone();
         let mut suggestions: Vec<(String, u32)> = trie
             .get_raw_descendant(&q)
-            .map(|sub| sub.iter().map(|(key, val)| (key.clone(), *val)).collect::<Vec<_>>())
+            .map(|sub| {
+                sub.iter()
+                    .map(|(key, val)| (key.clone(), *val))
+                    .collect::<Vec<_>>()
+            })
             .unwrap_or_default();
 
         suggestions.sort_by(|a, b| b.1.cmp(&a.1));
         suggestions.truncate(limit);
 
-        suggestions.into_iter()
+        suggestions
+            .into_iter()
             .map(|(text, score)| Suggestion { text, score })
             .collect()
     }
@@ -237,7 +265,9 @@ impl SearchIndex {
         let mut removed = false;
 
         if let Some(mut docs) = self.doc_store.get_mut(&field_key) {
-            if docs.remove(&id).is_some() { removed = true; }
+            if docs.remove(&id).is_some() {
+                removed = true;
+            }
         }
 
         if let Some(mut lengths) = self.doc_lengths.get_mut(&field_key) {
@@ -250,7 +280,8 @@ impl SearchIndex {
                 let total: u32 = lengths.iter().map(|(_, l)| l).sum();
                 let count = lengths.len() as f64;
                 if count > 0.0 {
-                    self.avg_doc_length.insert(field_key.clone(), total as f64 / count);
+                    self.avg_doc_length
+                        .insert(field_key.clone(), total as f64 / count);
                 }
             }
             if let Some(mut total) = self.total_docs.get_mut(&field_key) {
@@ -286,10 +317,22 @@ impl SearchIndex {
         let fields: Vec<String> = self.doc_store.iter().map(|e| e.key().clone()).collect();
 
         for field in fields {
-            let docs = self.doc_store.get(&field).map(|d| d.len() as u32).unwrap_or(0);
-            let terms = self.inverted_index.get(&field).map(|i| i.len() as u32).unwrap_or(0);
+            let docs = self
+                .doc_store
+                .get(&field)
+                .map(|d| d.len() as u32)
+                .unwrap_or(0);
+            let terms = self
+                .inverted_index
+                .get(&field)
+                .map(|i| i.len() as u32)
+                .unwrap_or(0);
             let fields_list = vec![field.clone()];
-            stats.push(IndexStats { documents: docs, terms, fields: fields_list });
+            stats.push(IndexStats {
+                documents: docs,
+                terms,
+                fields: fields_list,
+            });
         }
 
         stats

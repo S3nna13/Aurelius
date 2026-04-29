@@ -20,8 +20,7 @@ pub(crate) fn resolve_data_path(raw_path: &str) -> Result<PathBuf, String> {
         .map_err(|e| format!("Failed to get working directory: {}", e))?
         .join("aurelius-data");
 
-    fs::create_dir_all(&base)
-        .map_err(|e| format!("Failed to create data directory: {}", e))?;
+    fs::create_dir_all(&base).map_err(|e| format!("Failed to create data directory: {}", e))?;
 
     let canonical_base = fs::canonicalize(&base)
         .map_err(|e| format!("Failed to canonicalize base directory: {}", e))?;
@@ -30,17 +29,27 @@ pub(crate) fn resolve_data_path(raw_path: &str) -> Result<PathBuf, String> {
     if raw.is_absolute() {
         return Err("Absolute paths are not allowed".to_string());
     }
-    if raw.components().any(|c| matches!(c, std::path::Component::ParentDir)) {
+    if raw
+        .components()
+        .any(|c| matches!(c, std::path::Component::ParentDir))
+    {
         return Err("Path traversal is not allowed".to_string());
     }
 
     let joined = canonical_base.join(raw);
-    let canonical = joined.canonicalize().or_else(|_| {
-        let parent = joined.parent().ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidInput, "Invalid path"))?;
-        let file_name = joined.file_name().ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidInput, "Invalid path"))?;
-        let canonical_parent = fs::canonicalize(parent)?;
-        Ok::<_, std::io::Error>(canonical_parent.join(file_name))
-    }).map_err(|e| format!("Path resolution error: {}", e))?;
+    let canonical = joined
+        .canonicalize()
+        .or_else(|_| {
+            let parent = joined.parent().ok_or_else(|| {
+                std::io::Error::new(std::io::ErrorKind::InvalidInput, "Invalid path")
+            })?;
+            let file_name = joined.file_name().ok_or_else(|| {
+                std::io::Error::new(std::io::ErrorKind::InvalidInput, "Invalid path")
+            })?;
+            let canonical_parent = fs::canonicalize(parent)?;
+            Ok::<_, std::io::Error>(canonical_parent.join(file_name))
+        })
+        .map_err(|e| format!("Path resolution error: {}", e))?;
 
     if !canonical.starts_with(&canonical_base) {
         return Err("Path escapes data directory".to_string());
@@ -207,88 +216,132 @@ impl Persistence {
         let resolved_path = resolve_data_path(&self.save_path)?;
 
         let snapshot = EngineSnapshot {
-            agents: engine.agents.iter().map(|entry| SerializedAgent {
-                id: entry.key().clone(),
-                state: entry.value().state.clone(),
-                role: entry.value().role.clone(),
-                metrics_json: entry.value().metrics_json.clone(),
-            }).collect(),
+            agents: engine
+                .agents
+                .iter()
+                .map(|entry| SerializedAgent {
+                    id: entry.key().clone(),
+                    state: entry.value().state.clone(),
+                    role: entry.value().role.clone(),
+                    metrics_json: entry.value().metrics_json.clone(),
+                })
+                .collect(),
 
-            activity: engine.activity.read().unwrap().iter().map(|a| SerializedActivity {
-                id: a.id.clone(),
-                timestamp: a.timestamp,
-                command: a.command.clone(),
-                success: a.success,
-                output: a.output.clone(),
-            }).collect(),
+            activity: engine
+                .activity
+                .read()
+                .unwrap()
+                .iter()
+                .map(|a| SerializedActivity {
+                    id: a.id.clone(),
+                    timestamp: a.timestamp,
+                    command: a.command.clone(),
+                    success: a.success,
+                    output: a.output.clone(),
+                })
+                .collect(),
 
-            notifications: engine.notifications.read().unwrap().iter().map(|n| SerializedNotification {
-                id: n.id.clone(),
-                timestamp: n.timestamp,
-                channel: n.channel.clone(),
-                priority: n.priority.clone(),
-                category: n.category.clone(),
-                title: n.title.clone(),
-                body: n.body.clone(),
-                read: n.read,
-                delivered: n.delivered,
-            }).collect(),
+            notifications: engine
+                .notifications
+                .read()
+                .unwrap()
+                .iter()
+                .map(|n| SerializedNotification {
+                    id: n.id.clone(),
+                    timestamp: n.timestamp,
+                    channel: n.channel.clone(),
+                    priority: n.priority.clone(),
+                    category: n.category.clone(),
+                    title: n.title.clone(),
+                    body: n.body.clone(),
+                    read: n.read,
+                    delivered: n.delivered,
+                })
+                .collect(),
 
-            skills: engine.skills.read().unwrap().iter().map(|s| SerializedSkill {
-                id: s.id.clone(),
-                name: s.name.clone(),
-                description: s.description.clone(),
-                active: s.active,
-                version: s.version.clone(),
-                category: s.category.clone(),
-                risk_score: s.risk_score,
-                allow_level: s.allow_level.clone(),
-                instructions: s.instructions.clone(),
-                source: s.source.clone(),
-            }).collect(),
+            skills: engine
+                .skills
+                .read()
+                .unwrap()
+                .iter()
+                .map(|s| SerializedSkill {
+                    id: s.id.clone(),
+                    name: s.name.clone(),
+                    description: s.description.clone(),
+                    active: s.active,
+                    version: s.version.clone(),
+                    category: s.category.clone(),
+                    risk_score: s.risk_score,
+                    allow_level: s.allow_level.clone(),
+                    instructions: s.instructions.clone(),
+                    source: s.source.clone(),
+                })
+                .collect(),
 
-            workflows: engine.workflows.read().unwrap().iter().map(|w| SerializedWorkflow {
-                id: w.id.clone(),
-                name: w.name.clone(),
-                status: w.status.clone(),
-                last_run: w.last_run,
-                duration: w.duration,
-                event_count: w.event_count,
-                source: w.source.clone(),
-            }).collect(),
+            workflows: engine
+                .workflows
+                .read()
+                .unwrap()
+                .iter()
+                .map(|w| SerializedWorkflow {
+                    id: w.id.clone(),
+                    name: w.name.clone(),
+                    status: w.status.clone(),
+                    last_run: w.last_run,
+                    duration: w.duration,
+                    event_count: w.event_count,
+                    source: w.source.clone(),
+                })
+                .collect(),
 
-            models: engine.models.read().unwrap().iter().map(|m| SerializedModelInfo {
-                id: m.id.clone(),
-                name: m.name.clone(),
-                description: m.description.clone(),
-                path: m.path.clone(),
-                parameter_count: m.parameter_count,
-                state: m.state.clone(),
-                loaded_at: m.loaded_at.clone(),
-                source: m.source.clone(),
-            }).collect(),
+            models: engine
+                .models
+                .read()
+                .unwrap()
+                .iter()
+                .map(|m| SerializedModelInfo {
+                    id: m.id.clone(),
+                    name: m.name.clone(),
+                    description: m.description.clone(),
+                    path: m.path.clone(),
+                    parameter_count: m.parameter_count,
+                    state: m.state.clone(),
+                    loaded_at: m.loaded_at.clone(),
+                    source: m.source.clone(),
+                })
+                .collect(),
 
-            training_runs: engine.training_runs.read().unwrap().iter().map(|r| SerializedTrainingRun {
-                id: r.id.clone(),
-                name: r.name.clone(),
-                model_id: r.model_id.clone(),
-                status: r.status.clone(),
-                started_at: r.started_at,
-                current_epoch: r.current_epoch,
-                total_epochs: r.total_epochs,
-                best_val_loss: r.best_val_loss,
-                current_lr: r.current_lr,
-                total_steps: r.total_steps,
-                data_points: r.data_points.iter().map(|p| SerializedTrainingDataPoint {
-                    step: p.step,
-                    train_loss: p.train_loss,
-                    val_loss: p.val_loss,
-                    learning_rate: p.learning_rate,
-                    accuracy: p.accuracy,
-                    grad_norm: p.grad_norm,
-                }).collect(),
-                source: r.source.clone(),
-            }).collect(),
+            training_runs: engine
+                .training_runs
+                .read()
+                .unwrap()
+                .iter()
+                .map(|r| SerializedTrainingRun {
+                    id: r.id.clone(),
+                    name: r.name.clone(),
+                    model_id: r.model_id.clone(),
+                    status: r.status.clone(),
+                    started_at: r.started_at,
+                    current_epoch: r.current_epoch,
+                    total_epochs: r.total_epochs,
+                    best_val_loss: r.best_val_loss,
+                    current_lr: r.current_lr,
+                    total_steps: r.total_steps,
+                    data_points: r
+                        .data_points
+                        .iter()
+                        .map(|p| SerializedTrainingDataPoint {
+                            step: p.step,
+                            train_loss: p.train_loss,
+                            val_loss: p.val_loss,
+                            learning_rate: p.learning_rate,
+                            accuracy: p.accuracy,
+                            grad_norm: p.grad_norm,
+                        })
+                        .collect(),
+                    source: r.source.clone(),
+                })
+                .collect(),
 
             engine_mode: if engine.is_demo_mode() {
                 "demo".to_string()
@@ -303,12 +356,10 @@ impl Persistence {
             .map_err(|e| format!("Serialization error: {}", e))?;
 
         if let Some(parent) = resolved_path.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|e| format!("Failed to create directory: {}", e))?;
+            fs::create_dir_all(parent).map_err(|e| format!("Failed to create directory: {}", e))?;
         }
 
-        fs::write(&resolved_path, &json)
-            .map_err(|e| format!("Write error: {}", e))?;
+        fs::write(&resolved_path, &json).map_err(|e| format!("Write error: {}", e))?;
 
         self.set_dirty();
         Ok(())
@@ -321,20 +372,22 @@ impl Persistence {
             return Err("No save file found".to_string());
         }
 
-        let json = fs::read_to_string(&resolved_path)
-            .map_err(|e| format!("Read error: {}", e))?;
+        let json = fs::read_to_string(&resolved_path).map_err(|e| format!("Read error: {}", e))?;
 
-        let snapshot: EngineSnapshot = serde_json::from_str(&json)
-            .map_err(|e| format!("Deserialization error: {}", e))?;
+        let snapshot: EngineSnapshot =
+            serde_json::from_str(&json).map_err(|e| format!("Deserialization error: {}", e))?;
 
         // Clear and restore agents
         engine.agents.clear();
         for agent in &snapshot.agents {
-            engine.agents.insert(agent.id.clone(), crate::engine::InternalAgent {
-                state: agent.state.clone(),
-                role: agent.role.clone(),
-                metrics_json: agent.metrics_json.clone(),
-            });
+            engine.agents.insert(
+                agent.id.clone(),
+                crate::engine::InternalAgent {
+                    state: agent.state.clone(),
+                    role: agent.role.clone(),
+                    metrics_json: agent.metrics_json.clone(),
+                },
+            );
         }
 
         // Restore activity
@@ -439,14 +492,18 @@ impl Persistence {
                     best_val_loss: run.best_val_loss,
                     current_lr: run.current_lr,
                     total_steps: run.total_steps,
-                    data_points: run.data_points.iter().map(|p| crate::engine::InternalDataPoint {
-                        step: p.step,
-                        train_loss: p.train_loss,
-                        val_loss: p.val_loss,
-                        learning_rate: p.learning_rate,
-                        accuracy: p.accuracy,
-                        grad_norm: p.grad_norm,
-                    }).collect(),
+                    data_points: run
+                        .data_points
+                        .iter()
+                        .map(|p| crate::engine::InternalDataPoint {
+                            step: p.step,
+                            train_loss: p.train_loss,
+                            val_loss: p.val_loss,
+                            learning_rate: p.learning_rate,
+                            accuracy: p.accuracy,
+                            grad_norm: p.grad_norm,
+                        })
+                        .collect(),
                     source: run.source.clone(),
                 });
             }
@@ -467,88 +524,132 @@ impl Persistence {
 
     pub fn export_json(&self, engine: &DataEngineInner) -> Result<String, String> {
         let snapshot = EngineSnapshot {
-            agents: engine.agents.iter().map(|entry| SerializedAgent {
-                id: entry.key().clone(),
-                state: entry.value().state.clone(),
-                role: entry.value().role.clone(),
-                metrics_json: entry.value().metrics_json.clone(),
-            }).collect(),
+            agents: engine
+                .agents
+                .iter()
+                .map(|entry| SerializedAgent {
+                    id: entry.key().clone(),
+                    state: entry.value().state.clone(),
+                    role: entry.value().role.clone(),
+                    metrics_json: entry.value().metrics_json.clone(),
+                })
+                .collect(),
 
-            activity: engine.activity.read().unwrap().iter().map(|a| SerializedActivity {
-                id: a.id.clone(),
-                timestamp: a.timestamp,
-                command: a.command.clone(),
-                success: a.success,
-                output: a.output.clone(),
-            }).collect(),
+            activity: engine
+                .activity
+                .read()
+                .unwrap()
+                .iter()
+                .map(|a| SerializedActivity {
+                    id: a.id.clone(),
+                    timestamp: a.timestamp,
+                    command: a.command.clone(),
+                    success: a.success,
+                    output: a.output.clone(),
+                })
+                .collect(),
 
-            notifications: engine.notifications.read().unwrap().iter().map(|n| SerializedNotification {
-                id: n.id.clone(),
-                timestamp: n.timestamp,
-                channel: n.channel.clone(),
-                priority: n.priority.clone(),
-                category: n.category.clone(),
-                title: n.title.clone(),
-                body: n.body.clone(),
-                read: n.read,
-                delivered: n.delivered,
-            }).collect(),
+            notifications: engine
+                .notifications
+                .read()
+                .unwrap()
+                .iter()
+                .map(|n| SerializedNotification {
+                    id: n.id.clone(),
+                    timestamp: n.timestamp,
+                    channel: n.channel.clone(),
+                    priority: n.priority.clone(),
+                    category: n.category.clone(),
+                    title: n.title.clone(),
+                    body: n.body.clone(),
+                    read: n.read,
+                    delivered: n.delivered,
+                })
+                .collect(),
 
-            skills: engine.skills.read().unwrap().iter().map(|s| SerializedSkill {
-                id: s.id.clone(),
-                name: s.name.clone(),
-                description: s.description.clone(),
-                active: s.active,
-                version: s.version.clone(),
-                category: s.category.clone(),
-                risk_score: s.risk_score,
-                allow_level: s.allow_level.clone(),
-                instructions: s.instructions.clone(),
-                source: s.source.clone(),
-            }).collect(),
+            skills: engine
+                .skills
+                .read()
+                .unwrap()
+                .iter()
+                .map(|s| SerializedSkill {
+                    id: s.id.clone(),
+                    name: s.name.clone(),
+                    description: s.description.clone(),
+                    active: s.active,
+                    version: s.version.clone(),
+                    category: s.category.clone(),
+                    risk_score: s.risk_score,
+                    allow_level: s.allow_level.clone(),
+                    instructions: s.instructions.clone(),
+                    source: s.source.clone(),
+                })
+                .collect(),
 
-            workflows: engine.workflows.read().unwrap().iter().map(|w| SerializedWorkflow {
-                id: w.id.clone(),
-                name: w.name.clone(),
-                status: w.status.clone(),
-                last_run: w.last_run,
-                duration: w.duration,
-                event_count: w.event_count,
-                source: w.source.clone(),
-            }).collect(),
+            workflows: engine
+                .workflows
+                .read()
+                .unwrap()
+                .iter()
+                .map(|w| SerializedWorkflow {
+                    id: w.id.clone(),
+                    name: w.name.clone(),
+                    status: w.status.clone(),
+                    last_run: w.last_run,
+                    duration: w.duration,
+                    event_count: w.event_count,
+                    source: w.source.clone(),
+                })
+                .collect(),
 
-            models: engine.models.read().unwrap().iter().map(|m| SerializedModelInfo {
-                id: m.id.clone(),
-                name: m.name.clone(),
-                description: m.description.clone(),
-                path: m.path.clone(),
-                parameter_count: m.parameter_count,
-                state: m.state.clone(),
-                loaded_at: m.loaded_at.clone(),
-                source: m.source.clone(),
-            }).collect(),
+            models: engine
+                .models
+                .read()
+                .unwrap()
+                .iter()
+                .map(|m| SerializedModelInfo {
+                    id: m.id.clone(),
+                    name: m.name.clone(),
+                    description: m.description.clone(),
+                    path: m.path.clone(),
+                    parameter_count: m.parameter_count,
+                    state: m.state.clone(),
+                    loaded_at: m.loaded_at.clone(),
+                    source: m.source.clone(),
+                })
+                .collect(),
 
-            training_runs: engine.training_runs.read().unwrap().iter().map(|r| SerializedTrainingRun {
-                id: r.id.clone(),
-                name: r.name.clone(),
-                model_id: r.model_id.clone(),
-                status: r.status.clone(),
-                started_at: r.started_at,
-                current_epoch: r.current_epoch,
-                total_epochs: r.total_epochs,
-                best_val_loss: r.best_val_loss,
-                current_lr: r.current_lr,
-                total_steps: r.total_steps,
-                data_points: r.data_points.iter().map(|p| SerializedTrainingDataPoint {
-                    step: p.step,
-                    train_loss: p.train_loss,
-                    val_loss: p.val_loss,
-                    learning_rate: p.learning_rate,
-                    accuracy: p.accuracy,
-                    grad_norm: p.grad_norm,
-                }).collect(),
-                source: r.source.clone(),
-            }).collect(),
+            training_runs: engine
+                .training_runs
+                .read()
+                .unwrap()
+                .iter()
+                .map(|r| SerializedTrainingRun {
+                    id: r.id.clone(),
+                    name: r.name.clone(),
+                    model_id: r.model_id.clone(),
+                    status: r.status.clone(),
+                    started_at: r.started_at,
+                    current_epoch: r.current_epoch,
+                    total_epochs: r.total_epochs,
+                    best_val_loss: r.best_val_loss,
+                    current_lr: r.current_lr,
+                    total_steps: r.total_steps,
+                    data_points: r
+                        .data_points
+                        .iter()
+                        .map(|p| SerializedTrainingDataPoint {
+                            step: p.step,
+                            train_loss: p.train_loss,
+                            val_loss: p.val_loss,
+                            learning_rate: p.learning_rate,
+                            accuracy: p.accuracy,
+                            grad_norm: p.grad_norm,
+                        })
+                        .collect(),
+                    source: r.source.clone(),
+                })
+                .collect(),
 
             engine_mode: if engine.is_demo_mode() {
                 "demo".to_string()
@@ -559,58 +660,75 @@ impl Persistence {
             timestamp: chrono::Utc::now().to_rfc3339(),
         };
 
-        serde_json::to_string_pretty(&snapshot)
-            .map_err(|e| format!("Serialization error: {}", e))
+        serde_json::to_string_pretty(&snapshot).map_err(|e| format!("Serialization error: {}", e))
     }
 
     pub fn import_json(&self, engine: &DataEngineInner, json: &str) -> Result<(), String> {
         if json.len() > MAX_JSON_INPUT_SIZE {
             return Err(format!(
-                "JSON input too large: {} bytes (max {})", json.len(), MAX_JSON_INPUT_SIZE
+                "JSON input too large: {} bytes (max {})",
+                json.len(),
+                MAX_JSON_INPUT_SIZE
             ));
         }
 
-        let snapshot: EngineSnapshot = serde_json::from_str(json)
-            .map_err(|e| format!("Deserialization error: {}", e))?;
+        let snapshot: EngineSnapshot =
+            serde_json::from_str(json).map_err(|e| format!("Deserialization error: {}", e))?;
 
         if snapshot.agents.len() > MAX_AGENTS {
             return Err(format!(
-                "Too many agents: {} (max {})", snapshot.agents.len(), MAX_AGENTS
+                "Too many agents: {} (max {})",
+                snapshot.agents.len(),
+                MAX_AGENTS
             ));
         }
         if snapshot.activity.len() > MAX_ACTIVITY_IMPORT {
             return Err(format!(
-                "Too many activity entries: {} (max {})", snapshot.activity.len(), MAX_ACTIVITY_IMPORT
+                "Too many activity entries: {} (max {})",
+                snapshot.activity.len(),
+                MAX_ACTIVITY_IMPORT
             ));
         }
         if snapshot.notifications.len() > MAX_NOTIFICATIONS_IMPORT {
             return Err(format!(
-                "Too many notifications: {} (max {})", snapshot.notifications.len(), MAX_NOTIFICATIONS_IMPORT
+                "Too many notifications: {} (max {})",
+                snapshot.notifications.len(),
+                MAX_NOTIFICATIONS_IMPORT
             ));
         }
         if snapshot.config.len() > MAX_CONFIG_ENTRIES {
             return Err(format!(
-                "Too many config entries: {} (max {})", snapshot.config.len(), MAX_CONFIG_ENTRIES
+                "Too many config entries: {} (max {})",
+                snapshot.config.len(),
+                MAX_CONFIG_ENTRIES
             ));
         }
         if snapshot.skills.len() > MAX_SKILLS_IMPORT {
             return Err(format!(
-                "Too many skills: {} (max {})", snapshot.skills.len(), MAX_SKILLS_IMPORT
+                "Too many skills: {} (max {})",
+                snapshot.skills.len(),
+                MAX_SKILLS_IMPORT
             ));
         }
         if snapshot.workflows.len() > MAX_WORKFLOWS_IMPORT {
             return Err(format!(
-                "Too many workflows: {} (max {})", snapshot.workflows.len(), MAX_WORKFLOWS_IMPORT
+                "Too many workflows: {} (max {})",
+                snapshot.workflows.len(),
+                MAX_WORKFLOWS_IMPORT
             ));
         }
         if snapshot.models.len() > MAX_MODELS_IMPORT {
             return Err(format!(
-                "Too many models: {} (max {})", snapshot.models.len(), MAX_MODELS_IMPORT
+                "Too many models: {} (max {})",
+                snapshot.models.len(),
+                MAX_MODELS_IMPORT
             ));
         }
         if snapshot.training_runs.len() > MAX_TRAINING_RUNS_IMPORT {
             return Err(format!(
-                "Too many training runs: {} (max {})", snapshot.training_runs.len(), MAX_TRAINING_RUNS_IMPORT
+                "Too many training runs: {} (max {})",
+                snapshot.training_runs.len(),
+                MAX_TRAINING_RUNS_IMPORT
             ));
         }
 
@@ -686,12 +804,15 @@ impl Persistence {
             }
         }
 
-        let total_training_points: usize = snapshot.training_runs.iter().map(|run| run.data_points.len()).sum();
+        let total_training_points: usize = snapshot
+            .training_runs
+            .iter()
+            .map(|run| run.data_points.len())
+            .sum();
         if total_training_points > MAX_TRAINING_POINTS_IMPORT {
             return Err(format!(
                 "Too many training data points: {} (max {})",
-                total_training_points,
-                MAX_TRAINING_POINTS_IMPORT
+                total_training_points, MAX_TRAINING_POINTS_IMPORT
             ));
         }
         for run in &snapshot.training_runs {
@@ -711,33 +832,53 @@ impl Persistence {
             }
         }
 
-        let agents: Vec<_> = snapshot.agents.iter().map(|agent| {
-            (agent.id.clone(), crate::engine::InternalAgent {
-                state: agent.state.clone(),
-                role: agent.role.clone(),
-                metrics_json: agent.metrics_json.clone(),
+        let agents: Vec<_> = snapshot
+            .agents
+            .iter()
+            .map(|agent| {
+                (
+                    agent.id.clone(),
+                    crate::engine::InternalAgent {
+                        state: agent.state.clone(),
+                        role: agent.role.clone(),
+                        metrics_json: agent.metrics_json.clone(),
+                    },
+                )
             })
-        }).collect();
+            .collect();
 
-        let activity: VecDeque<_> = snapshot.activity.iter().map(|a| {
-            crate::engine::InternalActivity {
-                id: a.id.clone(), timestamp: a.timestamp,
-                command: a.command.clone(), success: a.success,
+        let activity: VecDeque<_> = snapshot
+            .activity
+            .iter()
+            .map(|a| crate::engine::InternalActivity {
+                id: a.id.clone(),
+                timestamp: a.timestamp,
+                command: a.command.clone(),
+                success: a.success,
                 output: a.output.clone(),
-            }
-        }).collect();
+            })
+            .collect();
 
-        let notifications: VecDeque<_> = snapshot.notifications.iter().map(|n| {
-            crate::engine::InternalNotification {
-                id: n.id.clone(), timestamp: n.timestamp,
-                channel: n.channel.clone(), priority: n.priority.clone(),
-                category: n.category.clone(), title: n.title.clone(),
-                body: n.body.clone(), read: n.read, delivered: n.delivered,
-            }
-        }).collect();
+        let notifications: VecDeque<_> = snapshot
+            .notifications
+            .iter()
+            .map(|n| crate::engine::InternalNotification {
+                id: n.id.clone(),
+                timestamp: n.timestamp,
+                channel: n.channel.clone(),
+                priority: n.priority.clone(),
+                category: n.category.clone(),
+                title: n.title.clone(),
+                body: n.body.clone(),
+                read: n.read,
+                delivered: n.delivered,
+            })
+            .collect();
 
-        let skills: VecDeque<_> = snapshot.skills.iter().map(|s| {
-            crate::engine::InternalSkill {
+        let skills: VecDeque<_> = snapshot
+            .skills
+            .iter()
+            .map(|s| crate::engine::InternalSkill {
                 id: s.id.clone(),
                 name: s.name.clone(),
                 description: s.description.clone(),
@@ -748,11 +889,13 @@ impl Persistence {
                 allow_level: s.allow_level.clone(),
                 instructions: s.instructions.clone(),
                 source: s.source.clone(),
-            }
-        }).collect();
+            })
+            .collect();
 
-        let workflows: VecDeque<_> = snapshot.workflows.iter().map(|w| {
-            crate::engine::InternalWorkflow {
+        let workflows: VecDeque<_> = snapshot
+            .workflows
+            .iter()
+            .map(|w| crate::engine::InternalWorkflow {
                 id: w.id.clone(),
                 name: w.name.clone(),
                 status: w.status.clone(),
@@ -760,11 +903,13 @@ impl Persistence {
                 duration: w.duration,
                 event_count: w.event_count,
                 source: w.source.clone(),
-            }
-        }).collect();
+            })
+            .collect();
 
-        let models: VecDeque<_> = snapshot.models.iter().map(|m| {
-            crate::engine::InternalModelInfo {
+        let models: VecDeque<_> = snapshot
+            .models
+            .iter()
+            .map(|m| crate::engine::InternalModelInfo {
                 id: m.id.clone(),
                 name: m.name.clone(),
                 description: m.description.clone(),
@@ -773,11 +918,13 @@ impl Persistence {
                 state: m.state.clone(),
                 loaded_at: m.loaded_at.clone(),
                 source: m.source.clone(),
-            }
-        }).collect();
+            })
+            .collect();
 
-        let training_runs: Vec<_> = snapshot.training_runs.iter().map(|run| {
-            crate::engine::InternalTrainingRun {
+        let training_runs: Vec<_> = snapshot
+            .training_runs
+            .iter()
+            .map(|run| crate::engine::InternalTrainingRun {
                 id: run.id.clone(),
                 name: run.name.clone(),
                 model_id: run.model_id.clone(),
@@ -788,17 +935,21 @@ impl Persistence {
                 best_val_loss: run.best_val_loss,
                 current_lr: run.current_lr,
                 total_steps: run.total_steps,
-                data_points: run.data_points.iter().map(|p| crate::engine::InternalDataPoint {
-                    step: p.step,
-                    train_loss: p.train_loss,
-                    val_loss: p.val_loss,
-                    learning_rate: p.learning_rate,
-                    accuracy: p.accuracy,
-                    grad_norm: p.grad_norm,
-                }).collect(),
+                data_points: run
+                    .data_points
+                    .iter()
+                    .map(|p| crate::engine::InternalDataPoint {
+                        step: p.step,
+                        train_loss: p.train_loss,
+                        val_loss: p.val_loss,
+                        learning_rate: p.learning_rate,
+                        accuracy: p.accuracy,
+                        grad_norm: p.grad_norm,
+                    })
+                    .collect(),
                 source: run.source.clone(),
-            }
-        }).collect();
+            })
+            .collect();
 
         engine.agents.clear();
         for (id, agent) in agents {

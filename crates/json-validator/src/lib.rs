@@ -217,11 +217,7 @@ impl JsonValidator {
     }
 
     #[napi]
-    pub fn validate_schema(
-        &self,
-        json_str: String,
-        schema: SchemaDefinition,
-    ) -> ValidationResult {
+    pub fn validate_schema(&self, json_str: String, schema: SchemaDefinition) -> ValidationResult {
         let mut errors = Vec::new();
         let mut warnings = Vec::new();
 
@@ -302,12 +298,22 @@ impl JsonValidator {
 
             if let Some(min) = schema.min_fields {
                 if (map.len() as u32) < min {
-                    errors.push(format!("{}: minimum {} fields, got {}", path, min, map.len()));
+                    errors.push(format!(
+                        "{}: minimum {} fields, got {}",
+                        path,
+                        min,
+                        map.len()
+                    ));
                 }
             }
             if let Some(max) = schema.max_fields {
                 if (map.len() as u32) > max {
-                    errors.push(format!("{}: maximum {} fields, got {}", path, max, map.len()));
+                    errors.push(format!(
+                        "{}: maximum {} fields, got {}",
+                        path,
+                        max,
+                        map.len()
+                    ));
                 }
             }
 
@@ -332,12 +338,22 @@ impl JsonValidator {
         if let Value::Array(arr) = value {
             if let Some(min) = schema.min_items {
                 if (arr.len() as u32) < min {
-                    errors.push(format!("{}: minimum {} items, got {}", path, min, arr.len()));
+                    errors.push(format!(
+                        "{}: minimum {} items, got {}",
+                        path,
+                        min,
+                        arr.len()
+                    ));
                 }
             }
             if let Some(max) = schema.max_items {
                 if (arr.len() as u32) > max {
-                    errors.push(format!("{}: maximum {} items, got {}", path, max, arr.len()));
+                    errors.push(format!(
+                        "{}: maximum {} items, got {}",
+                        path,
+                        max,
+                        arr.len()
+                    ));
                 }
             }
             if let Some(item_schema) = &schema.items_schema {
@@ -368,7 +384,10 @@ impl JsonValidator {
                         }
                     }
                     Err(e) => {
-                        errors.push(format!("{}: invalid regex pattern '{}': {}", path, pattern, e));
+                        errors.push(format!(
+                            "{}: invalid regex pattern '{}': {}",
+                            path, pattern, e
+                        ));
                     }
                 }
             }
@@ -399,7 +418,14 @@ impl JsonValidator {
         let mut has_nulls = false;
         let mut has_nested = false;
 
-        self.analyze_value(&value, &mut types, &mut max_arr_len, &mut has_nulls, &mut has_nested, 0);
+        self.analyze_value(
+            &value,
+            &mut types,
+            &mut max_arr_len,
+            &mut has_nulls,
+            &mut has_nested,
+            0,
+        );
 
         JsonStats {
             size_bytes: u32::try_from(json_str.len()).unwrap_or(u32::MAX),

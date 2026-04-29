@@ -31,12 +31,22 @@ impl Metrics {
     }
 
     pub fn record_request(&self, path: &str, status: u16, latency_ms: f64) {
-        self.inner.total_requests.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.inner
+            .total_requests
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
-        *self.inner.request_count.entry(path.to_string()).or_insert(0) += 1;
+        *self
+            .inner
+            .request_count
+            .entry(path.to_string())
+            .or_insert(0) += 1;
         *self.inner.status_counts.entry(status).or_insert(0) += 1;
 
-        let mut latencies = self.inner.latencies.entry("all".to_string()).or_insert_with(Vec::new);
+        let mut latencies = self
+            .inner
+            .latencies
+            .entry("all".to_string())
+            .or_insert_with(Vec::new);
         latencies.push(latency_ms);
         if latencies.len() > 1000 {
             latencies.remove(0);
@@ -45,17 +55,29 @@ impl Metrics {
 
     pub fn snapshot(&self) -> MetricsSnapshot {
         let uptime = self.inner.start_time.elapsed().as_secs_f64();
-        let total = self.inner.total_requests.load(std::sync::atomic::Ordering::Relaxed);
+        let total = self
+            .inner
+            .total_requests
+            .load(std::sync::atomic::Ordering::Relaxed);
 
-        let requests: HashMap<String, u64> = self.inner.request_count.iter()
+        let requests: HashMap<String, u64> = self
+            .inner
+            .request_count
+            .iter()
             .map(|e| (e.key().clone(), *e.value()))
             .collect();
 
-        let statuses: HashMap<u16, u64> = self.inner.status_counts.iter()
+        let statuses: HashMap<u16, u64> = self
+            .inner
+            .status_counts
+            .iter()
             .map(|e| (*e.key(), *e.value()))
             .collect();
 
-        let latencies = self.inner.latencies.get("all")
+        let latencies = self
+            .inner
+            .latencies
+            .get("all")
             .map(|v| v.clone())
             .unwrap_or_default();
 
@@ -76,7 +98,9 @@ impl Metrics {
 }
 
 fn percentile(data: &[f64], p: f64) -> f64 {
-    if data.is_empty() { return 0.0; }
+    if data.is_empty() {
+        return 0.0;
+    }
     let mut sorted = data.to_vec();
     sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
     let idx = ((p / 100.0) * sorted.len() as f64).ceil() as usize;

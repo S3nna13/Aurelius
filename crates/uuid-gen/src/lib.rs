@@ -54,7 +54,12 @@ pub fn uuid_variant(uuid_str: String) -> String {
 
 #[napi]
 pub fn uuid_short() -> String {
-    Uuid::new_v4().to_string().split('-').next().unwrap().to_string()
+    Uuid::new_v4()
+        .to_string()
+        .split('-')
+        .next()
+        .unwrap()
+        .to_string()
 }
 
 #[napi]

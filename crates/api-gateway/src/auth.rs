@@ -1,15 +1,15 @@
 use std::sync::Arc;
 
 use axum::{
+    Json,
     extract::{Request, State},
     http::StatusCode,
     middleware::Next,
     response::IntoResponse,
-    Json,
 };
 use chrono::{Duration, Utc};
 use dashmap::DashMap;
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -66,13 +66,16 @@ impl AuthService {
 
     #[allow(dead_code)]
     pub fn register_api_key(&self, key: &str, sub: &str, role: &str, scopes: Vec<String>) {
-        self.api_keys.insert(key.to_string(), Claims {
-            sub: sub.to_string(),
-            role: role.to_string(),
-            scopes,
-            exp: 0,
-            iat: 0,
-        });
+        self.api_keys.insert(
+            key.to_string(),
+            Claims {
+                sub: sub.to_string(),
+                role: role.to_string(),
+                scopes,
+                exp: 0,
+                iat: 0,
+            },
+        );
     }
 
     #[allow(dead_code)]
@@ -114,22 +117,37 @@ pub async fn auth_middleware(
     let token = match auth_header {
         Some(value) if value.to_lowercase().starts_with("bearer ") => value[7..].to_string(),
         _ => {
-            return (StatusCode::UNAUTHORIZED, Json(AuthError {
-                error: "unauthorized".to_string(),
-                message: "Missing or invalid Authorization header".to_string(),
-            })).into_response();
+            return (
+                StatusCode::UNAUTHORIZED,
+                Json(AuthError {
+                    error: "unauthorized".to_string(),
+                    message: "Missing or invalid Authorization header".to_string(),
+                }),
+            )
+                .into_response();
         }
     };
 
     match auth_service.validate_token(&token) {
         Ok(_claims) => next.run(req).await.into_response(),
-        Err(_) => (StatusCode::UNAUTHORIZED, Json(AuthError {
-            error: "unauthorized".to_string(),
-            message: "Invalid or expired token".to_string(),
-        })).into_response(),
+        Err(_) => (
+            StatusCode::UNAUTHORIZED,
+            Json(AuthError {
+                error: "unauthorized".to_string(),
+                message: "Invalid or expired token".to_string(),
+            }),
+        )
+            .into_response(),
     }
 }
 
 pub fn public_paths() -> Vec<&'static str> {
-    vec!["/health", "/healthz", "/readyz", "/auth/login", "/openapi.json", "/docs"]
+    vec![
+        "/health",
+        "/healthz",
+        "/readyz",
+        "/auth/login",
+        "/openapi.json",
+        "/docs",
+    ]
 }

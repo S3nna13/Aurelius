@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
 
-use napi_derive::napi;
 use chrono::{DateTime, Utc};
+use napi_derive::napi;
 use uuid::Uuid;
 
 const MAX_SESSIONS: usize = 100_000;
@@ -74,14 +74,16 @@ impl SessionManager {
         let ttl = options.ttl_seconds.unwrap_or(self.default_ttl_seconds);
         if ttl <= 0 || ttl > MAX_TTL_SECONDS {
             return Err(napi::Error::from_reason(format!(
-                "TTL must be between 1 and {} seconds", MAX_TTL_SECONDS
+                "TTL must be between 1 and {} seconds",
+                MAX_TTL_SECONDS
             )));
         }
 
         let metadata_size = options.metadata.as_ref().map(|m| m.len()).unwrap_or(0);
         if metadata_size > MAX_METADATA_SIZE {
             return Err(napi::Error::from_reason(format!(
-                "Metadata size {} exceeds maximum of {} bytes", metadata_size, MAX_METADATA_SIZE
+                "Metadata size {} exceeds maximum of {} bytes",
+                metadata_size, MAX_METADATA_SIZE
             )));
         }
 
@@ -108,7 +110,8 @@ impl SessionManager {
         let mut sessions = self.sessions.lock().unwrap();
         self.cleanup_expired(&mut sessions);
 
-        let user_count = sessions.values()
+        let user_count = sessions
+            .values()
             .filter(|e| e.session.user_id == session.user_id)
             .count();
         if user_count >= MAX_SESSIONS_PER_USER as usize {
@@ -120,7 +123,8 @@ impl SessionManager {
 
         if sessions.len() >= MAX_SESSIONS {
             return Err(napi::Error::from_reason(format!(
-                "Maximum sessions ({}) reached", MAX_SESSIONS
+                "Maximum sessions ({}) reached",
+                MAX_SESSIONS
             )));
         }
 
@@ -145,13 +149,11 @@ impl SessionManager {
     pub fn validate_session(&self, session_id: String) -> SessionValidation {
         let sessions = self.sessions.lock().unwrap();
         match sessions.get(&session_id) {
-            Some(entry) if Utc::now() < entry.expires_at => {
-                SessionValidation {
-                    valid: true,
-                    session: Some(entry.session.clone()),
-                    reason: None,
-                }
-            }
+            Some(entry) if Utc::now() < entry.expires_at => SessionValidation {
+                valid: true,
+                session: Some(entry.session.clone()),
+                reason: None,
+            },
             Some(_) => SessionValidation {
                 valid: false,
                 session: None,
@@ -186,7 +188,8 @@ impl SessionManager {
     #[napi]
     pub fn list_user_sessions(&self, user_id: String) -> Vec<Session> {
         let sessions = self.sessions.lock().unwrap();
-        sessions.values()
+        sessions
+            .values()
             .filter(|e| e.session.user_id == user_id && Utc::now() < e.expires_at)
             .map(|e| e.session.clone())
             .collect()

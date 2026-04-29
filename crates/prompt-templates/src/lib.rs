@@ -177,11 +177,9 @@ impl PromptEngine {
 
         let variables = extract_variables(template);
         let has_partials = template.contains("{{>");
-        let has_conditionals = template.contains("{{#")
-            || template.contains("{{^")
-            || template.contains("{{/");
-        let has_loops = template.contains("{{#each")
-            || template.contains("{{#for");
+        let has_conditionals =
+            template.contains("{{#") || template.contains("{{^") || template.contains("{{/");
+        let has_loops = template.contains("{{#each") || template.contains("{{#for");
 
         Ok(TemplateInfo {
             name: template_name,
@@ -199,11 +197,7 @@ impl PromptEngine {
     }
 
     #[napi]
-    pub fn validate_template(
-        &self,
-        template: String,
-        required_vars: Vec<String>,
-    ) -> Vec<String> {
+    pub fn validate_template(&self, template: String, required_vars: Vec<String>) -> Vec<String> {
         let found = extract_variables(&template);
         let mut missing = Vec::new();
         for var in &required_vars {
@@ -236,27 +230,27 @@ impl PromptEngine {
 
         if let Some(sys) = system {
             let sanitized = sanitize_content(&sys);
-            let rendered = self
-                .render_string(sanitized, variables.clone())
-                .unwrap_or(RenderedPrompt {
-                    text: sys,
-                    variables_used: vec![],
-                    variables_missing: vec![],
-                    token_estimate: 0,
-                });
+            let rendered =
+                self.render_string(sanitized, variables.clone())
+                    .unwrap_or(RenderedPrompt {
+                        text: sys,
+                        variables_used: vec![],
+                        variables_missing: vec![],
+                        token_estimate: 0,
+                    });
             parts.push(format!("<|im_start|>system\n{}<|im_end|>", rendered.text));
         }
 
         for msg in &messages {
             let sanitized = sanitize_content(&msg.content);
-            let rendered = self
-                .render_string(sanitized, variables.clone())
-                .unwrap_or(RenderedPrompt {
-                    text: msg.content.clone(),
-                    variables_used: vec![],
-                    variables_missing: vec![],
-                    token_estimate: 0,
-                });
+            let rendered =
+                self.render_string(sanitized, variables.clone())
+                    .unwrap_or(RenderedPrompt {
+                        text: msg.content.clone(),
+                        variables_used: vec![],
+                        variables_missing: vec![],
+                        token_estimate: 0,
+                    });
             parts.push(format!(
                 "<|im_start|>{}\n{}<|im_end|>",
                 msg.role, rendered.text
@@ -298,14 +292,14 @@ impl PromptEngine {
 
         if let Some(sys) = system {
             let sanitized = sanitize_content(&sys);
-            let rendered = self
-                .render_string(sanitized, variables.clone())
-                .unwrap_or(RenderedPrompt {
-                    text: sys,
-                    variables_used: vec![],
-                    variables_missing: vec![],
-                    token_estimate: 0,
-                });
+            let rendered =
+                self.render_string(sanitized, variables.clone())
+                    .unwrap_or(RenderedPrompt {
+                        text: sys,
+                        variables_used: vec![],
+                        variables_missing: vec![],
+                        token_estimate: 0,
+                    });
             parts.push(format!(
                 "<|start_header_id|>system<|end_header_id|>\n\n{}<|eot_id|>",
                 rendered.text
@@ -314,14 +308,14 @@ impl PromptEngine {
 
         for msg in &messages {
             let sanitized = sanitize_content(&msg.content);
-            let rendered = self
-                .render_string(sanitized, variables.clone())
-                .unwrap_or(RenderedPrompt {
-                    text: msg.content.clone(),
-                    variables_used: vec![],
-                    variables_missing: vec![],
-                    token_estimate: 0,
-                });
+            let rendered =
+                self.render_string(sanitized, variables.clone())
+                    .unwrap_or(RenderedPrompt {
+                        text: msg.content.clone(),
+                        variables_used: vec![],
+                        variables_missing: vec![],
+                        token_estimate: 0,
+                    });
             parts.push(format!(
                 "<|start_header_id|>{}<|end_header_id|>\n\n{}<|eot_id|>",
                 msg.role, rendered.text
@@ -349,16 +343,23 @@ const VALID_ROLES: &[&str] = &["system", "user", "assistant", "tool"];
 
 fn validate_role(role: &str) -> Option<String> {
     if !VALID_ROLES.contains(&role) {
-        return Some(format!("Invalid role '{}': must be one of {:?}", role, VALID_ROLES));
+        return Some(format!(
+            "Invalid role '{}': must be one of {:?}",
+            role, VALID_ROLES
+        ));
     }
     if role.contains(char::is_whitespace) || role.contains('<') || role.contains('>') {
-        return Some(format!("Invalid role '{}': contains forbidden characters", role));
+        return Some(format!(
+            "Invalid role '{}': contains forbidden characters",
+            role
+        ));
     }
     None
 }
 
 fn sanitize_content(content: &str) -> String {
-    content.replace("<|im_start|>", "")
+    content
+        .replace("<|im_start|>", "")
         .replace("<|im_end|>", "")
         .replace("<|eot_id|>", "")
         .replace("<|begin_of_text|>", "")
