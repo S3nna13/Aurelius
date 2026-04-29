@@ -1,11 +1,3 @@
-"""Offload optimizer states to SSD when training large models on limited RAM.
-
-Saves AdamW/Muon momentum buffers to disk during forward+backward pass,
-loads them back for the optimizer step. Trades compute time for memory.
-Useful for 3B+ training on 32GB M1 Pro where optimizer state alone can
-exceed available memory during the backward pass.
-"""
-
 from __future__ import annotations
 
 import shutil
@@ -17,68 +9,49 @@ import torch
 
 
 class OptimizerOffloader:
-    """Swap optimizer states between RAM and SSD.
-
-    Usage:
-        offloader = OptimizerOffloader(optimizer)
-        # After forward+backward, before optimizer.step():
-        offloader.load_from_disk()
-        optimizer.step()
-        # After optimizer.step(), before next forward:
-        offloader.offload_to_disk()
-
-    Memory saved: 2x model size in GB (AdamW states: 2 copies per param)
-    For 3B model: ~24GB saved (2 * 3B * 4 bytes = 24GB of fp32 states)
-    """
-
-    def __init__(
-        self,
-        optimizer: torch.optim.Optimizer,
-        offload_dir: str | None = None,
-    ):
+    def __init__(self, optimizer: torch.optim.Optimizer, offload_dir: str | Path | None = None):
         self.optimizer = optimizer
-        self.offload_dir = Path(offload_dir or tempfile.mkdtemp(prefix="aurelius_opt_"))
+        self.offload_dir = Path(offload_dir) if offload_dir else Path(tempfile.mkdtemp(prefix="aurelius_opt_offload_"))
         self.offload_dir.mkdir(parents=True, exist_ok=True)
+        self._param_ids: list[int] = []
         self._offloaded: list[tuple[int, str]] = []
+        for group in optimizer.param_groups:
+            for p in group["params"]:
+                self._param_ids.append(id(p))
 
     def offload_to_disk(self) -> None:
-        """Move all optimizer state tensors to SSD, freeing RAM.
-
-        After this call, the optimizer state dict is on disk.
-        Call ``load_from_disk()`` before ``optimizer.step()``.
-        """
-        for param_id, param_state in self.optimizer.state.items():
-            for key, tensor in list(param_state.items()):
-                if isinstance(tensor, torch.Tensor) and tensor.numel() > 0:
-                    path = self.offload_dir / f"param_{id(param_id)}_{key}.pt"
-                    torch.save(tensor.detach().cpu(), path)
-                    param_state[key] = tensor.new_zeros(1)  # Tiny placeholder
-                    self._offloaded.append((param_id, key))
+        self._offloaded.clear()
+        for idx, (param_id, state) in enumerate(self.optimizer.state.items()):
+            if not state:
+                continue
+            path = self.offload_dir / f"param_{idx}.pt"
+            torch.save(state, path)
+            for key, value in list(state.items()):
+                if isinstance(value, torch.Tensor):
+                    state[key] = value.new_zeros(1)
+                    self._offloaded.append((id(param_id), key))
 
     def load_from_disk(self) -> None:
-        """Load optimizer states from SSD back to RAM for the optimizer step."""
-        for param_id, key in self._offloaded:
-            if param_id not in self.optimizer.state:
-                continue
-            path = self.offload_dir / f"param_{id(param_id)}_{key}.pt"
+        for idx, (param_id, state) in enumerate(self.optimizer.state.items()):
+            path = self.offload_dir / f"param_{idx}.pt"
             if path.exists():
-                device = next(
-                    (p.device for p in self.optimizer.param_groups[0]["params"]
-                     if p is param_id),
-                    torch.device("cpu"),
-                )
-                state_tensor = torch.load(path, map_location=device, weights_only=True)
-                self.optimizer.state[param_id][key] = state_tensor
+                loaded = torch.load(path, map_location="cpu", weights_only=True)
+                self.optimizer.state[param_id].update(loaded)
         self._offloaded.clear()
 
     def cleanup(self) -> None:
-        """Remove offloaded files from disk."""
         if self.offload_dir.exists():
             shutil.rmtree(self.offload_dir)
+        self._offloaded.clear()
 
     def bytes_on_disk(self) -> int:
-        """Return total bytes currently offloaded to disk."""
+        if not self.offload_dir.exists():
+            return 0
         total = 0
         for path in self.offload_dir.glob("*.pt"):
             total += path.stat().st_size
         return total
+
+    @property
+    def disk_usage_bytes(self) -> int:
+        return self.bytes_on_disk()

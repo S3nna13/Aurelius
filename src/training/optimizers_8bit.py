@@ -1,94 +1,117 @@
-"""8-bit optimizer wrappers for memory-constrained training on Apple Silicon.
-
-Falls back to standard AdamW/Muon when 8-bit is unavailable.
-Uses bitsandbytes 8-bit AdamW on CUDA, custom CPU-offloaded 8-bit on MPS.
-"""
-
 from __future__ import annotations
-
-from typing import Any
 
 import torch
 from torch.optim import Optimizer
 
 
-def get_8bit_adamw(
-    params: list[torch.nn.Parameter] | list[dict[str, Any]],
-    lr: float = 3e-4,
-    betas: tuple[float, float] = (0.9, 0.95),
-    eps: float = 1e-8,
-    weight_decay: float = 0.1,
-) -> Optimizer:
-    """Return 8-bit AdamW if bitsandbytes is available, else standard AdamW.
-
-    On CUDA with bitsandbytes installed, uses AdamW8bit (~half optimizer memory).
-    On MPS or when bitsandbytes is absent, falls back to standard AdamW.
-    """
+def _bitsandbytes_available() -> bool:
     try:
-        import bitsandbytes as bnb
-        if torch.cuda.is_available():
-            return bnb.optim.AdamW8bit(  # type: ignore[return-value]
-                params, lr=lr, betas=betas, eps=eps, weight_decay=weight_decay,
-            )
+        import bitsandbytes
+        return hasattr(bitsandbytes.optim, "AdamW8bit")
     except ImportError:
-        pass
-
-    return torch.optim.AdamW(params, lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
+        return False
 
 
-def get_8bit_muon(
-    params: list[torch.nn.Parameter],
-    lr: float = 0.02,
-    momentum: float = 0.95,
-    weight_decay: float = 0.1,
-) -> Any:
-    """Return Muon with 8-bit momentum buffer support.
+def _can_use_8bit() -> bool:
+    return torch.cuda.is_available() and _bitsandbytes_available()
 
-    When bitsandbytes is available on CUDA, stores momentum states in 8-bit.
-    On MPS or CPU, falls back to standard Muon with fp32 momentum.
-    Muon halves optimizer memory compared to AdamW by storing only momentum.
-    8-bit Muon further halves that to ~25% of AdamW's state.
-    """
+
+def get_8bit_adamw(params, lr=3e-4, betas=(0.9, 0.95), eps=1e-8, weight_decay=0.1):
+    if _can_use_8bit():
+        import bitsandbytes as bnb
+        return bnb.optim.AdamW8bit(
+            params, lr=lr, betas=betas, eps=eps, weight_decay=weight_decay,
+        )
+    return torch.optim.AdamW(
+        params, lr=lr, betas=betas, eps=eps, weight_decay=weight_decay,
+    )
+
+
+def get_8bit_muon(params, lr=0.02, momentum=0.95, weight_decay=0.1, ns_steps=5):
+    if _can_use_8bit():
+        return Muon8bit(
+            params,
+            lr=lr,
+            momentum=momentum,
+            weight_decay=weight_decay,
+            ns_steps=ns_steps,
+        )
     from src.training.muon import Muon
-
-    use_8bit = False
-    try:
-        import bitsandbytes as bnb
-        if torch.cuda.is_available():
-            use_8bit = True
-    except ImportError:
-        pass
-
-    if use_8bit:
-        return Muon8bit(params, lr=lr, momentum=momentum, weight_decay=weight_decay)
-
-    return Muon(params, lr=lr, momentum=momentum, weight_decay=weight_decay)
+    return Muon(
+        params,
+        lr=lr,
+        momentum=momentum,
+        weight_decay=weight_decay,
+        ns_steps=ns_steps,
+    )
 
 
-class Muon8bit(Optimizer):
-    """Muon optimizer with 8-bit momentum via bitsandbytes.
-
-    Only works on CUDA. Falls back gracefully to standard Muon on other devices.
-    """
-
+class AdamW8bitWrapper(Optimizer):
     def __init__(
         self,
-        params: list[torch.nn.Parameter],
+        params,
+        lr: float = 3e-4,
+        betas: tuple[float, float] = (0.9, 0.95),
+        eps: float = 1e-8,
+        weight_decay: float = 0.1,
+        use_8bit: bool = True,
+    ):
+        self._use_8bit = use_8bit and self._bitsandbytes_available()
+        if self._use_8bit:
+            import bitsandbytes as bnb
+            self._opt = bnb.optim.AdamW8bit(params, lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
+        else:
+            self._opt = torch.optim.AdamW(params, lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
+        super().__init__(params, dict(lr=lr, betas=betas, eps=eps, weight_decay=weight_decay))
+
+    @staticmethod
+    def _bitsandbytes_available() -> bool:
+        try:
+            import bitsandbytes
+            return hasattr(bitsandbytes.optim, "AdamW8bit")
+        except ImportError:
+            return False
+
+    @property
+    def is_8bit(self) -> bool:
+        return self._use_8bit
+
+    def step(self, closure=None):
+        return self._opt.step(closure)
+
+    def zero_grad(self, set_to_none: bool = True):
+        self._opt.zero_grad(set_to_none)
+
+    def state_dict(self):
+        return self._opt.state_dict()
+
+    def load_state_dict(self, state_dict):
+        self._opt.load_state_dict(state_dict)
+
+    def __repr__(self) -> str:
+        return f"AdamW8bitWrapper(8bit={self._use_8bit})"
+
+
+class Muon8bit(torch.optim.Optimizer):
+    def __init__(
+        self,
+        params,
         lr: float = 0.02,
         momentum: float = 0.95,
-        weight_decay: float = 0.1,
+        weight_decay: float = 0.0,
+        ns_steps: int = 5,
+        momentum_8bit: bool = True,
     ):
-        try:
-            import bitsandbytes as bnb
-            self.bnb = bnb
-        except ImportError:
+        if not _bitsandbytes_available():
             raise ImportError("bitsandbytes required for Muon8bit")
-
-        defaults = {"lr": lr, "momentum": momentum, "weight_decay": weight_decay}
+        defaults = dict(lr=lr, momentum=momentum, weight_decay=weight_decay, ns_steps=ns_steps)
         super().__init__(params, defaults)
+        self._momentum_8bit = momentum_8bit
 
     @torch.no_grad()
-    def step(self, closure: Any = None) -> Any:
+    def step(self, closure=None):
+        from src.training.muon import _newton_schulz
+
         loss = None
         if closure is not None:
             with torch.enable_grad():
@@ -97,24 +120,36 @@ class Muon8bit(Optimizer):
         for group in self.param_groups:
             lr = group["lr"]
             momentum = group["momentum"]
-            weight_decay = group["weight_decay"]
+            wd = group["weight_decay"]
+            ns_steps = group["ns_steps"]
 
             for p in group["params"]:
                 if p.grad is None:
                     continue
-                grad = p.grad.data
+                if p.grad.ndim < 2:
+                    raise ValueError("Muon requires 2D+ parameters.")
 
-                if weight_decay != 0:
-                    grad = grad.add(p.data, alpha=weight_decay)
-
+                g = p.grad.float()
                 state = self.state[p]
-                if "momentum_buffer" not in state:
-                    buf = state["momentum_buffer"] = torch.zeros_like(p.data, dtype=torch.uint8)
-                    self.bnb.optim.GlobalStateManager.initialize_device()
-                else:
-                    buf = state["momentum_buffer"]
 
-                buf = self.bnb.optim.Adam8bit.update_momentum_8bit(p.data, grad, buf, momentum)
-                p.data.add_(grad, alpha=-lr)
+                if "momentum_buffer" not in state:
+                    state["momentum_buffer"] = torch.zeros_like(g)
+
+                buf = state["momentum_buffer"]
+                buf.mul_(momentum).add_(g)
+
+                g_orth = _newton_schulz(buf.view(buf.shape[0], -1), steps=ns_steps)
+                g_orth = g_orth.view_as(p)
+
+                rms = g_orth.pow(2).mean().sqrt().clamp(min=1e-8)
+                g_orth = g_orth / rms
+
+                if wd != 0.0:
+                    p.mul_(1.0 - lr * wd)
+
+                p.add_(g_orth.to(p.dtype), alpha=-lr)
+
+                if self._momentum_8bit:
+                    state["momentum_buffer"] = state["momentum_buffer"].to(torch.float8_e4m3fn)
 
         return loss
