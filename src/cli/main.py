@@ -23,7 +23,10 @@ import sys
 import textwrap
 from pathlib import Path
 
-__version__ = "0.1.0"
+__version__ = "1.0.0"
+
+LIGHTNING_BLUE = "#00BFFF"
+DRAGON_GREEN = "#00FF88"
 
 # ── rich imports (graceful fallback if not installed) ─────────────────────────
 
@@ -48,17 +51,17 @@ _THEME = None
 if _RICH:
     _THEME = Theme(
         {
-            "aurelius.dragon": "bold bright_red",
+            "aurelius.dragon": f"bold {LIGHTNING_BLUE}",
             "aurelius.user": "bold bright_white",
-            "aurelius.assistant": "bold bright_green",
+            "aurelius.assistant": f"bold {DRAGON_GREEN}",
             "aurelius.system": "dim cyan",
-            "aurelius.cmd": "bold bright_cyan",
+            "aurelius.cmd": f"bold {LIGHTNING_BLUE}",
             "aurelius.dim": "dim white",
             "aurelius.warn": "bold yellow",
             "aurelius.error": "bold red",
-            "aurelius.ok": "bold green",
-            "aurelius.border": "bright_red",
-            "aurelius.header": "bold bright_red",
+            "aurelius.ok": f"bold {DRAGON_GREEN}",
+            "aurelius.border": LIGHTNING_BLUE,
+            "aurelius.header": f"bold {LIGHTNING_BLUE}",
         }
     )
 
@@ -124,44 +127,7 @@ def MAGENTA(t):
 
 # ── Dragon ASCII art mascot ───────────────────────────────────────────────────
 
-DRAGON = r"""
-                                                    /===-_---~~~~~~~~~------____
-                                                   |===-~___                _,-'
-                    -==\\                         `//~\\   ~~~~`---.___.-~~
-                ______-==|                         | |  \\           _-~`
-          __--~~~  ,-/-==\\                        | |   `\        ,'
-       _-~       /'    |  \\                      / /      \      /
-     .'         /       |   \\                   / /        \   /'
-    /  ____  / |          |   `\                / /          \,/
-   \_'/  `~\/  /',  .     |    `\            __/ /            /'
-    |   |    |    /'      |     `\       ___/ /             /'
-    |   |    |  /'       |       '     /  ___/            /'
-     \       /'          |            /          /'
-      \     /            |           /          /'
-       \  /'             |          /         /'
-        \/               |         /        /'
-                         |        /       /'
-                         |       /      /'
-                         |      /     /'
-"""
-
-DRAGON_SMALL = r"""
-      /\_____/\
-     /  o   o  \
-    ( ==  ^  == )
-     )         (
-    (           )
-   ( (  )   (  ) )
-  (__(__)___(__)__)
-"""
-
-DRAGON_BANNER = r"""
-    ___           _ _
-   /   \_ __ __ _| (_) _   _ ___
-  / /\ / '__/ _` | | || | | / __|
- / /_//| | | (_| | | || |_| \__ \
-/___,' |_|  \__,_|_|_| \__,_|___/
-"""
+from .dragon_mascot import DRAGON_ART, AURELIUS_MASCOT, AURELIUS_BANNER
 
 
 # ── banner ────────────────────────────────────────────────────────────────────
@@ -169,36 +135,20 @@ DRAGON_BANNER = r"""
 
 def _print_banner() -> None:
     if _RICH and _console:
-        # Dragon + title panel
-        title_text = Text()
-        title_text.append("Aurelius", style="bold bright_red")
-        title_text.append(f"  v{__version__}", style="dim white")
-        title_text.append("  •  1.395B decoder-only LLM", style="dim white")
-
-        dragon_text = Text(DRAGON_SMALL.rstrip(), style="bright_red")
+        header = Text(AURELIUS_BANNER, style=f"bold {LIGHTNING_BLUE}")
+        _console.print(header)
+        _console.print(Panel(DRAGON_ART, border_style=LIGHTNING_BLUE, title="[bold]AURELIUS — The Coding Dragon[/bold]"))
 
         info_lines = Text()
         info_lines.append("\n  Type ", style="dim white")
-        info_lines.append("/help", style="bold bright_cyan")
+        info_lines.append("/help", style=f"bold {LIGHTNING_BLUE}")
         info_lines.append(" for commands  •  ", style="dim white")
-        info_lines.append("/quit", style="bold bright_cyan")
+        info_lines.append("/quit", style=f"bold {DRAGON_GREEN}")
         info_lines.append(" to exit\n", style="dim white")
 
-        combined = Text()
-        combined.append_text(dragon_text)
-        combined.append("\n")
-        combined.append(DRAGON_BANNER, style="bold bright_red")
-        combined.append_text(info_lines)
-
-        panel = Panel(
-            combined,
-            border_style="bright_red",
-            box=box.HEAVY,
-            padding=(0, 2),
-        )
-        _console.print(panel)
+        _console.print(info_lines)
     else:
-        print(RED(BOLD(DRAGON_BANNER)))
+        print(AURELIUS_BANNER)
         print(DIM(f"  version {__version__}  |  type /help for commands\n"))
 
 
@@ -818,6 +768,12 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="PERSONA_OR_PROMPT",
         help="system prompt text or persona name (default/coding/security/...)",
     )
+    chat_p.add_argument(
+        "--persona",
+        metavar="PERSONA_ID",
+        default=None,
+        help="unified persona ID (aurelius-general, aurelius-coding, aurelius-redteam, etc.)",
+    )
     chat_p.add_argument("--model-path", metavar="PATH", help="checkpoint directory or .pt file")
     chat_p.add_argument("--max-tokens", type=int, default=1024)
     chat_p.add_argument("--temperature", type=float, default=0.7)
@@ -859,6 +815,14 @@ def _build_parser() -> argparse.ArgumentParser:
     health_p = sub.add_parser("health", help="system health check")
     health_p.add_argument("--verbose", "-v", action="store_true", help="detailed output")
 
+    # agent (Aurelius API)
+    agent_p = sub.add_parser("agent", help="Aurelius agent commands")
+    agent_p.add_argument("subcommand", choices=["run", "coding", "team", "agents", "notifications", "status"])
+    agent_p.add_argument("--task", "-t", help="task description")
+    agent_p.add_argument("--workers", "-w", type=int, default=None, help="worker count for team")
+    agent_p.add_argument("--json", action="store_true", help="JSON output")
+    agent_p.add_argument("--limit", "-l", type=int, default=None, help="max notifications")
+
     return parser
 
 
@@ -870,17 +834,30 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.command is None or args.command == "chat":
+        if not getattr(args, "model_path", None) or args.command != "chat":
+            from .terminal_cli import main as run_terminal
+            run_terminal()
+            return 0
+
         system = getattr(args, "system", DEFAULT_SYSTEM)
-        # Resolve persona names
+        persona_id = getattr(args, "persona", None)
+        if persona_id:
+            try:
+                from src.persona import UnifiedPersonaRegistry, BUILTIN_PERSONAS
+                ureg = UnifiedPersonaRegistry()
+                for p in BUILTIN_PERSONAS:
+                    ureg.register(p)
+                persona = ureg.get(persona_id)
+                system = persona.system_prompt
+            except Exception as exc:
+                _print(f"[aurelius.warn] Unknown persona: {persona_id} ({exc})[/aurelius.warn]")
         try:
             from src.serving.system_prompts import SystemPromptLibrary
-
             lib = SystemPromptLibrary()
             if system in lib.list_personas():
                 system = lib.get(system)
-        except Exception:  # noqa: S110
+        except Exception:
             pass
-
         _run_chat(
             system_prompt=system,
             model_path=getattr(args, "model_path", None),
@@ -991,45 +968,23 @@ def main(argv: list[str] | None = None) -> int:
         _run_config(args)
 
     elif args.command == "health":
-        _run_health(args)
+        from src.cli.debug_commands import health_check
+        return health_check(args)
+
+    elif args.command == "agent":
+        from src.aurelius.cli import main as agent_cli
+        sub_args = [args.subcommand]
+        if args.task:
+            sub_args.extend([args.task])
+        if args.json:
+            sub_args.append("--json")
+        if args.limit:
+            sub_args.extend(["--limit", str(args.limit)])
+        if args.workers:
+            sub_args.extend(["--workers", str(args.workers)])
+        return agent_cli(sub_args)
 
     return 0
-
-
-def _run_config(args: argparse.Namespace) -> None:
-    """Handle config subcommand."""
-    from src.model.config import AureliusConfig
-
-    cfg = AureliusConfig()
-
-    if args.action == "list":
-        for key, value in sorted(cfg.__dataclass_fields__.items()):
-            val = getattr(cfg, key, "")
-            print(f"  {key:35s} = {val}")
-        print(f"\n  Total fields: {len(cfg.__dataclass_fields__)}")
-
-    elif args.action == "get":
-        if not args.key:
-            print("Usage: aurelius config get <key>")
-            return
-        if hasattr(cfg, args.key):
-            print(getattr(cfg, args.key))
-        else:
-            print(f"Unknown config key: {args.key}")
-            return 1
-
-    elif args.action == "set":
-        if not args.key or args.value is None:
-            print("Usage: aurelius config set <key> <value>")
-            return
-        print(f"Config key '{args.key}' is read-only at runtime")
-        print(f"  To change it, modify the source or pass --config to train")
-
-    elif args.action == "path":
-        config_dir = Path(__file__).parent.parent.parent / "configs"
-        print(f"Config directory: {config_dir.resolve()}")
-        for yaml_file in sorted(config_dir.glob("*.yaml")):
-            print(f"  {yaml_file.name}")
 
 
 def _run_health(args: argparse.Namespace) -> None:
