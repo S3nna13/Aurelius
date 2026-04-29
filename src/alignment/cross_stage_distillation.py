@@ -1,36 +1,96 @@
-"""On-Policy Cross-Stage Distillation — GLM-5 §5.4 (arXiv:2602.15763).
+"""On-policy cross-stage distillation for RL training.
 
-Prevents catastrophic forgetting across sequential RL curriculum stages.
-After each sequential RL stage (reasoning → agentic → general RL), the final
-checkpoint of the preceding stage serves as a teacher for on-policy KL
-regularization applied to the current student policy.
-
-Loss formula:
-    L_CSD = L_RL(θ) + α · KL(π_θ ∥ π_teacher)
-
-where:
-    KL(π_θ ∥ π_teacher) = E[ log(π_θ / π_teacher) ]
-                         = token-level KL averaged over B, T
-
-Teacher logits are always detached — no gradient flows through the teacher.
+Compatibility layer for both the newer `.loss()` tests and the legacy
+training-side `compute_kl_loss()` / `set_reference()` usage.
 """
 
-from dataclasses import dataclass
+from __future__ import annotations
+
+import logging
+from typing import Any
 
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 
+logger = logging.getLogger(__name__)
 
-@dataclass
+__all__ = ["CrossStageDistillation", "stage_transition"]
+
+
 class CrossStageDistillation:
-    """On-policy cross-stage KL regularizer from GLM-5 §5.4.
+    """Cross-stage KL regularizer with a compact compatibility surface."""
 
-    Args:
-        alpha: Weight for the KL divergence regularisation term. Set to 0.0
-               to disable distillation (pure RL loss pass-through).
-    """
+    def __init__(
+        self,
+        alpha: float = 0.1,
+        beta: float | None = None,
+        adaptive: bool = False,
+    ) -> None:
+        if beta is not None:
+            alpha = beta
+        self.alpha = float(alpha)
+        self.beta = self.alpha
+        self.adaptive = adaptive
+        self.ref_model: nn.Module | None = None
+        self._frozen = False
 
-    alpha: float = 0.1
+    def set_reference(self, model: nn.Module) -> None:
+        """Freeze a reference model for legacy training-side KL computation."""
+        self.ref_model = model
+        self._frozen = True
+        for param in self.ref_model.parameters():
+            param.requires_grad = False
+        self.ref_model.eval()
+
+    def _extract_logits(self, output: Any) -> torch.Tensor:
+        if isinstance(output, (tuple, list)):
+            return output[0]
+        if hasattr(output, "logits"):
+            return output.logits
+        return output
+
+    def _kl_from_logits(
+        self,
+        student_logits: torch.Tensor,
+        teacher_logits: torch.Tensor,
+        attention_mask: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        teacher_logits = teacher_logits.detach()
+        student_log_probs = F.log_softmax(student_logits, dim=-1)
+        teacher_probs = F.softmax(teacher_logits, dim=-1)
+        kl_per_token = F.kl_div(
+            student_log_probs,
+            teacher_probs,
+            reduction="none",
+        ).sum(dim=-1)
+
+        if attention_mask is not None:
+            mask = attention_mask.to(dtype=kl_per_token.dtype)
+            if mask.shape != kl_per_token.shape:
+                mask = mask.expand_as(kl_per_token)
+            kl_per_token = kl_per_token * mask
+
+        return kl_per_token.mean()
+
+    def compute_kl_loss(
+        self,
+        student_logits: torch.Tensor,
+        input_ids: torch.Tensor,
+        attention_mask: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        """Return the raw KL term against the frozen reference model.
+
+        If no reference model has been registered, returns a zero tensor on
+        the correct device so callers can safely include it in totals.
+        """
+        if self.ref_model is None:
+            return torch.zeros((), device=student_logits.device, dtype=student_logits.dtype)
+
+        with torch.no_grad():
+            ref_output = self.ref_model(input_ids)
+        ref_logits = self._extract_logits(ref_output)
+        return self._kl_from_logits(student_logits, ref_logits, attention_mask=attention_mask)
 
     def loss(
         self,
@@ -39,40 +99,25 @@ class CrossStageDistillation:
         teacher_logits: torch.Tensor,
         attention_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
-        """Compute L_CSD = L_RL + alpha * KL(pi_theta || pi_teacher).
-
-        Args:
-            rl_loss: Scalar RL loss for the current stage, e.g. GRPO / PPO
-                     loss. Must already be reduced to a scalar.
-            student_logits: Raw (un-normalised) logits from the student policy,
-                            shape [B, T, V].
-            teacher_logits: Raw logits from the preceding-stage teacher
-                            checkpoint, shape [B, T, V]. These are detached
-                            internally — callers do NOT need to detach first.
-            attention_mask: Optional boolean / float mask of shape [B, T].
-                            Tokens where mask == 0 (padding) are excluded from
-                            the KL average. When None, all tokens contribute.
-
-        Returns:
-            Scalar tensor: L_RL + alpha * KL_mean.
-        """
-        if self.alpha == 0.0:
-            return rl_loss
-
-        # Teacher logits detached — no gradient through the teacher branch.
-        p_teacher = F.softmax(teacher_logits.detach(), dim=-1)  # [B, T, V]
-        log_p_student = F.log_softmax(student_logits, dim=-1)  # [B, T, V]
-
-        # Per-token KL: KL(pi_theta || pi_teacher) at each position.
-        # kl_div expects (log_input, target) and returns element-wise values.
-        kl = F.kl_div(log_p_student, p_teacher, reduction="none").sum(-1)  # [B, T]
-
-        if attention_mask is not None:
-            # Cast mask to same dtype for multiplication.
-            mask = attention_mask.to(kl.dtype)
-            kl = kl * mask
-            kl = kl.sum() / (mask.sum() + 1e-8)
+        """Return RL loss plus the weighted KL regularizer."""
+        kl_loss = self._kl_from_logits(
+            student_logits,
+            teacher_logits,
+            attention_mask=attention_mask,
+        )
+        if self.adaptive:
+            scale = min(1.0, kl_loss.detach().item() / 0.1) if kl_loss.detach().item() > 0 else 1.0
         else:
-            kl = kl.mean()
+            scale = 1.0
+        return rl_loss + self.alpha * scale * kl_loss
 
-        return rl_loss + self.alpha * kl
+
+def stage_transition(
+    model: nn.Module,
+    optimizer: torch.optim.Optimizer,
+    next_stage_lr: float = 5e-7,
+) -> None:
+    """Prepare for the next RL stage transition."""
+    for group in optimizer.param_groups:
+        group["lr"] = next_stage_lr
+    logger.info("Stage transition: LR set to %s", next_stage_lr)

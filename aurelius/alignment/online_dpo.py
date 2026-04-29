@@ -80,19 +80,15 @@ class CompletionSampler:
         """
         B, T, V = logits.shape
 
-        # Repeat each batch item n_samples times: (B, T, V) -> (B*K, T, V)
-        # interleave so that rows [0..K-1] are for batch item 0, etc.
-        logits_rep = logits.repeat_interleave(n_samples, dim=0)  # (B*K, T, V)
-
-        # Scale by temperature
-        scaled = logits_rep / self.temperature  # (B*K, T, V)
-
-        # Sample independently at each position
-        # Flatten to (B*K*T, V), multinomial, then reshape
-        flat = scaled.reshape(-1, V)  # (B*K*T, V)
-        probs = F.softmax(flat, dim=-1)  # (B*K*T, V)
-        sampled = torch.multinomial(probs, num_samples=1).squeeze(-1)  # (B*K*T,)
-        token_ids = sampled.reshape(B * n_samples, T)  # (B*K, T)
+        # Sample per batch item in a loop to avoid OOM from repeat_interleave
+        samples = []
+        for i in range(B):
+            scaled = logits[i] / self.temperature  # (T, V)
+            flat = scaled.reshape(-1, V)  # (T, V)
+            probs = F.softmax(flat, dim=-1)  # (T, V)
+            sampled = torch.multinomial(probs, num_samples=n_samples)  # (T, n_samples)
+            samples.append(sampled.T)  # (n_samples, T)
+        token_ids = torch.cat(samples, dim=0)  # (B*n_samples, T)
 
         return token_ids
 
@@ -129,8 +125,10 @@ class CompletionSampler:
         token_log_p = token_log_p * pad_mask.float()
 
         # Mean over non-padding positions per sequence
-        n_valid = pad_mask.float().sum(dim=1).clamp(min=1)  # (B,)
-        seq_log_p = token_log_p.sum(dim=1) / n_valid  # (B,)
+        n_valid = pad_mask.float().sum(dim=1)  # (B,)
+        seq_log_p = token_log_p.sum(dim=1) / n_valid.clamp(min=1)  # (B,)
+        # Filter out all-padding sequences so they don't contribute to loss
+        seq_log_p[n_valid == 0] = float('nan')
 
         return seq_log_p
 
@@ -230,6 +228,14 @@ class OnlineDPOLoss(nn.Module):
               - metrics: dict with keys "loss", "accuracy", "reward_chosen",
                          "reward_rejected", "margin".
         """
+        # Filter out any NaN entries (all-padding sequences)
+        valid_mask = ~(pi_chosen.isnan() | pi_rejected.isnan() |
+                       ref_chosen.isnan() | ref_rejected.isnan())
+        pi_chosen = pi_chosen[valid_mask]
+        pi_rejected = pi_rejected[valid_mask]
+        ref_chosen = ref_chosen[valid_mask]
+        ref_rejected = ref_rejected[valid_mask]
+
         # Implicit reward under the policy relative to reference
         reward_chosen = self.beta * (pi_chosen - ref_chosen)  # (B,)
         reward_rejected = self.beta * (pi_rejected - ref_rejected)  # (B,)
@@ -239,7 +245,11 @@ class OnlineDPOLoss(nn.Module):
 
         # Loss: -log σ(logit)
         per_sample = -F.logsigmoid(logits)  # (B,)
-        loss = per_sample.mean()  # scalar
+        loss = (
+            per_sample.mean()
+            if valid_mask.any()
+            else torch.tensor(0.0, device=pi_chosen.device, requires_grad=True)
+        )
 
         accuracy = (logits > 0).float().mean().item()
         reward_chosen_mean = reward_chosen.mean().item()

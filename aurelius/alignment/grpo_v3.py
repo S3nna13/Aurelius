@@ -164,7 +164,7 @@ class GRPOLoss(nn.Module):
         Returns:
             Scalar loss tensor.
         """
-        ratio = torch.exp(log_probs - old_log_probs)  # (B,)
+        ratio = torch.exp((log_probs - old_log_probs).clamp(max=10.0))  # (B,)
         clipped = self.clip_ratio(ratio)  # (B,)
         surr1 = ratio * advantages
         surr2 = clipped * advantages
@@ -187,7 +187,7 @@ class GRPOLoss(nn.Module):
         Returns:
             Scalar non-negative KL estimate.
         """
-        diff = log_probs - ref_log_probs  # (B,)
+        diff = (log_probs - ref_log_probs).clamp(-10.0, 10.0)  # (B,)
         kl = (torch.exp(diff) - diff - 1.0).mean()
         return kl
 
