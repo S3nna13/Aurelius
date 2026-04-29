@@ -1,10 +1,8 @@
 use std::collections::HashMap;
 use std::net::SocketAddr;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use dashmap::DashMap;
 use tokio::sync::Mutex;
 
 #[derive(Clone)]
@@ -21,14 +19,12 @@ struct Bucket {
 
 struct RateLimiterInner {
     buckets: HashMap<String, Bucket>,
-    cleanup_interval: Duration,
 }
 
 impl RateLimiter {
     pub fn new(rps: u64, burst: u64) -> Self {
         let inner = Arc::new(Mutex::new(RateLimiterInner {
             buckets: HashMap::new(),
-            cleanup_interval: Duration::from_secs(60),
         }));
 
         let inner_clone = inner.clone();

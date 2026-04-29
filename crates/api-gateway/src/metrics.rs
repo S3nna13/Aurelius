@@ -3,7 +3,6 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use dashmap::DashMap;
-use tokio::sync::Mutex;
 
 #[derive(Clone)]
 pub struct Metrics {
