@@ -63,12 +63,14 @@ class _LogRingBuffer(logging.Handler):
         self.records: list[dict[str, Any]] = []
 
     def emit(self, record: logging.LogRecord) -> None:
-        self.records.append({
-            "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(record.created)),
-            "level": record.levelname,
-            "logger": record.name,
-            "message": self.format(record),
-        })
+        self.records.append(
+            {
+                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime(record.created)),
+                "level": record.levelname,
+                "logger": record.name,
+                "message": self.format(record),
+            }
+        )
         if len(self.records) > self.capacity:
             self.records = self.records[-self.capacity :]
 
@@ -183,7 +185,9 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
 
     def _require_auth(self) -> bool:
         if not self._check_auth():
-            self._send_json(401, {"error": "Unauthorized", "message": "Valid API key or session required"})
+            self._send_json(
+                401, {"error": "Unauthorized", "message": "Valid API key or session required"}
+            )
             return False
         return True
 
@@ -971,6 +975,7 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
 
     def _handle_logs(self) -> None:
         from urllib.parse import parse_qs, urlparse
+
         query = parse_qs(urlparse(self.path).query)
         level_filter = query.get("level", [None])[0]
         search = query.get("q", [None])[0]
@@ -981,7 +986,11 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
             records = [r for r in records if r.get("level", "").lower() == level_filter.lower()]
         if search:
             sq = search.lower()
-            records = [r for r in records if sq in r.get("message", "").lower() or sq in r.get("logger", "").lower()]  # noqa: E501
+            records = [
+                r
+                for r in records
+                if sq in r.get("message", "").lower() or sq in r.get("logger", "").lower()
+            ]  # noqa: E501
         records = records[-limit:]
         self._send_json(200, {"entries": records})
 
@@ -989,11 +998,14 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
         server = self.server
         license_key = getattr(server, "_license_key", "")
         activated = getattr(server, "_license_activated", False)
-        self._send_json(200, {
-            "valid": activated and bool(license_key),
-            "activated": activated,
-            "tier": getattr(server, "_license_tier", "trial"),
-        })
+        self._send_json(
+            200,
+            {
+                "valid": activated and bool(license_key),
+                "activated": activated,
+                "tier": getattr(server, "_license_tier", "trial"),
+            },
+        )
 
     def _handle_license_activate(self) -> None:
         try:

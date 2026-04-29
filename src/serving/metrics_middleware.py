@@ -6,10 +6,8 @@ Exposes a /metrics endpoint for Prometheus scraping.
 
 from __future__ import annotations
 
-import json
 import time
 from collections import defaultdict
-from http.server import BaseHTTPRequestHandler
 from threading import Lock
 
 

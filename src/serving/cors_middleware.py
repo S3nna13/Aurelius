@@ -20,7 +20,9 @@ class CORSMiddleware:
         allow_credentials: bool = True,
         max_age: int = 86400,
     ) -> None:
-        self.allowed_origins = allowed_origins if isinstance(allowed_origins, str) else ", ".join(allowed_origins)
+        self.allowed_origins = (
+            allowed_origins if isinstance(allowed_origins, str) else ", ".join(allowed_origins)
+        )
         self.allowed_methods = allowed_methods
         self.allowed_headers = allowed_headers
         self.allow_credentials = allow_credentials

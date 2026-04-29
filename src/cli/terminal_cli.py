@@ -4,17 +4,11 @@ Lightning blue (#00BFFF) themed. Dragon mascot. Real-time streaming.
 Inspired by Claude Code, OPENDEV, Terminal-Bench, NL2SH, YAMLE.
 """
 
+# ruff: noqa: E501
 from __future__ import annotations
 
-import asyncio
 import os
-import shlex
-import signal
-import subprocess
-import sys
-import time
 from pathlib import Path
-from typing import Any
 
 try:
     from prompt_toolkit import PromptSession
@@ -32,22 +26,20 @@ except ImportError:
     PromptStyle = None
     _HAS_PROMPT_TOOLKIT = False
 from rich.console import Console
-from rich.layout import Layout
-from rich.live import Live
 from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.rule import Rule
-from rich.spinner import Spinner
 from rich.syntax import Syntax
 from rich.table import Table
 from rich.text import Text
 
 from .agent_engine import AgentEngine
-from .dragon_mascot import AURELIUS_BANNER, AURELIUS_MASCOT, DRAGON_ART, WELCOME_HEADER
+from .dragon_mascot import DRAGON_ART, WELCOME_HEADER
 
 LIGHTNING_BLUE = "#00BFFF"
 DRAGON_GREEN = "#00FF88"
 TERMINAL_BG = "#0a0a1a"
+LIGHTNING_DIM = "#006688"
 LIGHTNING_BLUE_DIM = "#006688"
 ACCENT_PURPLE = "#8855FF"
 
@@ -56,11 +48,13 @@ console = Console()
 # ─── Styling ───────────────────────────────────────────────────────────────
 
 STYLE = (
-    PromptStyle([
-        ("prompt", f"bold {LIGHTNING_BLUE}"),
-        ("dragon", f"bold {DRAGON_GREEN}"),
-        ("separator", f"dim {LIGHTNING_BLUE_DIM}"),
-    ])
+    PromptStyle(
+        [
+            ("prompt", f"bold {LIGHTNING_BLUE}"),
+            ("dragon", f"bold {DRAGON_GREEN}"),
+            ("separator", f"dim {LIGHTNING_BLUE_DIM}"),
+        ]
+    )
     if _HAS_PROMPT_TOOLKIT
     else None
 )
@@ -76,10 +70,10 @@ PROMPT_SYMBOL = [
 bindings = KeyBindings() if _HAS_PROMPT_TOOLKIT else None
 
 if bindings is not None:
+
     @bindings.add("c-c")
     def _(event):
         event.app.exit()
-
 
     @bindings.add("tab")
     def _(event):
@@ -111,7 +105,13 @@ class AureliusCLI:
         console.clear()
         header = Text(WELCOME_HEADER, style=LIGHTNING_BLUE)
         console.print(header)
-        console.print(Panel(DRAGON_ART, border_style=LIGHTNING_BLUE, title="[bold]AURELIUS — The Coding Dragon[/bold]"))
+        console.print(
+            Panel(
+                DRAGON_ART,
+                border_style=LIGHTNING_BLUE,
+                title="[bold]AURELIUS — The Coding Dragon[/bold]",
+            )
+        )
 
         info = Table.grid(padding=1)
         info.add_column(style=f"bold {DRAGON_GREEN}")
@@ -150,7 +150,9 @@ class AureliusCLI:
                     try:
                         lang = fence_lines[0].replace("```", "").strip() or "python"
                         syntax = Syntax(code, lang, theme="monokai", line_numbers=True)
-                        console.print(Panel(syntax, border_style=LIGHTNING_BLUE, title=f"[bold]{lang}[/bold]"))
+                        console.print(
+                            Panel(syntax, border_style=LIGHTNING_BLUE, title=f"[bold]{lang}[/bold]")
+                        )
                     except Exception:
                         console.print(code)
                     fence_lines = []
