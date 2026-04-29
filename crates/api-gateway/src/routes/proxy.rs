@@ -1,8 +1,8 @@
-use std::sync::Arc;
+use std::net::SocketAddr;
 use std::time::Instant;
 
 use axum::{
-    extract::{Request, State},
+    extract::{ConnectInfo, Request, State},
     http::StatusCode,
     response::IntoResponse,
     routing::any,
@@ -11,17 +11,10 @@ use axum::{
 
 use crate::{metrics::Metrics, proxy::ProxyClient, rate_limit::RateLimiter};
 
-#[derive(Clone)]
-struct ProxyState {
-    proxy: ProxyClient,
-    limiter: RateLimiter,
-    metrics: Metrics,
-}
-
 pub fn routes(
-    proxy: ProxyClient,
-    limiter: RateLimiter,
-    metrics: Metrics,
+    _proxy: ProxyClient,
+    _limiter: RateLimiter,
+    _metrics: Metrics,
 ) -> Router<crate::app_state::AppState> {
     Router::new()
         .route("/v1/*path", any(proxy_handler))
@@ -30,16 +23,16 @@ pub fn routes(
 
 async fn proxy_handler(
     State(state): State<crate::app_state::AppState>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     req: Request,
 ) -> impl axum::response::IntoResponse {
     let start = Instant::now();
+    let path = req.uri().path_and_query()
+        .map(|pq| pq.as_str())
+        .unwrap_or(req.uri().path())
+        .to_string();
 
-    let client_ip = req.headers()
-        .get("x-forwarded-for")
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("unknown");
-
-    match state.rate_limiter.check(client_ip).await {
+    match state.rate_limiter.check_socket(&addr).await {
         crate::rate_limit::RateLimitResult::Denied { retry_after } => {
             return (
                 StatusCode::TOO_MANY_REQUESTS,
@@ -53,7 +46,6 @@ async fn proxy_handler(
     match state.proxy_client.proxy_request(req).await {
         Ok(resp) => {
             let latency = start.elapsed().as_secs_f64() * 1000.0;
-            let path = resp.uri().path().to_string();
             let status = resp.status().as_u16();
             state.metrics.record_request(&path, status, latency);
             resp.into_response()

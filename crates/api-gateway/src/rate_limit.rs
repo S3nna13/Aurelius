@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::net::SocketAddr;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -67,6 +68,10 @@ impl RateLimiter {
                 retry_after: (1.0 / self.rps as f64).ceil() as u64,
             }
         }
+    }
+
+    pub async fn check_socket(&self, addr: &SocketAddr) -> RateLimitResult {
+        self.check(&addr.ip().to_string()).await
     }
 }
 

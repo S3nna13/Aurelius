@@ -1,16 +1,16 @@
 use std::sync::Arc;
 
 use axum::{
-    extract::Request,
+    extract::{Request, State},
+    http::StatusCode,
     middleware::Next,
-    response::{IntoResponse, Response},
+    response::IntoResponse,
     Json,
 };
 use chrono::{Duration, Utc};
 use dashmap::DashMap;
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
-use tower_http::auth::AsyncRequireAuthorizationLayer;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Claims {
@@ -52,14 +52,6 @@ impl AuthService {
     pub fn new(secret: &str, expiry_hours: i64) -> Self {
         let api_keys = Arc::new(DashMap::new());
 
-        api_keys.insert("dev-key".into(), Claims {
-            sub: "admin".into(),
-            role: "admin".into(),
-            scopes: vec!["*".into()],
-            exp: 0,
-            iat: 0,
-        });
-
         AuthService {
             encoding_key: EncodingKey::from_secret(secret.as_bytes()),
             decoding_key: DecodingKey::from_secret(secret.as_bytes()),
@@ -97,34 +89,39 @@ impl AuthService {
     }
 }
 
-#[derive(Clone)]
-pub struct AuthMiddleware {
-    auth_service: Arc<AuthService>,
-    public_paths: Vec<String>,
-}
-
-impl AuthMiddleware {
-    pub fn new(auth_service: Arc<AuthService>) -> Self {
-        AuthMiddleware {
-            auth_service,
-            public_paths: vec![
-                "/health".into(),
-                "/healthz".into(),
-                "/readyz".into(),
-                "/auth/login".into(),
-                "/openapi.json".into(),
-                "/docs".into(),
-            ],
-        }
-    }
-}
-
 pub async fn auth_middleware(
-    axum::middleware::Next,
-    axum::extract::Request,
-    axum::extract::State,
-) -> axum::response::Response {
-    // Handled via tower layers
+    State(auth_service): State<Arc<AuthService>>,
+    req: Request,
+    next: Next,
+) -> impl IntoResponse {
+    let path = req.uri().path().to_string();
+
+    if public_paths().contains(&path.as_str()) {
+        return next.run(req).await.into_response();
+    }
+
+    let auth_header = req
+        .headers()
+        .get(axum::http::header::AUTHORIZATION)
+        .and_then(|h| h.to_str().ok());
+
+    let token = match auth_header {
+        Some(value) if value.to_lowercase().starts_with("bearer ") => value[7..].to_string(),
+        _ => {
+            return (StatusCode::UNAUTHORIZED, Json(AuthError {
+                error: "unauthorized".to_string(),
+                message: "Missing or invalid Authorization header".to_string(),
+            })).into_response();
+        }
+    };
+
+    match auth_service.validate_token(&token) {
+        Ok(_claims) => next.run(req).await.into_response(),
+        Err(_) => (StatusCode::UNAUTHORIZED, Json(AuthError {
+            error: "unauthorized".to_string(),
+            message: "Invalid or expired token".to_string(),
+        })).into_response(),
+    }
 }
 
 pub fn public_paths() -> Vec<&'static str> {

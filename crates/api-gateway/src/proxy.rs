@@ -1,8 +1,8 @@
 use axum::{
     body::Body,
-    extract::{Request, State},
-    http::{HeaderMap, HeaderValue, StatusCode, Uri},
-    response::{IntoResponse, Response},
+    extract::Request,
+    http::{HeaderMap, StatusCode},
+    response::Response,
 };
 use std::sync::Arc;
 use std::time::Instant;
@@ -29,8 +29,8 @@ impl ProxyClient {
 
     pub async fn proxy_request(&self, req: Request) -> Result<Response, StatusCode> {
         let path = req.uri().path_and_query()
-            .map(|pq| pq.as_str())
-            .unwrap_or(req.uri().path());
+            .map(|pq| pq.as_str().to_string())
+            .unwrap_or_else(|| req.uri().path().to_string());
 
         let upstream_uri = format!("{}{}", self.upstream_url, path);
 

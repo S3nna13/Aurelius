@@ -6,10 +6,11 @@ mod rate_limit;
 mod routes;
 
 use std::net::SocketAddr;
+use std::sync::Arc;
 
 use axum::{middleware, Router};
 use tokio::signal;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::EnvFilter;
@@ -25,21 +26,35 @@ async fn main() {
     let proxy_client = proxy::ProxyClient::new(&cfg.upstream_url);
     let rate_limiter = rate_limit::RateLimiter::new(cfg.rate_limit_rps, cfg.rate_limit_burst);
     let metrics = metrics::Metrics::new();
+    let auth_service = Arc::new(auth::AuthService::new(&cfg.jwt_secret, cfg.jwt_expiry_hours));
+
+    let cors = if cfg.allowed_origins.is_empty() {
+        CorsLayer::new()
+    } else {
+        let origins: Vec<axum::http::HeaderValue> = cfg.allowed_origins
+            .iter()
+            .map(|o| o.parse().expect("Invalid CORS origin"))
+            .collect();
+        CorsLayer::new().allow_origin(AllowOrigin::list(origins))
+    };
 
     let app = Router::new()
         .merge(routes::health::routes())
         .merge(routes::proxy::routes(proxy_client.clone(), rate_limiter.clone(), metrics.clone()))
-        .layer(middleware::from_fn(auth::auth_middleware.clone()))
-        .layer(CorsLayer::permissive())
+        .layer(middleware::from_fn_with_state(
+            auth_service.clone(),
+            auth::auth_middleware,
+        ))
+        .layer(cors)
         .layer(RequestBodyLimitLayer::new(10 * 1024 * 1024))
         .layer(TraceLayer::new_for_http())
-        .with_state(app_state::AppState { proxy_client, rate_limiter, metrics, cfg: cfg.clone() });
+        .with_state(app_state::AppState { proxy_client, rate_limiter, metrics, cfg: cfg.clone(), auth_service });
 
     let addr: SocketAddr = format!("{}:{}", cfg.host, cfg.port).parse().expect("Invalid address");
     tracing::info!("Gateway listening on {addr}");
 
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-    axum::serve(listener, app)
+    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
         .with_graceful_shutdown(shutdown_signal())
         .await
         .unwrap();
@@ -65,7 +80,9 @@ async fn shutdown_signal() {
 }
 
 mod app_state {
-    use crate::{config::Config, metrics::Metrics, proxy::ProxyClient, rate_limit::RateLimiter};
+    use std::sync::Arc;
+
+    use crate::{auth::AuthService, config::Config, metrics::Metrics, proxy::ProxyClient, rate_limit::RateLimiter};
 
     #[derive(Clone)]
     pub struct AppState {
@@ -73,5 +90,6 @@ mod app_state {
         pub rate_limiter: RateLimiter,
         pub metrics: Metrics,
         pub cfg: Config,
+        pub auth_service: Arc<AuthService>,
     }
 }
