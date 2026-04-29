@@ -181,6 +181,7 @@ struct SerializedTrainingRun {
     source: String,
 }
 
+#[allow(dead_code)]
 pub struct Persistence {
     save_path: String,
     auto_save_interval_secs: u64,

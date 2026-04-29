@@ -104,6 +104,7 @@ pub struct InternalTrainingRun {
     pub source: String,
 }
 
+#[allow(dead_code)]
 #[derive(Clone)]
 pub struct InternalTrainingMetricsEntry {
     pub id: String,
@@ -114,6 +115,7 @@ pub struct InternalTrainingMetricsEntry {
     pub started_at: f64,
 }
 
+#[allow(dead_code)]
 pub struct DataEngineInner {
     pub agents: DashMap<String, InternalAgent>,
     pub activity: RwLock<VecDeque<InternalActivity>>,

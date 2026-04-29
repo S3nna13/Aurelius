@@ -4,6 +4,7 @@ use std::sync::Arc;
 use dashmap::DashMap;
 use napi_derive::napi;
 use radix_trie::Trie;
+use radix_trie::TrieCommon;
 use rust_stemmers::{Algorithm, Stemmer};
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -132,7 +133,7 @@ impl SearchIndex {
             if let Some(mut trie) = self.autocomplete_trie.get_mut(&field_key) {
                 for i in 1..=term.len().min(10) {
                     let prefix = term[..i].to_string();
-                    let existing = trie.get(&prefix).unwrap_or(&0);
+                    let existing = trie.get(&prefix).copied().unwrap_or(0);
                     trie.insert(prefix, existing + 1);
                 }
             }
@@ -190,9 +191,10 @@ impl SearchIndex {
         results.truncate(limit);
 
         results.into_iter().map(|(id, score)| {
-            let content = self.doc_store.get(&field_key)
-                .and_then(|docs| docs.get(&id))
-                .cloned()
+            let content = self
+                .doc_store
+                .get(&field_key)
+                .and_then(|docs| docs.get(&id).cloned())
                 .unwrap_or_default();
             SearchResult {
                 id,
@@ -217,12 +219,8 @@ impl SearchIndex {
 
         let q = stemmed[0].clone();
         let mut suggestions: Vec<(String, u32)> = trie
-            .get_raw_descendant_distance(&q)
-            .map(|sub| {
-                sub.iter()
-                    .map(|(key, &val)| (key.clone(), val))
-                    .collect::<Vec<_>>()
-            })
+            .get_raw_descendant(&q)
+            .map(|sub| sub.iter().map(|(key, val)| (key.clone(), *val)).collect::<Vec<_>>())
             .unwrap_or_default();
 
         suggestions.sort_by(|a, b| b.1.cmp(&a.1));

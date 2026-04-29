@@ -80,7 +80,7 @@ pub fn compute_token_budget(text: String, max_tokens: u32, options: Option<Token
 pub fn truncate_to_budget(text: String, max_tokens: u32, options: Option<TokenCountOptions>) -> String {
     let budget = compute_token_budget(text.clone(), max_tokens, options);
 
-    if budget.remaining >= 0 && budget.fraction_used <= 1.0 {
+    if budget.fraction_used <= 1.0 {
         return text;
     }
 
