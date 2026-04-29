@@ -3,7 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { loadConfig, getEngine } from './config.js';
-import { authMiddleware, rateLimitMiddleware, requestLoggerMiddleware, metricsMiddleware, metricsHandler, errorHandler } from './middleware/index.js';
+import { authMiddleware, validateAuthConfig, rateLimitMiddleware, requestLoggerMiddleware, metricsMiddleware, metricsHandler, errorHandler } from './middleware/index.js';
 import { registerRoutes } from './routes/index.js';
 import { spaFallback } from './spa.js';
 import { setupWebSocket } from './ws/index.js';
@@ -15,9 +15,18 @@ export function createApp() {
   const config = loadConfig();
   const engine = getEngine();
 
+  validateAuthConfig(config);
+
   const app = express();
 
-  app.use(cors({ origin: true, credentials: true }));
+  const corsOrigins = (process.env.CORS_ORIGINS || (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5173,http://localhost:3000'))
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+  app.use(cors({
+    origin: corsOrigins.length > 0 ? corsOrigins : false,
+    ...(corsOrigins.length > 0 && { credentials: true }),
+  }));
   app.use(requestLoggerMiddleware());
   app.use(express.json({ limit: '1mb' }));
   app.use(metricsMiddleware);
