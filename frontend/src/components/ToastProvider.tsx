@@ -38,6 +38,13 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
   const timersRef = useRef<Record<string, number>>({});
   const pausedRef = useRef<Record<string, boolean>>({});
 
+  const remove = useCallback((id: string) => {
+    window.clearTimeout(timersRef.current[id]);
+    delete timersRef.current[id];
+    delete pausedRef.current[id];
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
   const toast = useCallback((message: string, type: ToastType = 'info') => {
     const id = `toast-${++toastIdCounter}-${Date.now()}`;
     setToasts((prev) => {
@@ -54,14 +61,7 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
     timersRef.current[id] = window.setTimeout(() => {
       remove(id);
     }, TOAST_DURATION);
-  }, []);
-
-  const remove = (id: string) => {
-    window.clearTimeout(timersRef.current[id]);
-    delete timersRef.current[id];
-    delete pausedRef.current[id];
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  };
+  }, [remove]);
 
   const handleMouseEnter = (id: string) => {
     pausedRef.current[id] = true;

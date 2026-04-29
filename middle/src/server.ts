@@ -77,7 +77,7 @@ export function buildApp() {
 
   // Command dispatch — used by scheduler and agent orchestration
   app.post('/api/command', requireAdmin, (req, res) => {
-    const { agentId, command, payload } = req.body || {}
+    const { agentId, command } = req.body || {}
     if (!command) {
       res.status(400).json({ error: 'command required' })
       return
@@ -85,7 +85,7 @@ export function buildApp() {
     const engine = getEngine()
     if (agentId) {
       const agents = engine.listAgents()
-      const agent = agents.find((a: any) => a.id === agentId)
+      const agent = agents.find((a: { id: string }) => a.id === agentId)
       if (!agent) {
         res.status(404).json({ error: 'Agent not found' })
         return

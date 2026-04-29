@@ -37,12 +37,24 @@ export function useWebSocket(opts: UseWebSocketOptions = {}): UseWebSocketReturn
   const [connected, setConnected] = useState(false)
   const [lastMessage, setLastMessage] = useState<unknown>(null)
   const onStatusChangeRef = useRef(onStatusChange)
-  onStatusChangeRef.current = onStatusChange
+  const connectRef = useRef<() => void>(() => {})
+  useEffect(() => {
+    onStatusChangeRef.current = onStatusChange
+  }, [onStatusChange])
 
   const updateConnected = useCallback((v: boolean) => {
     setConnected(v)
     onStatusChangeRef.current?.(v)
   }, [])
+
+  const scheduleReconnect = useCallback(() => {
+    if (autoReconnect && reconnectCountRef.current < maxReconnects) {
+      reconnectCountRef.current += 1
+      reconnectTimerRef.current = setTimeout(() => {
+        connectRef.current()
+      }, reconnectInterval)
+    }
+  }, [autoReconnect, maxReconnects, reconnectInterval])
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return
@@ -61,19 +73,17 @@ export function useWebSocket(opts: UseWebSocketOptions = {}): UseWebSocketReturn
       }
       ws.onclose = () => {
         updateConnected(false); wsRef.current = null
-        if (autoReconnect && reconnectCountRef.current < maxReconnects) {
-          reconnectCountRef.current += 1
-          reconnectTimerRef.current = setTimeout(connect, reconnectInterval)
-        }
+        scheduleReconnect()
       }
       ws.onerror = () => { ws.close() }
     } catch {
-      if (autoReconnect && reconnectCountRef.current < maxReconnects) {
-        reconnectCountRef.current += 1
-        reconnectTimerRef.current = setTimeout(connect, reconnectInterval)
-      }
+      scheduleReconnect()
     }
-  }, [url, autoReconnect, reconnectInterval, maxReconnects, updateConnected])
+  }, [url, updateConnected, scheduleReconnect])
+
+  useEffect(() => {
+    connectRef.current = connect
+  }, [connect])
 
   useEffect(() => {
     connect()

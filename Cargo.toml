@@ -14,7 +14,7 @@ members = [
     "crates/uuid-gen",
     "crates/api-gateway",
     "tools/data-cli",
-    "tools/jsonl-merge",
+    "tools/jsonl_merge",
 ]
 
 [workspace.package]

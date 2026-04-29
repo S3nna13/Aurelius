@@ -56,7 +56,6 @@ router.post('/upload', async (req, res) => {
   let uploaded = 0
   const chunks: Buffer[] = []
   let aborted = false
-  let quotaChecked = false
 
   req.on('data', (chunk: Buffer) => {
     if (aborted) return
@@ -164,7 +163,7 @@ router.delete('/files/:id', async (req, res) => {
   }
 
   const filePath = join(UPLOAD_DIR, record.id)
-  try { await fsPromises.unlink(filePath) } catch {}
+  try { await fsPromises.unlink(filePath) } catch { /* ignore missing file */ }
   fileRecords.delete(req.params.id)
   getEngine().appendActivity('file.delete', true, `Deleted ${record.name}`)
   res.json({ success: true })

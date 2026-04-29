@@ -169,7 +169,7 @@ export function broadcastNotification(notification: unknown): void {
   const msg = JSON.stringify({ type: 'notification', payload: notification })
   for (const ws of clients) {
     if (ws.readyState === ws.OPEN) {
-      try { ws.send(msg) } catch {}
+      try { ws.send(msg) } catch { /* best effort */ }
     }
   }
 }
@@ -178,7 +178,7 @@ export function broadcastActivity(activity: unknown): void {
   const msg = JSON.stringify({ type: 'activity:new', payload: activity })
   for (const ws of clients) {
     if (ws.readyState === ws.OPEN) {
-      try { ws.send(msg) } catch {}
+      try { ws.send(msg) } catch { /* best effort */ }
     }
   }
 }

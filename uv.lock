@@ -217,6 +217,7 @@ db = [
     { name = "sqlalchemy" },
 ]
 dev = [
+    { name = "fastapi" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "ruff" },
@@ -260,6 +261,7 @@ requires-dist = [
     { name = "datatrove", extras = ["io", "processing"], marker = "extra == 'train'", specifier = ">=0.3.0" },
     { name = "deepspeed", marker = "platform_machine == 'x86_64' and extra == 'train'", specifier = ">=0.15.0" },
     { name = "einops", specifier = ">=0.8.0" },
+    { name = "fastapi", marker = "extra == 'dev'", specifier = ">=0.115.0" },
     { name = "fastapi", marker = "extra == 'serve'", specifier = ">=0.115.0" },
     { name = "flash-attn", marker = "platform_machine == 'x86_64' and extra == 'train'", specifier = ">=2.6.0" },
     { name = "httpx", marker = "extra == 'serve'", specifier = ">=0.27.0" },

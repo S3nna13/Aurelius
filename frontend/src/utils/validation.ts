@@ -29,7 +29,7 @@ export function isValidPort(port: number): boolean {
 }
 
 export function isAscii(text: string): boolean {
-  return /^[\x00-\x7F]*$/.test(text)
+  return Array.from(text).every((char) => char.charCodeAt(0) <= 0x7f)
 }
 
 export function isJsonString(text: string): boolean {

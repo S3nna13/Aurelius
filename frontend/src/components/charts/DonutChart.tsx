@@ -27,8 +27,6 @@ export default function DonutChart({ data, size = 160, title }: DonutChartProps)
   const circumference = 2 * Math.PI * radius;
   const center = size / 2;
 
-  let offset = 0;
-
   return (
     <div className="flex flex-col items-center">
       {title && <p className="text-xs font-bold text-[#9e9eb0] uppercase tracking-wider mb-2">{title}</p>}
@@ -37,8 +35,9 @@ export default function DonutChart({ data, size = 160, title }: DonutChartProps)
           {segments.map((d, i) => {
             const segmentLength = (d.value / total) * circumference;
             const dashArray = `${segmentLength} ${circumference - segmentLength}`;
-            const dashOffset = -offset;
-            offset += segmentLength;
+            const dashOffset = -segments
+              .slice(0, i)
+              .reduce((sum, segment) => sum + (segment.value / total) * circumference, 0);
             return (
               <circle
                 key={i}

@@ -11,7 +11,7 @@ const MAX_BRAIN_CONCURRENCY = 1;
 const MAX_INPUT_LENGTH = 4096;
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 
-const ALLOWED_CHARS = /^[a-zA-Z0-9_\-\.\/\s\{\}\[\]\":,\(\)]+$/;
+const ALLOWED_CHARS = new RegExp('^[a-zA-Z0-9_\\s./{}\\[\\]":,()\\-]+$');
 
 function sanitizeInput(input: unknown): string {
   if (typeof input !== 'string') {
