@@ -17,7 +17,6 @@ from src.persona.unified_persona import (
     UnifiedPersona,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -111,8 +110,8 @@ def test_priority_sorting(composer, basic_persona):
     result = composer.compose(basic_persona, context_fragments=[fragment])
     lines = result.split("\n")
     # DEVELOPER (0) should appear before MODEL (4)
-    dev_idx = next(i for i, l in enumerate(lines) if "DEVELOPER" in l)
-    model_idx = next(i for i, l in enumerate(lines) if "MODEL" in l)
+    dev_idx = next(i for i, line in enumerate(lines) if "DEVELOPER" in line)
+    model_idx = next(i for i, line in enumerate(lines) if "MODEL" in line)
     assert dev_idx < model_idx
 
 
@@ -191,7 +190,9 @@ def test_harm_filter_facet_rendered(composer):
         domain=PersonaDomain.GENERAL,
         description="desc",
         system_prompt="HF.",
-        facets=(PersonaFacet("harm_filter", {"categories": ["malicious_code"], "action": "block"}),),
+        facets=(
+            PersonaFacet("harm_filter", {"categories": ["malicious_code"], "action": "block"}),
+        ),
     )
     result = composer.compose(persona)
     assert "Harm filter: malicious_code" in result
@@ -278,9 +279,7 @@ def test_high_guardrail_high_priority(composer):
         domain=PersonaDomain.GENERAL,
         description="desc",
         system_prompt="G.",
-        guardrails=(
-            Guardrail("g1", "Be careful.", GuardrailSeverity.HIGH, GuardrailScope.ALL),
-        ),
+        guardrails=(Guardrail("g1", "Be careful.", GuardrailSeverity.HIGH, GuardrailScope.ALL),),
     )
     result = composer.compose(persona)
     assert "MUST: Be careful." in result
@@ -294,9 +293,7 @@ def test_medium_guardrail_operator_priority(composer):
         domain=PersonaDomain.GENERAL,
         description="desc",
         system_prompt="G.",
-        guardrails=(
-            Guardrail("g1", "Prefer this.", GuardrailSeverity.MEDIUM, GuardrailScope.ALL),
-        ),
+        guardrails=(Guardrail("g1", "Prefer this.", GuardrailSeverity.MEDIUM, GuardrailScope.ALL),),
     )
     result = composer.compose(persona)
     assert "SHOULD: Prefer this." in result
@@ -310,9 +307,7 @@ def test_low_guardrail_operator_priority(composer):
         domain=PersonaDomain.GENERAL,
         description="desc",
         system_prompt="G.",
-        guardrails=(
-            Guardrail("g1", "Consider this.", GuardrailSeverity.LOW, GuardrailScope.ALL),
-        ),
+        guardrails=(Guardrail("g1", "Consider this.", GuardrailSeverity.LOW, GuardrailScope.ALL),),
     )
     result = composer.compose(persona)
     assert "SHOULD: Consider this." in result

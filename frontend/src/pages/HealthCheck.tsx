@@ -1,126 +1,84 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { motion } from 'framer-motion';
 import {
-  HeartPulse, CheckCircle2, AlertTriangle, XCircle, Loader2, RefreshCw,
-  Server, Database, Bot, Wifi, Shield,
+  Heart, Server, Activity, Database, Cpu, Wifi,
+  CheckCircle, XCircle, AlertTriangle, Loader2, RefreshCw,
 } from 'lucide-react';
-import { useToast } from '../components/ToastProvider';
-import { api } from '../api/AureliusClient';
+import { useApi } from '../hooks/useApi';
+import StatsCard from '../components/StatsCard';
 
-interface HealthCheck {
-  name: string;
-  status: 'healthy' | 'warning' | 'critical';
-  message: string;
-  latency_ms: number;
-  lastChecked: string;
-}
-
-const statusConfig = {
-  healthy: { icon: CheckCircle2, color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', label: 'Healthy' },
-  warning: { icon: AlertTriangle, color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20', label: 'Warning' },
-  critical: { icon: XCircle, color: 'text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/20', label: 'Critical' },
-};
-
-const checkIcons: Record<string, typeof Server> = { server: Server, database: Database, agents: Bot, network: Wifi, security: Shield };
-
-function formatUptime(seconds: number): string {
-  const d = Math.floor(seconds / 86400); const h = Math.floor((seconds % 86400) / 3600); const m = Math.floor((seconds % 3600) / 60);
-  if (d > 0) return `${d}d ${h}h ${m}m`; if (h > 0) return `${h}h ${m}m`; return `${m}m`;
+interface HealthStatus {
+  status: string; uptime: number; version: string;
+  services: Array<{ name: string; status: string; latency: number; message?: string }>;
+  system: { cpu: number; memory: number; disk: number };
 }
 
 export default function HealthCheckPage() {
-  const { toast } = useToast();
-  const [manualChecks, setManualChecks] = useState<HealthCheck[]>([]);
-  const [data, setData] = useState<{ overall: string; checks: HealthCheck[]; uptime_seconds: number } | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data, loading, refresh } = useApi<HealthStatus>('/health', { refreshInterval: 10000 });
 
-  useEffect(() => {
-    const fetch = async () => {
-      try {
-        const h = await api.getHealth();
-        setData({ overall: 'healthy', checks: [], uptime_seconds: h.time });
-      } catch { /* ignore */ }
-      setLoading(false);
-    };
-    fetch();
-  }, []);
+  if (loading && !data) return (
+    <div className="flex justify-center py-20"><Loader2 size={32} className="animate-spin text-[#4fc3f7]" /></div>
+  );
 
-  const runChecks = async () => {
-    toast('Running health checks...', 'info');
-    const checks: HealthCheck[] = [];
-
-    const serverStart = performance.now();
-    try { const res = await fetch('/api/health'); checks.push({ name: 'server', status: res.ok ? 'healthy' : 'critical', message: res.ok ? 'Server responding' : 'Server error', latency_ms: Math.round(performance.now() - serverStart), lastChecked: new Date().toISOString() }); }
-    catch { checks.push({ name: 'server', status: 'critical', message: 'Server unreachable', latency_ms: Math.round(performance.now() - serverStart), lastChecked: new Date().toISOString() }); }
-
-    const dbStart = performance.now();
-    try { const res = await api.getMemoryLayers(); checks.push({ name: 'database', status: 'healthy', message: `${Object.keys(res.layers).length} layers accessible`, latency_ms: Math.round(performance.now() - dbStart), lastChecked: new Date().toISOString() }); }
-    catch { checks.push({ name: 'database', status: 'critical', message: 'Memory unreachable', latency_ms: Math.round(performance.now() - dbStart), lastChecked: new Date().toISOString() }); }
-
-    const agentStart = performance.now();
-    try { const s = await api.getStatus(); const online = s.agents.filter((a) => a.state?.toUpperCase() === 'ACTIVE' || a.state?.toUpperCase() === 'RUNNING').length; checks.push({ name: 'agents', status: online > 0 ? 'healthy' : 'warning', message: `${online}/${s.agents.length} agents online`, latency_ms: Math.round(performance.now() - agentStart), lastChecked: new Date().toISOString() }); }
-    catch { checks.push({ name: 'agents', status: 'critical', message: 'Cannot check agents', latency_ms: Math.round(performance.now() - agentStart), lastChecked: new Date().toISOString() }); }
-
-    checks.push({ name: 'network', status: navigator.onLine ? 'healthy' : 'critical', message: navigator.onLine ? 'Connected' : 'Offline', latency_ms: 0, lastChecked: new Date().toISOString() });
-    checks.push({ name: 'security', status: window.isSecureContext ? 'healthy' : 'warning', message: window.isSecureContext ? 'Secure context' : 'Insecure context', latency_ms: 0, lastChecked: new Date().toISOString() });
-
-    setManualChecks(checks);
-    const hasCritical = checks.some((c) => c.status === 'critical');
-    const hasWarning = checks.some((c) => c.status === 'warning');
-    if (hasCritical) toast('Critical health issues detected', 'error');
-    else if (hasWarning) toast('Health warnings detected', 'warning');
-    else toast('All systems healthy', 'success');
-  };
-
-  const checks = manualChecks.length > 0 ? manualChecks : (data?.checks || []);
-  const overall = (data?.overall || 'healthy') as keyof typeof statusConfig;
-  const overallConfig = statusConfig[overall];
-  const OverallIcon = overallConfig.icon;
-  const healthyCount = checks.filter((c) => c.status === 'healthy').length;
-  const warningCount = checks.filter((c) => c.status === 'warning').length;
-  const criticalCount = checks.filter((c) => c.status === 'critical').length;
+  const health = data || { status: 'unknown', uptime: 0, version: '?', services: [], system: { cpu: 0, memory: 0, disk: 0 } };
+  const allHealthy = health.services.every(s => s.status === 'healthy');
+  const uptimeStr = health.uptime > 86400 ? `${Math.floor(health.uptime / 86400)}d` :
+    health.uptime > 3600 ? `${Math.floor(health.uptime / 3600)}h` : `${Math.floor(health.uptime / 60)}m`;
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h2 className="text-lg font-bold text-[#e0e0e0] flex items-center gap-2"><HeartPulse size={20} className="text-[#4fc3f7]" /> Health Check</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-bold text-[#e0e0e0] flex items-center gap-2">
+          <Heart size={20} className="text-[#4fc3f7]" />
+          System Health
+        </h2>
+        <button onClick={refresh} className="aurelius-btn-outline flex items-center gap-2 text-sm"><RefreshCw size={14} /> Refresh</button>
+      </div>
+
+      <div className={`p-4 rounded-xl border ${allHealthy ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-rose-500/5 border-rose-500/20'}`}>
         <div className="flex items-center gap-3">
-          {data && <span className="text-xs text-[#9e9eb0]">Uptime: {formatUptime(data.uptime_seconds || 0)}</span>}
-          <button onClick={runChecks} className="aurelius-btn-outline flex items-center gap-2 text-sm"><RefreshCw size={14} /> Run Checks</button>
+          {allHealthy ? <CheckCircle size={24} className="text-emerald-400" /> : <AlertTriangle size={24} className="text-rose-400" />}
+          <div>
+            <p className={`font-bold ${allHealthy ? 'text-emerald-400' : 'text-rose-400'}`}>
+              {allHealthy ? 'All Systems Operational' : 'Service Degradation'}
+            </p>
+            <p className="text-xs text-[#9e9eb0]">v{health.version} · Uptime: {uptimeStr} · {health.services.length} services</p>
+          </div>
         </div>
       </div>
 
-      <div className={`aurelius-card flex items-center gap-4 ${overallConfig.bg} border ${overallConfig.border}`}>
-        <div className={`w-12 h-12 rounded-full ${overallConfig.bg} ${overallConfig.color} border ${overallConfig.border} flex items-center justify-center`}><OverallIcon size={24} /></div>
-        <div>
-          <p className={`text-xl font-bold ${overallConfig.color}`}>{overallConfig.label}</p>
-          <p className="text-xs text-[#9e9eb0]">{checks.length} checks · {healthyCount} healthy · {warningCount} warning · {criticalCount} critical</p>
-        </div>
+      <div className="grid grid-cols-3 gap-3">
+        <StatsCard label="CPU" value={`${health.system.cpu}%`} icon={Cpu} color={health.system.cpu > 80 ? 'text-rose-400' : 'text-emerald-400'} />
+        <StatsCard label="Memory" value={`${health.system.memory}%`} icon={Database} color={health.system.memory > 80 ? 'text-rose-400' : 'text-emerald-400'} />
+        <StatsCard label="Disk" value={`${health.system.disk}%`} icon={Server} color={health.system.disk > 80 ? 'text-rose-400' : 'text-emerald-400'} />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {checks.map((check) => {
-          const cfg = statusConfig[check.status as keyof typeof statusConfig];
-          const Icon = checkIcons[check.name as keyof typeof checkIcons] || Server;
-          const CheckIcon = cfg.icon;
-          return (
-            <div key={check.name} className={`aurelius-card space-y-3 ${cfg.bg} border ${cfg.border}`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2"><Icon size={16} className={cfg.color} /><span className="text-sm font-semibold text-[#e0e0e0] capitalize">{check.name}</span></div>
-                <CheckIcon size={16} className={cfg.color} />
-              </div>
-              <p className="text-sm text-[#9e9eb0]">{check.message}</p>
-              <div className="flex items-center justify-between text-[10px] text-[#9e9eb0]">
-                <span>{check.latency_ms > 0 ? `${check.latency_ms}ms` : '—'}</span>
-                <span>{new Date(check.lastChecked).toLocaleTimeString()}</span>
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold text-[#e0e0e0]">Services</h3>
+        {health.services.map(service => (
+          <motion.div key={service.name} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            className="aurelius-card p-4 flex items-center justify-between"
+          >
+            <div className="flex items-center gap-3">
+              {service.status === 'healthy' ? <CheckCircle size={16} className="text-emerald-400" /> :
+               service.status === 'degraded' ? <AlertTriangle size={16} className="text-amber-400" /> :
+               <XCircle size={16} className="text-rose-400" />}
+              <div>
+                <p className="text-sm font-medium text-[#e0e0e0]">{service.name}</p>
+                {service.message && <p className="text-xs text-[#9e9eb0]">{service.message}</p>}
               </div>
             </div>
-          );
-        })}
+            <div className="text-right">
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                service.status === 'healthy' ? 'text-emerald-400 bg-emerald-500/10' :
+                service.status === 'degraded' ? 'text-amber-400 bg-amber-500/10' :
+                'text-rose-400 bg-rose-500/10'
+              }`}>{service.status}</span>
+              <p className="text-[10px] text-[#9e9eb0] mt-0.5">{service.latency}ms</p>
+            </div>
+          </motion.div>
+        ))}
       </div>
-
-      {loading && checks.length === 0 && (
-        <div className="aurelius-card text-center py-12 text-[#9e9eb0]"><Loader2 size={32} className="mx-auto mb-3 animate-spin opacity-60" /><p>Running health checks...</p></div>
-      )}
     </div>
   );
 }

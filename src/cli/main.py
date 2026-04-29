@@ -17,11 +17,15 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import os
 import subprocess
 import sys
 import textwrap
 from pathlib import Path
+from typing import Any
+
+from .dragon_mascot import AURELIUS_BANNER, DRAGON_ART
 
 __version__ = "1.0.0"
 
@@ -125,11 +129,6 @@ def MAGENTA(t):
     return _c("35", t)
 
 
-# ── Dragon ASCII art mascot ───────────────────────────────────────────────────
-
-from .dragon_mascot import DRAGON_ART, AURELIUS_MASCOT, AURELIUS_BANNER
-
-
 # ── banner ────────────────────────────────────────────────────────────────────
 
 
@@ -137,7 +136,13 @@ def _print_banner() -> None:
     if _RICH and _console:
         header = Text(AURELIUS_BANNER, style=f"bold {LIGHTNING_BLUE}")
         _console.print(header)
-        _console.print(Panel(DRAGON_ART, border_style=LIGHTNING_BLUE, title="[bold]AURELIUS — The Coding Dragon[/bold]"))
+        _console.print(
+            Panel(
+                DRAGON_ART,
+                border_style=LIGHTNING_BLUE,
+                title="[bold]AURELIUS — The Coding Dragon[/bold]",
+            )
+        )
 
         info_lines = Text()
         info_lines.append("\n  Type ", style="dim white")
@@ -817,7 +822,9 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # agent (Aurelius API)
     agent_p = sub.add_parser("agent", help="Aurelius agent commands")
-    agent_p.add_argument("subcommand", choices=["run", "coding", "team", "agents", "notifications", "status"])
+    agent_p.add_argument(
+        "subcommand", choices=["run", "coding", "team", "agents", "notifications", "status"]
+    )
     agent_p.add_argument("--task", "-t", help="task description")
     agent_p.add_argument("--workers", "-w", type=int, default=None, help="worker count for team")
     agent_p.add_argument("--json", action="store_true", help="JSON output")
@@ -836,6 +843,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command is None or args.command == "chat":
         if not getattr(args, "model_path", None) or args.command != "chat":
             from .terminal_cli import main as run_terminal
+
             run_terminal()
             return 0
 
@@ -843,7 +851,8 @@ def main(argv: list[str] | None = None) -> int:
         persona_id = getattr(args, "persona", None)
         if persona_id:
             try:
-                from src.persona import UnifiedPersonaRegistry, BUILTIN_PERSONAS
+                from src.persona import BUILTIN_PERSONAS, UnifiedPersonaRegistry
+
                 ureg = UnifiedPersonaRegistry()
                 for p in BUILTIN_PERSONAS:
                     ureg.register(p)
@@ -851,13 +860,15 @@ def main(argv: list[str] | None = None) -> int:
                 system = persona.system_prompt
             except Exception as exc:
                 _print(f"[aurelius.warn] Unknown persona: {persona_id} ({exc})[/aurelius.warn]")
+        lib = None
         try:
             from src.serving.system_prompts import SystemPromptLibrary
+        except ImportError:
+            lib = None
+        else:
             lib = SystemPromptLibrary()
-            if system in lib.list_personas():
-                system = lib.get(system)
-        except Exception:
-            pass
+        if lib and system in lib.list_personas():
+            system = lib.get(system)
         _run_chat(
             system_prompt=system,
             model_path=getattr(args, "model_path", None),
@@ -965,14 +976,16 @@ def main(argv: list[str] | None = None) -> int:
             return 1
 
     elif args.command == "config":
-        _run_config(args)
+        return _run_config(args)
 
     elif args.command == "health":
         from src.cli.debug_commands import health_check
+
         return health_check(args)
 
     elif args.command == "agent":
         from src.aurelius.cli import main as agent_cli
+
         sub_args = [args.subcommand]
         if args.task:
             sub_args.extend([args.task])
@@ -1012,33 +1025,30 @@ def _run_health(args: argparse.Namespace) -> None:
         from src.model.config import AureliusConfig
 
         cfg = AureliusConfig()
-        n_params = cfg.d_model * cfg.n_layers * cfg.d_ff  # rough estimate
         results.append(
-            ("Model Config",
-             f"d_model={cfg.d_model}, n_layers={cfg.n_layers}, "
-             f"n_heads={cfg.n_heads}, n_kv_heads={cfg.n_kv_heads}, "
-             f"d_ff={cfg.d_ff}",
-             True),
+            (
+                "Model Config",
+                f"d_model={cfg.d_model}, n_layers={cfg.n_layers}, "
+                f"n_heads={cfg.n_heads}, n_kv_heads={cfg.n_kv_heads}, "
+                f"d_ff={cfg.d_ff}",
+                True,
+            ),
         )
     except Exception as e:
         results.append(("Model Config", f"error: {e}", False))
 
     # Tokenizer
-    try:
-        from tokenizers import Tokenizer
-
-        tokenizer_path = Path(__file__).parent.parent.parent / "configs" / "tokenizer_config.json"
-        if tokenizer_path.exists():
-            results.append(("Tokenizer", f"config found at {tokenizer_path.name}", True))
-        else:
-            results.append(("Tokenizer", "config not found", False))
-    except ImportError:
+    tokenizer_path = Path(__file__).parent.parent.parent / "configs" / "tokenizer_config.json"
+    tokenizer_spec = importlib.util.find_spec("tokenizers")
+    if tokenizer_path.exists():
+        results.append(("Tokenizer", f"config found at {tokenizer_path.name}", True))
+    elif tokenizer_spec is None:
         results.append(("Tokenizer", "not installed (tokenizers package)", False))
+    else:
+        results.append(("Tokenizer", "config not found", False))
 
     # Serving
     try:
-        from src.serving import api_server
-
         results.append(("API Server", "module importable", True))
     except Exception as e:
         results.append(("API Server", f"import error: {e}", False))
@@ -1058,14 +1068,16 @@ def _run_health(args: argparse.Namespace) -> None:
         table.add_column("Status", style="bold")
         table.add_column("Detail")
         for name, detail, ok in results:
-            status = "[aurelius.ok]OK[/aurelius.ok]" if ok else "[aurelius.error]FAIL[/aurelius.error]"
+            status = (
+                "[aurelius.ok]OK[/aurelius.ok]" if ok else "[aurelius.error]FAIL[/aurelius.error]"
+            )
             table.add_row(name, status, detail)
         _console.print("\n")
         _console.print(table)
         _console.print("\n")
     else:
         print(f"\n{'=' * 60}")
-        print(f"  Aurelius Health Check")
+        print("  Aurelius Health Check")
         print(f"{'=' * 60}")
         for name, detail, ok in results:
             status = "OK" if ok else "FAIL"
@@ -1076,6 +1088,107 @@ def _run_health(args: argparse.Namespace) -> None:
         print(f"\nPython: {sys.version}")
         print(f"Platform: {sys.platform}")
         print(f"Config path: {Path(__file__).parent.parent.parent / 'configs'}")
+
+
+def _run_config(args: argparse.Namespace) -> int:
+    """Inspect or update the Aurelius CLI configuration file."""
+    from src.cli.config import CLIAppConfig
+
+    def _config_path() -> Path:
+        cfg = CLIAppConfig.from_env()
+        return Path(cfg.data_dir).expanduser() / "config.json"
+
+    def _load_config(path: Path) -> CLIAppConfig:
+        if path.exists():
+            return CLIAppConfig.load(str(path))
+        return CLIAppConfig.from_env()
+
+    def _parse_value(raw: str) -> Any:
+        import json
+
+        try:
+            return json.loads(raw)
+        except Exception:
+            return raw
+
+    path = _config_path()
+
+    if args.action == "path":
+        print(str(Path(__file__).parent.parent.parent / "configs"))
+        return 0
+
+    config = _load_config(path)
+
+    if args.action == "list":
+        payload = {
+            "data_dir": config.data_dir,
+            "log_level": config.log_level,
+            "default_model": config.default_model,
+            "max_history": config.max_history,
+            "theme": config.theme,
+            **config.extra,
+        }
+        model_cfg = None
+        try:
+            from src.model.config import AureliusConfig
+        except ImportError:
+            model_cfg = None
+        else:
+            model_cfg = AureliusConfig()
+        if model_cfg is not None:
+            payload["d_model"] = model_cfg.d_model
+            payload["n_layers"] = model_cfg.n_layers
+            payload["n_heads"] = model_cfg.n_heads
+            payload["n_kv_heads"] = model_cfg.n_kv_heads
+            payload["d_ff"] = model_cfg.d_ff
+        for key in sorted(payload):
+            print(f"{key}: {payload[key]}")
+        return 0
+
+    if args.action == "get":
+        if not args.key:
+            print("Usage: aurelius config get <key>")
+            return 1
+        model_keys = {"d_model", "n_layers", "n_heads", "n_kv_heads", "d_ff"}
+        if args.key in model_keys:
+            model_cfg = None
+            try:
+                from src.model.config import AureliusConfig
+            except ImportError:
+                model_cfg = None
+            else:
+                model_cfg = AureliusConfig()
+            if model_cfg is not None:
+                print(getattr(model_cfg, args.key))
+                return 0
+        if hasattr(config, args.key):
+            print(getattr(config, args.key))
+            return 0
+        if args.key in config.extra:
+            print(config.extra[args.key])
+            return 0
+        print(f"Unknown config key: {args.key}")
+        return 1
+
+    if args.action == "set":
+        if not args.key or args.value is None:
+            print("Usage: aurelius config set <key> <value>")
+            return 1
+        if args.key in {"d_model", "n_layers", "n_heads", "n_kv_heads", "d_ff"}:
+            print(f"error: config key is read-only: {args.key}")
+            return 1
+        value = _parse_value(args.value)
+        if hasattr(config, args.key):
+            setattr(config, args.key, value)
+        else:
+            config.extra[args.key] = value
+        path.parent.mkdir(parents=True, exist_ok=True)
+        config.save(str(path))
+        print(f"{args.key} updated")
+        return 0
+
+    print(f"error: unsupported config action: {args.action}")
+    return 1
 
 
 if __name__ == "__main__":

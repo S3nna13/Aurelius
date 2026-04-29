@@ -5,6 +5,14 @@ import { existsSync, readFileSync } from 'fs'
 
 const router = Router()
 
+router.use((req, res, next) => {
+  if (req.user?.role !== 'admin') {
+    res.status(403).json({ error: 'Forbidden', message: 'Admin access required' })
+    return
+  }
+  next()
+})
+
 function getCPUInfo() {
   const c = cpus()
   const model = c.length > 0 ? c[0].model : 'unknown'

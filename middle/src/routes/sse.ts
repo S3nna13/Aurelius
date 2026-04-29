@@ -1,11 +1,14 @@
 import { Router } from 'express'
 import { getEngine } from '../engine.js'
+import { requireScope, requireAdmin } from '../middleware/auth.js'
 
 const router = Router()
+const MAX_SSE_CLIENTS = 50
 
 interface SSEClient {
   id: string
   res: import('express').Response
+  userId?: string
 }
 
 const clients = new Map<string, SSEClient>()
@@ -22,7 +25,11 @@ function broadcast(event: string, data: unknown): void {
   }
 }
 
-router.get('/events', (req, res) => {
+router.get('/events', requireScope('sse:read'), (req, res) => {
+  if (clients.size >= MAX_SSE_CLIENTS) {
+    res.status(429).json({ error: 'Too many SSE connections' })
+    return
+  }
   const clientId = `sse-${++clientIdCounter}`
 
   res.writeHead(200, {
@@ -45,7 +52,7 @@ router.get('/events', (req, res) => {
     }
   }, 15000)
 
-  clients.set(clientId, { id: clientId, res })
+  clients.set(clientId, { id: clientId, res, userId: req.user?.id })
 
   req.on('close', () => {
     clearInterval(heartbeat)
@@ -53,10 +60,14 @@ router.get('/events', (req, res) => {
   })
 })
 
-router.post('/events/broadcast', (req, res) => {
+router.post('/events/broadcast', requireScope('sse:broadcast'), requireAdmin, (req, res) => {
   const { event, data } = req.body || {}
   if (!event || !data) {
     res.status(400).json({ error: 'Event and data required' })
+    return
+  }
+  if (!/^[a-zA-Z0-9_-]+$/.test(String(event))) {
+    res.status(400).json({ error: 'Invalid event name' })
     return
   }
   broadcast(event, data)

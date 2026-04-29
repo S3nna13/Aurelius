@@ -54,10 +54,11 @@ router.post('/completions', async (req: Request, res: Response) => {
     }
 
     res.json(result || { error: 'No provider available' });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to complete request'
     res.status(502).json({
       error: 'Provider unavailable',
-      message: error?.message || 'Failed to complete request',
+      message,
     });
   }
 });

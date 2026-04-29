@@ -6,15 +6,13 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 CLI_MODULE = "src.cli.main"
 PROJECT_ROOT = Path(__file__).parent.parent
 
 
 def run_cli(*args: str) -> subprocess.CompletedProcess:
     """Run the CLI with given arguments and return the result."""
-    return subprocess.run(
+    return subprocess.run(  # noqa: S603
         [sys.executable, "-m", CLI_MODULE, *args],
         capture_output=True,
         text=True,
@@ -68,7 +66,11 @@ class TestCLIHealth:
     def test_health(self) -> None:
         result = run_cli("health")
         assert result.returncode == 0
-        assert "Model Config" in result.stdout or "PyTorch" in result.stdout or "Health" in result.stdout
+        assert (
+            "Model Config" in result.stdout
+            or "PyTorch" in result.stdout
+            or "Health" in result.stdout
+        )
 
     def test_health_verbose(self) -> None:
         result = run_cli("health", "--verbose")

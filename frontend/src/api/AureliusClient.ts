@@ -49,6 +49,10 @@ export class AureliusClient {
     this.apiKey = key;
   }
 
+  getApiKey(): string {
+    return this.apiKey;
+  }
+
   private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseUrl}/api${path}`;
     const controller = new AbortController();

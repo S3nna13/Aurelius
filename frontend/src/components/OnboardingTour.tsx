@@ -1,126 +1,57 @@
 import { useState, useEffect } from 'react';
-import { X, ChevronRight, ChevronLeft, Sparkles } from 'lucide-react';
+import { HelpCircle, X, ChevronRight, ChevronLeft, Cpu } from 'lucide-react';
 
-interface TourStep {
-  target: string;
-  title: string;
-  description: string;
-  position?: 'top' | 'bottom' | 'left' | 'right';
-}
-
-const steps: TourStep[] = [
-  {
-    target: 'body',
-    title: 'Welcome to Aurelius',
-    description: 'Your autonomous AI agent mission control. Let\'s take a quick tour.',
-    position: 'bottom',
-  },
-  {
-    target: 'nav',
-    title: 'Navigation',
-    description: 'Access all modules from the sidebar. Watch for live badges on notifications and workflows.',
-    position: 'right',
-  },
-  {
-    target: 'header',
-    title: 'Mission Control Header',
-    description: 'Toggle themes, check connection status, and access your notifications.',
-    position: 'bottom',
-  },
-  {
-    target: 'main',
-    title: 'Dashboard',
-    description: 'Monitor agent health, activity trends, and system metrics in real-time.',
-    position: 'top',
-  },
-  {
-    target: 'body',
-    title: 'Keyboard Shortcuts',
-    description: 'Press ? anytime to see shortcuts. Use Cmd+K for the command palette and / for global search.',
-    position: 'bottom',
-  },
+const STEPS = [
+  { title: 'Welcome to Aurelius', content: 'Your AI agent operations center. Monitor, spawn, and manage AI agents from one dashboard.' },
+  { title: 'Agent Operations', content: 'Visit the Agents page to spawn new agents, monitor their status, and view real-time execution streams.' },
+  { title: 'Training & Analytics', content: 'Track model training in real-time with live loss curves, and monitor system performance in the Analytics dashboard.' },
+  { title: 'Keyboard Shortcuts', content: 'Press ? to view all keyboard shortcuts. Use ⌘K for the command palette, G then D to go to Dashboard.' },
 ];
 
-const STORAGE_KEY = 'aurelius-tour-completed';
-
 export default function OnboardingTour() {
-  const [show, setShow] = useState(false);
+  const [active, setActive] = useState(false);
   const [step, setStep] = useState(0);
+  const dismissed = localStorage.getItem('onboarding_dismissed');
 
   useEffect(() => {
-    const completed = localStorage.getItem(STORAGE_KEY);
-    if (!completed) {
-      const timer = setTimeout(() => setShow(true), 800);
+    if (!dismissed) {
+      const timer = setTimeout(() => setActive(true), 1000);
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [dismissed]);
 
-  const complete = () => {
-    localStorage.setItem(STORAGE_KEY, 'true');
-    setShow(false);
+  const dismiss = () => {
+    setActive(false);
+    localStorage.setItem('onboarding_dismissed', 'true');
   };
 
-  const next = () => {
-    if (step < steps.length - 1) setStep((s) => s + 1);
-    else complete();
-  };
-
-  const prev = () => setStep((s) => Math.max(0, s - 1));
-
-  if (!show) return null;
-
-  const current = steps[step];
+  if (!active) return null;
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={complete} />
-
-      {/* Tooltip Card */}
-      <div className="relative bg-aurelius-card border border-aurelius-border rounded-xl p-6 max-w-sm w-full shadow-2xl mx-4">
-        <button
-          onClick={complete}
-          className="absolute top-3 right-3 p-1 rounded-lg text-aurelius-muted hover:text-aurelius-text transition-colors"
-        >
-          <X size={16} />
-        </button>
-
-        <div className="flex items-center gap-2 mb-3">
-          <Sparkles size={18} className="text-aurelius-accent" />
-          <h3 className="text-base font-bold text-aurelius-text">{current.title}</h3>
-        </div>
-        <p className="text-sm text-aurelius-muted leading-relaxed mb-5">
-          {current.description}
-        </p>
-
-        {/* Progress */}
-        <div className="flex items-center gap-1.5 mb-5">
-          {steps.map((_, i) => (
-            <div
-              key={i}
-              className={`h-1.5 rounded-full transition-all ${
-                i === step ? 'w-6 bg-aurelius-accent' : 'w-1.5 bg-aurelius-border'
-              }`}
-            />
-          ))}
-        </div>
-
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="aurelius-card p-6 max-w-md w-full mx-4 space-y-4">
         <div className="flex items-center justify-between">
-          <button
-            onClick={prev}
-            disabled={step === 0}
-            className="flex items-center gap-1 text-xs text-aurelius-muted hover:text-aurelius-text disabled:opacity-30 transition-colors"
-          >
-            <ChevronLeft size={14} />
-            Back
-          </button>
-          <button
-            onClick={next}
-            className="aurelius-btn flex items-center gap-1.5 text-xs"
-          >
-            {step === steps.length - 1 ? 'Get Started' : 'Next'}
-            {step < steps.length - 1 && <ChevronRight size={14} />}
-          </button>
+          <div className="flex items-center gap-2">
+            <Cpu size={20} className="text-[#4fc3f7]" />
+            <span className="text-sm font-bold text-[#e0e0e0]">{STEPS[step].title}</span>
+          </div>
+          <button onClick={dismiss} className="text-[#9e9eb0] hover:text-[#e0e0e0]"><X size={16} /></button>
+        </div>
+        <p className="text-sm text-[#9e9eb0] leading-relaxed">{STEPS[step].content}</p>
+        <div className="flex items-center justify-between">
+          <div className="flex gap-1.5">
+            {STEPS.map((_, i) => (
+              <div key={i} className={`w-2 h-2 rounded-full transition-colors ${i === step ? 'bg-[#4fc3f7]' : 'bg-[#2d2d44]'}`} />
+            ))}
+          </div>
+          <div className="flex gap-2">
+            {step > 0 && <button onClick={() => setStep(s => s - 1)} className="aurelius-btn-outline p-1.5"><ChevronLeft size={14} /></button>}
+            {step < STEPS.length - 1 ? (
+              <button onClick={() => setStep(s => s + 1)} className="aurelius-btn-primary p-1.5"><ChevronRight size={14} /></button>
+            ) : (
+              <button onClick={dismiss} className="aurelius-btn-primary text-xs px-3 py-1.5">Get Started</button>
+            )}
+          </div>
         </div>
       </div>
     </div>

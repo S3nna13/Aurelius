@@ -11,32 +11,24 @@ Features:
 - Streaming AI responses
 """
 
+# ruff: noqa: E501
 from __future__ import annotations
 
-import asyncio
 import json
 import os
 import shlex
 import subprocess
-import sys
-import tempfile
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from rich.console import Console
-from rich.layout import Layout
-from rich.live import Live
-from rich.markdown import Markdown
-from rich.panel import Panel
-from rich.syntax import Syntax
-from rich.table import Table
-from rich.text import Text
 from rich.traceback import install
 
-from .dragon_mascot import AURELIUS_BANNER, AURELIUS_MASCOT, DRAGON_ART
+from .dragon_mascot import DRAGON_ART
 
 install()
 
@@ -145,8 +137,12 @@ class NL2SHEngine:
 
     def verify_equivalence(self, cmd_a: str, cmd_b: str) -> float:
         try:
-            r1 = subprocess.run(shlex.split(cmd_a), capture_output=True, text=True, timeout=5)
-            r2 = subprocess.run(shlex.split(cmd_b), capture_output=True, text=True, timeout=5)
+            r1 = subprocess.run(  # noqa: S603
+                shlex.split(cmd_a), capture_output=True, text=True, timeout=5
+            )
+            r2 = subprocess.run(  # noqa: S603
+                shlex.split(cmd_b), capture_output=True, text=True, timeout=5
+            )
             if r1.stdout == r2.stdout:
                 return 1.0
             common = set(r1.stdout.split()) & set(r2.stdout.split())
@@ -163,7 +159,28 @@ class ToolExecutor:
     """Executes shell commands, edits files, runs code with safety controls."""
 
     DENY_LIST = {"rm -rf /", "dd if=", "> /dev/sda", ":(){ :|:& };:", "chmod 000 /"}
-    ALLOW_LIST = {"ls", "cat", "head", "tail", "grep", "find", "pwd", "echo", "touch", "mkdir", "cp", "mv", "rm", "git", "make", "cargo", "npm", "python", "pytest", "cargo test"}
+    ALLOW_LIST = {
+        "ls",
+        "cat",
+        "head",
+        "tail",
+        "grep",
+        "find",
+        "pwd",
+        "echo",
+        "touch",
+        "mkdir",
+        "cp",
+        "mv",
+        "rm",
+        "git",
+        "make",
+        "cargo",
+        "npm",
+        "python",
+        "pytest",
+        "cargo test",
+    }
 
     def __init__(self, sandbox: bool = True):
         self.sandbox = sandbox
@@ -186,9 +203,13 @@ class ToolExecutor:
 
         start = time.time()
         try:
-            result = subprocess.run(
-                command, shell=True, capture_output=True, text=True,
-                timeout=timeout, cwd=cwd,
+            result = subprocess.run(  # noqa: S602
+                command,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                cwd=cwd,
             )
             elapsed = time.time() - start
             tr = ToolResult(
@@ -259,13 +280,17 @@ Respond with a numbered plan, one step per line:"""
         for line in response.strip().split("\n"):
             line = line.strip()
             if line and (line[0].isdigit() or line.startswith("-")):
-                steps.append({
-                    "description": line,
-                    "type": "shell",
-                    "command": self.nl2sh.translate(line),
-                })
+                steps.append(
+                    {
+                        "description": line,
+                        "type": "shell",
+                        "command": self.nl2sh.translate(line),
+                    }
+                )
         if not steps:
-            steps.append({"description": task, "type": "shell", "command": self.nl2sh.translate(task)})
+            steps.append(
+                {"description": task, "type": "shell", "command": self.nl2sh.translate(task)}
+            )
         self._plan_history.append({"task": task, "steps": steps})
         return steps
 
@@ -278,7 +303,9 @@ Respond with a numbered plan, one step per line:"""
             else:
                 result = self.tool.execute(cmd, cwd=self.session.workspace or None)
             results.append(result)
-            self.session.messages.append(Message(role="tool", content=f"$ {cmd}\n{result.truncated(200)}"))
+            self.session.messages.append(
+                Message(role="tool", content=f"$ {cmd}\n{result.truncated(200)}")
+            )
         return results
 
     def process_message(self, user_input: str) -> str:
@@ -298,13 +325,12 @@ Respond with a numbered plan, one step per line:"""
                     result_lines.append(f"   → `{s['command']}`")
             result = "\n".join(result_lines)
 
-            prompt = f"Execute the plan and show results."
             exec_results = self.execute_plan(steps)
             for i, (s, r) in enumerate(zip(steps, exec_results)):
                 if r.success and r.stdout:
-                    result += f"\n\n**Step {i+1} result:**\n```\n{r.truncated(500)}\n```"
+                    result += f"\n\n**Step {i + 1} result:**\n```\n{r.truncated(500)}\n```"
                 elif not r.success:
-                    result += f"\n\n**Step {i+1} error:** `{r.stderr[:200]}`"
+                    result += f"\n\n**Step {i + 1} error:** `{r.stderr[:200]}`"
             self.session.messages.append(Message(role="assistant", content=result))
             return result
 
@@ -322,8 +348,14 @@ Respond with a numbered plan, one step per line:"""
             return output
 
         if any(kw in nl_lower for kw in ["search", "find", "grep"]):
-            result = self.tool.execute(self.nl2sh.translate(user_input), cwd=self.session.workspace or None)
-            output = f"**Search results:**\n```\n{result.truncated(2000)}\n```" if result.success and result.stdout else "No results found."
+            result = self.tool.execute(
+                self.nl2sh.translate(user_input), cwd=self.session.workspace or None
+            )
+            output = (
+                f"**Search results:**\n```\n{result.truncated(2000)}\n```"
+                if result.success and result.stdout
+                else "No results found."
+            )
             self.session.messages.append(Message(role="assistant", content=output))
             return output
 
@@ -338,7 +370,10 @@ Respond with a numbered plan, one step per line:"""
         if command == "help":
             return self._help_text()
         elif command in ("clear", "cls"):
-            os.system("clear" if sys.platform == "darwin" else "cls")
+            if os.name == "nt":
+                subprocess.run(["cmd", "/c", "cls"], check=False)  # noqa: S607
+            else:
+                subprocess.run(["clear"], check=False)  # noqa: S607
             return ""
         elif command == "status":
             return self._status_text()
@@ -400,13 +435,15 @@ Respond with a numbered plan, one step per line:"""
 
     def _status_text(self) -> str:
         mem = self.session.memory or {}
-        return f"""**Session Status**
+        return (
+            f"""**Session Status**
   Session: {self.session.id[:12]}
   Messages: {len(self.session.messages)}
   Workspace: {self.session.workspace or os.getcwd()}
   Memory keys: {list(mem.keys())}
   Tool history: {len(self.tool.history)} commands
   NL2SH cache: {len(self.nl2sh._cache)} entries"""
+        )
 
     def _save_session(self, path: str) -> None:
         data = {

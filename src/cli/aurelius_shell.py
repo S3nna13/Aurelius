@@ -4,34 +4,26 @@ Looks and feels like Claude Code, Gemini CLI, Codex CLI.
 Powered by Aurelius backend only. Lightning blue (#00BFFF) theme.
 """
 
+# ruff: noqa: E501
 from __future__ import annotations
 
-import asyncio
-import json
 import os
-import shlex
-import signal
 import subprocess
-import sys
 import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, AsyncIterator
+from typing import Any
 
 from rich.console import Console
-from rich.layout import Layout
-from rich.live import Live
 from rich.markdown import Markdown
 from rich.panel import Panel
-from rich.rule import Rule
 from rich.spinner import Spinner
 from rich.syntax import Syntax
 from rich.table import Table
 from rich.text import Text
-from rich.tree import Tree
 
-from .dragon_mascot import AURELIUS_BANNER, DRAGON_ART, WELCOME_HEADER
+from .dragon_mascot import DRAGON_ART, WELCOME_HEADER
 
 LIGHTNING_BLUE = "#00BFFF"
 DRAGON_GREEN = "#00FF88"
@@ -65,7 +57,14 @@ class AureliusShell:
         console.clear()
         header = Text(WELCOME_HEADER, style=LIGHTNING_BLUE)
         console.print(header)
-        console.print(Panel(DRAGON_ART, border_style=LIGHTNING_BLUE, title="[bold]AURELIUS — The Coding Dragon[/bold]"))
+        dragon_title = "[bold]AURELIUS — The Coding Dragon[/bold]"
+        console.print(
+            Panel(
+                DRAGON_ART,
+                border_style=LIGHTNING_BLUE,
+                title=dragon_title,
+            )
+        )
 
         info = Table.grid(padding=1)
         info.add_column(style=f"bold {DRAGON_GREEN}")
@@ -175,9 +174,13 @@ class AureliusShell:
 
     def run_shell(self, command: str, cwd: str | None = None, timeout: int = 30) -> str:
         try:
-            result = subprocess.run(
-                command, shell=True, capture_output=True, text=True,
-                timeout=timeout, cwd=cwd or self.cwd,
+            result = subprocess.run(  # noqa: S602
+                command,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+                cwd=cwd or self.cwd,
             )
             output = result.stdout
             if result.stderr:
@@ -199,7 +202,10 @@ class AureliusShell:
         old = self.read_file(old_path) or ""
         new = self.read_file(new_path) or ""
         import difflib
-        return "\n".join(difflib.unified_diff(old.splitlines(), new.splitlines(), old_path, new_path))
+
+        return "\n".join(
+            difflib.unified_diff(old.splitlines(), new.splitlines(), old_path, new_path)
+        )
 
     # ── Main loop ──────────────────────────────────────────
 
@@ -208,7 +214,10 @@ class AureliusShell:
         while True:
             try:
                 cwd_short = os.path.basename(self.cwd)
-                prompt_str = f"\n[{LIGHTNING_BLUE}]╭─[/] [{DRAGON_GREEN}]{cwd_short}[/]\n[{LIGHTNING_BLUE}]╰─⚡[/] "
+                prompt_str = (
+                    f"\n[{LIGHTNING_BLUE}]╭─[/] [{DRAGON_GREEN}]{cwd_short}[/]\n"
+                    f"[{LIGHTNING_BLUE}]╰─⚡[/] "
+                )
                 user_input = input(prompt_str).strip()
             except (EOFError, KeyboardInterrupt):
                 console.print(f"\n[{DRAGON_GREEN}]The dragon rests. Farewell.[/]")
@@ -270,17 +279,24 @@ class AureliusShell:
 
             if any(kw in prompt.lower() for kw in ["run", "execute", "bash", "shell"]):
                 cmd = self.run_shell(prompt.split(" ", 1)[-1] if " " in prompt else prompt)
-                self.render_markdown(f"```\n{cmd[:1000]}\n```")
+                rendered_cmd = f"```\n{cmd[:1000]}\n```"
+                self.render_markdown(rendered_cmd)
             elif any(kw in prompt.lower() for kw in ["read", "show", "cat"]):
                 path = prompt.split(" ", 1)[-1] if " " in prompt else "."
                 content = self.read_file(path)
                 if content:
-                    syntax = Syntax(content, "python" if path.endswith(".py") else "text", theme="monokai")
+                    syntax = Syntax(
+                        content, "python" if path.endswith(".py") else "text", theme="monokai"
+                    )
                     console.print(Panel(syntax, border_style=LIGHTNING_BLUE))
                 else:
                     console.print(f"[{ERROR_RED}]File not found: {path}[/]")
             else:
-                self.render_markdown(f"**Aurelius:** I'll help with: {prompt}\n\nLet me analyze this task and prepare a response.")
+                analysis = (
+                    f"**Aurelius:** I'll help with: {prompt}\n\n"
+                    "Let me analyze this task and prepare a response."
+                )
+                self.render_markdown(analysis)
 
             self.stream_event(AgentEvent(type="done", content="Task complete"))
             self._history.append({"role": "assistant", "content": prompt, "time": time.time()})

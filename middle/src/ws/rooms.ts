@@ -43,8 +43,12 @@ export function broadcastToRoom(roomName: string, data: unknown): number {
   let count = 0
   for (const ws of room.clients) {
     if (ws.readyState === ws.OPEN) {
-      ws.send(msg)
-      count++
+      try {
+        ws.send(msg)
+        count++
+      } catch {
+        // ignore individual client errors
+      }
     }
   }
   return count
@@ -56,8 +60,12 @@ export function broadcastToAll(data: unknown): number {
   for (const [, room] of rooms) {
     for (const ws of room.clients) {
       if (ws.readyState === ws.OPEN) {
-        ws.send(msg)
-        count++
+        try {
+          ws.send(msg)
+          count++
+        } catch {
+          // ignore individual client errors
+        }
       }
     }
   }

@@ -1,465 +1,142 @@
-import { useState, useCallback } from 'react';
-import {
-  Wrench,
-  Search,
-  Play,
-  X,
-  Code,
-  Shield,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  ChevronRight,
-  Loader2,
-  Star,
-} from 'lucide-react';
-import { useApi } from '../hooks/useApi';
-import { useToast } from '../components/ToastProvider';
-import { useFavorites } from '../hooks/useFavorites';
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Puzzle, Search, Filter, Code, BookOpen, Server, MessageSquare, Pen, GraduationCap, Database, Calendar, Wrench, Star } from 'lucide-react';
+import Input from '../components/ui/Input';
+import EmptyState from '../components/EmptyState';
+import Skeleton from '../components/Skeleton';
 
-interface Skill {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  active: boolean;
-  version: string | null;
-  risk_score: number;
-  allow_level: string;
-  scope: string;
-}
+const CATEGORY_ICONS: Record<string, typeof Puzzle> = {
+  coding: Code, research: BookOpen, devops: Server, communication: MessageSquare,
+  creative: Pen, education: GraduationCap, data: Database, productivity: Calendar, meta: Wrench,
+};
+const CATEGORY_COLORS: Record<string, string> = {
+  coding: 'text-emerald-400', research: 'text-[#4fc3f7]', devops: 'text-amber-400',
+  communication: 'text-violet-400', creative: 'text-rose-400', education: 'text-cyan-400',
+  data: 'text-indigo-400', productivity: 'text-lime-400', meta: 'text-gray-400',
+};
 
-interface SkillDetail extends Skill {
-  instructions: string;
-  scripts: string[];
-  resources: string[];
-  metadata: Record<string, unknown>;
-}
+const ALL_CATEGORIES = ['coding', 'research', 'devops', 'communication', 'creative', 'education', 'data', 'productivity', 'meta'];
 
-interface ExecutionResult {
-  success: boolean;
-  output: string;
-  duration_ms: number;
-}
+interface SkillItem { id: string; name: string; category: string; description: string; tags: string[]; agent_types?: string[]; }
 
-export default function Skills() {
+const SKILL_DATA: SkillItem[] = [
+  { id: 'code_generation', name: 'Code Generation', category: 'coding', description: 'Generate code in any language from natural language descriptions.', tags: ['python', 'typescript', 'rust'] },
+  { id: 'code_review', name: 'Code Review', category: 'coding', description: 'Review PRs for bugs, style, and security vulnerabilities.', tags: ['quality', 'security'] },
+  { id: 'debugging', name: 'Debugging', category: 'coding', description: 'Find and fix bugs with systematic root cause analysis.', tags: ['testing', 'quality'] },
+  { id: 'refactoring', name: 'Refactoring', category: 'coding', description: 'Restructure code for better maintainability without changing behavior.', tags: ['quality', 'patterns'] },
+  { id: 'unit_testing', name: 'Unit Testing', category: 'coding', description: 'Generate and run unit, integration, and e2e tests.', tags: ['testing', 'coverage'] },
+  { id: 'static_analysis', name: 'Static Analysis', category: 'coding', description: 'Analyze code without running it to find potential issues.', tags: ['quality', 'security'] },
+  { id: 'web_search', name: 'Web Search', category: 'research', description: 'Search the web and synthesize findings into coherent results.', tags: ['search', 'information'] },
+  { id: 'fact_checking', name: 'Fact Checking', category: 'research', description: 'Verify claims against authoritative sources with confidence scoring.', tags: ['accuracy', 'verification'] },
+  { id: 'data_analysis', name: 'Data Analysis', category: 'research', description: 'Analyze datasets and extract actionable insights.', tags: ['statistics', 'analytics'] },
+  { id: 'summarization', name: 'Summarization', category: 'research', description: 'Condense long texts into concise, accurate summaries.', tags: ['reading', 'efficiency'] },
+  { id: 'infrastructure_monitoring', name: 'Infrastructure Monitoring', category: 'devops', description: 'Monitor system health, track metrics, and alert on anomalies.', tags: ['observability', 'alerts'] },
+  { id: 'deployment', name: 'Deployment', category: 'devops', description: 'Deploy services, manage releases, and rollback when needed.', tags: ['ci/cd', 'kubernetes'] },
+  { id: 'incident_response', name: 'Incident Response', category: 'devops', description: 'Respond to and resolve system incidents with runbooks.', tags: ['reliability', 'sre'] },
+  { id: 'security_scanning', name: 'Security Scanning', category: 'devops', description: 'Scan for vulnerabilities, misconfigurations, and compliance gaps.', tags: ['vulnerability', 'compliance'] },
+  { id: 'log_analysis', name: 'Log Analysis', category: 'devops', description: 'Parse and analyze log files for patterns and anomalies.', tags: ['observability', 'debugging'] },
+  { id: 'email_drafting', name: 'Email Drafting', category: 'communication', description: 'Draft professional emails for any context or audience.', tags: ['writing', 'professional'] },
+  { id: 'content_creation', name: 'Content Creation', category: 'communication', description: 'Create engaging content for any platform or medium.', tags: ['marketing', 'writing'] },
+  { id: 'customer_support', name: 'Customer Support', category: 'communication', description: 'Handle customer inquiries, triage issues, and provide solutions.', tags: ['service', 'ticketing'] },
+  { id: 'translation', name: 'Translation', category: 'communication', description: 'Translate text between languages while preserving meaning.', tags: ['languages', 'international'] },
+  { id: 'creative_writing', name: 'Creative Writing', category: 'creative', description: 'Write stories, poems, and creative content with vivid language.', tags: ['writing', 'storytelling'] },
+  { id: 'copywriting', name: 'Copywriting', category: 'creative', description: 'Write persuasive marketing copy and advertising content.', tags: ['marketing', 'writing'] },
+  { id: 'brainstorming', name: 'Brainstorming', category: 'creative', description: 'Generate creative ideas and novel solutions to problems.', tags: ['ideation', 'creativity'] },
+  { id: 'teaching', name: 'Teaching', category: 'education', description: 'Explain concepts with adaptive pedagogy and Socratic dialogue.', tags: ['learning', 'pedagogy'] },
+  { id: 'quiz_generation', name: 'Quiz Generation', category: 'education', description: 'Create quizzes and assessments to test knowledge.', tags: ['assessment', 'learning'] },
+  { id: 'language_learning', name: 'Language Learning', category: 'education', description: 'Practice conversations, grammar, and vocabulary in new languages.', tags: ['languages', 'practice'] },
+  { id: 'sql_querying', name: 'SQL Querying', category: 'data', description: 'Write, optimize, and debug SQL queries across databases.', tags: ['database', 'analytics'] },
+  { id: 'data_visualization', name: 'Data Visualization', category: 'data', description: 'Create charts, graphs, and dashboards from any data.', tags: ['charts', 'dashboard'] },
+  { id: 'database_design', name: 'Database Design', category: 'data', description: 'Design schemas, optimize queries, and plan migrations.', tags: ['schema', 'optimization'] },
+  { id: 'scheduling', name: 'Scheduling', category: 'productivity', description: 'Manage calendars, schedule events, and resolve conflicts.', tags: ['calendar', 'time'] },
+  { id: 'task_management', name: 'Task Management', category: 'productivity', description: 'Track tasks, manage sprints, and organize workflows.', tags: ['agile', 'organization'] },
+  { id: 'note_taking', name: 'Note Taking', category: 'productivity', description: 'Take, organize, and summarize meeting notes and documents.', tags: ['documentation', 'organization'] },
+  { id: 'prompt_engineering', name: 'Prompt Engineering', category: 'meta', description: 'Design and optimize prompts for LLMs across use cases.', tags: ['optimization', 'llm'] },
+  { id: 'tool_creation', name: 'Tool Creation', category: 'meta', description: 'Create new tools and integrations for the agent platform.', tags: ['development', 'extensibility'] },
+  { id: 'workflow_automation', name: 'Workflow Automation', category: 'meta', description: 'Automate multi-step workflows across tools and services.', tags: ['automation', 'efficiency'] },
+];
+
+export default function SkillsRegistry() {
   const [search, setSearch] = useState('');
-  const [selected, setSelected] = useState<SkillDetail | null>(null);
-  const [executing, setExecuting] = useState(false);
-  const [execResult, setExecResult] = useState<ExecutionResult | null>(null);
-  const [variables, setVariables] = useState<Record<string, string>>({});
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
-  const { toast } = useToast();
-  const { toggle, isFavorite } = useFavorites();
+  const [category, setCategory] = useState('all');
+  const [selected, setSelected] = useState<SkillItem | null>(null);
 
-  const {
-    data: skillsData,
-    loading,
-    error,
-    refresh: refreshSkills,
-  } = useApi<{ skills: Skill[] }>('/skills', {
-    refreshInterval: 10000,
-    retries: 2,
-    timeout: 8000,
+  const filtered = SKILL_DATA.filter(s => {
+    if (category !== 'all' && s.category !== category) return false;
+    return !search || s.name.toLowerCase().includes(search.toLowerCase()) || s.description.toLowerCase().includes(search.toLowerCase()) || s.tags.some(t => t.includes(search.toLowerCase()));
   });
 
-  const skills = skillsData?.skills || [];
-
-  const openDetail = useCallback(async (skillId: string) => {
-    setExecResult(null);
-    setVariables({});
-    try {
-      const res = await fetch(`/api/skills/${skillId}`, {
-        signal: AbortSignal.timeout(8000),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setSelected(data as SkillDetail);
-    } catch (err) {
-      toast(err instanceof Error ? err.message : 'Failed to load skill details', 'error');
-    }
-  }, [toast]);
-
-  const executeSkill = useCallback(async () => {
-    if (!selected) return;
-    setExecuting(true);
-    setExecResult(null);
-    try {
-      const res = await fetch('/api/skills/execute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          skill_id: selected.id,
-          variables,
-        }),
-        signal: AbortSignal.timeout(15000),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setExecResult(data as ExecutionResult);
-      if (data.success) {
-        toast('Skill executed successfully', 'success');
-      } else {
-        toast(data.output || 'Skill execution failed', 'error');
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setExecResult({ success: false, output: msg, duration_ms: 0 });
-      toast(msg, 'error');
-    } finally {
-      setExecuting(false);
-    }
-  }, [selected, variables, toast]);
-
-  const filtered = skills
-    .filter(
-      (s) =>
-        s.name.toLowerCase().includes(search.toLowerCase()) ||
-        s.description.toLowerCase().includes(search.toLowerCase()) ||
-        s.category.toLowerCase().includes(search.toLowerCase())
-    )
-    .filter((s) => (showFavoritesOnly ? isFavorite(s.id) : true))
-    .sort((a, b) => {
-      const aFav = isFavorite(a.id) ? 1 : 0;
-      const bFav = isFavorite(b.id) ? 1 : 0;
-      return bFav - aFav;
-    });
-
-  const riskColor = (score: number) => {
-    if (score < 0.15) return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
-    if (score < 0.3) return 'text-amber-400 bg-amber-500/10 border-amber-500/20';
-    return 'text-rose-400 bg-rose-500/10 border-rose-500/20';
-  };
-
-  const categoryIcon = (cat: string) => {
-    if (cat === 'Security') return Shield;
-    if (cat === 'System') return Code;
-    return Wrench;
-  };
-
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold text-[#e0e0e0] flex items-center gap-2">
-          <Wrench size={20} className="text-[#4fc3f7]" />
-          Skills & Plugins
+          <Puzzle size={20} className="text-[#4fc3f7]" /> Skills Registry
+          <span className="text-sm font-normal text-[#9e9eb0]">({SKILL_DATA.length} total)</span>
         </h2>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowFavoritesOnly((v) => !v)}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${
-              showFavoritesOnly
-                ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
-                : 'bg-[#0f0f1a] text-[#9e9eb0] border-[#2d2d44] hover:border-aurelius-accent/30'
-            }`}
-          >
-            <Star size={14} className={showFavoritesOnly ? 'fill-amber-400' : ''} />
-            Favorites
-          </button>
-          <div className="relative">
-            <Search
-              size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9e9eb0]"
-            />
-            <input
-              type="text"
-              placeholder="Search skills..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="bg-[#0f0f1a] border border-[#2d2d44] rounded-lg pl-9 pr-4 py-2 text-sm text-[#e0e0e0] placeholder:text-[#9e9eb0] focus:outline-none focus:border-[#4fc3f7] w-full sm:w-64"
-            />
-          </div>
+        <div className="flex gap-2">
+          <div className="relative"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9e9eb0]" /><Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search skills..." className="pl-8 py-1.5 text-sm w-48" /></div>
+          <select value={category} onChange={e => setCategory(e.target.value)} className="bg-[#0f0f1a] border border-[#2d2d44] rounded-lg px-3 py-1.5 text-sm text-[#e0e0e0]">
+            <option value="all">All Categories</option>
+            {ALL_CATEGORIES.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+          </select>
         </div>
       </div>
 
-      {loading && (
-        <div className="aurelius-card text-center py-12 text-[#9e9eb0]">
-          <Loader2 size={32} className="mx-auto mb-3 animate-spin opacity-60" />
-          <p>Loading skills...</p>
-        </div>
-      )}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 gap-2">
+        {ALL_CATEGORIES.map(c => {
+          const Icon = CATEGORY_ICONS[c] || Puzzle;
+          const count = SKILL_DATA.filter(s => s.category === c).length;
+          return (
+            <button key={c} onClick={() => setCategory(c)}
+              className={`aurelius-card p-2 text-center hover:border-[#4fc3f7]/30 transition-all ${category === c ? 'border-[#4fc3f7]/50' : ''}`}>
+              <Icon size={14} className={`mx-auto mb-0.5 ${CATEGORY_COLORS[c] || 'text-[#4fc3f7]'}`} />
+              <p className="text-[9px] text-[#e0e0e0] font-medium truncate">{c}</p>
+              <p className="text-[8px] text-[#9e9eb0]">{count} skills</p>
+            </button>
+          );
+        })}
+      </div>
 
-      {error && !loading && (
-        <div className="aurelius-card border-rose-500/30 bg-rose-500/5 text-rose-300">
-          <AlertTriangle size={18} className="inline mr-2" />
-          {error.message}
-          <button
-            onClick={refreshSkills}
-            className="ml-4 text-xs underline hover:text-rose-200"
-          >
-            Retry
-          </button>
-        </div>
-      )}
-
-      {!loading && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((skill) => {
-            const Icon = categoryIcon(skill.category);
-            return (
-              <div
-                key={skill.id}
-                onClick={() => openDetail(skill.id)}
-                className="aurelius-card flex flex-col gap-3 hover:border-[#4fc3f7]/30 transition-colors cursor-pointer group"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-[#4fc3f7]/10 text-[#4fc3f7] flex items-center justify-center border border-[#4fc3f7]/20">
-                      <Icon size={18} />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-semibold text-[#e0e0e0] group-hover:text-[#4fc3f7] transition-colors">
-                        {skill.name}
-                      </h3>
-                      <p className="text-[10px] text-[#9e9eb0] uppercase tracking-wider">
-                        {skill.category} · {skill.scope}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggle(skill.id);
-                      }}
-                      className={`p-1.5 rounded-lg transition-colors ${
-                        isFavorite(skill.id)
-                          ? 'text-amber-400 hover:bg-amber-500/10'
-                          : 'text-[#9e9eb0] hover:text-amber-400 hover:bg-aurelius-border/40'
-                      }`}
-                      title={isFavorite(skill.id) ? 'Remove from favorites' : 'Add to favorites'}
-                    >
-                      <Star size={14} className={isFavorite(skill.id) ? 'fill-amber-400' : ''} />
-                    </button>
-                    <ChevronRight
-                      size={16}
-                      className="text-[#9e9eb0] group-hover:text-[#4fc3f7] transition-colors"
-                    />
-                  </div>
-                </div>
-                <p className="text-sm text-[#9e9eb0] leading-relaxed">
-                  {skill.description}
-                </p>
-                <div className="flex items-center gap-2 mt-auto flex-wrap">
-                  <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                      skill.active
-                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                        : 'bg-[#2d2d44]/20 text-[#9e9eb0] border-[#2d2d44]/40'
-                    }`}
-                  >
-                    {skill.active ? 'Enabled' : 'Disabled'}
-                  </span>
-                  <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${riskColor(
-                      skill.risk_score
-                    )}`}
-                  >
-                    Risk {(skill.risk_score * 100).toFixed(0)}%
-                  </span>
-                  {skill.version && (
-                    <span className="text-[10px] text-[#9e9eb0] bg-[#2d2d44]/30 px-2 py-0.5 rounded-full border border-[#2d2d44]/40">
-                      v{skill.version}
-                    </span>
-                  )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {filtered.map(skill => {
+          const Icon = CATEGORY_ICONS[skill.category] || Puzzle;
+          const color = CATEGORY_COLORS[skill.category] || 'text-[#4fc3f7]';
+          return (
+            <motion.div key={skill.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+              onClick={() => setSelected(skill)}
+              className="aurelius-card p-4 hover:border-[#4fc3f7]/30 cursor-pointer transition-all group"
+            >
+              <div className="flex items-start gap-3 mb-2">
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${color} bg-white/5`}><Icon size={14} /></div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-sm font-semibold text-[#e0e0e0] truncate">{skill.name}</h3>
+                  <span className={`text-[9px] ${color}`}>{skill.category}</span>
                 </div>
               </div>
-            );
-          })}
-        </div>
-      )}
+              <p className="text-xs text-[#9e9eb0] line-clamp-2 mb-2">{skill.description}</p>
+              <div className="flex flex-wrap gap-1">
+                {skill.tags.slice(0, 4).map(tag => (
+                  <span key={tag} className="text-[9px] text-[#4fc3f7] bg-[#4fc3f7]/10 px-1.5 py-0.5 rounded">{tag}</span>
+                ))}
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
 
-      {filtered.length === 0 && !loading && (
-        <div className="aurelius-card text-center py-12 text-[#9e9eb0]">
-          <Search size={32} className="mx-auto mb-3 opacity-40" />
-          <p>No skills match your search.</p>
-        </div>
-      )}
-
-      {/* Detail Modal */}
       {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-[#1a1a2e] border border-[#2d2d44] rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="flex items-center justify-between p-5 border-b border-[#2d2d44]">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-[#4fc3f7]/10 text-[#4fc3f7] flex items-center justify-center border border-[#4fc3f7]/20">
-                  <Wrench size={20} />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-[#e0e0e0]">
-                    {selected.name}
-                  </h3>
-                  <p className="text-xs text-[#9e9eb0]">
-                    {selected.category} · {selected.scope}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setSelected(null)}
-                className="text-[#9e9eb0] hover:text-[#e0e0e0] transition-colors"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="p-5 space-y-5">
-              <p className="text-sm text-[#9e9eb0]">{selected.description}</p>
-
-              <div className="flex flex-wrap gap-2">
-                <span
-                  className={`text-xs font-bold px-2.5 py-1 rounded-full border ${
-                    selected.active
-                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                      : 'bg-[#2d2d44]/20 text-[#9e9eb0] border-[#2d2d44]/40'
-                  }`}
-                >
-                  {selected.active ? 'Enabled' : 'Disabled'}
-                </span>
-                <span
-                  className={`text-xs font-bold px-2.5 py-1 rounded-full border ${riskColor(
-                    selected.risk_score
-                  )}`}
-                >
-                  Risk {(selected.risk_score * 100).toFixed(0)}%
-                </span>
-                <span className="text-xs text-[#9e9eb0] bg-[#2d2d44]/30 px-2.5 py-1 rounded-full border border-[#2d2d44]/40">
-                  {selected.allow_level}
-                </span>
-                {selected.version && (
-                  <span className="text-xs text-[#9e9eb0] bg-[#2d2d44]/30 px-2.5 py-1 rounded-full border border-[#2d2d44]/40">
-                    v{selected.version}
-                  </span>
-                )}
-              </div>
-
-              {selected.instructions && (
-                <div>
-                  <h4 className="text-xs font-bold text-[#9e9eb0] uppercase tracking-wider mb-2">
-                    Instructions
-                  </h4>
-                  <div className="bg-[#0f0f1a] border border-[#2d2d44] rounded-lg p-3 text-sm text-[#e0e0e0] font-mono whitespace-pre-wrap max-h-48 overflow-y-auto">
-                    {selected.instructions}
-                  </div>
-                </div>
-              )}
-
-              {selected.scripts.length > 0 && (
-                <div>
-                  <h4 className="text-xs font-bold text-[#9e9eb0] uppercase tracking-wider mb-2">
-                    Scripts
-                  </h4>
-                  <ul className="space-y-1">
-                    {selected.scripts.map((s) => (
-                      <li
-                        key={s}
-                        className="text-sm text-[#e0e0e0] flex items-center gap-2"
-                      >
-                        <Code size={14} className="text-[#4fc3f7]" />
-                        {s}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Variable Input */}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setSelected(null)}>
+          <div className="aurelius-card p-6 max-w-md w-full space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#4fc3f7]/10 flex items-center justify-center"><Puzzle size={20} className="text-[#4fc3f7]" /></div>
               <div>
-                <h4 className="text-xs font-bold text-[#9e9eb0] uppercase tracking-wider mb-2">
-                  Variables
-                </h4>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="key"
-                    value={Object.keys(variables).pop() || ''}
-                    onChange={(e) => {
-                      const key = e.target.value;
-                      const val = Object.values(variables).pop() || '';
-                      const rest = Object.fromEntries(
-                        Object.entries(variables).slice(0, -1)
-                      );
-                      setVariables({ ...rest, [key]: val });
-                    }}
-                    className="flex-1 bg-[#0f0f1a] border border-[#2d2d44] rounded-lg px-3 py-2 text-sm text-[#e0e0e0] placeholder:text-[#9e9eb0] focus:outline-none focus:border-[#4fc3f7]"
-                  />
-                  <input
-                    type="text"
-                    placeholder="value"
-                    value={Object.values(variables).pop() || ''}
-                    onChange={(e) => {
-                      const keys = Object.keys(variables);
-                      const key = keys.pop() || 'var';
-                      const rest = Object.fromEntries(
-                        Object.entries(variables).slice(0, -1)
-                      );
-                      setVariables({ ...rest, [key]: e.target.value });
-                    }}
-                    className="flex-1 bg-[#0f0f1a] border border-[#2d2d44] rounded-lg px-3 py-2 text-sm text-[#e0e0e0] placeholder:text-[#9e9eb0] focus:outline-none focus:border-[#4fc3f7]"
-                  />
-                </div>
-                {Object.entries(variables).length > 0 &&
-                  Object.entries(variables).some(([k]) => k) && (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {Object.entries(variables)
-                        .filter(([k]) => k)
-                        .map(([k, v]) => (
-                          <span
-                            key={k}
-                            className="text-xs bg-[#4fc3f7]/10 text-[#4fc3f7] border border-[#4fc3f7]/20 px-2 py-1 rounded-full"
-                          >
-                            {k}={String(v)}
-                          </span>
-                        ))}
-                    </div>
-                  )}
+                <h3 className="text-lg font-bold text-[#e0e0e0]">{selected.name}</h3>
+                <span className={`text-xs ${CATEGORY_COLORS[selected.category] || 'text-[#4fc3f7]'}`}>{selected.category}</span>
               </div>
-
-              {/* Execute Button */}
-              <button
-                onClick={executeSkill}
-                disabled={executing}
-                className="aurelius-btn w-full flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {executing ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <Play size={16} />
-                )}
-                {executing ? 'Executing...' : 'Execute Skill'}
-              </button>
-
-              {/* Execution Result */}
-              {execResult && (
-                <div
-                  className={`border rounded-lg p-4 ${
-                    execResult.success
-                      ? 'bg-emerald-500/5 border-emerald-500/20'
-                      : 'bg-rose-500/5 border-rose-500/20'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    {execResult.success ? (
-                      <CheckCircle size={16} className="text-emerald-400" />
-                    ) : (
-                      <AlertTriangle size={16} className="text-rose-400" />
-                    )}
-                    <span
-                      className={`text-sm font-bold ${
-                        execResult.success ? 'text-emerald-400' : 'text-rose-400'
-                      }`}
-                    >
-                      {execResult.success ? 'Success' : 'Failed'}
-                    </span>
-                    <span className="text-xs text-[#9e9eb0] flex items-center gap-1 ml-auto">
-                      <Clock size={12} />
-                      {execResult.duration_ms.toFixed(1)} ms
-                    </span>
-                  </div>
-                  <pre className="text-xs text-[#e0e0e0] font-mono whitespace-pre-wrap bg-[#0f0f1a] rounded-lg p-3 border border-[#2d2d44]">
-                    {execResult.output}
-                  </pre>
-                </div>
-              )}
+            </div>
+            <p className="text-sm text-[#9e9eb0]">{selected.description}</p>
+            <div className="flex flex-wrap gap-1.5">
+              {selected.tags.map(tag => <span key={tag} className="text-[10px] text-[#4fc3f7] bg-[#4fc3f7]/10 px-2 py-0.5 rounded-full">{tag}</span>)}
             </div>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import type { Request, Response, NextFunction } from 'express'
+import type { NextFunction, Request, Response } from 'express'
 
 export interface AuthUser {
   id: string
@@ -6,11 +6,9 @@ export interface AuthUser {
   scopes: string[]
 }
 
-declare global {
-  namespace Express {
-    interface Request {
-      user?: AuthUser
-    }
+declare module 'express-serve-static-core' {
+  interface Request {
+    user?: AuthUser
   }
 }
 

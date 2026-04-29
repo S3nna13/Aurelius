@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { registerApiKey, unregisterApiKey, type AuthUser } from '../middleware/auth.js'
+import { registerApiKey, unregisterApiKey } from '../middleware/auth.js'
 import { validateBody } from '../middleware/validation.js'
 import { v4 as uuidv4 } from 'uuid'
 import { config } from '../config.js'

@@ -12,7 +12,8 @@ export class AppError extends Error {
   }
 }
 
-export function errorHandler(err: Error, _req: Request, res: Response, _next: NextFunction): void {
+export function errorHandler(err: Error, _req: Request, res: Response, next: NextFunction): void {
+  void next
   const engine = getEngine()
 
   if (err instanceof AppError) {

@@ -1,26 +1,34 @@
 import { WebSocketServer, type WebSocket } from 'ws'
 import type { Server } from 'http'
 import { getEngine } from '../engine.js'
-import { createRoom, joinRoom, leaveRoom, broadcastToRoom, broadcastToAll, getRoomList } from './rooms.js'
+import { joinRoom, leaveRoom, broadcastToRoom, broadcastToAll, getRoomList } from './rooms.js'
+import { validateApiKey, type AuthUser } from '../middleware/auth.js'
 
 interface WsMessage {
   type: string
   payload?: Record<string, unknown>
 }
 
-const clients = new Set<WebSocket>()
-
-function broadcast(data: unknown): void {
-  const msg = JSON.stringify(data)
-  for (const ws of clients) {
-    if (ws.readyState === ws.OPEN) ws.send(msg)
-  }
+interface AuthenticatedSocket extends WebSocket {
+  authUser?: AuthUser
 }
+
+const clients = new Set<AuthenticatedSocket>()
 
 export function setupWebSocket(server: Server): WebSocketServer {
   const wss = new WebSocketServer({ server, path: '/ws' })
 
-  wss.on('connection', (ws, req) => {
+  wss.on('connection', (ws: AuthenticatedSocket, req) => {
+    const apiKey = req.headers['x-api-key'] || req.headers['authorization']
+    const key = typeof apiKey === 'string'
+      ? apiKey.replace(/^Bearer\s+/i, '').trim()
+      : null
+    if (!key || !validateApiKey(key)) {
+      ws.close(1008, 'Unauthorized')
+      return
+    }
+    ws.authUser = validateApiKey(key)
+
     clients.add(ws)
 
     const engine = getEngine()

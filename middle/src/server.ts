@@ -1,8 +1,6 @@
 import express from 'express'
 import cors from 'cors'
 import { createServer } from 'http'
-import path from 'path'
-import { fileURLToPath } from 'url'
 import { config } from './config.js'
 import { authMiddleware } from './middleware/auth.js'
 import { rateLimiter } from './middleware/rate-limiter.js'

@@ -21,10 +21,11 @@ router.get('/agents', async (req: Request, res: Response) => {
       total: agents.length,
       categories: snapshot.agent_categories,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to load live agent registry'
     res.status(502).json({
       error: 'Registry unavailable',
-      message: error?.message || 'Failed to load live agent registry',
+      message,
     });
   }
 });
@@ -39,10 +40,11 @@ router.get('/agents/:id', async (req: Request, res: Response) => {
       return;
     }
     res.json({ agent });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to load live agent registry'
     res.status(502).json({
       error: 'Registry unavailable',
-      message: error?.message || 'Failed to load live agent registry',
+      message,
     });
   }
 });
@@ -58,10 +60,11 @@ router.get('/skills', async (req: Request, res: Response) => {
       total: skills.length,
       categories: snapshot.skill_categories,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to load live skills registry'
     res.status(502).json({
       error: 'Registry unavailable',
-      message: error?.message || 'Failed to load live skills registry',
+      message,
     });
   }
 });
@@ -76,10 +79,11 @@ router.get('/skills/:id', async (req: Request, res: Response) => {
       return;
     }
     res.json({ skill });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Failed to load live skills registry'
     res.status(502).json({
       error: 'Registry unavailable',
-      message: error?.message || 'Failed to load live skills registry',
+      message,
     });
   }
 });
