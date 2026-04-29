@@ -1,23 +1,31 @@
-"""Security facet — enforces scope, guardrails, and workflow stages for security personas."""
-
 from __future__ import annotations
 
-from ..unified_persona import PersonaFacet
+from ..unified_persona import Guardrail, PersonaFacet
+
+SECURITY_OFFENSIVE_FACET = PersonaFacet(
+    facet_type="security",
+    config={"mode": "offensive", "scope": "closed_internal"},
+)
+
+SECURITY_DEFENSIVE_FACET = PersonaFacet(
+    facet_type="security",
+    config={"mode": "defensive"},
+)
+
+SECURITY_PURPLE_FACET = PersonaFacet(
+    facet_type="security",
+    config={"mode": "purple", "scope": "closed_internal"},
+)
 
 
-def create_security_facet(mode: str = "defensive", scope: str = "all") -> PersonaFacet:
-    return PersonaFacet(
-        facet_type="security",
-        config={"mode": mode, "scope": scope},
-    )
-
-
-def render_security_facet_config(facet: PersonaFacet) -> dict:
-    cfg = facet.config
-    return {
-        "mode": cfg.get("mode", "defensive"),
-        "scope": cfg.get("scope", "all"),
-        "enforces_output_contract": True,
-        "enforces_workflow_stages": True,
-        "requires_scope_declaration": cfg.get("mode") == "offensive",
-    }
+class SecurityFacet:
+    @staticmethod
+    def make_guardrails(mode: str) -> list[Guardrail]:
+        base = [
+            Guardrail("cite_sources", "Prioritize verified observables. Never fabricate evidence.", "high"),
+            Guardrail("calibrated_uncertainty", "If detail is disputed, say so with confidence qualifier.", "medium"),
+        ]
+        if mode == "offensive":
+            base.append(Guardrail("no_exploit_code", "Never provide working exploit code for third-party production systems.", "critical"))
+            base.append(Guardrail("scope_boundary", "Operate only on authorized in-scope assets.", "critical"))
+        return base

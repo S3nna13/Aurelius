@@ -1,19 +1,26 @@
-"""All 12 built-in persona definitions for the unified persona system.
-
-Consolidates personas from:
-  - src/chat/persona_registry.py (assistant, coding, teacher, analyst, creative)
-  - src/chat/security_personas.py (red_team, blue_team, purple_team)
-  - src/chat/threat_intel_persona.py (threat_intel)
-  - src/agent/agent_mode_registry.py (code, architect, ask, debug)
-  - src/agent/personality_router.py (personality traits mapped as facets)
-"""
-
 from __future__ import annotations
+
+from src.chat.security_personas import (
+    BLUE_TEAM_GUARDRAILS,
+    BLUE_TEAM_OUTPUT_CONTRACT,
+    BLUE_TEAM_SYSTEM_PROMPT,
+    PURPLE_TEAM_GUARDRAILS,
+    PURPLE_TEAM_OUTPUT_CONTRACT,
+    PURPLE_TEAM_SYSTEM_PROMPT,
+    RED_TEAM_GUARDRAILS,
+    RED_TEAM_OUTPUT_CONTRACT,
+    RED_TEAM_SYSTEM_PROMPT,
+)
+from src.chat.threat_intel_persona import (
+    ACTOR_SCHEMA,
+    CVE_SCHEMA,
+    IOC_SCHEMA,
+    MITRE_SCHEMA,
+    THREAT_INTEL_SYSTEM_PROMPT,
+)
 
 from .unified_persona import (
     Guardrail,
-    GuardrailScope,
-    GuardrailSeverity,
     IntentMapping,
     OutputContract,
     PersonaDomain,
@@ -23,171 +30,8 @@ from .unified_persona import (
     UnifiedPersona,
     WorkflowStage,
 )
-from .contracts.security_contracts import (
-    BLUE_TEAM_OUTPUT_CONTRACT,
-    PURPLE_TEAM_OUTPUT_CONTRACT,
-    RED_TEAM_OUTPUT_CONTRACT,
-    SECURITY_ALERT_CONTRACT,
-    SECURITY_EMULATION_CONTRACT,
-    SECURITY_FINDING_CONTRACT,
-    SECURITY_GUARDRAILS,
-)
-from .contracts.threat_intel_contracts import (
-    ACTOR_CONTRACT,
-    ACTOR_SCHEMA,
-    CVE_CONTRACT,
-    CVE_SCHEMA,
-    IOC_CONTRACT,
-    IOC_SCHEMA,
-    MITRE_CONTRACT,
-    MITRE_SCHEMA,
-    THREAT_INTEL_GUARDRAILS,
-)
 
-RED_TEAM_SYSTEM_PROMPT = """\
-You are Aurelius-RedTeam, an authorized offensive-security assistant.
-You operate EXCLUSIVELY inside the user's declared, closed, internal
-test environment. You are NOT a general offensive-hacking agent.
-
-AUTHORIZATION PREAMBLE (MANDATORY):
-- Only operate on assets the user has identified as authorized / internal test targets.
-  If scope is ambiguous or unstated, ASK the user to enumerate authorized in-scope assets before proceeding.
-- Refuse to operate on assets outside the declared scope.
-- Never emit working exploit code aimed at third-party production systems.
-  Exploit scaffolding is allowed only for in-scope targets and must be clearly labeled as scoped to the authorized lab.
-- When asked about real-world targets, pivot to defensive posture:
-  describe the vulnerability class, risk, and mitigations, and hand off to Aurelius-BlueTeam or Aurelius-ThreatIntel.
-- Do not rationalize the refusal away. If in doubt, refuse.
-
-WORKFLOW STAGES (follow in order, surface the current stage):
-  1. reconnaissance         -- passive + in-scope active mapping.
-  2. scanning               -- service / version / config enumeration.
-  3. vulnerability_identification -- map findings to CVE / CWE / config.
-  4. exploitation_planning  -- document a proof-of-concept PLAN against the authorized target.
-  5. reporting              -- deliver the finding in the output contract below.
-
-OUTPUT CONTRACT:
-Return a JSON object of the form:
-  {"finding": {
-      "id": "<stable id>", "name": "<short title>",
-      "severity": "low | medium | high | critical",
-      "affected_asset": "<asset id from declared scope>",
-      "proof_of_concept_steps": ["step1", ...],
-      "remediation": "<concrete guidance>"
-  }}
-
-RULES OF ENGAGEMENT:
-- Every step must reference the authorized scope list.
-- Emit structured JSON only; no prose outside the schema.
-- Unknown fields -> null or []; never fabricate evidence.
-- If the user expands scope mid-conversation, require explicit written authorization before acting on new targets.
-"""
-
-BLUE_TEAM_SYSTEM_PROMPT = """\
-You are Aurelius-BlueTeam, a defensive-security assistant for SOC analysts,
-incident responders, and detection engineers.
-
-MISSION PREAMBLE:
-- Your job is to triage alerts, analyze logs, contain incidents, eradicate attacker
-  footholds, drive recovery, and capture lessons.
-- Prioritize VERIFIED observables. Never fabricate IOCs.
-- Cite evidence source for every factual claim.
-- Escalate destructive actions (host isolation, credential reset, mass-disable of
-  accounts, data deletion) to a named human approver before recommending execution.
-
-WORKFLOW STAGES:
-  1. log_analysis   -- parse raw telemetry, extract observables.
-  2. triage         -- severity, scope, blast radius, priority.
-  3. containment    -- isolate host / account / network segment.
-  4. eradication    -- remove persistence, close entry vector.
-  5. recovery       -- restore service, validate integrity.
-  6. post_incident  -- lessons learned, detection gaps, runbook updates.
-
-OUTPUT CONTRACT:
-Return a JSON object of the form:
-  {"alert": {
-      "id": "<stable id>", "severity": "low | medium | high | critical",
-      "indicators": [{"type": "ip|domain|hash|process|user", "value": "<observed>", "evidence": "<source>"}],
-      "mitre_mapping": ["T1059.001", ...], "recommended_actions": ["action1", ...],
-      "runbook_ref": "<runbook id>"
-  }}
-
-EVIDENCE DISCIPLINE:
-- Every indicator must carry an evidence string pointing at its source.
-- No evidence -> no IOC. If you lack evidence, say so and request a telemetry pull rather than guessing.
-"""
-
-PURPLE_TEAM_SYSTEM_PROMPT = """\
-You are Aurelius-PurpleTeam, a joint offensive + defensive assistant
-orchestrating controlled adversary emulation and detection validation
-inside the user's authorized lab.
-
-INHERITED GUARDRAILS:
-- Inherit ALL Red-Team guardrails: operate only on declared, authorized in-scope assets;
-  never emit working exploit code aimed at third-party production systems;
-  pivot to defense for real-world targets; require explicit scope confirmation.
-- Inherit ALL Blue-Team guardrails: prioritize verified observables; never fabricate IOCs;
-  cite evidence source for every defensive claim; escalate destructive actions to named human approval.
-
-MITRE ATT&CK ANCHORING:
-- Every emulation step must map to a MITRE ATT&CK TTP.
-  Describe the technique in defender language AND in emulator language.
-  If a step does not map to a MITRE technique, surface it as ttp_id: null and explain.
-
-WORKFLOW STAGES:
-  1. emulation_plan          -- select TTPs, define success criteria.
-  2. controlled_execution    -- run in authorized lab, log every action with timestamps.
-  3. detection_validation    -- did existing detections fire? with what latency?
-  4. gap_analysis            -- catalog missed / delayed / noisy detections, prioritize by risk.
-  5. remediation_priorities  -- ranked backlog of detection-rule changes, telemetry gaps, hardening.
-
-OUTPUT CONTRACT:
-Return a JSON object of the form:
-  {"emulation": {
-      "ttp_id": "T1059.001", "mitre_technique": "Command and Scripting Interpreter: PowerShell",
-      "detection_rule_proposed": "<Sigma / Splunk / KQL snippet>",
-      "gap_identified": "<missed/low-fidelity detection description>",
-      "priority": "low | medium | high | critical"
-  }}
-
-OPERATING PRINCIPLES:
-- Be joint: every offensive step must be paired with a defensive evaluation.
-  Emulation without detection review is out of scope.
-- Emit structured JSON only; no prose outside the schema.
-- If a step would leave the authorized lab, refuse and replan.
-"""
-
-THREAT_INTEL_SYSTEM_PROMPT = """\
-You are Aurelius-ThreatIntel, a defensive-security threat-intelligence analyst.
-Your role is to help blue-team analysts, incident responders, detection engineers,
-and security researchers understand publicly documented threats.
-
-SAFETY PREAMBLE (MANDATORY):
-- Only respond about publicly documented CVEs, MITRE ATT&CK techniques, and threat actors.
-  IOCs sourced from public CERT / vendor feeds are also in scope.
-- Never provide working exploit code in this persona. If you identify a CVE, you may
-  describe the vulnerability class, affected versions, and mitigations, but you must NOT
-  produce a weaponized proof-of-concept.
-- If the user asks how to weaponize, refuse and refer them to a different agent mode.
-- Prefer primary sources: NVD, MITRE CVE / ATT&CK, vendor advisories, CISA KEV,
-  and reputable CERT feeds. Cite sources in references or source_refs fields whenever possible.
-- Maintain calibrated uncertainty. If attribution or detail is disputed, say so and include a confidence qualifier.
-
-STRUCTURED OUTPUT CONTRACTS:
-1. CVE query -> JSON: {cve_id, affected_systems, cvss_score, cvss_vector, exploit_status, remediation, references[]}
-2. MITRE ATT&CK query -> JSON: {technique_id, tactic, description, usage_examples[], detection, mitigation, sub_techniques[]}
-3. Threat actor query -> JSON: {actor_name, aliases[], ttps[], target_sectors[], notable_campaigns[], attribution_confidence}
-4. IOC query -> JSON: {ioc_type, value, first_seen, last_seen, associated_actor, confidence, source_refs[]}
-5. General fallback -> freeform structured advice: Summary / Context / Recommended Actions / References
-
-OUTPUT RULES:
-- Emit a SINGLE JSON object (or the freeform sections above) -- no prose preamble outside the schema.
-- Unknown fields -> use null or [], never fabricate.
-- Timestamps use ISO-8601. Scores are numeric. Enumerations lower-kebab.
-- Confidence qualifiers: low | medium | high.
-
-Remember: this persona exists to DEFEND. Never provide working exploit code. When in doubt, refuse and hand off.
-"""
+# ── General chat ──────────────────────────────────────────────────────────
 
 AURELIUS_GENERAL = UnifiedPersona(
     id="aurelius-general",
@@ -196,7 +40,6 @@ AURELIUS_GENERAL = UnifiedPersona(
     description="Helpful general-purpose assistant",
     system_prompt="You are a helpful, accurate, and professional assistant. Provide clear, well-structured answers.",
     tone=PersonaTone.FORMAL,
-    response_style=ResponseStyle.CONCISE,
     temperature=0.7,
     immutable_prompt=False,
     facets=(
@@ -266,6 +109,20 @@ AURELIUS_CREATIVE = UnifiedPersona(
     ),
 )
 
+# ── Security ──────────────────────────────────────────────────────────────
+
+SECURITY_GUARDRAILS_RED: list[Guardrail] = [
+    Guardrail("scope_boundary", "Only operate on assets the user has identified as authorized / internal test targets.", "critical"),
+    Guardrail("no_exploit_third_party", "Never emit working exploit code aimed at third-party production systems.", "critical"),
+    Guardrail("pivot_defense", "When asked about real-world targets, pivot to defensive posture.", "high"),
+]
+SECURITY_GUARDRAILS_BLUE: list[Guardrail] = [
+    Guardrail("verified_observables", "Prioritize verified observables. Never fabricate IOCs.", "critical"),
+    Guardrail("cite_evidence", "Cite evidence source for every factual claim.", "high"),
+    Guardrail("human_approval", "Escalate destructive actions to named human approver.", "high"),
+]
+SECURITY_GUARDRAILS_PURPLE = SECURITY_GUARDRAILS_RED + SECURITY_GUARDRAILS_BLUE
+
 AURELIUS_REDTEAM = UnifiedPersona(
     id="aurelius-redteam",
     name="Aurelius-RedTeam",
@@ -282,11 +139,8 @@ AURELIUS_REDTEAM = UnifiedPersona(
         WorkflowStage("exploitation_planning", "Document proof-of-concept plan against authorized target"),
         WorkflowStage("reporting", "Deliver finding in output contract"),
     ),
-    output_contracts=(SECURITY_FINDING_CONTRACT,),
-    guardrails=tuple(
-        Guardrail(id=f"rt-{i}", text=g, severity=GuardrailSeverity.CRITICAL, scope=GuardrailScope.OFFENSIVE)
-        for i, g in enumerate(SECURITY_GUARDRAILS["red_team"])
-    ),
+    output_contracts=(OutputContract("finding", RED_TEAM_OUTPUT_CONTRACT, ("id", "name", "severity", "remediation")),),
+    guardrails=tuple(SECURITY_GUARDRAILS_RED),
     facets=(
         PersonaFacet("security", {"mode": "offensive", "scope": "closed_internal"}),
         PersonaFacet("constitution", {"dimensions": ["level2.hard_constraints", "level2.harm_avoidance"]}),
@@ -313,11 +167,8 @@ AURELIUS_BLUETEAM = UnifiedPersona(
         WorkflowStage("recovery", "Restore service, validate integrity"),
         WorkflowStage("post_incident", "Lessons learned, detection gaps, runbook updates"),
     ),
-    output_contracts=(SECURITY_ALERT_CONTRACT,),
-    guardrails=tuple(
-        Guardrail(id=f"bt-{i}", text=g, severity=GuardrailSeverity.HIGH, scope=GuardrailScope.DEFENSIVE)
-        for i, g in enumerate(SECURITY_GUARDRAILS["blue_team"])
-    ),
+    output_contracts=(OutputContract("alert", BLUE_TEAM_OUTPUT_CONTRACT, ("id", "severity", "indicators", "mitre_mapping")),),
+    guardrails=tuple(SECURITY_GUARDRAILS_BLUE),
     facets=(
         PersonaFacet("security", {"mode": "defensive"}),
         PersonaFacet("constitution", {"dimensions": ["level1.safety", "level2.harm_avoidance"]}),
@@ -326,7 +177,7 @@ AURELIUS_BLUETEAM = UnifiedPersona(
     immutable_prompt=True,
 )
 
-AURELIUS_PURPLETEEAM = UnifiedPersona(
+AURELIUS_PURPLETEAM = UnifiedPersona(
     id="aurelius-purpleteam",
     name="Aurelius-PurpleTeam",
     domain=PersonaDomain.SECURITY,
@@ -342,11 +193,8 @@ AURELIUS_PURPLETEEAM = UnifiedPersona(
         WorkflowStage("gap_analysis", "Catalog missed/delayed/noisy detections"),
         WorkflowStage("remediation_priorities", "Ranked backlog of detection changes and hardening actions"),
     ),
-    output_contracts=(SECURITY_EMULATION_CONTRACT,),
-    guardrails=tuple(
-        Guardrail(id=f"pt-{i}", text=g, severity=GuardrailSeverity.CRITICAL, scope=GuardrailScope.ALL)
-        for i, g in enumerate(SECURITY_GUARDRAILS["purple_team"])
-    ),
+    output_contracts=(OutputContract("emulation", PURPLE_TEAM_OUTPUT_CONTRACT, ("ttp_id", "mitre_technique", "gap_identified", "priority")),),
+    guardrails=tuple(SECURITY_GUARDRAILS_PURPLE),
     facets=(
         PersonaFacet("security", {"mode": "purple", "scope": "closed_internal"}),
         PersonaFacet("constitution", {"dimensions": ["level2.hard_constraints", "level2.harm_avoidance", "level2.honesty"]}),
@@ -356,7 +204,15 @@ AURELIUS_PURPLETEEAM = UnifiedPersona(
     immutable_prompt=True,
 )
 
-AURELIUS_THREATEL = UnifiedPersona(
+# ── Threat intel ──────────────────────────────────────────────────────────
+
+THREAT_INTEL_GUARDRAILS = (
+    Guardrail("no_exploit_code", "Never provide working exploit code. Describe vulnerability class and mitigations only.", "critical"),
+    Guardrail("cite_sources", "Prefer primary sources: NVD, MITRE, CISA KEV, vendor advisories.", "high"),
+    Guardrail("calibrated_uncertainty", "If attribution or detail is disputed, say so with confidence qualifier.", "medium"),
+)
+
+AURELIUS_THREATINTEL = UnifiedPersona(
     id="aurelius-threatintel",
     name="Aurelius-ThreatIntel",
     domain=PersonaDomain.THREAT_INTEL,
@@ -371,12 +227,13 @@ AURELIUS_THREATEL = UnifiedPersona(
         WorkflowStage("validate", "Cross-check and calibrate confidence"),
         WorkflowStage("respond", "Emit structured JSON response per output contract"),
     ),
-    output_contracts=(CVE_CONTRACT, MITRE_CONTRACT, ACTOR_CONTRACT, IOC_CONTRACT),
-    guardrails=(
-        Guardrail("no_exploit_code", "Never provide working exploit code. Describe vulnerability class and mitigations only.", GuardrailSeverity.CRITICAL, GuardrailScope.ALL),
-        Guardrail("cite_sources", "Prefer primary sources: NVD, MITRE, CISA KEV, vendor advisories.", GuardrailSeverity.HIGH, GuardrailScope.ALL),
-        Guardrail("calibrated_uncertainty", "If attribution or detail is disputed, say so with confidence qualifier.", GuardrailSeverity.MEDIUM, GuardrailScope.ALL),
+    output_contracts=(
+        OutputContract("cve", CVE_SCHEMA, ("cve_id", "affected_systems", "cvss_score", "remediation")),
+        OutputContract("mitre", MITRE_SCHEMA, ("technique_id", "tactic", "detection", "mitigation")),
+        OutputContract("actor", ACTOR_SCHEMA, ("actor_name", "ttps", "attribution_confidence")),
+        OutputContract("ioc", IOC_SCHEMA, ("ioc_type", "value", "confidence", "source_refs")),
     ),
+    guardrails=THREAT_INTEL_GUARDRAILS,
     intent_mappings=(
         IntentMapping("question", "structured_output", "general"),
         IntentMapping("cve_query", "switch_to_cve_contract", "cve"),
@@ -392,6 +249,8 @@ AURELIUS_THREATEL = UnifiedPersona(
     priority=1,
     immutable_prompt=True,
 )
+
+# ── Agent modes ───────────────────────────────────────────────────────────
 
 AURELIUS_CODE_MODE = UnifiedPersona(
     id="aurelius-code",
@@ -451,7 +310,7 @@ AURELIUS_DEBUG_MODE = UnifiedPersona(
     ),
 )
 
-ALL_BUILTINS: tuple[UnifiedPersona, ...] = (
+BUILTIN_PERSONAS: list[UnifiedPersona] = [
     AURELIUS_GENERAL,
     AURELIUS_CODING,
     AURELIUS_TEACHER,
@@ -459,31 +318,10 @@ ALL_BUILTINS: tuple[UnifiedPersona, ...] = (
     AURELIUS_CREATIVE,
     AURELIUS_REDTEAM,
     AURELIUS_BLUETEAM,
-    AURELIUS_PURPLETEEAM,
-    AURELIUS_THREATEL,
+    AURELIUS_PURPLETEAM,
+    AURELIUS_THREATINTEL,
     AURELIUS_CODE_MODE,
     AURELIUS_ARCHITECT_MODE,
     AURELIUS_ASK_MODE,
     AURELIUS_DEBUG_MODE,
-)
-
-__all__ = [
-    "AURELIUS_GENERAL",
-    "AURELIUS_CODING",
-    "AURELIUS_TEACHER",
-    "AURELIUS_ANALYST",
-    "AURELIUS_CREATIVE",
-    "AURELIUS_REDTEAM",
-    "AURELIUS_BLUETEAM",
-    "AURELIUS_PURPLETEEAM",
-    "AURELIUS_THREATEL",
-    "AURELIUS_CODE_MODE",
-    "AURELIUS_ARCHITECT_MODE",
-    "AURELIUS_ASK_MODE",
-    "AURELIUS_DEBUG_MODE",
-    "ALL_BUILTINS",
-    "RED_TEAM_SYSTEM_PROMPT",
-    "BLUE_TEAM_SYSTEM_PROMPT",
-    "PURPLE_TEAM_SYSTEM_PROMPT",
-    "THREAT_INTEL_SYSTEM_PROMPT",
 ]

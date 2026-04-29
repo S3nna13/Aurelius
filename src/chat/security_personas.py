@@ -321,6 +321,14 @@ PURPLE_TEAM_PERSONA: SecurityPersona = SecurityPersona(
 )
 
 
+# Mapping from legacy security persona IDs to unified persona IDs.
+_LEGACY_SECURITY_IDS: dict[str, str] = {
+    "red_team": "aurelius-redteam",
+    "blue_team": "aurelius-blueteam",
+    "purple_team": "aurelius-purpleteam",
+}
+
+
 # ---------------------------------------------------------------------------
 # Registry.
 # ---------------------------------------------------------------------------
@@ -328,9 +336,24 @@ PURPLE_TEAM_PERSONA: SecurityPersona = SecurityPersona(
 
 @dataclass
 class SecurityPersonaRegistry:
-    """In-memory registry of ``SecurityPersona`` objects."""
+    """Backward-compatible wrapper delegating to UnifiedPersonaRegistry."""
 
     _by_id: dict = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        from src.persona import UnifiedPersonaRegistry
+        self._unified = UnifiedPersonaRegistry()
+        self._defaults_loaded: bool = False
+
+    def _ensure_defaults(self) -> None:
+        """Lazily populate unified registry to avoid circular imports at import time."""
+        if self._defaults_loaded:
+            return
+        from src.persona import BUILTIN_PERSONAS
+        for p in BUILTIN_PERSONAS:
+            if p.domain.value == "security":
+                self._unified.register(p)
+        self._defaults_loaded = True
 
     def register(self, persona: SecurityPersona) -> None:
         if not isinstance(persona, SecurityPersona):
@@ -338,12 +361,32 @@ class SecurityPersonaRegistry:
         self._by_id[persona.id] = persona
 
     def get(self, id: str) -> SecurityPersona:
-        if id not in self._by_id:
-            raise KeyError(f"unknown security persona: {id!r}")
-        return self._by_id[id]
+        if id in self._by_id:
+            return self._by_id[id]
+        self._ensure_defaults()
+        unified_id = _LEGACY_SECURITY_IDS.get(id, id)
+        try:
+            unified = self._unified.get(unified_id)
+        except Exception as exc:
+            raise KeyError(f"unknown security persona: {id!r}") from exc
+        return SecurityPersona(
+            id=id,
+            name=unified.name,
+            system_prompt=unified.system_prompt,
+            workflow_stages=tuple(s.name for s in unified.workflow_stages),
+            output_contract=unified.output_contracts[0].schema if unified.output_contracts else {},
+            guardrails=tuple(g.text for g in unified.guardrails),
+        )
 
     def all(self) -> tuple[SecurityPersona, ...]:
-        return tuple(self._by_id.values())
+        if self._by_id:
+            return tuple(self._by_id.values())
+        self._ensure_defaults()
+        return (
+            self.get("red_team"),
+            self.get("blue_team"),
+            self.get("purple_team"),
+        )
 
     def build_messages(
         self,
@@ -351,11 +394,23 @@ class SecurityPersonaRegistry:
         user_message: str,
         history: list[dict] | None = None,
     ) -> list[dict]:
-        """Assemble ``[system, *history, user]`` message list for persona."""
+        self._ensure_defaults()
+        unified_id = _LEGACY_SECURITY_IDS.get(persona_id, persona_id)
+        try:
+            self._unified.get(unified_id)
+        except Exception:
+            persona = self.get(persona_id)
+            messages: list[dict] = [
+                {"role": "system", "content": persona.system_prompt},
+            ]
+            if history:
+                for turn in history:
+                    messages.append({"role": turn["role"], "content": turn["content"]})
+            messages.append({"role": "user", "content": user_message})
+            return messages
+
         persona = self.get(persona_id)
-        messages: list[dict] = [
-            {"role": "system", "content": persona.system_prompt},
-        ]
+        messages: list[dict] = [{"role": "system", "content": persona.system_prompt}]
         if history:
             for turn in history:
                 messages.append({"role": turn["role"], "content": turn["content"]})

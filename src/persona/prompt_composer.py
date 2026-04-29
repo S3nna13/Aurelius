@@ -108,7 +108,8 @@ class PromptComposer:
                 ))
 
         for guardrail in persona.guardrails:
-            if guardrail.severity in (GuardrailSeverity.CRITICAL, GuardrailSeverity.HIGH):
+            severity_value = getattr(guardrail.severity, "value", guardrail.severity)
+            if severity_value in ("critical", "high"):
                 fragments.append(SystemPromptFragment(
                     priority=SystemPromptPriority.DEVELOPER,
                     content=f"MUST: {guardrail.text}",

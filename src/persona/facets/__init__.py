@@ -1,31 +1,32 @@
-"""Persona facets — composable capability attachments."""
-
-from .security_facet import create_security_facet, render_security_facet_config
-from .threat_intel_facet import create_threat_intel_facet, classify_query, validate_threat_intel_response
-from .agent_mode_facet import create_agent_mode_facet, is_tool_allowed, get_allowed_tools
-from .constitution_facet import create_constitution_facet, get_active_dimensions, score_response
-from .harm_filter_facet import create_harm_filter_facet, classify_harm, HARM_CATEGORIES
-from .personality_facet import create_personality_facet, score_input
-from .dialogue_facet import create_dialogue_facet, classify_transition, DialogueState
+from .security_facet import SecurityFacet
+from .threat_intel_facet import THREAT_INTEL_FACET, classify_query
+from .agent_mode_facet import AGENT_MODE_CODE_FACET, AGENT_MODE_ARCHITECT_FACET, AGENT_MODE_ASK_FACET, AGENT_MODE_DEBUG_FACET
+from .constitution_facet import CONSTITUTION_GENERAL_FACET, CONSTITUTION_SECURITY_FACET, CONSTITUTION_AGENT_FACET, HARM_FILTER_GENERAL_FACET, HARM_FILTER_SECURITY_FACET, HARM_FILTER_CODING_FACET, HARM_FILTER_THREAT_INTEL_FACET
+from .harm_filter_facet import HARM_FILTER_ALL_FACET, HARM_FILTER_WARN_FACET
+from .personality_facet import PERSONALITY_PATIENT_FACET, PERSONALITY_ANALYTICAL_FACET, PERSONALITY_CREATIVE_FACET, PERSONALITY_THOROUGH_FACET, PERSONALITY_METHODICAL_FACET
+from .dialogue_facet import DIALOGUE_FACET
 
 __all__ = [
-    "create_security_facet",
-    "render_security_facet_config",
-    "create_threat_intel_facet",
+    "SecurityFacet",
+    "THREAT_INTEL_FACET",
     "classify_query",
-    "validate_threat_intel_response",
-    "create_agent_mode_facet",
-    "is_tool_allowed",
-    "get_allowed_tools",
-    "create_constitution_facet",
-    "get_active_dimensions",
-    "score_response",
-    "create_harm_filter_facet",
-    "classify_harm",
-    "HARM_CATEGORIES",
-    "create_personality_facet",
-    "score_input",
-    "create_dialogue_facet",
-    "classify_transition",
-    "DialogueState",
+    "AGENT_MODE_CODE_FACET",
+    "AGENT_MODE_ARCHITECT_FACET",
+    "AGENT_MODE_ASK_FACET",
+    "AGENT_MODE_DEBUG_FACET",
+    "CONSTITUTION_GENERAL_FACET",
+    "CONSTITUTION_SECURITY_FACET",
+    "CONSTITUTION_AGENT_FACET",
+    "HARM_FILTER_GENERAL_FACET",
+    "HARM_FILTER_SECURITY_FACET",
+    "HARM_FILTER_CODING_FACET",
+    "HARM_FILTER_THREAT_INTEL_FACET",
+    "HARM_FILTER_ALL_FACET",
+    "HARM_FILTER_WARN_FACET",
+    "PERSONALITY_PATIENT_FACET",
+    "PERSONALITY_ANALYTICAL_FACET",
+    "PERSONALITY_CREATIVE_FACET",
+    "PERSONALITY_THOROUGH_FACET",
+    "PERSONALITY_METHODICAL_FACET",
+    "DIALOGUE_FACET",
 ]
