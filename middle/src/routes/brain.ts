@@ -8,7 +8,7 @@ const router = Router();
 let brainConcurrency = 0;
 const BRAIN_TIMEOUT_MS = 30000;
 const MAX_BRAIN_CONCURRENCY = 1;
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
 function runBrain(cmd: string, res: Response): void {
   if (brainConcurrency >= MAX_BRAIN_CONCURRENCY) {

@@ -12,25 +12,25 @@
     "lint": "eslint src/"
   },
   "dependencies": {
-    "express": "^5.1.0",
+    "aurelius-data-engine": "file:../crates/data-engine",
     "cors": "^2.8.5",
-    "ws": "^8.18.0",
-    "redis": "^4.7.0",
     "dotenv": "^16.4.5",
-    "uuid": "^11.0.0",
-    "aurelius-data-engine": "file:../crates/data-engine"
+    "express": "^5.1.0",
+    "redis": "^4.7.0",
+    "uuid": "^14.0.0",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
-    "@types/express": "^5.0.0",
+    "@eslint/js": "^10.0.1",
     "@types/cors": "^2.8.17",
-    "@types/ws": "^8.5.13",
+    "@types/express": "^5.0.0",
     "@types/node": "^24.12.2",
     "@types/uuid": "^10.0.0",
-    "typescript": "~6.0.2",
-    "tsx": "^4.19.0",
-    "vitest": "^3.0.9",
+    "@types/ws": "^8.5.13",
     "eslint": "^10.2.1",
-    "@eslint/js": "^10.0.1",
-    "typescript-eslint": "^8.58.2"
+    "tsx": "^4.19.0",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.58.2",
+    "vitest": "^3.0.9"
   }
 }
