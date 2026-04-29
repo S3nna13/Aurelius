@@ -28,7 +28,9 @@ impl ProxyClient {
     }
 
     pub async fn proxy_request(&self, req: Request) -> Result<Response, StatusCode> {
-        let path = req.uri().path_and_query()
+        let path = req
+            .uri()
+            .path_and_query()
             .map(|pq| pq.as_str().to_owned())
             .unwrap_or_else(|| req.uri().path().to_owned());
 
@@ -40,7 +42,8 @@ impl ProxyClient {
             .await
             .map_err(|_| StatusCode::BAD_REQUEST)?;
 
-        let mut upstream_req = self.client
+        let mut upstream_req = self
+            .client
             .request(method.clone(), &upstream_uri)
             .body(body.to_vec());
 
@@ -59,7 +62,9 @@ impl ProxyClient {
 
         let status = upstream_res.status();
         let up_headers = upstream_res.headers().clone();
-        let up_body = upstream_res.bytes().await
+        let up_body = upstream_res
+            .bytes()
+            .await
             .map_err(|_| StatusCode::BAD_GATEWAY)?;
 
         let mut response_headers = HeaderMap::new();
@@ -77,7 +82,13 @@ impl ProxyClient {
 
         *response.headers_mut() = response_headers;
 
-        tracing::info!("{} {} -> {} ({:.1}ms)", method, path, status.as_u16(), latency);
+        tracing::info!(
+            "{} {} -> {} ({:.1}ms)",
+            method,
+            path,
+            status.as_u16(),
+            latency
+        );
 
         Ok(response)
     }

@@ -63,7 +63,13 @@ fn chunk_by_tokens(text: &str, max_tokens: u32, overlap: u32) -> Vec<String> {
 }
 
 /// Chunk text by character count with optional sentence/paragraph boundary awareness
-fn chunk_by_chars(text: &str, max_chars: u32, overlap: u32, respect_sentences: bool, respect_paragraphs: bool) -> Vec<String> {
+fn chunk_by_chars(
+    text: &str,
+    max_chars: u32,
+    overlap: u32,
+    respect_sentences: bool,
+    respect_paragraphs: bool,
+) -> Vec<String> {
     let max = max_chars as usize;
     let ov = overlap as usize;
     let char_count = text.chars().count();
@@ -151,7 +157,13 @@ impl TextProcessor {
     }
 
     #[napi]
-    pub fn chunk(&self, text: String, max_size: u32, overlap: u32, strategy: String) -> ChunkResult {
+    pub fn chunk(
+        &self,
+        text: String,
+        max_size: u32,
+        overlap: u32,
+        strategy: String,
+    ) -> ChunkResult {
         let chunks = match strategy.as_str() {
             "token" => chunk_by_tokens(&text, max_size, overlap),
             "sentence" => self.chunk_by_sentences(&text, max_size as usize),
@@ -269,9 +281,9 @@ impl TextProcessor {
             "the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for", "of", "by",
             "with", "from", "is", "was", "are", "were", "be", "been", "being", "have", "has",
             "had", "do", "does", "did", "will", "would", "could", "should", "may", "might",
-            "shall", "can", "need", "dare", "ought", "used", "this", "that", "these", "those",
-            "i", "you", "he", "she", "it", "we", "they", "me", "him", "her", "us", "them",
-            "my", "your", "his", "its", "our", "their", "mine", "yours", "hers", "ours", "theirs",
+            "shall", "can", "need", "dare", "ought", "used", "this", "that", "these", "those", "i",
+            "you", "he", "she", "it", "we", "they", "me", "him", "her", "us", "them", "my", "your",
+            "his", "its", "our", "their", "mine", "yours", "hers", "ours", "theirs",
         ];
 
         let mut word_counts: Vec<(String, u32)> = Vec::new();
@@ -301,7 +313,11 @@ impl TextProcessor {
         let max = max_sentences as usize;
 
         if sentences.len() <= max {
-            return sentences.iter().map(|s| s.text.clone()).collect::<Vec<_>>().join(" ");
+            return sentences
+                .iter()
+                .map(|s| s.text.clone())
+                .collect::<Vec<_>>()
+                .join(" ");
         }
 
         // Simple extractive summarization: pick first and last sentences
@@ -314,7 +330,11 @@ impl TextProcessor {
 
         // Pick sentences from middle with highest keyword density
         let keywords = self.extract_keywords(
-            sentences.iter().map(|s| s.text.clone()).collect::<Vec<_>>().join(" "),
+            sentences
+                .iter()
+                .map(|s| s.text.clone())
+                .collect::<Vec<_>>()
+                .join(" "),
             Some(5),
         );
 
@@ -391,7 +411,10 @@ impl TextProcessor {
         }
 
         let ell = ellipsis.unwrap_or_else(|| "...".to_string());
-        let mut truncated = text.chars().take(max.saturating_sub(ell.len())).collect::<String>();
+        let mut truncated = text
+            .chars()
+            .take(max.saturating_sub(ell.len()))
+            .collect::<String>();
         truncated.push_str(&ell);
         truncated
     }

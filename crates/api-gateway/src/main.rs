@@ -8,7 +8,7 @@ mod routes;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use axum::{middleware, Router};
+use axum::{Router, middleware};
 use tokio::signal;
 use tower_http::cors::CorsLayer;
 use tower_http::limit::RequestBodyLimitLayer;
@@ -18,8 +18,9 @@ use tracing_subscriber::EnvFilter;
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_default_env()
-            .add_directive("aurelius_gateway=info".parse().unwrap()))
+        .with_env_filter(
+            EnvFilter::from_default_env().add_directive("aurelius_gateway=info".parse().unwrap()),
+        )
         .init();
 
     let cfg = config::Config::from_env();
@@ -33,14 +34,29 @@ async fn main() {
 
     let app = Router::new()
         .merge(routes::health::routes())
-        .merge(routes::proxy::routes(proxy_client.clone(), rate_limiter.clone(), metrics.clone()))
-        .layer(middleware::from_fn_with_state(auth_state.clone(), auth::auth_middleware))
+        .merge(routes::proxy::routes(
+            proxy_client.clone(),
+            rate_limiter.clone(),
+            metrics.clone(),
+        ))
+        .layer(middleware::from_fn_with_state(
+            auth_state.clone(),
+            auth::auth_middleware,
+        ))
         .layer(CorsLayer::permissive())
         .layer(RequestBodyLimitLayer::new(10 * 1024 * 1024))
         .layer(TraceLayer::new_for_http())
-        .with_state(app_state::AppState { proxy_client, rate_limiter, metrics, cfg: cfg.clone(), auth_state });
+        .with_state(app_state::AppState {
+            proxy_client,
+            rate_limiter,
+            metrics,
+            cfg: cfg.clone(),
+            auth_state,
+        });
 
-    let addr: SocketAddr = format!("{}:{}", cfg.host, cfg.port).parse().expect("Invalid address");
+    let addr: SocketAddr = format!("{}:{}", cfg.host, cfg.port)
+        .parse()
+        .expect("Invalid address");
     tracing::info!("Gateway listening on {addr}");
 
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
@@ -52,13 +68,16 @@ async fn main() {
 
 async fn shutdown_signal() {
     let ctrl_c = async {
-        signal::ctrl_c().await.expect("Failed to install Ctrl+C handler");
+        signal::ctrl_c()
+            .await
+            .expect("Failed to install Ctrl+C handler");
     };
     #[cfg(unix)]
     let terminate = async {
         signal::unix::signal(signal::unix::SignalKind::terminate())
             .expect("Failed to install SIGTERM handler")
-            .recv().await;
+            .recv()
+            .await;
     };
     #[cfg(not(unix))]
     let terminate = std::future::pending::<()>();
@@ -70,7 +89,10 @@ async fn shutdown_signal() {
 }
 
 mod app_state {
-    use crate::{auth::AuthState, config::Config, metrics::Metrics, proxy::ProxyClient, rate_limit::RateLimiter};
+    use crate::{
+        auth::AuthState, config::Config, metrics::Metrics, proxy::ProxyClient,
+        rate_limit::RateLimiter,
+    };
 
     #[derive(Clone)]
     pub struct AppState {

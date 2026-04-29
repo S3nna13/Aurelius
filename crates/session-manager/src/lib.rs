@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
 
-use napi_derive::napi;
 use chrono::{DateTime, Utc};
+use napi_derive::napi;
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -110,13 +110,11 @@ impl SessionManager {
     pub fn validate_session(&self, session_id: String) -> SessionValidation {
         let sessions = self.sessions.lock().unwrap();
         match sessions.get(&session_id) {
-            Some(entry) if Utc::now() < entry.expires_at => {
-                SessionValidation {
-                    valid: true,
-                    session: Some(entry.session.clone()),
-                    reason: None,
-                }
-            }
+            Some(entry) if Utc::now() < entry.expires_at => SessionValidation {
+                valid: true,
+                session: Some(entry.session.clone()),
+                reason: None,
+            },
             Some(_) => SessionValidation {
                 valid: false,
                 session: None,
@@ -151,7 +149,8 @@ impl SessionManager {
     #[napi]
     pub fn list_user_sessions(&self, user_id: String) -> Vec<Session> {
         let sessions = self.sessions.lock().unwrap();
-        sessions.values()
+        sessions
+            .values()
             .filter(|e| e.session.user_id == user_id && Utc::now() < e.expires_at)
             .map(|e| e.session.clone())
             .collect()

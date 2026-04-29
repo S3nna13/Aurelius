@@ -3,11 +3,11 @@ use std::sync::Arc;
 use axum::{
     extract::{Request, State},
     middleware::Next,
-    response::{IntoResponse, Response, Json},
+    response::{IntoResponse, Json, Response},
 };
 use chrono::{Duration, Utc};
 use dashmap::DashMap;
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -60,13 +60,16 @@ impl AuthService {
     }
 
     pub fn register_api_key(&self, key: &str, sub: &str, role: &str, scopes: Vec<String>) {
-        self.api_keys.insert(key.to_string(), Claims {
-            sub: sub.to_string(),
-            role: role.to_string(),
-            scopes,
-            exp: 0,
-            iat: 0,
-        });
+        self.api_keys.insert(
+            key.to_string(),
+            Claims {
+                sub: sub.to_string(),
+                role: role.to_string(),
+                scopes,
+                exp: 0,
+                iat: 0,
+            },
+        );
     }
 
     pub fn validate_api_key(&self, key: &str) -> Option<Claims> {
@@ -142,10 +145,7 @@ pub async fn auth_middleware(
         }
     }
 
-    let api_key = req
-        .headers()
-        .get("X-API-Key")
-        .and_then(|v| v.to_str().ok());
+    let api_key = req.headers().get("X-API-Key").and_then(|v| v.to_str().ok());
 
     if let Some(key) = api_key {
         if state.auth_service.validate_api_key(key).is_some() {
@@ -164,5 +164,12 @@ pub async fn auth_middleware(
 }
 
 pub fn public_paths() -> Vec<&'static str> {
-    vec!["/health", "/healthz", "/readyz", "/auth/login", "/openapi.json", "/docs"]
+    vec![
+        "/health",
+        "/healthz",
+        "/readyz",
+        "/auth/login",
+        "/openapi.json",
+        "/docs",
+    ]
 }

@@ -109,10 +109,9 @@ impl PromptEngine {
         template_name: String,
         variables: HashMap<String, String>,
     ) -> napi::Result<RenderedPrompt> {
-        let template = self
-            .templates
-            .get(&template_name)
-            .ok_or_else(|| napi::Error::from_reason(format!("Template '{}' not found", template_name)))?;
+        let template = self.templates.get(&template_name).ok_or_else(|| {
+            napi::Error::from_reason(format!("Template '{}' not found", template_name))
+        })?;
 
         self.render_string(template.clone(), variables)
     }
@@ -170,18 +169,15 @@ impl PromptEngine {
 
     #[napi]
     pub fn analyze(&self, template_name: String) -> napi::Result<TemplateInfo> {
-        let template = self
-            .templates
-            .get(&template_name)
-            .ok_or_else(|| napi::Error::from_reason(format!("Template '{}' not found", template_name)))?;
+        let template = self.templates.get(&template_name).ok_or_else(|| {
+            napi::Error::from_reason(format!("Template '{}' not found", template_name))
+        })?;
 
         let variables = extract_variables(template);
         let has_partials = template.contains("{{>");
-        let has_conditionals = template.contains("{{#")
-            || template.contains("{{^")
-            || template.contains("{{/");
-        let has_loops = template.contains("{{#each")
-            || template.contains("{{#for");
+        let has_conditionals =
+            template.contains("{{#") || template.contains("{{^") || template.contains("{{/");
+        let has_loops = template.contains("{{#each") || template.contains("{{#for");
 
         Ok(TemplateInfo {
             name: template_name,
@@ -199,11 +195,7 @@ impl PromptEngine {
     }
 
     #[napi]
-    pub fn validate_template(
-        &self,
-        template: String,
-        required_vars: Vec<String>,
-    ) -> Vec<String> {
+    pub fn validate_template(&self, template: String, required_vars: Vec<String>) -> Vec<String> {
         let found = extract_variables(&template);
         let mut missing = Vec::new();
         for var in &required_vars {

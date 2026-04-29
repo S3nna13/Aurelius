@@ -214,13 +214,28 @@ impl DataEngine {
     }
 
     #[napi]
-    pub fn add_notification(&self, channel: String, priority: String, category: String, title: String, body: String) -> Notification {
-        self.inner.add_notification(&channel, &priority, &category, &title, &body)
+    pub fn add_notification(
+        &self,
+        channel: String,
+        priority: String,
+        category: String,
+        title: String,
+        body: String,
+    ) -> Notification {
+        self.inner
+            .add_notification(&channel, &priority, &category, &title, &body)
     }
 
     #[napi]
-    pub fn get_notifications(&self, category: Option<String>, priority: Option<String>, read: Option<bool>, limit: Option<u32>) -> Vec<Notification> {
-        self.inner.get_notifications(category.as_deref(), priority.as_deref(), read, limit)
+    pub fn get_notifications(
+        &self,
+        category: Option<String>,
+        priority: Option<String>,
+        read: Option<bool>,
+        limit: Option<u32>,
+    ) -> Vec<Notification> {
+        self.inner
+            .get_notifications(category.as_deref(), priority.as_deref(), read, limit)
     }
 
     #[napi]
@@ -249,8 +264,14 @@ impl DataEngine {
     }
 
     #[napi]
-    pub fn get_memory_entries(&self, layer: Option<String>, query: Option<String>, limit: Option<u32>) -> Vec<MemoryEntry> {
-        self.inner.get_memory_entries(layer.as_deref(), query.as_deref(), limit)
+    pub fn get_memory_entries(
+        &self,
+        layer: Option<String>,
+        query: Option<String>,
+        limit: Option<u32>,
+    ) -> Vec<MemoryEntry> {
+        self.inner
+            .get_memory_entries(layer.as_deref(), query.as_deref(), limit)
     }
 
     #[napi]
@@ -279,12 +300,23 @@ impl DataEngine {
     }
 
     #[napi]
-    pub fn get_logs(&self, level: Option<String>, query: Option<String>, limit: Option<u32>) -> Vec<LogRecord> {
-        self.inner.get_logs(level.as_deref(), query.as_deref(), limit)
+    pub fn get_logs(
+        &self,
+        level: Option<String>,
+        query: Option<String>,
+        limit: Option<u32>,
+    ) -> Vec<LogRecord> {
+        self.inner
+            .get_logs(level.as_deref(), query.as_deref(), limit)
     }
 
     #[napi]
-    pub fn search_logs(&self, query: String, level: Option<String>, limit: Option<u32>) -> Vec<LogRecord> {
+    pub fn search_logs(
+        &self,
+        query: String,
+        level: Option<String>,
+        limit: Option<u32>,
+    ) -> Vec<LogRecord> {
         self.inner.search_logs(&query, level.as_deref(), limit)
     }
 
@@ -312,7 +344,8 @@ impl DataEngine {
     pub fn export_json(&self) -> String {
         use persistence::Persistence;
         let p = Persistence::new("", 0);
-        p.export_json(&self.inner).unwrap_or_else(|e| format!("{{\"error\": \"{e}\"}}"))
+        p.export_json(&self.inner)
+            .unwrap_or_else(|e| format!("{{\"error\": \"{e}\"}}"))
     }
 
     #[napi]
@@ -401,7 +434,13 @@ impl DataEngine {
     }
 
     #[napi]
-    pub fn create_training_run(&self, name: String, model_id: String, total_epochs: u32) -> TrainingRunSummary {
-        self.inner.create_training_run(&name, &model_id, total_epochs)
+    pub fn create_training_run(
+        &self,
+        name: String,
+        model_id: String,
+        total_epochs: u32,
+    ) -> TrainingRunSummary {
+        self.inner
+            .create_training_run(&name, &model_id, total_epochs)
     }
 }

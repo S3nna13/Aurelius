@@ -4,8 +4,8 @@ use std::time::Duration;
 use dashmap::DashMap;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
-use redis::aio::ConnectionManager;
 use redis::AsyncCommands;
+use redis::aio::ConnectionManager;
 use tokio::runtime::Runtime;
 use tokio::sync::Mutex;
 
@@ -64,17 +64,15 @@ impl RedisClient {
         let client = redis::Client::open(url.as_str())
             .map_err(|e| napi::Error::from_reason(format!("Redis connect error: {}", e)))?;
 
-        let conn = tokio::time::timeout(
-            timeout,
-            ConnectionManager::new(client),
-        )
+        let conn = tokio::time::timeout(timeout, ConnectionManager::new(client))
             .await
             .map_err(|_| napi::Error::from_reason("Redis connection timeout"))?
             .map_err(|e| napi::Error::from_reason(format!("Redis connection error: {}", e)))?;
 
         let mut pool = self.pool.lock().await;
         *pool = Some(conn);
-        self.connected.store(true, std::sync::atomic::Ordering::Relaxed);
+        self.connected
+            .store(true, std::sync::atomic::Ordering::Relaxed);
         Ok(())
     }
 
@@ -92,7 +90,9 @@ impl RedisClient {
         self.connect().await?;
         let pool = self.pool.clone();
         let mut guard = pool.lock().await;
-        let conn = guard.as_mut().ok_or_else(|| napi::Error::from_reason("Not connected"))?;
+        let conn = guard
+            .as_mut()
+            .ok_or_else(|| napi::Error::from_reason("Not connected"))?;
 
         let result: String = conn
             .ping()
@@ -107,14 +107,18 @@ impl RedisClient {
         self.connect().await?;
         let pool = self.pool.clone();
         let mut guard = pool.lock().await;
-        let conn = guard.as_mut().ok_or_else(|| napi::Error::from_reason("Not connected"))?;
+        let conn = guard
+            .as_mut()
+            .ok_or_else(|| napi::Error::from_reason("Not connected"))?;
 
         if let Some(ttl) = ttl_seconds {
-            let _: () = conn.set_ex(&key, &value, ttl as u64)
+            let _: () = conn
+                .set_ex(&key, &value, ttl as u64)
                 .await
                 .map_err(|e| napi::Error::from_reason(format!("Redis set error: {}", e)))?;
         } else {
-            let _: () = conn.set(&key, &value)
+            let _: () = conn
+                .set(&key, &value)
                 .await
                 .map_err(|e| napi::Error::from_reason(format!("Redis set error: {}", e)))?;
         }
@@ -127,7 +131,9 @@ impl RedisClient {
         self.connect().await?;
         let pool = self.pool.clone();
         let mut guard = pool.lock().await;
-        let conn = guard.as_mut().ok_or_else(|| napi::Error::from_reason("Not connected"))?;
+        let conn = guard
+            .as_mut()
+            .ok_or_else(|| napi::Error::from_reason("Not connected"))?;
 
         let result: Option<String> = conn
             .get(key)
@@ -142,7 +148,9 @@ impl RedisClient {
         self.connect().await?;
         let pool = self.pool.clone();
         let mut guard = pool.lock().await;
-        let conn = guard.as_mut().ok_or_else(|| napi::Error::from_reason("Not connected"))?;
+        let conn = guard
+            .as_mut()
+            .ok_or_else(|| napi::Error::from_reason("Not connected"))?;
 
         let result: u32 = conn
             .del(key)
@@ -157,7 +165,9 @@ impl RedisClient {
         self.connect().await?;
         let pool = self.pool.clone();
         let mut guard = pool.lock().await;
-        let conn = guard.as_mut().ok_or_else(|| napi::Error::from_reason("Not connected"))?;
+        let conn = guard
+            .as_mut()
+            .ok_or_else(|| napi::Error::from_reason("Not connected"))?;
 
         let result: bool = conn
             .exists(key)
@@ -172,7 +182,9 @@ impl RedisClient {
         self.connect().await?;
         let pool = self.pool.clone();
         let mut guard = pool.lock().await;
-        let conn = guard.as_mut().ok_or_else(|| napi::Error::from_reason("Not connected"))?;
+        let conn = guard
+            .as_mut()
+            .ok_or_else(|| napi::Error::from_reason("Not connected"))?;
 
         let result: bool = conn
             .expire(&key, seconds as i64)
@@ -187,7 +199,9 @@ impl RedisClient {
         self.connect().await?;
         let pool = self.pool.clone();
         let mut guard = pool.lock().await;
-        let conn = guard.as_mut().ok_or_else(|| napi::Error::from_reason("Not connected"))?;
+        let conn = guard
+            .as_mut()
+            .ok_or_else(|| napi::Error::from_reason("Not connected"))?;
 
         let result: i64 = conn
             .ttl(key)
@@ -202,7 +216,9 @@ impl RedisClient {
         self.connect().await?;
         let pool = self.pool.clone();
         let mut guard = pool.lock().await;
-        let conn = guard.as_mut().ok_or_else(|| napi::Error::from_reason("Not connected"))?;
+        let conn = guard
+            .as_mut()
+            .ok_or_else(|| napi::Error::from_reason("Not connected"))?;
 
         let result: i64 = conn
             .incr(key, 1)
@@ -217,7 +233,9 @@ impl RedisClient {
         self.connect().await?;
         let pool = self.pool.clone();
         let mut guard = pool.lock().await;
-        let conn = guard.as_mut().ok_or_else(|| napi::Error::from_reason("Not connected"))?;
+        let conn = guard
+            .as_mut()
+            .ok_or_else(|| napi::Error::from_reason("Not connected"))?;
 
         let result: bool = conn
             .hset(key, field, value)
@@ -232,7 +250,9 @@ impl RedisClient {
         self.connect().await?;
         let pool = self.pool.clone();
         let mut guard = pool.lock().await;
-        let conn = guard.as_mut().ok_or_else(|| napi::Error::from_reason("Not connected"))?;
+        let conn = guard
+            .as_mut()
+            .ok_or_else(|| napi::Error::from_reason("Not connected"))?;
 
         let result: Option<String> = conn
             .hget(key, field)
@@ -247,14 +267,19 @@ impl RedisClient {
         self.connect().await?;
         let pool = self.pool.clone();
         let mut guard = pool.lock().await;
-        let conn = guard.as_mut().ok_or_else(|| napi::Error::from_reason("Not connected"))?;
+        let conn = guard
+            .as_mut()
+            .ok_or_else(|| napi::Error::from_reason("Not connected"))?;
 
         let result: Vec<(String, String)> = conn
             .hgetall(key)
             .await
             .map_err(|e| napi::Error::from_reason(format!("Redis hgetall error: {}", e)))?;
 
-        Ok(result.into_iter().map(|(f, v)| RedisHashEntry { field: f, value: v }).collect())
+        Ok(result
+            .into_iter()
+            .map(|(f, v)| RedisHashEntry { field: f, value: v })
+            .collect())
     }
 
     #[napi]
@@ -262,7 +287,9 @@ impl RedisClient {
         self.connect().await?;
         let pool = self.pool.clone();
         let mut guard = pool.lock().await;
-        let conn = guard.as_mut().ok_or_else(|| napi::Error::from_reason("Not connected"))?;
+        let conn = guard
+            .as_mut()
+            .ok_or_else(|| napi::Error::from_reason("Not connected"))?;
 
         let result: u32 = conn
             .lpush(key, value)
@@ -277,7 +304,9 @@ impl RedisClient {
         self.connect().await?;
         let pool = self.pool.clone();
         let mut guard = pool.lock().await;
-        let conn = guard.as_mut().ok_or_else(|| napi::Error::from_reason("Not connected"))?;
+        let conn = guard
+            .as_mut()
+            .ok_or_else(|| napi::Error::from_reason("Not connected"))?;
 
         let result: Option<String> = conn
             .rpop(key, None)
@@ -292,7 +321,9 @@ impl RedisClient {
         self.connect().await?;
         let pool = self.pool.clone();
         let mut guard = pool.lock().await;
-        let conn = guard.as_mut().ok_or_else(|| napi::Error::from_reason("Not connected"))?;
+        let conn = guard
+            .as_mut()
+            .ok_or_else(|| napi::Error::from_reason("Not connected"))?;
 
         let result: Vec<String> = conn
             .lrange(&key, start as isize, stop as isize)
@@ -307,7 +338,9 @@ impl RedisClient {
         self.connect().await?;
         let pool = self.pool.clone();
         let mut guard = pool.lock().await;
-        let conn = guard.as_mut().ok_or_else(|| napi::Error::from_reason("Not connected"))?;
+        let conn = guard
+            .as_mut()
+            .ok_or_else(|| napi::Error::from_reason("Not connected"))?;
 
         let result: u32 = conn
             .publish(channel, message)
@@ -322,7 +355,9 @@ impl RedisClient {
         self.connect().await?;
         let pool = self.pool.clone();
         let mut guard = pool.lock().await;
-        let conn = guard.as_mut().ok_or_else(|| napi::Error::from_reason("Not connected"))?;
+        let conn = guard
+            .as_mut()
+            .ok_or_else(|| napi::Error::from_reason("Not connected"))?;
 
         let start = std::time::Instant::now();
 

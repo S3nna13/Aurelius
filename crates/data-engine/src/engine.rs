@@ -58,23 +58,38 @@ pub struct InternalLog {
 
 #[derive(Clone)]
 pub struct InternalSkill {
-    pub id: String, pub name: String, pub description: String,
-    pub active: bool, pub version: String, pub category: String,
-    pub risk_score: f64, pub allow_level: String, pub instructions: String,
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub active: bool,
+    pub version: String,
+    pub category: String,
+    pub risk_score: f64,
+    pub allow_level: String,
+    pub instructions: String,
     pub source: String,
 }
 
 #[derive(Clone)]
 pub struct InternalWorkflow {
-    pub id: String, pub name: String, pub status: String,
-    pub last_run: f64, pub duration: f64, pub event_count: u32,
+    pub id: String,
+    pub name: String,
+    pub status: String,
+    pub last_run: f64,
+    pub duration: f64,
+    pub event_count: u32,
     pub source: String,
 }
 
 #[derive(Clone)]
 pub struct InternalModelInfo {
-    pub id: String, pub name: String, pub description: String, pub path: String,
-    pub parameter_count: i64, pub state: String, pub loaded_at: Option<String>,
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub path: String,
+    pub parameter_count: i64,
+    pub state: String,
+    pub loaded_at: Option<String>,
     pub source: String,
 }
 
@@ -145,12 +160,19 @@ impl DataEngineInner {
         let mut config = std::collections::HashMap::new();
         config.insert("agent_mode".to_string(), "default".to_string());
         config.insert("log_level".to_string(), "info".to_string());
-        config.insert("api_endpoint".to_string(), "http://localhost:8080".to_string());
+        config.insert(
+            "api_endpoint".to_string(),
+            "http://localhost:8080".to_string(),
+        );
         config.insert("require_auth".to_string(), "false".to_string());
         config.insert("audit_logging".to_string(), "true".to_string());
         config.insert(
             "engine_mode".to_string(),
-            if demo_mode { "demo".to_string() } else { "production".to_string() },
+            if demo_mode {
+                "demo".to_string()
+            } else {
+                "production".to_string()
+            },
         );
 
         let mut skills = VecDeque::new();
@@ -271,7 +293,11 @@ impl DataEngineInner {
                     } else {
                         1e-3 - (step as f64 - 10.0) * 2e-5
                     },
-                    accuracy: if step > 5 { f64::min((step as f64 - 5.0) * 1.8 + 10.0, 92.0) } else { 0.0 },
+                    accuracy: if step > 5 {
+                        f64::min((step as f64 - 5.0) * 1.8 + 10.0, 92.0)
+                    } else {
+                        0.0
+                    },
                     grad_norm: Self::rand_simple(step * 7) * 2.0 + 1.0,
                 });
             }
@@ -305,7 +331,11 @@ impl DataEngineInner {
                     } else {
                         2e-4 - (step as f64 - 8.0) * 5e-6
                     },
-                    accuracy: if step > 3 { f64::min((step as f64 - 3.0) * 2.2 + 5.0, 88.0) } else { 0.0 },
+                    accuracy: if step > 3 {
+                        f64::min((step as f64 - 3.0) * 2.2 + 5.0, 88.0)
+                    } else {
+                        0.0
+                    },
                     grad_norm: Self::rand_simple(step * 7 + 100) * 1.5 + 0.8,
                 });
             }
@@ -335,7 +365,11 @@ impl DataEngineInner {
                     train_loss: ((train_loss * 100.0) as f64).round() / 100.0,
                     val_loss: ((val_loss3 * 100.0) as f64).round() / 100.0,
                     learning_rate: 3e-4 - step as f64 * 5e-6,
-                    accuracy: if step > 8 { f64::min((step as f64 - 8.0) * 1.5 + 8.0, 85.0) } else { 0.0 },
+                    accuracy: if step > 8 {
+                        f64::min((step as f64 - 8.0) * 1.5 + 8.0, 85.0)
+                    } else {
+                        0.0
+                    },
                     grad_norm: Self::rand_simple(step * 7 + 200) * 2.5 + 0.5,
                 });
             }
@@ -403,20 +437,26 @@ impl DataEngineInner {
     }
 
     pub fn list_agents(&self) -> Vec<crate::AgentState> {
-        self.agents.iter().map(|entry| crate::AgentState {
-            id: entry.key().clone(),
-            state: entry.value().state.clone(),
-            role: entry.value().role.clone(),
-            metrics_json: entry.value().metrics_json.clone(),
-        }).collect()
+        self.agents
+            .iter()
+            .map(|entry| crate::AgentState {
+                id: entry.key().clone(),
+                state: entry.value().state.clone(),
+                role: entry.value().role.clone(),
+                metrics_json: entry.value().metrics_json.clone(),
+            })
+            .collect()
     }
 
     pub fn upsert_agent(&self, id: &str, state: &str, role: &str, metrics_json: &str) {
-        self.agents.insert(id.to_string(), InternalAgent {
-            state: state.to_string(),
-            role: role.to_string(),
-            metrics_json: metrics_json.to_string(),
-        });
+        self.agents.insert(
+            id.to_string(),
+            InternalAgent {
+                state: state.to_string(),
+                role: role.to_string(),
+                metrics_json: metrics_json.to_string(),
+            },
+        );
     }
 
     pub fn delete_agent(&self, id: &str) -> bool {
@@ -425,7 +465,12 @@ impl DataEngineInner {
 
     // -- Activity --
 
-    pub fn append_activity(&self, command: &str, success: bool, output: &str) -> crate::ActivityEntry {
+    pub fn append_activity(
+        &self,
+        command: &str,
+        success: bool,
+        output: &str,
+    ) -> crate::ActivityEntry {
         let entry = crate::ActivityEntry {
             id: Self::gen_id(),
             timestamp: Utc::now().timestamp() as f64,
@@ -441,32 +486,46 @@ impl DataEngineInner {
             success: entry.success,
             output: entry.output.clone(),
         });
-        while log.len() > MAX_ACTIVITY { log.pop_front(); }
+        while log.len() > MAX_ACTIVITY {
+            log.pop_front();
+        }
         entry
     }
 
     pub fn get_activity(&self, limit: Option<u32>) -> Vec<crate::ActivityEntry> {
         let log = self.activity.read().unwrap_or_else(|e| e.into_inner());
         let limit = limit.unwrap_or(100).min(MAX_ACTIVITY as u32) as usize;
-        log.iter().rev().take(limit).map(|a| crate::ActivityEntry {
-            id: a.id.clone(), timestamp: a.timestamp,
-            command: a.command.clone(), success: a.success,
-            output: a.output.clone(),
-        }).collect()
+        log.iter()
+            .rev()
+            .take(limit)
+            .map(|a| crate::ActivityEntry {
+                id: a.id.clone(),
+                timestamp: a.timestamp,
+                command: a.command.clone(),
+                success: a.success,
+                output: a.output.clone(),
+            })
+            .collect()
     }
 
     pub fn search_activity(&self, query: &str, limit: Option<u32>) -> Vec<crate::ActivityEntry> {
         let log = self.activity.read().unwrap_or_else(|e| e.into_inner());
         let limit = limit.unwrap_or(100).min(MAX_ACTIVITY as u32) as usize;
         let q = query.to_lowercase();
-        log.iter().rev()
-            .filter(|a| a.command.to_lowercase().contains(&q) || a.output.to_lowercase().contains(&q))
+        log.iter()
+            .rev()
+            .filter(|a| {
+                a.command.to_lowercase().contains(&q) || a.output.to_lowercase().contains(&q)
+            })
             .take(limit)
             .map(|a| crate::ActivityEntry {
-                id: a.id.clone(), timestamp: a.timestamp,
-                command: a.command.clone(), success: a.success,
+                id: a.id.clone(),
+                timestamp: a.timestamp,
+                command: a.command.clone(),
+                success: a.success,
                 output: a.output.clone(),
-            }).collect()
+            })
+            .collect()
     }
 
     pub fn clear_activity(&self) -> u32 {
@@ -478,7 +537,14 @@ impl DataEngineInner {
 
     // -- Notifications --
 
-    pub fn add_notification(&self, channel: &str, priority: &str, category: &str, title: &str, body: &str) -> crate::Notification {
+    pub fn add_notification(
+        &self,
+        channel: &str,
+        priority: &str,
+        category: &str,
+        title: &str,
+        body: &str,
+    ) -> crate::Notification {
         let n = crate::Notification {
             id: Self::gen_id(),
             timestamp: Utc::now().timestamp() as f64,
@@ -490,50 +556,101 @@ impl DataEngineInner {
             read: false,
             delivered: false,
         };
-        let mut list = self.notifications.write().unwrap_or_else(|e| e.into_inner());
+        let mut list = self
+            .notifications
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
         list.push_back(InternalNotification {
-            id: n.id.clone(), timestamp: n.timestamp,
-            channel: n.channel.clone(), priority: n.priority.clone(),
-            category: n.category.clone(), title: n.title.clone(),
-            body: n.body.clone(), read: n.read, delivered: n.delivered,
+            id: n.id.clone(),
+            timestamp: n.timestamp,
+            channel: n.channel.clone(),
+            priority: n.priority.clone(),
+            category: n.category.clone(),
+            title: n.title.clone(),
+            body: n.body.clone(),
+            read: n.read,
+            delivered: n.delivered,
         });
-        while list.len() > MAX_NOTIFICATIONS { list.pop_front(); }
+        while list.len() > MAX_NOTIFICATIONS {
+            list.pop_front();
+        }
         n
     }
 
-    pub fn get_notifications(&self, category: Option<&str>, priority: Option<&str>, read: Option<bool>, limit: Option<u32>) -> Vec<crate::Notification> {
+    pub fn get_notifications(
+        &self,
+        category: Option<&str>,
+        priority: Option<&str>,
+        read: Option<bool>,
+        limit: Option<u32>,
+    ) -> Vec<crate::Notification> {
         let list = self.notifications.read().unwrap_or_else(|e| e.into_inner());
         let limit = limit.unwrap_or(100).min(MAX_NOTIFICATIONS as u32) as usize;
-        list.iter().rev()
+        list.iter()
+            .rev()
             .filter(|n| {
-                if let Some(c) = category { if n.category != c { return false; } }
-                if let Some(p) = priority { if n.priority != p { return false; } }
-                if let Some(r) = read { if n.read != r { return false; } }
+                if let Some(c) = category {
+                    if n.category != c {
+                        return false;
+                    }
+                }
+                if let Some(p) = priority {
+                    if n.priority != p {
+                        return false;
+                    }
+                }
+                if let Some(r) = read {
+                    if n.read != r {
+                        return false;
+                    }
+                }
                 true
             })
             .take(limit)
             .map(|n| crate::Notification {
-                id: n.id.clone(), timestamp: n.timestamp,
-                channel: n.channel.clone(), priority: n.priority.clone(),
-                category: n.category.clone(), title: n.title.clone(),
-                body: n.body.clone(), read: n.read, delivered: n.delivered,
-            }).collect()
+                id: n.id.clone(),
+                timestamp: n.timestamp,
+                channel: n.channel.clone(),
+                priority: n.priority.clone(),
+                category: n.category.clone(),
+                title: n.title.clone(),
+                body: n.body.clone(),
+                read: n.read,
+                delivered: n.delivered,
+            })
+            .collect()
     }
 
     pub fn mark_notification_read(&self, id: &str) -> bool {
-        let mut list = self.notifications.write().unwrap_or_else(|e| e.into_inner());
+        let mut list = self
+            .notifications
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
         for n in list.iter_mut() {
-            if n.id == id { n.read = true; return true; }
+            if n.id == id {
+                n.read = true;
+                return true;
+            }
         }
         false
     }
 
     pub fn mark_all_notifications_read(&self, category: Option<&str>) -> u32 {
-        let mut list = self.notifications.write().unwrap_or_else(|e| e.into_inner());
+        let mut list = self
+            .notifications
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
         let mut count = 0;
         for n in list.iter_mut() {
-            if let Some(c) = category { if n.category != c { continue; } }
-            if !n.read { n.read = true; count += 1; }
+            if let Some(c) = category {
+                if n.category != c {
+                    continue;
+                }
+            }
+            if !n.read {
+                n.read = true;
+                count += 1;
+            }
         }
         count
     }
@@ -546,7 +663,10 @@ impl DataEngineInner {
     }
 
     pub fn clear_notifications(&self) -> u32 {
-        let mut list = self.notifications.write().unwrap_or_else(|e| e.into_inner());
+        let mut list = self
+            .notifications
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
         let count = list.len() as u32;
         list.clear();
         count
@@ -556,13 +676,20 @@ impl DataEngineInner {
 
     pub fn get_memory_layers(&self) -> Vec<crate::MemoryLayer> {
         let layers = self.memory_layers.read().unwrap_or_else(|e| e.into_inner());
-        layers.iter().map(|(name, entries)| crate::MemoryLayer {
-            name: name.clone(), entries: entries.len() as u32,
-        }).collect()
+        layers
+            .iter()
+            .map(|(name, entries)| crate::MemoryLayer {
+                name: name.clone(),
+                entries: entries.len() as u32,
+            })
+            .collect()
     }
 
     pub fn add_memory_entry(&self, layer_name: &str, content: &str) {
-        let mut layers = self.memory_layers.write().unwrap_or_else(|e| e.into_inner());
+        let mut layers = self
+            .memory_layers
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
         let entry = InternalMemoryEntry {
             id: Self::gen_id(),
             content: content.to_string(),
@@ -571,24 +698,41 @@ impl DataEngineInner {
             access_count: 0,
             importance_score: 0.5,
         };
-        layers.entry(layer_name.to_string()).or_default().push_back(entry);
+        layers
+            .entry(layer_name.to_string())
+            .or_default()
+            .push_back(entry);
     }
 
-    pub fn get_memory_entries(&self, layer: Option<&str>, query: Option<&str>, limit: Option<u32>) -> Vec<crate::MemoryEntry> {
+    pub fn get_memory_entries(
+        &self,
+        layer: Option<&str>,
+        query: Option<&str>,
+        limit: Option<u32>,
+    ) -> Vec<crate::MemoryEntry> {
         let layers = self.memory_layers.read().unwrap_or_else(|e| e.into_inner());
         const MAX_LIMIT: u32 = 1000;
         let limit = limit.unwrap_or(50).min(MAX_LIMIT) as usize;
         let mut results = Vec::new();
         for (name, entries) in layers.iter() {
-            if let Some(l) = layer { if name != l { continue; } }
+            if let Some(l) = layer {
+                if name != l {
+                    continue;
+                }
+            }
             for e in entries.iter() {
                 if let Some(q) = query {
-                    if !q.is_empty() && !e.content.to_lowercase().contains(&q.to_lowercase()) { continue; }
+                    if !q.is_empty() && !e.content.to_lowercase().contains(&q.to_lowercase()) {
+                        continue;
+                    }
                 }
                 results.push(crate::MemoryEntry {
-                    id: e.id.clone(), content: e.content.clone(),
-                    layer: e.layer.clone(), timestamp: e.timestamp.clone(),
-                    access_count: e.access_count, importance_score: e.importance_score,
+                    id: e.id.clone(),
+                    content: e.content.clone(),
+                    layer: e.layer.clone(),
+                    timestamp: e.timestamp.clone(),
+                    access_count: e.access_count,
+                    importance_score: e.importance_score,
                 });
             }
         }
@@ -598,7 +742,10 @@ impl DataEngineInner {
     }
 
     pub fn delete_memory_entry(&self, id: &str) -> bool {
-        let mut layers = self.memory_layers.write().unwrap_or_else(|e| e.into_inner());
+        let mut layers = self
+            .memory_layers
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
         for entries in layers.values_mut() {
             if let Some(pos) = entries.iter().position(|e| e.id == id) {
                 entries.remove(pos);
@@ -611,15 +758,25 @@ impl DataEngineInner {
     // -- Config --
 
     pub fn get_config(&self, key: &str) -> Option<String> {
-        self.config.read().unwrap_or_else(|e| e.into_inner()).get(key).cloned()
+        self.config
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(key)
+            .cloned()
     }
 
     pub fn get_all_config(&self) -> std::collections::HashMap<String, String> {
-        self.config.read().unwrap_or_else(|e| e.into_inner()).clone()
+        self.config
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
     }
 
     pub fn set_config(&self, key: &str, value: &str) {
-        self.config.write().unwrap_or_else(|e| e.into_inner()).insert(key.to_string(), value.to_string());
+        self.config
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(key.to_string(), value.to_string());
     }
 
     // -- Logs --
@@ -632,41 +789,74 @@ impl DataEngineInner {
             logger: logger.to_string(),
             message: message.to_string(),
         });
-        while logs.len() > MAX_LOGS { logs.pop_front(); }
+        while logs.len() > MAX_LOGS {
+            logs.pop_front();
+        }
     }
 
-    pub fn get_logs(&self, level: Option<&str>, query: Option<&str>, limit: Option<u32>) -> Vec<crate::LogRecord> {
+    pub fn get_logs(
+        &self,
+        level: Option<&str>,
+        query: Option<&str>,
+        limit: Option<u32>,
+    ) -> Vec<crate::LogRecord> {
         let logs = self.logs.read().unwrap_or_else(|e| e.into_inner());
         let limit = limit.unwrap_or(100).min(MAX_LOGS as u32) as usize;
-        logs.iter().rev()
+        logs.iter()
+            .rev()
             .filter(|l| {
-                if let Some(lv) = level { if l.level.to_lowercase() != lv.to_lowercase() { return false; } }
+                if let Some(lv) = level {
+                    if l.level.to_lowercase() != lv.to_lowercase() {
+                        return false;
+                    }
+                }
                 if let Some(q) = query {
-                    if !q.is_empty() && !l.message.to_lowercase().contains(&q.to_lowercase()) && !l.logger.to_lowercase().contains(&q.to_lowercase()) { return false; }
+                    if !q.is_empty()
+                        && !l.message.to_lowercase().contains(&q.to_lowercase())
+                        && !l.logger.to_lowercase().contains(&q.to_lowercase())
+                    {
+                        return false;
+                    }
                 }
                 true
             })
             .take(limit)
             .map(|l| crate::LogRecord {
-                timestamp: l.timestamp.clone(), level: l.level.clone(),
-                logger: l.logger.clone(), message: l.message.clone(),
-            }).collect()
+                timestamp: l.timestamp.clone(),
+                level: l.level.clone(),
+                logger: l.logger.clone(),
+                message: l.message.clone(),
+            })
+            .collect()
     }
 
-    pub fn search_logs(&self, query: &str, level: Option<&str>, limit: Option<u32>) -> Vec<crate::LogRecord> {
+    pub fn search_logs(
+        &self,
+        query: &str,
+        level: Option<&str>,
+        limit: Option<u32>,
+    ) -> Vec<crate::LogRecord> {
         let logs = self.logs.read().unwrap_or_else(|e| e.into_inner());
         let limit = limit.unwrap_or(100).min(MAX_LOGS as u32) as usize;
         let q = query.to_lowercase();
-        logs.iter().rev()
+        logs.iter()
+            .rev()
             .filter(|l| {
-                if let Some(lv) = level { if l.level.to_lowercase() != lv.to_lowercase() { return false; } }
+                if let Some(lv) = level {
+                    if l.level.to_lowercase() != lv.to_lowercase() {
+                        return false;
+                    }
+                }
                 l.message.to_lowercase().contains(&q) || l.logger.to_lowercase().contains(&q)
             })
             .take(limit)
             .map(|l| crate::LogRecord {
-                timestamp: l.timestamp.clone(), level: l.level.clone(),
-                logger: l.logger.clone(), message: l.message.clone(),
-            }).collect()
+                timestamp: l.timestamp.clone(),
+                level: l.level.clone(),
+                logger: l.logger.clone(),
+                message: l.message.clone(),
+            })
+            .collect()
     }
 
     pub fn clear_logs(&self) -> u32 {
@@ -679,45 +869,88 @@ impl DataEngineInner {
     // -- Skills --
 
     pub fn list_skills(&self) -> Vec<crate::SkillEntry> {
-        self.skills.read().unwrap_or_else(|e| e.into_inner()).iter().map(|s| crate::SkillEntry {
-            id: s.id.clone(), name: s.name.clone(), description: s.description.clone(),
-            active: s.active, version: s.version.clone(), category: s.category.clone(),
-            risk_score: s.risk_score, allow_level: s.allow_level.clone(),
-            source: s.source.clone(),
-        }).collect()
+        self.skills
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .iter()
+            .map(|s| crate::SkillEntry {
+                id: s.id.clone(),
+                name: s.name.clone(),
+                description: s.description.clone(),
+                active: s.active,
+                version: s.version.clone(),
+                category: s.category.clone(),
+                risk_score: s.risk_score,
+                allow_level: s.allow_level.clone(),
+                source: s.source.clone(),
+            })
+            .collect()
     }
 
     pub fn get_skill(&self, id: &str) -> Option<crate::SkillEntry> {
-        self.skills.read().unwrap_or_else(|e| e.into_inner()).iter().find(|s| s.id == id).map(|s| crate::SkillEntry {
-            id: s.id.clone(), name: s.name.clone(), description: s.description.clone(),
-            active: s.active, version: s.version.clone(), category: s.category.clone(),
-            risk_score: s.risk_score, allow_level: s.allow_level.clone(),
-            source: s.source.clone(),
-        })
+        self.skills
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .iter()
+            .find(|s| s.id == id)
+            .map(|s| crate::SkillEntry {
+                id: s.id.clone(),
+                name: s.name.clone(),
+                description: s.description.clone(),
+                active: s.active,
+                version: s.version.clone(),
+                category: s.category.clone(),
+                risk_score: s.risk_score,
+                allow_level: s.allow_level.clone(),
+                source: s.source.clone(),
+            })
     }
 
     // -- Workflows --
 
     pub fn list_workflows(&self) -> Vec<crate::WorkflowEntry> {
-        self.workflows.read().unwrap_or_else(|e| e.into_inner()).iter().map(|w| crate::WorkflowEntry {
-            id: w.id.clone(), name: w.name.clone(), status: w.status.clone(),
-            last_run: w.last_run, duration: w.duration, event_count: w.event_count,
-            source: w.source.clone(),
-        }).collect()
+        self.workflows
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .iter()
+            .map(|w| crate::WorkflowEntry {
+                id: w.id.clone(),
+                name: w.name.clone(),
+                status: w.status.clone(),
+                last_run: w.last_run,
+                duration: w.duration,
+                event_count: w.event_count,
+                source: w.source.clone(),
+            })
+            .collect()
     }
 
     pub fn get_workflow(&self, id: &str) -> Option<crate::WorkflowEntry> {
-        self.workflows.read().unwrap_or_else(|e| e.into_inner()).iter().find(|w| w.id == id).map(|w| crate::WorkflowEntry {
-            id: w.id.clone(), name: w.name.clone(), status: w.status.clone(),
-            last_run: w.last_run, duration: w.duration, event_count: w.event_count,
-            source: w.source.clone(),
-        })
+        self.workflows
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .iter()
+            .find(|w| w.id == id)
+            .map(|w| crate::WorkflowEntry {
+                id: w.id.clone(),
+                name: w.name.clone(),
+                status: w.status.clone(),
+                last_run: w.last_run,
+                duration: w.duration,
+                event_count: w.event_count,
+                source: w.source.clone(),
+            })
     }
 
     pub fn update_workflow_status(&self, id: &str, status: &str) -> bool {
         let mut wf = self.workflows.write().unwrap_or_else(|e| e.into_inner());
         for w in wf.iter_mut() {
-            if w.id == id { w.status = status.to_string(); w.last_run = Utc::now().timestamp() as f64; w.event_count += 1; return true; }
+            if w.id == id {
+                w.status = status.to_string();
+                w.last_run = Utc::now().timestamp() as f64;
+                w.event_count += 1;
+                return true;
+            }
         }
         false
     }
@@ -725,27 +958,49 @@ impl DataEngineInner {
     // -- Models --
 
     pub fn list_models(&self) -> Vec<crate::ModelInfo> {
-        self.models.read().unwrap_or_else(|e| e.into_inner()).iter().map(|m| crate::ModelInfo {
-            id: m.id.clone(), name: m.name.clone(), description: m.description.clone(),
-            path: m.path.clone(), parameter_count: m.parameter_count,
-            state: m.state.clone(), loaded_at: m.loaded_at.clone(),
-            source: m.source.clone(),
-        }).collect()
+        self.models
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .iter()
+            .map(|m| crate::ModelInfo {
+                id: m.id.clone(),
+                name: m.name.clone(),
+                description: m.description.clone(),
+                path: m.path.clone(),
+                parameter_count: m.parameter_count,
+                state: m.state.clone(),
+                loaded_at: m.loaded_at.clone(),
+                source: m.source.clone(),
+            })
+            .collect()
     }
 
     pub fn get_model(&self, id: &str) -> Option<crate::ModelInfo> {
-        self.models.read().unwrap_or_else(|e| e.into_inner()).iter().find(|m| m.id == id).map(|m| crate::ModelInfo {
-            id: m.id.clone(), name: m.name.clone(), description: m.description.clone(),
-            path: m.path.clone(), parameter_count: m.parameter_count,
-            state: m.state.clone(), loaded_at: m.loaded_at.clone(),
-            source: m.source.clone(),
-        })
+        self.models
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .iter()
+            .find(|m| m.id == id)
+            .map(|m| crate::ModelInfo {
+                id: m.id.clone(),
+                name: m.name.clone(),
+                description: m.description.clone(),
+                path: m.path.clone(),
+                parameter_count: m.parameter_count,
+                state: m.state.clone(),
+                loaded_at: m.loaded_at.clone(),
+                source: m.source.clone(),
+            })
     }
 
     pub fn set_model_state(&self, id: &str, state: &str) -> bool {
         let mut models = self.models.write().unwrap_or_else(|e| e.into_inner());
         for m in models.iter_mut() {
-            if m.id == id { m.state = state.to_string(); m.loaded_at = Some(Utc::now().to_rfc3339()); return true; }
+            if m.id == id {
+                m.state = state.to_string();
+                m.loaded_at = Some(Utc::now().to_rfc3339());
+                return true;
+            }
         }
         false
     }
@@ -753,50 +1008,108 @@ impl DataEngineInner {
     // -- Training Runs --
 
     pub fn list_training_runs(&self) -> Vec<crate::TrainingRunSummary> {
-        self.training_runs.read().unwrap_or_else(|e| e.into_inner()).iter().map(|r| crate::TrainingRunSummary {
-            id: r.id.clone(), name: r.name.clone(), model_id: r.model_id.clone(),
-            status: r.status.clone(), started_at: r.started_at,
-            current_epoch: r.current_epoch, total_epochs: r.total_epochs,
-            best_val_loss: r.best_val_loss, current_lr: r.current_lr,
-            total_steps: r.total_steps, data_point_count: r.data_points.len() as u32,
-            source: r.source.clone(),
-        }).collect()
+        self.training_runs
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .iter()
+            .map(|r| crate::TrainingRunSummary {
+                id: r.id.clone(),
+                name: r.name.clone(),
+                model_id: r.model_id.clone(),
+                status: r.status.clone(),
+                started_at: r.started_at,
+                current_epoch: r.current_epoch,
+                total_epochs: r.total_epochs,
+                best_val_loss: r.best_val_loss,
+                current_lr: r.current_lr,
+                total_steps: r.total_steps,
+                data_point_count: r.data_points.len() as u32,
+                source: r.source.clone(),
+            })
+            .collect()
     }
 
     pub fn get_training_run(&self, id: &str) -> Option<crate::TrainingRunDetail> {
-        self.training_runs.read().unwrap_or_else(|e| e.into_inner()).iter().find(|r| r.id == id).map(|r| {
-            let steps = r.data_points.iter().map(|p| p.step).collect::<Vec<_>>();
-            let train_losses = r.data_points.iter().map(|p| p.train_loss).collect::<Vec<_>>();
-            let val_losses = r.data_points.iter().map(|p| p.val_loss).collect::<Vec<_>>();
-            let lrs = r.data_points.iter().map(|p| p.learning_rate).collect::<Vec<_>>();
-            let accs = r.data_points.iter().map(|p| p.accuracy).collect::<Vec<_>>();
-            crate::TrainingRunDetail {
-                id: r.id.clone(), name: r.name.clone(), model_id: r.model_id.clone(),
-                status: r.status.clone(), started_at: r.started_at,
-                current_epoch: r.current_epoch, total_epochs: r.total_epochs,
-                best_val_loss: r.best_val_loss, current_lr: r.current_lr,
-                total_steps: r.total_steps,
-                steps, train_losses, val_losses, learning_rates: lrs, accuracies: accs,
-                source: r.source.clone(),
-            }
-        })
+        self.training_runs
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .iter()
+            .find(|r| r.id == id)
+            .map(|r| {
+                let steps = r.data_points.iter().map(|p| p.step).collect::<Vec<_>>();
+                let train_losses = r
+                    .data_points
+                    .iter()
+                    .map(|p| p.train_loss)
+                    .collect::<Vec<_>>();
+                let val_losses = r.data_points.iter().map(|p| p.val_loss).collect::<Vec<_>>();
+                let lrs = r
+                    .data_points
+                    .iter()
+                    .map(|p| p.learning_rate)
+                    .collect::<Vec<_>>();
+                let accs = r.data_points.iter().map(|p| p.accuracy).collect::<Vec<_>>();
+                crate::TrainingRunDetail {
+                    id: r.id.clone(),
+                    name: r.name.clone(),
+                    model_id: r.model_id.clone(),
+                    status: r.status.clone(),
+                    started_at: r.started_at,
+                    current_epoch: r.current_epoch,
+                    total_epochs: r.total_epochs,
+                    best_val_loss: r.best_val_loss,
+                    current_lr: r.current_lr,
+                    total_steps: r.total_steps,
+                    steps,
+                    train_losses,
+                    val_losses,
+                    learning_rates: lrs,
+                    accuracies: accs,
+                    source: r.source.clone(),
+                }
+            })
     }
 
-    pub fn create_training_run(&self, name: &str, model_id: &str, total_epochs: u32) -> crate::TrainingRunSummary {
-        let mut runs = self.training_runs.write().unwrap_or_else(|e| e.into_inner());
+    pub fn create_training_run(
+        &self,
+        name: &str,
+        model_id: &str,
+        total_epochs: u32,
+    ) -> crate::TrainingRunSummary {
+        let mut runs = self
+            .training_runs
+            .write()
+            .unwrap_or_else(|e| e.into_inner());
         let run = InternalTrainingRun {
-            id: Self::gen_id(), name: name.into(), model_id: model_id.into(),
-            status: "queued".into(), started_at: Utc::now().timestamp() as f64,
-            current_epoch: 0, total_epochs, best_val_loss: 0.0, current_lr: 0.0,
-            total_steps: 0, data_points: Vec::new(),
-            source: if self.demo_mode { "demo".into() } else { "live".into() },
+            id: Self::gen_id(),
+            name: name.into(),
+            model_id: model_id.into(),
+            status: "queued".into(),
+            started_at: Utc::now().timestamp() as f64,
+            current_epoch: 0,
+            total_epochs,
+            best_val_loss: 0.0,
+            current_lr: 0.0,
+            total_steps: 0,
+            data_points: Vec::new(),
+            source: if self.demo_mode {
+                "demo".into()
+            } else {
+                "live".into()
+            },
         };
         let summary = crate::TrainingRunSummary {
-            id: run.id.clone(), name: run.name.clone(), model_id: run.model_id.clone(),
-            status: run.status.clone(), started_at: run.started_at,
-            current_epoch: run.current_epoch, total_epochs: run.total_epochs,
-            best_val_loss: run.best_val_loss, current_lr: run.current_lr,
-            total_steps: run.total_steps, data_point_count: 0,
+            id: run.id.clone(),
+            name: run.name.clone(),
+            model_id: run.model_id.clone(),
+            status: run.status.clone(),
+            started_at: run.started_at,
+            current_epoch: run.current_epoch,
+            total_epochs: run.total_epochs,
+            best_val_loss: run.best_val_loss,
+            current_lr: run.current_lr,
+            total_steps: run.total_steps,
+            data_point_count: 0,
             source: run.source.clone(),
         };
         runs.push(run);
@@ -815,8 +1128,12 @@ impl DataEngineInner {
             agent_count: (self.agents.len() as u64).min(u32::MAX as u64) as u32,
             activity_count: (activity.len() as u64).min(u32::MAX as u64) as u32,
             notification_count: (notifications.len() as u64).min(u32::MAX as u64) as u32,
-            notification_unread: (notifications.iter().filter(|n| !n.read).count() as u64).min(u32::MAX as u64) as u32,
-            memory_entry_count: memory.values().map(|v| (v.len() as u64).min(u32::MAX as u64) as u32).sum(),
+            notification_unread: (notifications.iter().filter(|n| !n.read).count() as u64)
+                .min(u32::MAX as u64) as u32,
+            memory_entry_count: memory
+                .values()
+                .map(|v| (v.len() as u64).min(u32::MAX as u64) as u32)
+                .sum(),
             log_count: (logs.len() as u64).min(u32::MAX as u64) as u32,
         }
     }
@@ -825,7 +1142,7 @@ impl DataEngineInner {
 #[cfg(test)]
 mod tests {
     use super::DataEngineInner;
-    use crate::persistence::{resolve_data_path, Persistence};
+    use crate::persistence::{Persistence, resolve_data_path};
 
     #[test]
     fn production_boot_starts_empty() {
@@ -842,10 +1159,7 @@ mod tests {
 
         let run = engine.create_training_run("Live Run", "model-x", 4);
         assert_eq!(run.source, "live");
-        assert_eq!(
-            engine.get_training_run(&run.id).unwrap().source,
-            "live"
-        );
+        assert_eq!(engine.get_training_run(&run.id).unwrap().source, "live");
     }
 
     #[test]

@@ -130,7 +130,10 @@ fn main() {
             println!("Aurelius Data Engine Stats:");
             println!("  Agents:        {}", stats.agent_count);
             println!("  Activity:      {}", stats.activity_count);
-            println!("  Notifications: {} ({} unread)", stats.notification_count, stats.notification_unread);
+            println!(
+                "  Notifications: {} ({} unread)",
+                stats.notification_count, stats.notification_unread
+            );
             println!("  Memory entries: {}", stats.memory_entry_count);
             println!("  Logs:          {}", stats.log_count);
         }
@@ -169,7 +172,10 @@ fn main() {
             }
             println!("Agents ({}):", filtered.len());
             for agent in &filtered {
-                println!("  {} | state={} | role={}", agent.id, agent.state, agent.role);
+                println!(
+                    "  {} | state={} | role={}",
+                    agent.id, agent.state, agent.role
+                );
             }
         }
 
@@ -184,18 +190,18 @@ fn main() {
                 let ts = chrono::DateTime::from_timestamp(entry.timestamp as i64, 0)
                     .map(|t| t.format("%H:%M:%S").to_string())
                     .unwrap_or_else(|| "?".to_string());
-                let ok = if entry.success { "\u{2705}" } else { "\u{274c}" };
+                let ok = if entry.success {
+                    "\u{2705}"
+                } else {
+                    "\u{274c}"
+                };
                 println!("  [{}] {} {} {}", ts, ok, entry.command, entry.output);
             }
         }
 
         Commands::Notifications { category, priority } => {
-            let notifications = engine.get_notifications(
-                category.clone(),
-                priority.clone(),
-                None,
-                Some(50),
-            );
+            let notifications =
+                engine.get_notifications(category.clone(), priority.clone(), None, Some(50));
             if notifications.is_empty() {
                 println!("No notifications found");
                 return;
@@ -213,7 +219,10 @@ fn main() {
                 let entries = engine.get_memory_entries(Some(l.clone()), None, Some(20));
                 println!("Memory Layer: {l} ({} entries)", entries.len());
                 for e in &entries {
-                    println!("  [{}] {} (score: {})", e.layer, e.content, e.importance_score);
+                    println!(
+                        "  [{}] {} (score: {})",
+                        e.layer, e.content, e.importance_score
+                    );
                 }
             } else {
                 println!("Memory Layers:");
@@ -231,16 +240,30 @@ fn main() {
             let stats = engine.get_stats();
             let agents = engine.list_agents();
             println!("Aurelius Engine Health Check:");
-            println!("  Status: {}", if stats.agent_count > 0 { "\u{2705} Healthy" } else { "\u{26a0}\u{fe0f} No data" });
+            println!(
+                "  Status: {}",
+                if stats.agent_count > 0 {
+                    "\u{2705} Healthy"
+                } else {
+                    "\u{26a0}\u{fe0f} No data"
+                }
+            );
             println!("  Agents: {} registered", stats.agent_count);
             println!("  Activity entries: {}", stats.activity_count);
-            println!("  Notifications: {} ({} unread)", stats.notification_count, stats.notification_unread);
+            println!(
+                "  Notifications: {} ({} unread)",
+                stats.notification_count, stats.notification_unread
+            );
             println!("  Memory entries: {}", stats.memory_entry_count);
             println!("  Log entries: {}", stats.log_count);
             println!();
             println!("Active agents:");
             for a in &agents {
-                let active = if a.state == "active" || a.state == "running" { "\u{25cf}" } else { "\u{25cb}" };
+                let active = if a.state == "active" || a.state == "running" {
+                    "\u{25cf}"
+                } else {
+                    "\u{25cb}"
+                };
                 println!("  {} {} ({})", active, a.id, a.state);
             }
         }
@@ -271,12 +294,10 @@ fn main() {
                     println!("  {} = {}", key, value);
                 }
             }
-            ConfigAction::Get { key } => {
-                match engine.get_config(key.clone()) {
-                    Some(val) => println!("{} = {}", key, val),
-                    None => println!("Key '{}' not found", key),
-                }
-            }
+            ConfigAction::Get { key } => match engine.get_config(key.clone()) {
+                Some(val) => println!("{} = {}", key, val),
+                None => println!("Key '{}' not found", key),
+            },
             ConfigAction::Set { key, value } => {
                 engine.set_config(key.clone(), value.clone());
                 println!("Set: {} = {}", key, value);
@@ -291,7 +312,9 @@ fn main() {
         Commands::Session { action } => {
             println!("Session management requires SessionManager crate");
             match action {
-                SessionAction::List => println!("No active sessions (SessionManager not integrated)"),
+                SessionAction::List => {
+                    println!("No active sessions (SessionManager not integrated)")
+                }
                 SessionAction::Get { id } => println!("Session {id}: not found"),
                 SessionAction::Delete { id } => println!("Session {id}: deleted"),
                 SessionAction::Stats => println!("Session stats: N/A"),
@@ -309,7 +332,10 @@ fn main() {
                 println!("{}", "=".repeat(50));
                 println!("Agents:     {}", stats.agent_count);
                 println!("Activity:   {}", stats.activity_count);
-                println!("Notifs:     {} ({} unread)", stats.notification_count, stats.notification_unread);
+                println!(
+                    "Notifs:     {} ({} unread)",
+                    stats.notification_count, stats.notification_unread
+                );
                 println!("Memory:     {} entries", stats.memory_entry_count);
                 println!("Logs:       {}", stats.log_count);
                 println!("{}", "=".repeat(50));
@@ -335,7 +361,8 @@ fn main() {
 
             println!("Search results for '{query}':\n");
 
-            let matched_agents: Vec<_> = agents.into_iter()
+            let matched_agents: Vec<_> = agents
+                .into_iter()
                 .filter(|a| a.id.to_lowercase().contains(&query.to_lowercase()))
                 .collect();
             if !matched_agents.is_empty() {

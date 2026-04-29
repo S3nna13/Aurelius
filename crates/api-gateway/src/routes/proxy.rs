@@ -2,11 +2,11 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use axum::{
+    Router,
     extract::{Request, State},
     http::StatusCode,
     response::IntoResponse,
     routing::any,
-    Router,
 };
 
 use crate::{metrics::Metrics, proxy::ProxyClient, rate_limit::RateLimiter};
@@ -34,7 +34,8 @@ async fn proxy_handler(
 ) -> impl axum::response::IntoResponse {
     let start = Instant::now();
 
-    let client_ip = req.headers()
+    let client_ip = req
+        .headers()
         .get("x-forwarded-for")
         .and_then(|v| v.to_str().ok())
         .unwrap_or("unknown");
@@ -45,7 +46,8 @@ async fn proxy_handler(
                 StatusCode::TOO_MANY_REQUESTS,
                 [("Retry-After", retry_after.to_string())],
                 format!("{{ \"error\": \"Rate limit exceeded\", \"retry_after\": {retry_after} }}"),
-            ).into_response();
+            )
+                .into_response();
         }
         crate::rate_limit::RateLimitResult::Allowed { .. } => {}
     }
@@ -61,7 +63,9 @@ async fn proxy_handler(
         }
         Err(status) => {
             let latency = start.elapsed().as_secs_f64() * 1000.0;
-            state.metrics.record_request("/error", status.as_u16(), latency);
+            state
+                .metrics
+                .record_request("/error", status.as_u16(), latency);
             (status, format!("{{ \"error\": \"Upstream unavailable\" }}")).into_response()
         }
     }
