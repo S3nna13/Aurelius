@@ -1,34 +1,5 @@
 use axum::{extract::State, routing::get, Json, Router};
 
-use crate::{config::Config, metrics::Metrics, rate_limit::RateLimiter};
-
-#[derive(serde::Serialize)]
-struct HealthResponse {
-    status: String,
-    version: String,
-    uptime_secs: f64,
-    proxy: ProxyStatus,
-    metrics: MetricsStatus,
-}
-
-#[derive(serde::Serialize)]
-struct ProxyStatus {
-    upstream: String,
-    healthy: bool,
-}
-
-#[derive(serde::Serialize)]
-struct MetricsStatus {
-    total_requests: u64,
-    requests_per_second: f64,
-}
-
-#[derive(serde::Serialize)]
-struct LivenessResponse {
-    alive: bool,
-    timestamp: String,
-}
-
 pub fn routes() -> Router<crate::app_state::AppState> {
     Router::new()
         .route("/health", get(health_handler))

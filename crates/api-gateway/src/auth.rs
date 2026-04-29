@@ -21,11 +21,13 @@ pub struct Claims {
     pub iat: usize,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LoginRequest {
     pub api_key: String,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LoginResponse {
     pub token: String,
@@ -39,6 +41,7 @@ pub struct AuthError {
     pub message: String,
 }
 
+#[allow(dead_code)]
 #[derive(Clone)]
 pub struct AuthService {
     encoding_key: EncodingKey,
@@ -61,6 +64,7 @@ impl AuthService {
         }
     }
 
+    #[allow(dead_code)]
     pub fn register_api_key(&self, key: &str, sub: &str, role: &str, scopes: Vec<String>) {
         self.api_keys.insert(key.to_string(), Claims {
             sub: sub.to_string(),
@@ -71,10 +75,12 @@ impl AuthService {
         });
     }
 
+    #[allow(dead_code)]
     pub fn validate_api_key(&self, key: &str) -> Option<Claims> {
         self.api_keys.get(key).map(|c| c.clone())
     }
 
+    #[allow(dead_code)]
     pub fn create_token(&self, claims: Claims) -> Result<String, jsonwebtoken::errors::Error> {
         let now = Utc::now();
         let mut claims = claims;

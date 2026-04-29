@@ -3,7 +3,7 @@ use std::time::Instant;
 
 use axum::{
     extract::{ConnectInfo, Request, State},
-    http::StatusCode,
+    http::{HeaderValue, StatusCode},
     response::IntoResponse,
     routing::any,
     Router,
@@ -32,7 +32,7 @@ async fn proxy_handler(
         .unwrap_or(req.uri().path())
         .to_string();
 
-    match state.rate_limiter.check_socket(&addr).await {
+    let rate_limit_headers = match state.rate_limiter.check_socket(&addr).await {
         crate::rate_limit::RateLimitResult::Denied { retry_after } => {
             return (
                 StatusCode::TOO_MANY_REQUESTS,
@@ -40,14 +40,22 @@ async fn proxy_handler(
                 format!("{{ \"error\": \"Rate limit exceeded\", \"retry_after\": {retry_after} }}"),
             ).into_response();
         }
-        crate::rate_limit::RateLimitResult::Allowed { .. } => {}
-    }
+        crate::rate_limit::RateLimitResult::Allowed { remaining, reset } => Some((remaining, reset)),
+    };
 
     match state.proxy_client.proxy_request(req).await {
-        Ok(resp) => {
+        Ok(mut resp) => {
             let latency = start.elapsed().as_secs_f64() * 1000.0;
             let status = resp.status().as_u16();
             state.metrics.record_request(&path, status, latency);
+            if let Some((remaining, reset)) = rate_limit_headers {
+                if let Ok(value) = HeaderValue::from_str(&remaining.to_string()) {
+                    resp.headers_mut().insert("X-RateLimit-Remaining", value);
+                }
+                if let Ok(value) = HeaderValue::from_str(&reset.to_string()) {
+                    resp.headers_mut().insert("X-RateLimit-Reset", value);
+                }
+            }
             resp.into_response()
         }
         Err(status) => {

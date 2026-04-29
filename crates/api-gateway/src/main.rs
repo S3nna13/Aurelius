@@ -13,13 +13,22 @@ use tokio::signal;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::trace::TraceLayer;
-use tracing_subscriber::EnvFilter;
+use tracing_subscriber::{filter::LevelFilter, EnvFilter};
 
 #[tokio::main]
 async fn main() {
+    let log_level = "aurelius_gateway="
+        .to_owned()
+        + &config::Config::from_env()
+            .log_level
+            .parse::<LevelFilter>()
+            .unwrap_or(LevelFilter::INFO)
+            .to_string()
+            .to_lowercase();
+
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env()
-            .add_directive("aurelius_gateway=info".parse().unwrap()))
+            .add_directive(log_level.parse().unwrap()))
         .init();
 
     let cfg = config::Config::from_env();
@@ -48,7 +57,7 @@ async fn main() {
         .layer(cors)
         .layer(RequestBodyLimitLayer::new(10 * 1024 * 1024))
         .layer(TraceLayer::new_for_http())
-        .with_state(app_state::AppState { proxy_client, rate_limiter, metrics, cfg: cfg.clone(), auth_service });
+        .with_state(app_state::AppState { proxy_client, rate_limiter, metrics, cfg: cfg.clone() });
 
     let addr: SocketAddr = format!("{}:{}", cfg.host, cfg.port).parse().expect("Invalid address");
     tracing::info!("Gateway listening on {addr}");
@@ -80,9 +89,7 @@ async fn shutdown_signal() {
 }
 
 mod app_state {
-    use std::sync::Arc;
-
-    use crate::{auth::AuthService, config::Config, metrics::Metrics, proxy::ProxyClient, rate_limit::RateLimiter};
+    use crate::{config::Config, metrics::Metrics, proxy::ProxyClient, rate_limit::RateLimiter};
 
     #[derive(Clone)]
     pub struct AppState {
@@ -90,6 +97,5 @@ mod app_state {
         pub rate_limiter: RateLimiter,
         pub metrics: Metrics,
         pub cfg: Config,
-        pub auth_service: Arc<AuthService>,
     }
 }
