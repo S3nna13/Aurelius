@@ -19,10 +19,19 @@ spec:
         app.kubernetes.io/name: {{ include "aurelius.name" . }}-middle
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
       containers:
         - name: middle
           image: "{{ .Values.middle.image.repository }}:{{ .Values.middle.image.tag }}"
           imagePullPolicy: {{ .Values.middle.image.pullPolicy }}
+          securityContext:
+            runAsNonRoot: true
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           ports:
             - containerPort: {{ .Values.middle.service.port }}
               name: http

@@ -1,388 +1,321 @@
-# Aurelius
+# Aurelius — Frontier AI Coding Platform
 
-> **A 1.395B-parameter decoder-only transformer** (scaling to 2.7B+) built entirely in pure PyTorch. No HuggingFace Transformers, no einops, no framework wrappers at runtime. Every algorithm is written from scratch. Talk to it like ChatGPT or Claude, extend it like a research codebase.
+> **From 1.3B to 32B parameters** — a four-layer full-stack AI platform with pure-PyTorch transformer core, Rust data engine, Node.js BFF, and React frontend.
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch 2.4+](https://img.shields.io/badge/PyTorch-2.4+-ee4c2c.svg)](https://pytorch.org/)
 [![React 19](https://img.shields.io/badge/React-19-61dafb.svg)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7+-3178c6.svg)](https://www.typescriptlang.org/)
+[![Rust](https://img.shields.io/badge/Rust-2024+-dea584.svg)](https://www.rust-lang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4+-06b6d4.svg)](https://tailwindcss.com/)
 [![License: Aurelius Open License](https://img.shields.io/badge/License-Aurelius%20Open%20License-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-32%2C400%2B%20passing-brightgreen.svg)]()
-[![Security](https://img.shields.io/badge/security-0%20High%20findings-success.svg)]()
 
 ---
 
-## What is Aurelius?
+## Architecture Overview
 
-Aurelius is a **full-stack AI assistant platform** — from a 1.395B-parameter transformer (scaling to 2.7B/3B/MoE-6B) to a Rust-backed API gateway, to a modern React web dashboard. It is designed for researchers who want full control over every layer of the stack, and for builders who want a deployable conversational AI with memory, agents, tools, and safety guardrails.
+Aurelius is organized into four independent layers, each owning a distinct responsibility:
 
-### Highlights
+| Layer | Location | Language | Role |
+|-------|----------|----------|------|
+| **Rust Engine** | `crates/`, `tools/` | Rust 2024 | High-performance data engine, search, tokenization, vector similarity, caching, auth sessions |
+| **Python Backend** | `src/`, `configs/` | Python 3.12 | Model training, inference, API server, CLI |
+| **Node.js BFF** | `middle/` | TypeScript | API gateway for frontend, auth, file serving, WebSocket, SSE, cron scheduler |
+| **Frontend** | `frontend/` | TypeScript / React 19 | Mission Control dashboard, agent management, chat, analytics |
 
-- **Pure PyTorch** — No runtime dependencies on HF Transformers, flash-attn, bitsandbytes, PEFT, TRL, or DeepSpeed
-- **Unified Persona System** — 13 personas across 5 domains with composable facets (security, threat intel, constitution, harm filter, agent mode)
-- **Scaling Roadmap** — 1.4B now, 2.7B dense next, 3B with 8-bit optimizers, 5-6B MoE with expert offloading
-- **Family Architecture** — `FamilyManifest` + `ModelVariant` + factory pattern lets base/chat/coding/long-context/agent/safety variants coexist
-- **Modern Web UI** — React 19 + Vite + TypeScript + Tailwind CSS with PWA support, dark/light themes, real-time streaming
-- **Production-Grade Serving** — OpenAI-compatible HTTP API, WebSocket chat streaming, SSE events, session routing, semantic memory
-- **157+ Implementation Cycles** — 1,720+ Python modules across model, training, alignment, inference, eval, data, security, agents, persona
+### Data Flow
 
-> **Training materials, datasets, and proprietary resources are confidential and internal-only.** See [`CONFIDENTIAL.md`](CONFIDENTIAL.md) for details.
-
----
-
-## Scaling Roadmap (M1 Pro 32GB)
-
-| Tier | Params | Strategy | Memory | Feasibility |
-|------|--------|----------|--------|-------------|
-| **Current** | 1.395B | Muon+AdamW, grad_ckpt, bs=4 | ~12.8GB | Shipped |
-| **Phase 1** | 2.7B | Muon+AdamW, grad_ckpt, bs=1 | ~17.3GB | Recommended |
-| **Phase 2** | 3.0B | 8-bit optim, MLX, grad_ckpt, bs=1 | ~20.5GB | Tight |
-| **Phase 3** | 5-6B MoE | Sparse MoE, expert swap, ~2B active | ~18-20GB | Complex |
-| **Inference** | 7-14B | bf16 or 4-bit quant | 14-28GB | Inference only |
-
-See [`aurelius_loop_v9.md`](Desktop/aurelius_loop_v9.md) for the full scaling plan with architecture configs, memory budgets, and implementation steps.
-
----
-
-## Unified Persona System
-
-Aurelius consolidates **7 fragmented persona systems** into one `UnifiedPersona` architecture with composable **facets**:
-
-| Persona | Domain | Temperature | Key Facets |
-|---------|--------|-------------|------------|
-| `aurelius-general` | GENERAL | 0.7 | constitution, harm_filter |
-| `aurelius-coding` | CODING | 0.3 | agent_mode(code), constitution, harm_filter |
-| `aurelius-teacher` | GENERAL | 0.8 | personality(teacher), constitution |
-| `aurelius-analyst` | GENERAL | 0.2 | personality(analyst), constitution |
-| `aurelius-creative` | GENERAL | 1.0 | personality(creative), constitution |
-| `aurelius-redteam` | SECURITY | 0.2 | security(offensive), constitution, harm_filter |
-| `aurelius-blueteam` | SECURITY | 0.2 | security(defensive), constitution |
-| `aurelius-purpleteam`| SECURITY | 0.2 | security(purple), constitution, harm_filter |
-| `aurelius-threatintel`| THREAT_INTEL | 0.2 | threat_intel, constitution, harm_filter |
-| `aurelius-code` | CODING | 0.3 | agent_mode(code) |
-| `aurelius-architect` | AGENT | 0.5 | agent_mode(architect) |
-| `aurelius-ask` | GENERAL | 0.7 | agent_mode(ask), personality |
-| `aurelius-debug` | CODING | 0.2 | agent_mode(debug), personality |
-
-**Facets** are composable capability attachments that let any persona gain features from any other system:
-
-- `security` — scope enforcement, guardrails, output contracts, workflow stages
-- `threat_intel` — CVE/MITRE/actor/IOC classification, response validation
-- `agent_mode` — tool gating, response style
-- `constitution` — 15-dimension scoring for RLHF/alignment
-- `harm_filter` — 9-category harm taxonomy with per-persona thresholds
-- `personality` — keyword-triggered personality traits
-- `dialogue` — state machine (GREETING → TASK_EXECUTION → CLOSING)
-
-```python
-from src.persona import UnifiedPersonaRegistry, PersonaRouter, PromptComposer
-from src.persona.builtins import ALL_BUILTINS
-
-registry = UnifiedPersonaRegistry()
-for persona in ALL_BUILTINS:
-    registry.register(persona)
-
-router = PersonaRouter(registry)
-persona = router.route("What is CVE-2024-3094?")  # -> aurelius-threatintel
-
-composer = PromptComposer()
-messages = composer.build_messages(persona, "Explain CVE-2024-3094")
+```
+Browser / Frontend
+    |  HTTP / WebSocket
+    v
+Node.js BFF (middle/ — port 3001)
+    |  NAPI-rs FFI (sync)        |  HTTP proxy
+    v                              v
+Rust Engine (crates/data-engine/)  Python API Server (src/serving/ — port 8080)
+    |                                    |
+    | in-memory state (dashmap+RwLock)   | model inference, persona routing
+    v                                    v
+JSON export / Redis / SQLite            Trained checkpoints (safetensors)
 ```
 
----
-
-## What's Inside
-
-| Layer | Stack | Highlights |
-|---|---|---|
-| **Model** | Pure PyTorch | 1.395B decoder-only transformer, GQA, RoPE/YaRN, SwiGLU, RMSNorm, MoE, SSMs (Mamba, RWKV, Griffin), diffusion LM head, 150+ architecture modules |
-| **Persona** | Unified system | 13 personas, 7 composable facets, 9 security/threat-intel output contracts, unified routing, prompt composition |
-| **Training Framework** | Custom trainers | Muon + AdamW + ZClip, async RL, curriculum, distillation, RLHF, 200+ utilities |
-| **Alignment** | From-scratch | DPO, GRPO, SimPO, ORPO, KTO, SPIN, RLOO, Nash-MD, constitutional AI, 150+ modules |
-| **Inference** | Optimized | Speculative decoding (Eagle, Medusa), flash prefill, continuous batching, paged KV cache, structured output, MCTS reasoning |
-| **Security** | Hardened | Gradient inversion defense, GCG adversarial search, prompt injection detector, STRIP backdoor scan, 24 modules |
-| **Agent** | Tool-capable | ReAct loop with timeouts, tool-call parser, argument validation, budget-bounded termination, multi-step chaining |
-| **Serving** | Full-stack | OpenAI-compatible API, WebSocket streaming, React dashboard, session memory, tool calling, persona system |
-| **Frontend** | React 19 + Vite | Real-time chat, agent management, memory browser, workflow designer, system health, settings, PWA |
+The frontend **never** talks directly to Python. All API calls route through the Node.js BFF, which handles auth, rate limiting, WebSocket multiplexing, SSE, file upload, and cron scheduling. The Python server only exposes model inference endpoints (`/v1/chat/completions`, `/v1/models`).
 
 ---
 
-## Transformer Core
+## Key Features & Capabilities
 
-| Hyperparameter | Value |
-|---|---|
-| `d_model` | 2048 |
-| `n_layers` | 24 |
-| `n_heads` | 16 |
-| `n_kv_heads` | 8 (GQA) |
-| `head_dim` | 128 |
-| `d_ff` | 5632 (SwiGLU) |
-| `vocab_size` | 128,000 |
-| `max_seq_len` | 8,192 |
+### Model (Pure PyTorch)
+- **1.395B decoder-only transformer** — GQA, RoPE/YaRN, SwiGLU, RMSNorm
+- **150+ architecture modules** — MoE, SSMs (Mamba, RWKV, Griffin), diffusion LM head
+- **Full training pipeline** — pretrain → SFT → DPO → RLHF, all from scratch
+- **No HF Transformers / flash-attn / bitsandbytes / DeepSpeed at runtime**
 
-- **Positional encoding:** RoPE (theta = 500K) with YaRN context extension
-- **Normalization:** RMSNorm
-- **Activation:** SwiGLU
-- **Attention:** Grouped Query Attention (GQA)
-- **Optimizer:** Muon (matrix params) + AdamW (embeddings/norms)
-- **Gradient clipping:** ZClip (adaptive z-score anomaly detection)
-- **Checkpointing:** Safetensors format with rolling window
+### Agent System
+- **ReAct loop** with tool-call parsing, argument validation, budget-bounded termination
+- **13 unified personas** across 5 domains (GENERAL, CODING, SECURITY, THREAT_INTEL, AGENT)
+- **7 composable facets** — security, threat_intel, agent_mode, constitution, harm_filter, personality, dialogue
+- **Multi-step chaining** with timeout controls
+
+### Security & Safety
+- **24 security modules** — gradient inversion defense, GCG adversarial search, prompt injection detector, STRIP backdoor scan
+- **Jailbreak detection** and output filtering
+- **PII scanner** and harm taxonomy (9 categories)
+- **SSRF-hardened** HTTP backend
+
+### Frontend (Mission Control)
+- **23 pages** — Dashboard, Chat, Analytics, Notifications, Skills, Workflows, Memory, Tasks, Agents, Users, Logs, Health, API Docs, Settings, Data Explorer
+- **Real-time streaming** — WebSocket chat, SSE events, live metrics
+- **49 components, 23 hooks** — React 19 + Vite + TypeScript + Tailwind CSS
+
+### Serving & Deployment
+- **OpenAI-compatible API** — drop-in replacement for any OpenAI client
+- **Speculative decoding** — Eagle / Medusa heads for 2-3x throughput
+- **Continuous batching** and paged KV cache
+- **Docker Compose** — single command for full stack
+- **Helm charts** for Kubernetes deployment
 
 ---
 
 ## Quick Start
 
-### 1. Prerequisites
+### Prerequisites
 
 ```bash
-node >= 22    # Frontend + BFF
-npm >= 10     # Package management
-rustc >= 1.81 # Rust data engine
-python >= 3.12 # Optional: LLM inference
+node >= 22       # Frontend + BFF
+npm >= 10        # Package management
+rustc >= 1.81    # Rust data engine
+python >= 3.12   # Python backend
 ```
 
-### 2. Build the Rust Data Engine
+### Installation
 
 ```bash
+# Clone and install Python package
+git clone https://github.com/S3nna13/Aurelius.git
+cd Aurelius
+pip install -e ".[dev]"
+
+# Build Rust data engine
 cd crates/data-engine
-npm install    # installs @napi-rs/cli
-npm run build  # compiles Rust -> native .node addon
-```
-
-### 3. Start the Gateway (Development)
-
-```bash
-cd server
 npm install
-npm run dev   # starts on http://localhost:7870
-```
+npm run build
+cd ../..
 
-### 4. Start the Frontend (optional)
+# Install Node.js BFF
+cd middle
+npm install
+cd ..
 
-```bash
+# Install frontend
 cd frontend
 npm install
-npm run dev   # starts on http://localhost:5173
+cd ..
 ```
 
-### 5. Build for Production
+### Running the CLI
 
 ```bash
-cd frontend && npm run build  # outputs to frontend/dist/
-cd server && npm run build    # compiles TypeScript
-npm start                     # serves SPA + API on :7870
+aurelius                      # Interactive chat (default)
+aurelius chat                 # Same as above
+aurelius chat -p aurelius-coding   # Use coding persona
+aurelius chat --model-path <ckpt>  # Load trained weights
+aurelius serve                 # Start API server + web UI
+aurelius serve --port 8080     # Custom API port
+aurelius --version             # Print version
 ```
 
-### 6. Docker (Full Stack)
+### Running the API
 
 ```bash
-docker compose up            # gateway only
-docker compose --profile inference up  # gateway + Python LLM
+# Start Python inference server
+aurelius-api
+
+# Start Node.js BFF (in another terminal)
+cd middle && npm run dev
+
+# Start frontend (in another terminal)
+cd frontend && npm run dev
+
+# Or everything at once
+docker compose up
+docker compose --profile inference up   # with LLM inference
 ```
 
----
-
-## The `aurelius` CLI
-
-```bash
-aurelius                              # interactive chat (default)
-aurelius chat                         # same as above
-aurelius chat -p aurelius-coding      # use the coding persona
-aurelius chat -p aurelius-redteam     # use the red team security persona
-aurelius chat -p aurelius-threatintel  # use the threat intel persona
-aurelius chat --model-path <ckpt>     # load trained weights
-aurelius serve                        # start API server + browser web UI
-aurelius serve --port 8080            # custom API port (default: 7870)
-aurelius --version                    # print version
-aurelius --help                       # full help
-```
-
-### Built-in Personas (`-p` flag)
-
-| Persona ID | Domain | Purpose |
-|---|---|---|
-| `aurelius-general` | GENERAL | General helpful assistant |
-| `aurelius-coding` | CODING | Software engineer, code-focused |
-| `aurelius-teacher` | GENERAL | Patient educator, step-by-step |
-| `aurelius-analyst` | GENERAL | Data & research analyst |
-| `aurelius-creative` | GENERAL | Creative writing companion |
-| `aurelius-redteam` | SECURITY | Authorized offensive security (lab scope only) |
-| `aurelius-blueteam` | SECURITY | Defensive SOC / incident response |
-| `aurelius-purpleteam` | SECURITY | Joint offense + defense, detection validation |
-| `aurelius-threatintel` | THREAT_INTEL | CVE, MITRE ATT&CK, threat actors, IOCs |
-| `aurelius-code` | CODING | Agent mode: write, edit, refactor |
-| `aurelius-architect` | AGENT | Agent mode: design, plan, evaluate |
-| `aurelius-ask` | GENERAL | Agent mode: answer, explain, document |
-| `aurelius-debug` | CODING | Agent mode: trace, isolate, fix |
-
-### Chat Slash Commands
-
-| Command | Description |
-|---|---|
-| `/help` | List all commands |
-| `/reset` | Clear conversation history |
-| `/history` | Show conversation so far |
-| `/system <prompt>` | Swap the system prompt |
-| `/save <id>` | Save conversation |
-| `/load <id>` | Restore a saved conversation |
-| `/list` | List all saved conversations |
-| `/model` | Show loaded model info |
-| `/clear` | Clear the screen |
-| `/quit` | Exit |
-
----
-
-## Full-Stack Architecture
-
-```
-+--------------------------------------------------------------+
-|                      React 19 Frontend                        |
-|  (Vite + TypeScript + Tailwind + Zustand + Framer Motion)    |
-|  Dashboard . Chat . Playground . Training . Models . Memory   |
-|  Agents . Workflows . Skills . Notifications . Logs . Health  |
-+------------------------------+-------------------------------+
-                               | HTTP REST + WebSocket
-+------------------------------v-------------------------------+
-|                  Node.js Gateway (Express)                     |
-|  Middleware: CORS . Auth . Rate-Limit . Logging . Metrics     |
-|  Routes: 20+ REST endpoints . WebSocket Hub (/ws)             |
-|  Static: SPA serving from frontend/dist/                      |
-+---------------+------------------------------+------------------+
-                | napi-rs FFI                  | HTTP proxy
-+---------------v---------------+  +-----------v------------------+
-|  Rust Data Engine (.node)      |  |  Python LLM (port 8080)     |
-|  Agent state . Activity         |  |  Aurelius Transformer       |
-|  Notifications . Memory         |  |  Persona System             |
-|  Config . Logs . Models         |  |  13 Personas . 7 Facets     |
-|  Skills . Workflows             |  |  UnifiedPersona Router       |
-|  Training Runs . Prefs          |  |  PromptComposer             |
-+---------------------------------+  +-----------------------------+
-```
-
----
-
-## API Usage
-
-### OpenAI-Compatible Endpoint
+### OpenAI-Compatible Usage
 
 ```python
 import openai
-
 client = openai.OpenAI(base_url="http://localhost:7870/v1", api_key="none")
-
 response = client.chat.completions.create(
     model="aurelius",
-    messages=[{"role": "user", "content": "Hello, who are you?"}],
+    messages=[{"role": "user", "content": "Hello!"}],
 )
 print(response.choices[0].message.content)
 ```
 
-Or with curl:
+---
 
-```bash
-curl http://localhost:7870/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{"model":"aurelius","messages":[{"role":"user","content":"Hello"}]}'
-```
+## Entry Points
 
-### Key REST Endpoints
-
-| Endpoint | Method | Description |
-|---|---|---|
-| `/api/modes` | GET | List agent modes |
-| `/api/config` | GET / POST | Runtime configuration |
-| `/api/memory/entries` | GET | Memory entries with layer/filter/search |
-| `/api/logs` | GET | System logs (500-record ring buffer) |
-| `/api/notifications/preferences` | GET / POST | Notification preferences |
-| `/api/events` | SSE | Real-time system events |
-| `/ws` | WebSocket | Bi-directional chat streaming |
+| Command | Module | Description |
+|---------|--------|-------------|
+| `aurelius` | `src/cli/main.py` | Interactive chat CLI with persona support |
+| `aurelius-cli` | `src/cli/terminal_cli.py` | Terminal chat with full conversation management |
+| `aurelius-shell` | `src/cli/aurelius_shell.py` | REPL shell with slash commands |
+| `aurelius-api` | `src/backend.py` | Python API server (model inference) |
+| `aurelius-server` | `src/serving/aurelius_api.py` | Production serving stack |
 
 ---
 
-## Running Tests
+## DAIES Scaling Plan (1.3B → 32B+)
 
-### Backend (Python)
+Aurelius follows the **DAIES** (Doubling AI Efficiency Simultaneously) scaling philosophy: doubling parameters while optimizing memory, compute, and data efficiency at each step.
 
-```bash
-pytest -q                              # Full suite (32,400+ tests)
-pytest -q tests/alignment/test_grpo.py  # Focused module
-pytest -q src/persona/               # Persona system tests
-```
+| Phase | Params | Strategy | Memory (M1 Pro 32GB) | Status |
+|-------|--------|----------|---------------------|--------|
+| **v1** | 1.395B | Muon+AdamW, grad_ckpt, bs=4 | ~12.8GB | Shipped |
+| **v2** | 2.7B | Muon+AdamW, grad_ckpt, bs=1 | ~17.3GB | Recommended |
+| **v3** | 3.0B | 8-bit optim, MLX, grad_ckpt, bs=1 | ~20.5GB | Tight fit |
+| **v4** | 5-6B MoE | Sparse MoE, expert offloading, ~2B active | ~18-20GB | Complex |
+| **v5** | 7-14B | bf16 or 4-bit quant | 14-28GB | Inference only |
+| **v6** | 32B | MoE with expert parallelism, distributed | Cluster | Future |
 
-### Frontend (TypeScript / Vitest)
-
-```bash
-cd frontend
-npm test              # run once
-npm run test:watch    # watch mode
-npm run test:coverage  # with coverage
-```
+Key principles:
+- **Every layer is handwritten** — no black-box dependencies
+- **Memory-budgeted design** — each phase fits within 32GB Apple Silicon or single H100
+- **MoE upcycle** — dense checkpoints seed sparse experts
+- **Quantization-first inference** — Q4_K_M GGUF for local serving at 25-35 tok/s
 
 ---
 
-## Repository Structure
+## Module Directory Structure
 
 ```
 Aurelius/
-+-- src/
-|   +-- persona/          # Unified persona system (13 personas, 7 facets, 9 contracts)
-|   +-- model/            # Transformer core, attention, SSMs, 150+ modules
-|   +-- training/         # Training framework: Muon, ZClip, curriculum, RLHF
-|   +-- alignment/        # DPO, GRPO, SimPO, ORPO, KTO, constitutional AI
-|   +-- inference/         # Speculative decoding, batching, caching, 200+ modules
-|   +-- eval/             # Benchmarks, scorers, calibration, 100+ modules
-|   +-- data/             # Data processing, tokenization, curriculum
-|   +-- interpretability/  # Activation patching, SAEs, probing
-|   +-- security/          # Adversarial defense, backdoor scan, MITRE ATT&CK
-|   +-- agent/             # ReAct loop, tool parser, planner, memory writer
-|   +-- chat/              # ChatML, Llama-3 templates, conversation management
-|   +-- longcontext/       # KV quantization, attention sinks, StreamingLLM
-|   +-- retrieval/         # BM25, hybrid search, dense retriever
-|   +-- safety/            # Jailbreak detector, output filter, PII scanner
-|   +-- serving/           # API server, web UI, streaming, session router
-|   +-- cli/               # aurelius terminal command
-|   +-- ... (20+ surfaces)
-+-- server/               # Node.js API Gateway (Express + TypeScript)
-+-- crates/               # Rust crates (data-engine, search-index, vector-similarity, etc.)
-+-- frontend/              # React 19 + Vite + TypeScript + Tailwind
-+-- configs/              # Training configs (1.4B, 2.7B, 3B, MoE-5B, curriculum)
-+-- scripts/              # Benchmark, bootstrap, export, profile scripts
-+-- tests/                 # 32,400+ tests across all surfaces
-+-- deployment/            # Docker, docker-compose, Helm charts
-+-- docs/                 # Documentation (confidential)
++-- src/                          # Python backend (~1,720 modules)
+|   +-- model/                    # Transformer core (GQA, RoPE, SwiGLU, MoE, SSMs)
+|   +-- training/                 # Muon, ZClip, curriculum, RLHF trainers
+|   +-- alignment/                # DPO, GRPO, SimPO, ORPO, KTO, SPIN, constitutional AI
+|   +-- inference/                # Speculative decoding, batching, paged KV cache
+|   +-- persona/                  # 13 personas, 7 facets, routing, prompt composition
+|   +-- agent/                    # ReAct loop, tool parser, planner, memory writer
+|   +-- chat/                     # ChatML, Llama-3 templates, conversation management
+|   +-- cli/                      # CLI entry points (aurelius, aurelius-cli, aurelius-shell)
+|   +-- serving/                  # OpenAI-compatible API, streaming, metrics
+|   +-- safety/                   # Jailbreak detector, output filter, PII scanner
+|   +-- security/                 # Adversarial defense, backdoor scan, MITRE ATT&CK
+|   +-- interpretability/         # Activation patching, SAEs, probing, circuit discovery
+|   +-- eval/                     # Benchmarks, scorers, calibration
+|   +-- data/                     # Data processing, tokenization, curriculum
+|   +-- longcontext/              # KV quantization, StreamingLLM, attention sinks
+|   +-- retrieval/                # BM25, hybrid search, dense retriever
+|   +-- reasoning/                # MCTS, chain-of-thought, structured reasoning
+|   +-- memory/                   # Semantic memory, episodic memory, recall
+|   +-- tools/                    # Tool definitions, schemas, execution
+|   +-- workflow/                 # Workflow engine, DAG execution
+|   +-- multiagent/               # Multi-agent coordination, delegation
+|   +-- multimodal/               # Vision, audio, multimodal integration
+|   +-- quantization/             # AWQ, GPTQ, SmoothQuant, NF4, FP8
+|   +-- runtime/                  # Hot reload, compile manager, compute scheduler
+|   +-- computer_use/             # Computer use agent (UI navigation)
+|   +-- mcp/                      # MCP protocol integration
+|   +-- trading/                  # Trading agent capabilities
+|   +-- monitoring/               # System monitoring, profiling
+|   +-- evaluation/               # Evaluation harness, benchmarks
+|   +-- protocol/                 # Protocol definitions, serialization
+|   +-- profiling/                # Performance profiling tools
+|   +-- optimizers/               # Custom optimizers (Muon, SOAP, etc.)
+|   +-- simulation/               # Simulation environments
+|   +-- compression/              # Model compression utilities
+|   +-- federation/               # Federated learning
+|   +-- backends/                 # Backend abstractions
+|   +-- deployment/               # Deployment utilities
+|   +-- ui/                       # Server-side UI utilities
++-- middle/                       # Node.js BFF (TypeScript)
+|   +-- src/
+|       +-- routes/               # 17 route modules (health, agents, activity, etc.)
+|       +-- middleware/            # Auth, CORS, rate limiting, logging
+|       +-- ws/                   # WebSocket hub
+|       +-- index.ts              # Express server entry
+|       +-- server.ts             # Server configuration
+|       +-- engine.ts             # Rust engine bindings
+|       +-- config.ts             # Configuration management
+|       +-- cache.ts              # Caching layer
+|       +-- provider_router.ts    # LLM provider routing
++-- frontend/                     # React 19 + Vite + TypeScript
+|   +-- src/
+|       +-- pages/                # 23 pages (Dashboard, Chat, Analytics, etc.)
+|       +-- components/           # 49 reusable components
+|       +-- hooks/                # 23 custom hooks
+|       +-- lib/                  # Utilities, API client, stores
++-- crates/                       # Rust workspace (11 crates + 2 tools)
+|   +-- data-engine/              # Core Node.js NAPI data store
+|   +-- api-gateway/              # Standalone reverse proxy binary
+|   +-- token-counter/            # Approximate token counting
+|   +-- session-manager/          # User session management with TTL
+|   +-- search-index/             # BM25 full-text search
+|   +-- vector-similarity/        # Cosine/dot/Euclidean similarity
+|   +-- redis-client/             # Async Redis client
+|   +-- text-processor/           # Text chunking, stats, keyword extraction
+|   +-- prompt-templates/         # ChatML/Llama-3 template rendering
+|   +-- json-validator/           # JSON schema validation
+|   +-- uuid-gen/                 # UUID v4/v7 generation
+|   +-- usage-store/              # PyO3 usage/cost tracking
++-- configs/                      # Training configs (1.4B, 2.7B, 3B, MoE-5B)
++-- scripts/                      # Benchmark, bootstrap, export, profile
++-- tests/                        # 32,400+ tests across all surfaces
++-- deployment/                   # Docker, Docker Compose, Helm charts
++-- docs/                         # Documentation
++-- tools/                        # Rust CLI tools (data-cli, jsonl-merge)
++-- data/                         # Data artifacts
++-- training_data/                # Training datasets
++-- checkpoints/                  # Model checkpoints
++-- alembic/                      # Database migrations
++-- plugins/                      # Plugin system
 ```
 
 ---
 
-## Security
+## Documentation
 
-- **0 High / 0 Critical** findings (continuously monitored with `bandit`)
-- Opt-in API authentication (`require_auth` defaults to `false`)
-- API key and session token support
-- SSRF-hardened HTTP backend
-- Prompt injection detection and sanitization
-- Gradient inversion defense and model fingerprinting
-- Full CVE ledger: AUR-SEC-2026-0001 through AUR-SEC-2026-0019 (all closed)
+| Document | Description |
+|----------|-------------|
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Technical architecture, data flow, agent design, scaling philosophy, security model |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Code style, testing, branch strategy |
+| [CONFIDENTIAL.md](CONFIDENTIAL.md) | Confidential materials policy |
+| [SECURITY.md](SECURITY.md) | Security policy and vulnerability reporting |
+| [CHANGELOG.md](CHANGELOG.md) | Release history |
+| [FEATURE_AUDIT.md](FEATURE_AUDIT.md) | Feature audit and tracking |
+| [EULA.md](EULA.md) | End User License Agreement |
+| [LICENSE](LICENSE) | Aurelius Open License |
+| [model_card.md](docs/model_card.md) | Model architecture card |
+| [dataset_card.md](docs/dataset_card.md) | Dataset documentation |
+| [eval_card.md](docs/eval_card.md) | Evaluation methodology |
+| [threat_model.md](docs/threat_model.md) | Security threat model |
+| [plans/](docs/plans/) | Design docs, handoff notes, implementation plans |
+| [executive/](docs/executive/) | Executive overview (PDF) |
 
 ---
+
+## Testing
+
+```bash
+# Python backend (32,400+ tests)
+pytest -q
+
+# Frontend (Vitest)
+cd frontend && npm test
+
+# Rust
+cd crates/data-engine && cargo test
+```
 
 ## License
 
-Aurelius is released under the **[Aurelius Open License](LICENSE)**.
-
-> **Free to use, modify, and distribute** — for any purpose, personal or commercial. The underlying Aurelius architecture remains the intellectual property of the authors. The Aurelius name and logo are reserved trademarks.
-
-See [`LICENSE`](LICENSE) and [`EULA.md`](EULA.md) for full terms. Training datasets, proprietary configurations, checkpoints, and experiment logs are **confidential and internal-only** — see [`CONFIDENTIAL.md`](CONFIDENTIAL.md).
-
----
-
-## Contributing
-
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) for guidelines on code style (Black formatter, Ruff linter), test requirements (every module ships with 10-16 tests), security review, and cycle-based development workflow.
+Aurelius is released under the [Aurelius Open License](LICENSE) — free to use, modify, and distribute for any purpose. The Aurelius name and logo are reserved trademarks.
 
 ---
 
 **GitHub:** [https://github.com/S3nna13/Aurelius](https://github.com/S3nna13/Aurelius)
-
 *Built with pure PyTorch. No compromises.*

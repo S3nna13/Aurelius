@@ -10,7 +10,7 @@ services:
       - AURELIUS_HOST=0.0.0.0
       - AURELIUS_PORT=7870
       - AURELIUS_PYTHON_URL=http://llm:8080
-      - AURELIUS_AUTH=false
+      - AURELIUS_AUTH=true
     depends_on:
       - llm
     restart: unless-stopped

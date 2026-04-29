@@ -11,7 +11,7 @@ services:
     build:
       context: ..
       dockerfile: deployment/Dockerfile
-    image: ghcr.io/s3nna13/aurelius:${TAG:-latest}
+    image: ghcr.io/s3nna13/aurelius:${TAG:-v1.0.0} # TODO: pin to digest in production (e.g., @sha256:...)
     ports:
       - "8080:8080"
     environment:
@@ -29,12 +29,14 @@ services:
       resources:
         limits: { cpus: '4', memory: 16G }
         reservations: { cpus: '2', memory: 8G }
+    networks:
+      - internal
 
   middle:
     build:
       context: ..
       dockerfile: middle/Dockerfile
-    image: ghcr.io/s3nna13/aurelius-middle:${TAG:-latest}
+    image: ghcr.io/s3nna13/aurelius-middle:${TAG:-v1.0.0} # TODO: pin to digest in production
     ports:
       - "3001:3001"
     environment:
@@ -58,12 +60,14 @@ services:
       retries: 3
     restart: unless-stopped
     logging: *default-logging
+    networks:
+      - internal
 
   frontend:
     build:
       context: ..
       dockerfile: deployment/frontend.Dockerfile
-    image: ghcr.io/s3nna13/aurelius-frontend:${TAG:-latest}
+    image: ghcr.io/s3nna13/aurelius-frontend:${TAG:-v1.0.0} # TODO: pin to digest in production
     ports:
       - "3000:80"
     environment:
@@ -72,11 +76,11 @@ services:
       - middle
     restart: unless-stopped
     logging: *default-logging
+    networks:
+      - internal
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -86,6 +90,8 @@ services:
     volumes:
       - redis-data:/data
     logging: *default-logging
+    networks:
+      - internal
     profiles:
       - cache
 
@@ -93,7 +99,7 @@ services:
     build:
       context: ../crates/api-gateway
       dockerfile: Dockerfile
-    image: ghcr.io/s3nna13/aurelius-gateway:${TAG:-latest}
+    image: ghcr.io/s3nna13/aurelius-gateway:${TAG:-v1.0.0} # TODO: pin to digest in production
     ports:
       - "8081:8080"
     environment:
@@ -114,8 +120,14 @@ services:
       retries: 3
     restart: unless-stopped
     logging: *default-logging
+    networks:
+      - internal
     profiles:
       - gateway
+
+networks:
+  internal:
+    driver: bridge
 
 volumes:
   redis-data:
