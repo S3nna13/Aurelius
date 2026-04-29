@@ -4,7 +4,14 @@ FINDING_CONTRACT = OutputContract(
     name="finding",
     schema={
         "type": "object",
-        "required": ["id", "name", "severity", "affected_asset", "proof_of_concept_steps", "remediation"],
+        "required": [
+            "id",
+            "name",
+            "severity",
+            "affected_asset",
+            "proof_of_concept_steps",
+            "remediation",
+        ],
         "properties": {
             "id": {"type": "string"},
             "name": {"type": "string"},

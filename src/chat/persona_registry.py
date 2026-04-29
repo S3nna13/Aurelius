@@ -15,6 +15,7 @@ from src.persona import (
     AURELIUS_GENERAL,
     AURELIUS_TEACHER,
     BUILTIN_PERSONAS,
+    UnifiedPersona,
     UnifiedPersonaRegistry,
 )
 
@@ -98,7 +99,7 @@ class PersonaRegistry:
             if p.domain.value in ("general", "coding"):
                 self._unified.register(p)
 
-    def _to_legacy(self, unified: "UnifiedPersona") -> PersonaConfig:
+    def _to_legacy(self, unified: UnifiedPersona) -> PersonaConfig:
         return PersonaConfig(
             persona_id=unified.id,
             name=unified.name,

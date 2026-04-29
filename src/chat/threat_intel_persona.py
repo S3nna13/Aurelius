@@ -7,6 +7,7 @@ a structured-output persona for defensive threat-intel research queries
 Pure stdlib -- only ``re`` and ``dataclasses``.
 """
 
+# ruff: noqa: E501
 from __future__ import annotations
 
 import re
@@ -201,6 +202,7 @@ class ThreatIntelPersona:
 
     def classify_query(self, user_message: str) -> str:
         from src.persona.facets.threat_intel_facet import classify_query
+
         return classify_query(user_message)
 
     def schema_for(self, query_type: str) -> dict | None:
@@ -212,6 +214,7 @@ class ThreatIntelPersona:
         history: list[dict] | None = None,
     ) -> list[dict]:
         from src.persona import AURELIUS_THREATINTEL
+
         query_type = self.classify_query(user_message)
         messages: list[dict] = [{"role": "system", "content": AURELIUS_THREATINTEL.system_prompt}]
         if query_type != "general":

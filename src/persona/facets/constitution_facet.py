@@ -24,7 +24,11 @@ HARM_FILTER_GENERAL_FACET = PersonaFacet(
 
 HARM_FILTER_SECURITY_FACET = PersonaFacet(
     facet_type="harm_filter",
-    config={"categories": ["malicious_code", "criminal_planning"], "action": "warn", "threshold": 0.8},
+    config={
+        "categories": ["malicious_code", "criminal_planning"],
+        "action": "warn",
+        "threshold": 0.8,
+    },
 )
 
 HARM_FILTER_CODING_FACET = PersonaFacet(

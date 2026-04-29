@@ -1,6 +1,6 @@
-from .security_contracts import FINDING_CONTRACT, ALERT_CONTRACT, EMULATION_CONTRACT
-from .threat_intel_contracts import CVE_CONTRACT, MITRE_CONTRACT, ACTOR_CONTRACT, IOC_CONTRACT
 from .general_contracts import GENERAL_CONTRACT
+from .security_contracts import ALERT_CONTRACT, EMULATION_CONTRACT, FINDING_CONTRACT
+from .threat_intel_contracts import ACTOR_CONTRACT, CVE_CONTRACT, IOC_CONTRACT, MITRE_CONTRACT
 
 __all__ = [
     "FINDING_CONTRACT",
