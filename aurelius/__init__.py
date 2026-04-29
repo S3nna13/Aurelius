@@ -11,6 +11,14 @@ sys.modules.setdefault("aurelius.model", _src_model)
 if "src.model.transformer" in sys.modules:
     sys.modules.setdefault("aurelius.model.transformer", sys.modules["src.model.transformer"])
 
+_src_training = import_module("src.training")
+sys.modules.setdefault("aurelius.training", _src_training)
+if "src.training.gradient_surgery" in sys.modules:
+    sys.modules.setdefault(
+        "aurelius.training.gradient_surgery",
+        sys.modules["src.training.gradient_surgery"],
+    )
+
 from .agent_registry import (
     AGENT_REGISTRY,
     AGENTS_BY_CATEGORY,
