@@ -1,4 +1,4 @@
-import { forwardRef, type SelectHTMLAttributes } from 'react'
+import { forwardRef, type ReactNode, type SelectHTMLAttributes } from 'react'
 import { AlertTriangle, ChevronDown } from 'lucide-react'
 
 interface SelectOption {
@@ -9,12 +9,13 @@ interface SelectOption {
 interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   label?: string
   error?: string
-  options: SelectOption[]
+  options?: SelectOption[]
   placeholder?: string
+  children?: ReactNode
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  ({ label, error, options, placeholder, className = '', ...props }, ref) => {
+  ({ label, error, options, placeholder, children, className = '', ...props }, ref) => {
     return (
       <div className="space-y-1.5">
         {label && (
@@ -34,7 +35,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             {...props}
           >
             {placeholder && <option value="">{placeholder}</option>}
-            {options.map((opt) => (
+            {children ?? options?.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
@@ -47,3 +48,5 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
 )
 
 Select.displayName = 'Select'
+
+export default Select

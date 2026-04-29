@@ -1,41 +1,66 @@
-import { useState, useEffect } from 'react';
-import { RefreshCw, Pause } from 'lucide-react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { RefreshCw, Loader2, Clock } from 'lucide-react';
 
-const STORAGE_KEY = 'aurelius-auto-refresh';
+interface AutoRefreshControlProps {
+  onRefresh?: () => void;
+  interval?: number;
+  loading?: boolean;
+}
 
-export function useAutoRefresh() {
+export default function AutoRefreshControl({ onRefresh, interval = 5000, loading }: AutoRefreshControlProps) {
   const [enabled, setEnabled] = useState(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      return saved !== 'false';
+      return localStorage.getItem('aurelius-auto-refresh') !== 'false';
     } catch {
       return true;
     }
   });
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [now, setNow] = useState(() => Date.now());
+  const mountedRef = useRef(false);
+
+  const refresh = useCallback(() => {
+    onRefresh?.();
+    window.dispatchEvent(new CustomEvent('aurelius:auto-refresh', { detail: true }));
+    setLastRefresh(new Date());
+  }, [onRefresh]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, String(enabled));
-    window.dispatchEvent(new CustomEvent('aurelius:auto-refresh', { detail: enabled }));
+    try {
+      localStorage.setItem('aurelius-auto-refresh', enabled ? 'true' : 'false');
+    } catch {
+      // Ignore storage failures.
+    }
+    if (mountedRef.current && enabled) {
+      window.dispatchEvent(new CustomEvent('aurelius:auto-refresh', { detail: true }));
+    }
+    mountedRef.current = true;
   }, [enabled]);
 
-  return { enabled, setEnabled };
-}
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
 
-export default function AutoRefreshControl() {
-  const { enabled, setEnabled } = useAutoRefresh();
+  const secondsSince = Math.max(0, Math.floor((now - lastRefresh.getTime()) / 1000));
+  const intervalLabel = `${Math.max(1, Math.round(interval / 1000))}s`;
 
   return (
-    <button
-      onClick={() => setEnabled(!enabled)}
-      className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium border transition-colors ${
-        enabled
-          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-          : 'bg-aurelius-bg text-aurelius-muted border-aurelius-border hover:border-aurelius-accent/30'
-      }`}
-      title={enabled ? 'Auto-refresh on' : 'Auto-refresh paused'}
-    >
-      {enabled ? <RefreshCw size={12} /> : <Pause size={12} />}
-      {enabled ? 'Live' : 'Paused'}
-    </button>
+    <div className="flex items-center gap-2">
+      {enabled && (
+        <span className="text-[10px] text-[#9e9eb0] flex items-center gap-1">
+          <Clock size={10} /> {secondsSince}s · Auto {intervalLabel}
+        </span>
+      )}
+      <button onClick={refresh} disabled={loading}
+        className="aurelius-btn-outline p-1.5 disabled:opacity-50" title="Refresh">
+        {loading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+      </button>
+      <label className="flex items-center gap-1.5 cursor-pointer">
+        <input type="checkbox" checked={enabled} onChange={() => setEnabled(!enabled)}
+          className="w-3 h-3 rounded border-[#2d2d44] bg-[#0f0f1a] text-[#4fc3f7]" />
+        <span className="text-[10px] text-[#9e9eb0]">Auto</span>
+      </label>
+    </div>
   );
 }

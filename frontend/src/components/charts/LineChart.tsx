@@ -1,35 +1,47 @@
-interface DataPoint {
-  label: string;
-  value: number;
-}
-
-interface LineChartProps {
-  data: DataPoint[];
+interface LineChartProps<T extends Record<string, unknown> = Record<string, unknown>> {
+  data: T[];
+  xKey?: keyof T | string;
+  yKey?: keyof T | string;
   width?: number;
   height?: number;
   color?: string;
   title?: string;
 }
 
-export default function LineChart({
+export default function LineChart<T extends Record<string, unknown>>({
   data,
+  xKey,
+  yKey,
   width = 600,
   height = 200,
   color = '#4fc3f7',
   title,
-}: LineChartProps) {
+}: LineChartProps<T>) {
   if (data.length === 0) return null;
 
   const padding = { top: 20, right: 20, bottom: 30, left: 40 };
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
 
-  const maxValue = Math.max(...data.map((d) => d.value), 1);
-  const minValue = Math.min(...data.map((d) => d.value), 0);
+  const normalizedData = data.map((item, index) => {
+    const record = item as Record<string, unknown> & {
+      label?: string;
+      name?: string;
+      value?: number;
+      step?: number | string;
+      loss?: number;
+    };
+    const labelValue = xKey ? record[xKey as string] : record.label ?? record.name ?? record.step ?? `${index + 1}`;
+    const valueValue = yKey ? record[yKey as string] : record.value ?? record.loss ?? 0;
+    return { label: String(labelValue ?? `${index + 1}`), value: Number(valueValue ?? 0) };
+  });
+
+  const maxValue = Math.max(...normalizedData.map((d) => d.value), 1);
+  const minValue = Math.min(...normalizedData.map((d) => d.value), 0);
   const range = maxValue - minValue || 1;
 
-  const points = data.map((d, i) => {
-    const x = padding.left + (i / (data.length - 1 || 1)) * chartWidth;
+  const points = normalizedData.map((d, i) => {
+    const x = padding.left + (i / (normalizedData.length - 1 || 1)) * chartWidth;
     const y = padding.top + chartHeight - ((d.value - minValue) / range) * chartHeight;
     return { x, y, label: d.label, value: d.value };
   });

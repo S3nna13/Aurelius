@@ -1,10 +1,13 @@
-import { type ReactNode } from 'react'
+import { createElement, isValidElement, type ReactNode } from 'react'
 import { ArrowUp, ArrowDown, Minus } from 'lucide-react'
 
+type IconLike = ReactNode | object
+
 interface StatsCardProps {
-  title: string
+  title?: string
+  label?: string
   value: string | number
-  icon?: ReactNode
+  icon?: IconLike
   change?: number
   changeLabel?: string
   color?: string
@@ -13,7 +16,17 @@ interface StatsCardProps {
   onClick?: () => void
 }
 
-export function StatsCard({ title, value, icon, change, changeLabel, color = '#4fc3f7', subtitle, loading, onClick }: StatsCardProps) {
+export function StatsCard({ title, label, value, icon, change, changeLabel, color = '#4fc3f7', subtitle, loading, onClick }: StatsCardProps) {
+  const resolvedTitle = title ?? label ?? ''
+  const useColorClass = typeof color === 'string' && color.startsWith('text-')
+  const accentClass = useColorClass ? color : ''
+  const accentStyle = !useColorClass ? { color } : undefined
+  const iconNode = isValidElement(icon)
+    ? icon
+    : icon && (typeof icon === 'function' || typeof icon === 'object')
+      ? createElement(icon as any, { size: 18 })
+      : icon
+
   const changeIcon = change !== undefined
     ? change > 0 ? <ArrowUp size={12} /> : change < 0 ? <ArrowDown size={12} /> : <Minus size={12} />
     : null
@@ -25,10 +38,10 @@ export function StatsCard({ title, value, icon, change, changeLabel, color = '#4
   return (
     <div
       className={`aurelius-card space-y-3 ${onClick ? 'cursor-pointer hover:border-[#4fc3f7]/30 transition-colors' : ''}`}
-      onClick={onClick}
+    onClick={onClick}
     >
       <div className="flex items-center justify-between">
-        {icon && <div className="text-[color]" style={{ color }}>{icon}</div>}
+        {iconNode && <div className={accentClass} style={accentStyle}>{iconNode}</div>}
         {loading && <div className="w-16 h-4 bg-[#2d2d44] rounded animate-pulse" />}
       </div>
       {loading ? (
@@ -38,9 +51,9 @@ export function StatsCard({ title, value, icon, change, changeLabel, color = '#4
         </div>
       ) : (
         <>
-          <p className="text-2xl font-bold" style={{ color }}>{value}</p>
+          <p className={`text-2xl font-bold ${accentClass}`} style={accentStyle}>{value}</p>
           <div className="flex items-center gap-2">
-            <p className="text-xs text-[#9e9eb0] uppercase tracking-wider">{title}</p>
+            <p className="text-xs text-[#9e9eb0] uppercase tracking-wider">{resolvedTitle}</p>
             {(change !== undefined || subtitle) && (
               <div className="flex items-center gap-1">
                 {changeIcon && change !== undefined && <span className={`flex items-center gap-0.5 text-[10px] font-bold ${changeColor}`}>{changeIcon}{Math.abs(change)}%</span>}
@@ -53,3 +66,5 @@ export function StatsCard({ title, value, icon, change, changeLabel, color = '#4
     </div>
   )
 }
+
+export default StatsCard

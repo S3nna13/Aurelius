@@ -2,14 +2,14 @@ import { useEffect, useRef, type ReactNode } from 'react'
 import { X } from 'lucide-react'
 
 interface ModalProps {
-  open: boolean
+  open?: boolean
   onClose: () => void
   title?: string
   children: ReactNode
   size?: 'sm' | 'md' | 'lg' | 'xl'
 }
 
-export function Modal({ open, onClose, title, children, size = 'md' }: ModalProps) {
+export function Modal({ open = true, onClose, title, children, size = 'md' }: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -44,3 +44,5 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
     </div>
   )
 }
+
+export default Modal

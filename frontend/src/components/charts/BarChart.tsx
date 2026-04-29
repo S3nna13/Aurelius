@@ -1,26 +1,46 @@
-interface BarDataPoint {
-  label: string;
-  value: number;
+interface BarChartProps<T extends Record<string, unknown> = Record<string, unknown>> {
+  data: T[];
+  xKey?: keyof T | string;
+  yKey?: keyof T | string;
   color?: string;
-}
-
-interface BarChartProps {
-  data: BarDataPoint[];
   width?: number;
   height?: number;
   title?: string;
 }
 
-export default function BarChart({ data, width = 400, height = 200, title }: BarChartProps) {
+export default function BarChart<T extends Record<string, unknown>>({
+  data,
+  xKey,
+  yKey,
+  color = '#4fc3f7',
+  width = 400,
+  height = 200,
+  title,
+}: BarChartProps<T>) {
   if (data.length === 0) return null;
+
+  const normalizedData = data.map((item, index) => {
+    const record = item as Record<string, unknown> & {
+      label?: string;
+      name?: string;
+      value?: number;
+    };
+    const labelValue = xKey ? record[xKey as string] : record.label ?? record.name ?? `${index + 1}`;
+    const valueValue = yKey ? record[yKey as string] : record.value ?? 0;
+    return {
+      label: String(labelValue ?? `${index + 1}`),
+      value: Number(valueValue ?? 0),
+      color,
+    };
+  });
 
   const padding = { top: 20, right: 20, bottom: 40, left: 40 };
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
 
-  const maxValue = Math.max(...data.map((d) => d.value), 1);
-  const barWidth = (chartWidth / data.length) * 0.6;
-  const gap = (chartWidth / data.length) * 0.4;
+  const maxValue = Math.max(...normalizedData.map((d) => d.value), 1);
+  const barWidth = (chartWidth / normalizedData.length) * 0.6;
+  const gap = (chartWidth / normalizedData.length) * 0.4;
 
   const yTicks = 5;
   const yTickValues = Array.from({ length: yTicks + 1 }, (_, i) =>
@@ -43,7 +63,7 @@ export default function BarChart({ data, width = 400, height = 200, title }: Bar
           );
         })}
 
-        {data.map((d, i) => {
+        {normalizedData.map((d, i) => {
           const barHeight = (d.value / maxValue) * chartHeight;
           const x = padding.left + i * (barWidth + gap) + gap / 2;
           const y = padding.top + chartHeight - barHeight;

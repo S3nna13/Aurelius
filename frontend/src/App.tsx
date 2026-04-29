@@ -15,8 +15,14 @@ import GlobalSearch from './components/GlobalSearch';
 import KeyboardShortcuts from './components/KeyboardShortcuts';
 import SessionLock from './components/SessionLock';
 import OnboardingTour from './components/OnboardingTour';
+import NotificationFeed from './components/NotificationFeed';
+import KeyboardShortcutsHelp from './components/KeyboardShortcutsHelp';
 import { AuthGuard } from './components/AuthGuard';
 import Dashboard from './pages/Dashboard';
+import BrainConsole from './pages/BrainConsole';
+import Plugins from './pages/Plugins';
+import TraceList from './pages/TraceList';
+import TraceDetail from './pages/TraceDetail';
 import Chat from './pages/Chat';
 import Notifications from './pages/Notifications';
 import Skills from './pages/Skills';
@@ -27,6 +33,14 @@ import AgentDetail from './pages/AgentDetail';
 import Logs from './pages/Logs';
 import ScheduledTasks from './pages/ScheduledTasks';
 import AgentComparison from './pages/AgentComparison';
+import AgentGrid from './pages/AgentGrid';
+import AgentSpawnForm from './pages/AgentSpawnForm';
+import AgentWorkspace from './pages/AgentWorkspace';
+import AgentSkillBuilder from './pages/AgentSkillBuilder';
+import AgentPlayground from './pages/AgentPlayground';
+import AgentTemplates from './pages/AgentTemplates';
+import AgentKnowledgeBase from './pages/AgentKnowledgeBase';
+import AgentToolsRegistry from './pages/AgentToolsRegistry';
 import HealthCheckPage from './pages/HealthCheck';
 import ApiDocs from './pages/ApiDocs';
 import Login from './pages/Login';
@@ -67,10 +81,21 @@ function AnimatedRoutes() {
           <Route path="/workflows" element={<AuthGuard><Workflows /></AuthGuard>} />
           <Route path="/memory" element={<AuthGuard><Memory /></AuthGuard>} />
           <Route path="/settings" element={<AuthGuard><Settings /></AuthGuard>} />
+          <Route path="/agents/compare" element={<AuthGuard><AgentComparison /></AuthGuard>} />
+          <Route path="/agents/grid" element={<AuthGuard><AgentGrid /></AuthGuard>} />
+          <Route path="/agents/new" element={<AuthGuard><AgentSpawnForm /></AuthGuard>} />
           <Route path="/agents/:id" element={<AuthGuard><AgentDetail /></AuthGuard>} />
-          <Route path="/agents" element={<AuthGuard><AgentComparison /></AuthGuard>} />
+          <Route path="/agents/:id/workspace" element={<AuthGuard><AgentWorkspace /></AuthGuard>} />
+          <Route path="/agents/skills" element={<AuthGuard><AgentSkillBuilder /></AuthGuard>} />
+          <Route path="/agents/playground" element={<AuthGuard><AgentPlayground /></AuthGuard>} />
+          <Route path="/agents/templates" element={<AuthGuard><AgentTemplates /></AuthGuard>} />
+          <Route path="/agents/knowledge" element={<AuthGuard><AgentKnowledgeBase /></AuthGuard>} />
+          <Route path="/agents/tools" element={<AuthGuard><AgentToolsRegistry /></AuthGuard>} />
+          <Route path="/brain" element={<AuthGuard><BrainConsole /></AuthGuard>} />
           <Route path="/logs" element={<AuthGuard><Logs /></AuthGuard>} />
           <Route path="/tasks" element={<AuthGuard><ScheduledTasks /></AuthGuard>} />
+          <Route path="/traces" element={<AuthGuard><TraceList /></AuthGuard>} />
+          <Route path="/traces/:id" element={<AuthGuard><TraceDetail /></AuthGuard>} />
           <Route path="/health" element={<AuthGuard><HealthCheckPage /></AuthGuard>} />
           <Route path="/api-docs" element={<AuthGuard><ApiDocs /></AuthGuard>} />
           <Route path="/users" element={<AuthGuard><Users /></AuthGuard>} />
@@ -80,6 +105,7 @@ function AnimatedRoutes() {
           <Route path="/training/:id" element={<AuthGuard><TrainingDetail /></AuthGuard>} />
           <Route path="/models" element={<AuthGuard><Models /></AuthGuard>} />
           <Route path="/playground" element={<AuthGuard><Playground /></AuthGuard>} />
+          <Route path="/plugins" element={<AuthGuard><Plugins /></AuthGuard>} />
           <Route path="/500" element={<ServerError />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
@@ -157,8 +183,10 @@ function App() {
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}
       {searchOpen && <GlobalSearch onClose={() => setSearchOpen(false)} />}
       <KeyboardShortcuts />
+      <KeyboardShortcutsHelp />
       <SessionLock />
       <OnboardingTour />
+      <NotificationFeed />
     </ToastProvider>
   );
 }
