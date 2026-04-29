@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { requireScope } from '../middleware/auth.js'
 
 interface CronTask {
   id: string
@@ -36,7 +37,7 @@ router.get('/', (_req, res) => {
   res.json({ tasks: Array.from(tasks.values()) })
 })
 
-router.post('/', (req, res) => {
+router.post('/', requireScope('scheduler:admin'), (req, res) => {
   const { name, cron, command } = req.body || {}
   if (!name || !cron || !command) {
     res.status(400).json({ error: 'Name, cron, and command required' })
@@ -55,16 +56,17 @@ router.post('/', (req, res) => {
   res.json({ success: true, task })
 })
 
-router.delete('/:id', (req, res) => {
-  const id = req.params.id
+router.delete('/:id', requireScope('scheduler:admin'), (req, res) => {
+  const id = String(req.params.id)
   clearInterval(intervals.get(id))
   intervals.delete(id)
   tasks.delete(id)
   res.json({ success: true })
 })
 
-router.post('/:id/toggle', (req, res) => {
-  const task = tasks.get(req.params.id)
+router.post('/:id/toggle', requireScope('scheduler:admin'), (req, res) => {
+  const id = String(req.params.id)
+  const task = tasks.get(id)
   if (!task) {
     res.status(404).json({ error: 'Task not found' })
     return

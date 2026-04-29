@@ -1,62 +1,107 @@
-import { Router } from 'express'
-import { getEngine } from '../engine.js'
+import { Router, Request, Response } from 'express';
+import { v4 as uuid } from 'uuid';
 
-const router = Router()
+const router = Router();
 
-router.get('/', (_req, res) => {
-  const engine = getEngine()
-  const agents = engine.listAgents()
-  res.json({
-    agents,
-    counts: {
-      agents_online: agents.filter((a) => a.state === 'active' || a.state === 'running').length,
-      agents_total: agents.length,
-    },
-  })
-})
+// In-memory agent store
+interface AgentRecord {
+  id: string;
+  name: string;
+  role: string;
+  capabilities: string[];
+  state: 'idle' | 'active' | 'busy' | 'error' | 'terminated';
+  created: number;
+  lastHeartbeat: number;
+  metrics: { tasksCompleted: number; avgLatencyMs: number; errorRate: number };
+}
 
-router.get('/:id', (req, res) => {
-  const engine = getEngine()
-  const agent = engine.getAgent(req.params.id)
-  if (!agent) {
-    res.status(404).json({ error: 'Agent not found' })
-    return
-  }
-  res.json(agent)
-})
+const agents = new Map<string, AgentRecord>();
 
-router.post('/:id/command', (req, res) => {
-  const engine = getEngine()
-  const { command } = req.body || {}
-  if (!command) {
-    res.status(400).json({ error: 'Command required' })
-    return
-  }
-  const agent = engine.getAgent(req.params.id)
-  if (!agent) {
-    res.status(404).json({ error: 'Agent not found' })
-    return
-  }
-  const output = `[${agent.id}] executed: ${command}`
-  const entry = engine.appendActivity(`agent.${agent.id}`, true, output)
-  res.json({ success: true, output, activity: entry })
-})
+// SSE connections per agent
+const agentStreams = new Map<string, Set<(event: string, data: unknown) => void>>();
 
-router.post('/:id/state', (req, res) => {
-  const engine = getEngine()
-  const { state } = req.body || {}
-  if (!state) {
-    res.status(400).json({ error: 'State required' })
-    return
-  }
-  const agent = engine.getAgent(req.params.id)
-  if (!agent) {
-    res.status(404).json({ error: 'Agent not found' })
-    return
-  }
-  engine.upsertAgent(agent.id, state, agent.role, agent.metrics_json)
-  engine.appendActivity(`agent.${agent.id}.state`, true, `State changed to ${state}`)
-  res.json({ success: true, state })
-})
+function broadcast(agentId: string, event: string, data: unknown) {
+  const subs = agentStreams.get(agentId);
+  if (subs) subs.forEach(fn => fn(event, data));
+}
 
-export default router
+// GET /api/agents
+router.get('/', (_req: Request, res: Response) => {
+  res.json({ agents: Array.from(agents.values()) });
+});
+
+// GET /api/agents/:id
+router.get('/:id', (req: Request, res: Response) => {
+  const agentId = String(req.params.id);
+  const agent = agents.get(agentId);
+  if (!agent) return res.status(404).json({ error: 'Agent not found' });
+  res.json({ agent });
+});
+
+// POST /api/agents
+router.post('/', (req: Request, res: Response) => {
+  const { name, role, capabilities } = req.body;
+  if (!name) return res.status(400).json({ error: 'name required' });
+
+  const agent: AgentRecord = {
+    id: uuid().slice(0, 12),
+    name,
+    role: role || 'worker',
+    capabilities: capabilities || [],
+    state: 'idle',
+    created: Date.now(),
+    lastHeartbeat: Date.now(),
+    metrics: { tasksCompleted: 0, avgLatencyMs: 0, errorRate: 0 },
+  };
+  agents.set(agent.id, agent);
+  broadcast(agent.id, 'created', agent);
+  res.status(201).json({ agent });
+});
+
+// POST /api/agents/:id/heartbeat
+router.post('/:id/heartbeat', (req: Request, res: Response) => {
+  const agentId = String(req.params.id);
+  const agent = agents.get(agentId);
+  if (!agent) return res.status(404).json({ error: 'Agent not found' });
+  agent.lastHeartbeat = Date.now();
+  agent.state = req.body.state || agent.state;
+  broadcast(agent.id, 'heartbeat', agent);
+  res.json({ ok: true });
+});
+
+// DELETE /api/agents/:id
+router.delete('/:id', (req: Request, res: Response) => {
+  const agentId = String(req.params.id);
+  const agent = agents.get(agentId);
+  if (!agent) return res.status(404).json({ error: 'Agent not found' });
+  agent.state = 'terminated';
+  broadcast(agent.id, 'terminated', agent);
+  agents.delete(agentId);
+  res.json({ ok: true });
+});
+
+// GET /api/agents/:id/stream — SSE
+router.get('/:id/stream', (req: Request, res: Response) => {
+  const agentId = String(req.params.id);
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    Connection: 'keep-alive',
+  });
+  res.write(`event: connected\ndata: {"agentId":"${agentId}"}\n\n`);
+
+  const send = (event: string, data: unknown) => {
+    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  };
+
+  if (!agentStreams.has(agentId)) agentStreams.set(agentId, new Set());
+  agentStreams.get(agentId)!.add(send);
+
+  const keepalive = setInterval(() => res.write(':keepalive\n\n'), 15000);
+  req.on('close', () => {
+    clearInterval(keepalive);
+    agentStreams.get(agentId)?.delete(send);
+  });
+});
+
+export default router;
