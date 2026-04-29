@@ -29,8 +29,8 @@ impl ProxyClient {
 
     pub async fn proxy_request(&self, req: Request) -> Result<Response, StatusCode> {
         let path = req.uri().path_and_query()
-            .map(|pq| pq.as_str())
-            .unwrap_or(req.uri().path());
+            .map(|pq| pq.as_str().to_owned())
+            .unwrap_or_else(|| req.uri().path().to_owned());
 
         let upstream_uri = format!("{}{}", self.upstream_url, path);
 

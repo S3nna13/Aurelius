@@ -135,12 +135,33 @@ class RedditPipeline:
                 self._blocklist.update(sub_cfg[cat])
         self._blocklist = {s.lower() for s in self._blocklist}
 
+    def _safe_name(self, name: str, fallback: str) -> str:
+        cleaned = re.sub(r"[^A-Za-z0-9._-]", "_", name).strip("._-")
+        return cleaned or fallback
+
+    def _resolve_within_root(
+        self,
+        root: str | Path,
+        candidate: str | Path,
+        *,
+        must_exist: bool = False,
+    ) -> Path:
+        base = Path(root).expanduser().resolve()
+        path = Path(candidate).expanduser()
+        resolved = path.resolve(strict=must_exist) if path.is_absolute() else (base / path).resolve(strict=must_exist)
+        try:
+            resolved.relative_to(base)
+        except ValueError as exc:
+            raise ValueError(f"Path escapes root: {candidate!r}") from exc
+        return resolved
+
     # ------------------------------------------------------------------
     # State tracking
     # ------------------------------------------------------------------
 
     def _state_path(self, base_dir: str) -> Path:
-        return Path(base_dir) / self.config.get("state_file", "_state.json")
+        state_name = self._safe_name(self.config.get("state_file", "_state.json"), "_state.json")
+        return Path(base_dir).expanduser().resolve() / state_name
 
     def _load_state(self, base_dir: str) -> dict[str, Any]:
         path = self._state_path(base_dir)
@@ -218,7 +239,7 @@ class RedditPipeline:
         limit: int | None = None,
     ) -> list[str]:
         """Download Pushshift monthly files, returning list of downloaded paths."""
-        target = Path(target_dir)
+        target = Path(target_dir).expanduser().resolve()
         target.mkdir(parents=True, exist_ok=True)
         state = self._load_state(target_dir)
         downloaded_paths: list[str] = []
@@ -229,14 +250,19 @@ class RedditPipeline:
 
         for entry in available:
             url = entry["url"]
-            fname = entry["name"]
+            fname = self._safe_name(entry["name"], "reddit.zst")
             local_path = str(target / fname)
 
             existing = state.get("downloaded_files", {}).get(url)
-            if existing and Path(existing).exists():
-                logger.info("Already downloaded: %s", fname)
-                downloaded_paths.append(existing)
-                continue
+            if existing:
+                try:
+                    existing_path = self._resolve_within_root(target, existing, must_exist=True)
+                except (FileNotFoundError, ValueError):
+                    existing_path = None
+                if existing_path is not None and existing_path.exists():
+                    logger.info("Already downloaded: %s", fname)
+                    downloaded_paths.append(str(existing_path))
+                    continue
 
             logger.info("Downloading %s ...", fname)
             try:
@@ -271,9 +297,17 @@ class RedditPipeline:
     # Parsing
     # ------------------------------------------------------------------
 
-    def _open_compressed(self, filepath: str) -> io.TextIOBase:
+    def _open_compressed(
+        self,
+        filepath: str,
+        *,
+        input_root: str | Path | None = None,
+    ) -> io.TextIOBase:
         """Open a potentially .zst or .gz file as a text stream."""
-        path = Path(filepath)
+        if input_root is None:
+            raise ValueError("input_root is required for file access")
+        root = input_root
+        path = self._resolve_within_root(root, filepath, must_exist=True)
         suffix = path.suffix
         if suffix == ".zst":
             if _zstd is None:
@@ -287,13 +321,20 @@ class RedditPipeline:
         else:
             return open(path, encoding="utf-8", errors="replace")
 
-    def process_file(self, filepath: str, output_dir: str) -> dict[str, Any]:
+    def process_file(
+        self,
+        filepath: str,
+        output_dir: str,
+        *,
+        input_root: str | Path | None = None,
+    ) -> dict[str, Any]:
         """Process a single Pushshift NDJSON file, writing raw JSONL lines."""
         fname = Path(filepath).name
-        out = Path(output_dir)
+        out = Path(output_dir).expanduser().resolve()
         out.mkdir(parents=True, exist_ok=True)
 
-        raw_path = out / f"raw_{fname.replace('.zst', '').replace('.gz', '')}.jsonl"
+        safe_fname = self._safe_name(fname.replace(".zst", "").replace(".gz", ""), "reddit")
+        raw_path = out / f"raw_{safe_fname}.jsonl"
         if raw_path.suffix != ".jsonl":
             raw_path = raw_path.with_suffix(".jsonl")
 
@@ -301,7 +342,7 @@ class RedditPipeline:
         kept = 0
         errors = 0
 
-        with self._open_compressed(filepath) as stream, open(raw_path, "w") as out_f:
+        with self._open_compressed(filepath, input_root=input_root) as stream, open(raw_path, "w") as out_f:
             for line in stream:
                 line = line.strip()
                 if not line:
@@ -639,7 +680,7 @@ class RedditPipeline:
             if self._is_processed(str(processed_dir), fname):
                 logger.info("Skipping already-processed: %s", fname)
                 continue
-            stats = self.process_file(dl_path, str(processed_dir))
+            stats = self.process_file(dl_path, str(processed_dir), input_root=str(raw_dir))
             results["processed"].append(stats)
 
         if self.config.get("include_conversations", True):

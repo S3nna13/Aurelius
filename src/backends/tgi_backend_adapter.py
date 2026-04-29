@@ -85,9 +85,9 @@ class TGIBackendAdapter:
             _validate_tgi_url(health_url)
         except ValueError:
             return False
-        req = urllib.request.Request(health_url, method="GET")  # noqa: S310 - scheme validated above
+        req = urllib.request.Request(health_url, method="GET")  # noqa: S310  # nosec
         try:
-            with urllib.request.urlopen(req, timeout=self._timeout_s) as resp:  # noqa: S310 - scheme validated by _validate_tgi_url
+            with urllib.request.urlopen(req, timeout=self._timeout_s) as resp:  # noqa: S310  # nosec
                 return resp.status == 200
         except Exception:
             return False
@@ -103,14 +103,14 @@ class TGIBackendAdapter:
         _validate_tgi_url(url)
         payload = self._build_payload(prompt, max_tokens, temperature)
         body = json.dumps(payload).encode()
-        req = urllib.request.Request(  # noqa: S310 - scheme validated above
+        req = urllib.request.Request(  # noqa: S310  # nosec
             url,
             data=body,
             headers={"Content-Type": "application/json"},
             method="POST",
         )
         try:
-            with urllib.request.urlopen(req, timeout=self._timeout_s) as resp:  # noqa: S310 - scheme validated by _validate_tgi_url
+            with urllib.request.urlopen(req, timeout=self._timeout_s) as resp:  # noqa: S310  # nosec
                 data = json.loads(resp.read())
         except urllib.error.HTTPError as exc:
             raise TGIBackendAdapterError(f"TGI HTTP error {exc.code}: {exc.reason}") from exc
@@ -139,14 +139,14 @@ class TGIBackendAdapter:
         _validate_tgi_url(url)
         payload = self._build_payload(prompt, max_tokens, temperature, stream=True)
         body = json.dumps(payload).encode()
-        req = urllib.request.Request(  # noqa: S310 - scheme validated above
+        req = urllib.request.Request(  # noqa: S310  # nosec
             url,
             data=body,
             headers={"Content-Type": "application/json"},
             method="POST",
         )
         try:
-            with urllib.request.urlopen(req, timeout=self._timeout_s) as resp:  # noqa: S310 - scheme validated by _validate_tgi_url
+            with urllib.request.urlopen(req, timeout=self._timeout_s) as resp:  # noqa: S310  # nosec
                 for raw_line in resp:
                     line = raw_line.decode("utf-8").strip()
                     if not line or not line.startswith("data:"):

@@ -17,12 +17,27 @@ import socketserver
 import threading
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from urllib.parse import urlsplit
 
 from .mcp_server import MCPServer, register_mcp_server
 
 logger = logging.getLogger(__name__)
 
 _MAX_REQUEST_BODY = 1 * 1024 * 1024  # 1 MiB hard cap on incoming POST bodies
+
+
+def _normalize_origin(origin: str) -> str | None:
+    """Return a canonical origin string or ``None`` for invalid input."""
+    origin = origin.strip()
+    if not origin or "\r" in origin or "\n" in origin:
+        return None
+
+    parsed = urlsplit(origin)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return None
+    if parsed.path or parsed.query or parsed.fragment or "@" in parsed.netloc:
+        return None
+    return f"{parsed.scheme}://{parsed.netloc}"
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -118,10 +133,14 @@ class _SSEHandler(http.server.BaseHTTPRequestHandler):
     # ---------------------------------------------------------------- helpers -
 
     def _send_cors_headers(self) -> None:
-        origins = self._sse_server.config.cors_origins
+        origins = [
+            origin
+            for origin in (_normalize_origin(o) for o in self._sse_server.config.cors_origins)
+            if origin
+        ]
         if not origins:
             return
-        request_origin = self.headers.get("Origin", "")
+        request_origin = _normalize_origin(self.headers.get("Origin", ""))
         if request_origin in origins:
             self.send_header("Access-Control-Allow-Origin", request_origin)
             self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")

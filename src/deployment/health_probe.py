@@ -58,7 +58,7 @@ class HealthProbe:
 
         start = time.perf_counter()
         try:
-            with urlopen(url, timeout=timeout) as response:  # noqa: S310
+            with urlopen(url, timeout=timeout) as response:  # noqa: S310  # nosec
                 latency_ms = (time.perf_counter() - start) * 1000
                 return {
                     "status": "healthy",

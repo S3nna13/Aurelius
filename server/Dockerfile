@@ -42,7 +42,6 @@ COPY --from=frontend-builder /frontend/dist /app/frontend/dist
 EXPOSE 7870
 ENV NODE_ENV=production
 ENV AURELIUS_FRONTEND_DIST=/app/frontend/dist
-ENV AURELIUS_AUTH=false
 
 WORKDIR /app/server
 CMD ["node", "dist/main.js"]

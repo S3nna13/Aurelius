@@ -5,6 +5,7 @@ use napi_derive::napi;
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
+#[derive(Clone)]
 #[napi(object)]
 pub struct Session {
     pub id: String,
@@ -47,6 +48,7 @@ struct SessionEntry {
     expires_at: DateTime<Utc>,
 }
 
+#[napi]
 pub struct SessionManager {
     sessions: Mutex<HashMap<String, SessionEntry>>,
     default_ttl_seconds: i64,
@@ -130,10 +132,9 @@ impl SessionManager {
 
     #[napi]
     pub fn touch_session(&self, session_id: String) -> bool {
-        let sessions = self.sessions.lock().unwrap();
-        if let Some(entry) = sessions.get(&session_id) {
+        let mut sessions = self.sessions.lock().unwrap();
+        if let Some(entry) = sessions.get_mut(&session_id) {
             if Utc::now() < entry.expires_at {
-                let mut entry = sessions.get(&session_id).unwrap();
                 entry.session.last_activity = Utc::now().to_rfc3339();
                 return true;
             }

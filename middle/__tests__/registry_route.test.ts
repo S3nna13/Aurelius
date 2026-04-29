@@ -15,7 +15,7 @@ function requestJson(path: string) {
       {
         method: 'GET',
         headers: {
-          'X-API-Key': 'dev-key',
+          'X-API-Key': 'test-admin-key',
         },
       },
       (res) => {

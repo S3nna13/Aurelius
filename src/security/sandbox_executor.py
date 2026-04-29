@@ -58,7 +58,6 @@ DEFAULT_ALLOWED_BUILTINS: frozenset[str] = frozenset(
         "max",
         "min",
         "next",
-        "object",
         "ord",
         "pow",
         "print",

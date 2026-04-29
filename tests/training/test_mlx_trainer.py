@@ -2,14 +2,12 @@
 
 import logging
 import sys
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
 
 from src.training.mlx_trainer import MLXConfig, MLXTrainer, main
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

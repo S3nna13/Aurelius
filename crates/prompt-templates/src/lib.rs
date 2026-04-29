@@ -108,11 +108,11 @@ impl PromptEngine {
         &self,
         template_name: String,
         variables: HashMap<String, String>,
-    ) -> Result<RenderedPrompt, String> {
+    ) -> napi::Result<RenderedPrompt> {
         let template = self
             .templates
             .get(&template_name)
-            .ok_or_else(|| format!("Template '{}' not found", template_name))?;
+            .ok_or_else(|| napi::Error::from_reason(format!("Template '{}' not found", template_name)))?;
 
         self.render_string(template.clone(), variables)
     }
@@ -122,7 +122,7 @@ impl PromptEngine {
         &self,
         template: String,
         variables: HashMap<String, String>,
-    ) -> Result<RenderedPrompt, String> {
+    ) -> napi::Result<RenderedPrompt> {
         let required = extract_variables(&template);
         let mut used = Vec::new();
         let mut missing = Vec::new();
@@ -161,7 +161,7 @@ impl PromptEngine {
         let final_text = var_re.replace_all(&rendered, "").to_string();
 
         Ok(RenderedPrompt {
-            text: final_text,
+            text: final_text.clone(),
             variables_used: used,
             variables_missing: missing,
             token_estimate: estimate_tokens(&final_text),
@@ -169,11 +169,11 @@ impl PromptEngine {
     }
 
     #[napi]
-    pub fn analyze(&self, template_name: String) -> Result<TemplateInfo, String> {
+    pub fn analyze(&self, template_name: String) -> napi::Result<TemplateInfo> {
         let template = self
             .templates
             .get(&template_name)
-            .ok_or_else(|| format!("Template '{}' not found", template_name))?;
+            .ok_or_else(|| napi::Error::from_reason(format!("Template '{}' not found", template_name)))?;
 
         let variables = extract_variables(template);
         let has_partials = template.contains("{{>");
@@ -223,11 +223,11 @@ impl PromptEngine {
     ) -> RenderedPrompt {
         let mut parts = Vec::new();
 
-        if let Some(sys) = system {
+        if let Some(ref sys) = system {
             let rendered = self
-                .render_string(sys, variables.clone())
+                .render_string(sys.clone(), variables.clone())
                 .unwrap_or(RenderedPrompt {
-                    text: sys,
+                    text: sys.clone(),
                     variables_used: vec![],
                     variables_missing: vec![],
                     token_estimate: 0,
@@ -272,11 +272,11 @@ impl PromptEngine {
 
         parts.push("<|begin_of_text|>".to_string());
 
-        if let Some(sys) = system {
+        if let Some(ref sys) = system {
             let rendered = self
-                .render_string(sys, variables.clone())
+                .render_string(sys.clone(), variables.clone())
                 .unwrap_or(RenderedPrompt {
-                    text: sys,
+                    text: sys.clone(),
                     variables_used: vec![],
                     variables_missing: vec![],
                     token_estimate: 0,

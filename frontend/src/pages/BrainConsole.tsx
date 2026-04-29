@@ -21,7 +21,11 @@ export default function BrainConsole() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ input }),
       });
-      setResult(await res.json());
+      if (res.ok) {
+        setResult(await res.json());
+      } else {
+        setResult({ error: `Request failed: ${res.status}` });
+      }
     } catch { setResult({ error: 'Brain call failed' }); }
     setLoading(false);
   };
@@ -30,7 +34,11 @@ export default function BrainConsole() {
     setUpgradeLoading(true);
     try {
       const res = await fetch('/api/brain/upgrade/run', { method: 'POST' });
-      setUpgradeResult(await res.json());
+      if (res.ok) {
+        setUpgradeResult(await res.json());
+      } else {
+        setUpgradeResult({ error: `Request failed: ${res.status}` });
+      }
     } catch { setUpgradeResult({ error: 'Upgrade failed' }); }
     setUpgradeLoading(false);
   };

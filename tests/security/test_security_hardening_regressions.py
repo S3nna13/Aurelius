@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 import inspect
-import json
 import time
 from io import BytesIO
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -17,50 +15,33 @@ import pytest
 
 
 def test_load_checkpoint_optimizer_uses_weights_only(tmp_path):
-    """AUR-SEC-2026-0001: load_checkpoint must call torch.load with weights_only=True.
-
-    Pre-fix: torch.load(..., weights_only=False) on optimizer.pt allowed arbitrary
-    pickle execution.  Post-fix: weights_only=True is passed at both call sites.
-    """
+    """AUR-SEC-2026-0001: optimizer state must use a safe JSON round-trip."""
     import torch
     import torch.nn as nn
 
-    from src.training.checkpoint import CheckpointMeta, load_checkpoint
-
-    # Build a minimal checkpoint directory.
-    ckpt_dir = tmp_path / "checkpoint-0000001"
-    ckpt_dir.mkdir()
+    from src.training.checkpoint import CheckpointMeta, load_checkpoint, save_checkpoint
 
     model = nn.Linear(4, 2)
-    opt = torch.optim.SGD(model.parameters(), lr=0.01)
+    opt = torch.optim.Adam(model.parameters(), lr=0.01)
+    batch = torch.randn(2, 4)
+    loss = model(batch).sum()
+    loss.backward()
+    opt.step()
 
-    torch.save(model.state_dict(), ckpt_dir / "model.pt")
-    torch.save(opt.state_dict(), ckpt_dir / "optimizer.pt")
-    meta = {
-        "step": 1,
-        "epoch": 0,
-        "train_loss": 0.5,
-        "val_loss": None,
-        "config": {},
-    }
-    (ckpt_dir / "meta.json").write_text(json.dumps(meta))
+    ckpt_dir = save_checkpoint(
+        model,
+        opt,
+        step=1,
+        epoch=0,
+        train_loss=0.5,
+        output_dir=tmp_path,
+    )
 
-    calls: list[dict] = []
-    real_torch_load = torch.load
-
-    def tracking_load(*args, **kwargs):
-        calls.append({"args": args, "kwargs": kwargs})
-        return real_torch_load(*args, **kwargs)
-
-    with patch("src.training.checkpoint.torch.load", side_effect=tracking_load):
-        result = load_checkpoint(model, ckpt_dir, optimizer=opt)
+    result = load_checkpoint(model, ckpt_dir, optimizer=opt)
 
     assert isinstance(result, CheckpointMeta)
-    # Both model.pt and optimizer.pt must be loaded with weights_only=True.
-    for call in calls:
-        assert call["kwargs"].get("weights_only") is True, (
-            f"torch.load called without weights_only=True: {call}"
-        )
+    assert (ckpt_dir / "optimizer.json").exists()
+    assert opt.state_dict()["state"], "Optimizer state was not restored"
 
 
 # ---------------------------------------------------------------------------
@@ -98,7 +79,8 @@ class TestConversationStorePathTraversal:
         """AUR-SEC-2026-0002: A well-formed ID must not raise."""
         store = self._store(tmp_path)
         path = store._path("abc-123_ok")
-        assert path.name == "abc-123_ok.json"
+        assert path.parent == tmp_path.resolve()
+        assert path.suffix == ".json"
 
 
 # ---------------------------------------------------------------------------

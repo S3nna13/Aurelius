@@ -6,6 +6,7 @@ mod rate_limit;
 mod routes;
 
 use std::net::SocketAddr;
+use std::sync::Arc;
 
 use axum::{middleware, Router};
 use tokio::signal;
@@ -26,14 +27,18 @@ async fn main() {
     let rate_limiter = rate_limit::RateLimiter::new(cfg.rate_limit_rps, cfg.rate_limit_burst);
     let metrics = metrics::Metrics::new();
 
+    let jwt_secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "aurelius-dev-secret".into());
+    let auth_service = Arc::new(auth::AuthService::new(&jwt_secret, 24));
+    let auth_state = auth::AuthState::new(auth_service);
+
     let app = Router::new()
         .merge(routes::health::routes())
         .merge(routes::proxy::routes(proxy_client.clone(), rate_limiter.clone(), metrics.clone()))
-        .layer(middleware::from_fn(auth::auth_middleware.clone()))
+        .layer(middleware::from_fn_with_state(auth_state.clone(), auth::auth_middleware))
         .layer(CorsLayer::permissive())
         .layer(RequestBodyLimitLayer::new(10 * 1024 * 1024))
         .layer(TraceLayer::new_for_http())
-        .with_state(app_state::AppState { proxy_client, rate_limiter, metrics, cfg: cfg.clone() });
+        .with_state(app_state::AppState { proxy_client, rate_limiter, metrics, cfg: cfg.clone(), auth_state });
 
     let addr: SocketAddr = format!("{}:{}", cfg.host, cfg.port).parse().expect("Invalid address");
     tracing::info!("Gateway listening on {addr}");
@@ -65,7 +70,7 @@ async fn shutdown_signal() {
 }
 
 mod app_state {
-    use crate::{config::Config, metrics::Metrics, proxy::ProxyClient, rate_limit::RateLimiter};
+    use crate::{auth::AuthState, config::Config, metrics::Metrics, proxy::ProxyClient, rate_limit::RateLimiter};
 
     #[derive(Clone)]
     pub struct AppState {
@@ -73,5 +78,6 @@ mod app_state {
         pub rate_limiter: RateLimiter,
         pub metrics: Metrics,
         pub cfg: Config,
+        pub auth_state: AuthState,
     }
 }

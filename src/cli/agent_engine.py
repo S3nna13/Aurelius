@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 import os
 import shlex
-import subprocess
+import subprocess  # nosec B404 - internal command runner wrapper
 import time
 import uuid
 from collections.abc import Callable
@@ -137,10 +137,10 @@ class NL2SHEngine:
 
     def verify_equivalence(self, cmd_a: str, cmd_b: str) -> float:
         try:
-            r1 = subprocess.run(  # noqa: S603
+            r1 = subprocess.run(  # noqa: S603  # nosec
                 shlex.split(cmd_a), capture_output=True, text=True, timeout=5
             )
-            r2 = subprocess.run(  # noqa: S603
+            r2 = subprocess.run(  # noqa: S603  # nosec
                 shlex.split(cmd_b), capture_output=True, text=True, timeout=5
             )
             if r1.stdout == r2.stdout:
@@ -203,14 +203,17 @@ class ToolExecutor:
 
         start = time.time()
         try:
-            result = subprocess.run(  # noqa: S602
-                command,
-                shell=True,
+            argv = shlex.split(command)
+            if not argv:
+                raise ValueError("Command is empty")
+            result = subprocess.run(  # noqa: S603
+                argv,
+                shell=False,
                 capture_output=True,
                 text=True,
                 timeout=timeout,
                 cwd=cwd,
-            )
+            )  # nosec
             elapsed = time.time() - start
             tr = ToolResult(
                 stdout=result.stdout[:10000],
@@ -371,9 +374,9 @@ Respond with a numbered plan, one step per line:"""
             return self._help_text()
         elif command in ("clear", "cls"):
             if os.name == "nt":
-                subprocess.run(["cmd", "/c", "cls"], check=False)  # noqa: S607
+                subprocess.run(["cmd", "/c", "cls"], check=False)  # noqa: S607,S603  # nosec
             else:
-                subprocess.run(["clear"], check=False)  # noqa: S607
+                subprocess.run(["clear"], check=False)  # noqa: S607,S603  # nosec
             return ""
         elif command == "status":
             return self._status_text()

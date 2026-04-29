@@ -55,7 +55,9 @@ export default function Playground() {
   const [showSettings, setShowSettings] = useState(true);
   const [activeStreams, setActiveStreams] = useState<Record<string, string>>({});
   const bottomRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
+  useEffect(() => { return () => { abortRef.current?.abort() } }, []);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [results, activeStreams]);
 
   const toggleModel = (id: string) => {
@@ -68,6 +70,7 @@ export default function Playground() {
     if (!prompt.trim() || selectedModels.length === 0) return;
     setRunning(true);
     setActiveStreams({});
+    abortRef.current = new AbortController();
 
     for (const modelId of selectedModels) {
       const startTime = Date.now();
@@ -91,6 +94,7 @@ export default function Playground() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
+          signal: abortRef.current.signal,
         });
 
         if (!res.ok) {
@@ -100,12 +104,15 @@ export default function Playground() {
         if (stream) {
           const reader = res.body?.getReader();
           const decoder = new TextDecoder();
+          let sseBuffer = '';
           if (reader) {
             while (true) {
               const { done, value } = await reader.read();
               if (done) break;
-              const chunk = decoder.decode(value);
-              for (const line of chunk.split('\n')) {
+              sseBuffer += decoder.decode(value, { stream: true });
+              const lines = sseBuffer.split('\n');
+              sseBuffer = lines.pop() || '';
+              for (const line of lines) {
                 if (line.startsWith('data: ') && line !== 'data: [DONE]') {
                   try {
                     const d = JSON.parse(line.slice(6));
@@ -123,7 +130,7 @@ export default function Playground() {
 
         const result: CompletionResult = {
           model: modelId, text: fullText || '(no output)',
-          tokens: fullText.split(' ').length,
+          tokens: fullText.split(/\s+/).filter(Boolean).length,
           duration: Date.now() - startTime,
           timestamp: Date.now(),
         };

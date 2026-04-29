@@ -20,7 +20,7 @@ describe('Auth endpoints', () => {
     const res = await fetch(`${BASE}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ apiKey: 'dev-key' }),
+      body: JSON.stringify({ apiKey: 'test-admin-key' }),
     })
     expect(res.status).toBe(200)
     const data = await res.json()
@@ -71,7 +71,7 @@ describe('Auth endpoints', () => {
   it('POST /api/auth/keys/generate creates API key', async () => {
     const res = await fetch(`${BASE}/api/auth/keys/generate`, {
       method: 'POST',
-      headers: { 'X-API-Key': 'dev-key', 'Content-Type': 'application/json' },
+      headers: { 'X-API-Key': 'test-admin-key', 'Content-Type': 'application/json' },
     })
     expect(res.status).toBe(200)
     const data = await res.json()
@@ -82,7 +82,7 @@ describe('Auth endpoints', () => {
 
   it('GET /api/auth/keys returns keys list', async () => {
     const res = await fetch(`${BASE}/api/auth/keys`, {
-      headers: { 'X-API-Key': 'dev-key' },
+      headers: { 'X-API-Key': 'test-admin-key' },
     })
     expect(res.status).toBe(200)
     const data = await res.json()
@@ -92,7 +92,7 @@ describe('Auth endpoints', () => {
 
   it('GET /api/auth/users returns users', async () => {
     const res = await fetch(`${BASE}/api/auth/users`, {
-      headers: { 'X-API-Key': 'dev-key' },
+      headers: { 'X-API-Key': 'test-admin-key' },
     })
     expect(res.status).toBe(200)
     const data = await res.json()
@@ -109,14 +109,14 @@ describe('Auth middleware', () => {
 
   it('allows requests with valid API key', async () => {
     const res = await fetch(`${BASE}/api/activity`, {
-      headers: { 'X-API-Key': 'dev-key' },
+      headers: { 'X-API-Key': 'test-admin-key' },
     })
     expect(res.status).toBe(200)
   })
 
   it('allows requests with Bearer token', async () => {
     const res = await fetch(`${BASE}/api/config`, {
-      headers: { 'Authorization': 'Bearer dev-key' },
+      headers: { 'Authorization': 'Bearer test-admin-key' },
     })
     expect(res.status === 200 || res.status === 401)
   })

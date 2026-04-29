@@ -49,6 +49,7 @@ router.get('/events', requireScope('sse:read'), (req, res) => {
       res.write(`event: heartbeat\ndata: ${JSON.stringify({ stats, recentActivity: activity, timestamp: Date.now() })}\n\n`)
     } catch {
       clearInterval(heartbeat)
+      clients.delete(clientId)
     }
   }, 15000)
 

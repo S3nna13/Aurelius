@@ -6,10 +6,22 @@ Complete agent and skills management system.
 import sys
 from importlib import import_module
 
+
+def _alias_subpackage(alias: str, target: str) -> None:
+    module = import_module(target)
+    sys.modules.setdefault(alias, module)
+    globals()[alias.rsplit(".", 1)[-1]] = module
+
+
 _src_model = import_module("src.model")
 sys.modules.setdefault("aurelius.model", _src_model)
 if "src.model.transformer" in sys.modules:
     sys.modules.setdefault("aurelius.model.transformer", sys.modules["src.model.transformer"])
+
+_alias_subpackage("aurelius.data", "src.data")
+_alias_subpackage("aurelius.eval", "src.eval")
+_alias_subpackage("aurelius.evaluation", "src.evaluation")
+_alias_subpackage("aurelius.inference", "src.inference")
 
 _src_training = import_module("src.training")
 sys.modules.setdefault("aurelius.training", _src_training)

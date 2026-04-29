@@ -43,7 +43,7 @@ export const useWorkflowStore = create<WorkflowStoreState>()(
         })),
 
       startWorkflow: async (id) => {
-        const res = await api.post<{ success?: boolean }>(`/api/activity`, { command: `workflow.start.${id}`, success: true, output: 'Started' })
+        const res = await api.post<{ success?: boolean }>(`/api/workflows/${id}/start`, {})
         if (res.data?.success) {
           set((s) => ({
             workflows: s.workflows.map((w) =>
@@ -53,10 +53,12 @@ export const useWorkflowStore = create<WorkflowStoreState>()(
         }
       },
 
-      stopWorkflow: (id) =>
+      stopWorkflow: async (id) => {
+        await api.post(`/api/workflows/${id}/stop`)
         set((s) => ({
           workflows: s.workflows.map((w) => (w.id === id ? { ...w, status: 'pending', currentStep: 0 } : w)),
-        })),
+        }))
+      },
 
       fetchWorkflows: async () => {
         set({ loading: true, error: null })

@@ -1,13 +1,24 @@
 import { Router } from 'express'
 import { getEngine } from '../engine.js'
 import { v4 as uuidv4 } from 'uuid'
-import { existsSync, mkdirSync, writeFileSync, readFileSync, unlinkSync } from 'fs'
+import { existsSync, mkdirSync } from 'fs'
+import { promises as fsPromises } from 'fs'
 import { join } from 'path'
 
 const router = Router()
 const UPLOAD_DIR = process.env.UPLOAD_DIR || './data/uploads'
 const MAX_FILE_SIZE = 50 * 1024 * 1024
 const USER_QUOTA_LIMIT = 500 * 1024 * 1024
+const ALLOWED_MIME_TYPES = new Set([
+  'application/json',
+  'text/plain',
+  'text/csv',
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'application/pdf',
+  'application/octet-stream',
+])
 
 if (!existsSync(UPLOAD_DIR)) {
   mkdirSync(UPLOAD_DIR, { recursive: true })
@@ -25,7 +36,7 @@ interface FileRecord {
 const fileRecords = new Map<string, FileRecord>()
 const userQuota = new Map<string, number>()
 
-router.post('/upload', (req, res) => {
+router.post('/upload', async (req, res) => {
   const userId = req.user?.id
   if (!userId) {
     res.status(401).json({ error: 'Unauthorized' })
@@ -45,18 +56,21 @@ router.post('/upload', (req, res) => {
   let uploaded = 0
   const chunks: Buffer[] = []
   let aborted = false
+  let quotaChecked = false
 
   req.on('data', (chunk: Buffer) => {
+    if (aborted) return
     uploaded += chunk.length
     if (uploaded > MAX_FILE_SIZE) {
       aborted = true
+      res.status(413).json({ error: 'File too large (max 50MB)' })
       req.destroy()
       return
     }
     chunks.push(chunk)
   })
 
-  req.on('end', () => {
+  req.on('end', async () => {
     if (aborted) {
       res.status(413).json({ error: 'File too large (max 50MB)' })
       return
@@ -68,17 +82,24 @@ router.post('/upload', (req, res) => {
       return
     }
 
-    if (currentQuota + buffer.length > USER_QUOTA_LIMIT) {
+    const freshQuota = userQuota.get(userId) || 0
+    if (freshQuota + buffer.length > USER_QUOTA_LIMIT) {
       res.status(413).json({ error: 'Quota exceeded' })
       return
     }
 
     const id = uuidv4()
     const name = String(req.headers['x-file-name'] || `upload-${id}`).replace(/[\r\n]/g, '')
-    const mimeType = req.headers['x-file-type'] || contentType || 'application/octet-stream'
+    const mimeType = String(req.headers['x-file-type'] || contentType || 'application/octet-stream')
+
+    const mimeTypeBase = mimeType.split(';')[0].trim()
+    if (!ALLOWED_MIME_TYPES.has(mimeTypeBase)) {
+      res.status(415).json({ error: 'File type not allowed' })
+      return
+    }
 
     const filePath = join(UPLOAD_DIR, id)
-    writeFileSync(filePath, buffer)
+    await fsPromises.writeFile(filePath, buffer)
 
     const record: FileRecord = {
       id,
@@ -103,7 +124,7 @@ router.get('/files', (_req, res) => {
   res.json({ files: records })
 })
 
-router.get('/files/:id', (req, res) => {
+router.get('/files/:id', async (req, res) => {
   const record = fileRecords.get(req.params.id)
   if (!record) {
     res.status(404).json({ error: 'File not found' })
@@ -116,19 +137,21 @@ router.get('/files/:id', (req, res) => {
   }
 
   const filePath = join(UPLOAD_DIR, record.id)
-  if (!existsSync(filePath)) {
+  try {
+    await fsPromises.access(filePath)
+  } catch {
     res.status(404).json({ error: 'File data not found' })
     return
   }
 
-  const data = readFileSync(filePath)
+  const data = await fsPromises.readFile(filePath)
   res.setHeader('Content-Type', record.mimeType)
   const safeName = record.name.replace(/[\r\n"\\]/g, '')
   res.setHeader('Content-Disposition', `attachment; filename="${safeName}"`)
   res.send(data)
 })
 
-router.delete('/files/:id', (req, res) => {
+router.delete('/files/:id', async (req, res) => {
   const record = fileRecords.get(req.params.id)
   if (!record) {
     res.status(404).json({ error: 'File not found' })
@@ -141,7 +164,7 @@ router.delete('/files/:id', (req, res) => {
   }
 
   const filePath = join(UPLOAD_DIR, record.id)
-  if (existsSync(filePath)) unlinkSync(filePath)
+  try { await fsPromises.unlink(filePath) } catch {}
   fileRecords.delete(req.params.id)
   getEngine().appendActivity('file.delete', true, `Deleted ${record.name}`)
   res.json({ success: true })

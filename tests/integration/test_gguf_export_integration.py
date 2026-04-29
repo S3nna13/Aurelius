@@ -6,7 +6,6 @@ import struct
 from pathlib import Path
 
 import pytest
-import torch
 from safetensors.torch import save_file
 
 from scripts.export_gguf import export_gguf

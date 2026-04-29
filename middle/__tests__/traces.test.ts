@@ -26,7 +26,7 @@ describe('Trace endpoints', () => {
     const createRes = await fetch(`${baseUrl}/api/traces`, {
       method: 'POST',
       headers: {
-        'X-API-Key': 'dev-key',
+        'X-API-Key': 'test-admin-key',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -41,7 +41,7 @@ describe('Trace endpoints', () => {
     const traceId = createData.trace.id as string
 
     const listRes = await fetch(`${baseUrl}/api/traces`, {
-      headers: { 'X-API-Key': 'dev-key' },
+      headers: { 'X-API-Key': 'test-admin-key' },
     })
     expect(listRes.status).toBe(200)
     const listData = await listRes.json()
@@ -51,7 +51,7 @@ describe('Trace endpoints', () => {
     const stepRes = await fetch(`${baseUrl}/api/traces/${traceId}/step`, {
       method: 'POST',
       headers: {
-        'X-API-Key': 'dev-key',
+        'X-API-Key': 'test-admin-key',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -67,7 +67,7 @@ describe('Trace endpoints', () => {
     const runningRes = await fetch(`${baseUrl}/api/traces/${traceId}`, {
       method: 'PATCH',
       headers: {
-        'X-API-Key': 'dev-key',
+        'X-API-Key': 'test-admin-key',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -86,7 +86,7 @@ describe('Trace endpoints', () => {
     const completeRes = await fetch(`${baseUrl}/api/traces/${traceId}`, {
       method: 'PATCH',
       headers: {
-        'X-API-Key': 'dev-key',
+        'X-API-Key': 'test-admin-key',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -101,7 +101,7 @@ describe('Trace endpoints', () => {
     expect(completeData.trace.totalDuration).toBeGreaterThanOrEqual(0)
 
     const detailRes = await fetch(`${baseUrl}/api/traces/${traceId}`, {
-      headers: { 'X-API-Key': 'dev-key' },
+      headers: { 'X-API-Key': 'test-admin-key' },
     })
     expect(detailRes.status).toBe(200)
     const detailData = await detailRes.json()

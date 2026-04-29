@@ -74,6 +74,10 @@ router.post('/', requireScope('traces:write'), (req: Request, res: Response) => 
     stepCount: 0,
   };
   traces.set(trace.id, trace);
+  if (traces.size > 10000) {
+    const firstKey = traces.keys().next().value
+    if (firstKey) traces.delete(firstKey)
+  }
   res.status(201).json({ trace });
 });
 

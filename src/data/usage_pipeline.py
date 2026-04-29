@@ -32,6 +32,22 @@ except ImportError as _exc:  # pragma: no cover
 
 
 DEFAULT_DB_PATH: str = os.environ.get("AURELIUS_USAGE_DB", "/var/lib/aurelius/usage.redb")
+_DATA_ROOT = Path(os.environ.get("AURELIUS_DATA_DIR", "/var/lib/aurelius")).expanduser().resolve()
+
+
+def _resolve_db_path(db_path: str | None) -> Path:
+    """Resolve the usage database path under the managed data root."""
+    if db_path is None:
+        return (_DATA_ROOT / "usage.redb").resolve()
+
+    candidate = Path(db_path).expanduser()
+    if candidate.is_absolute():
+        resolved = candidate.resolve()
+    else:
+        resolved = (_DATA_ROOT / candidate).resolve()
+    if resolved != _DATA_ROOT and not resolved.is_relative_to(_DATA_ROOT):
+        raise ValueError("db_path must stay within AURELIUS_DATA_DIR")
+    return resolved
 
 
 class UsagePipeline:
@@ -42,7 +58,7 @@ class UsagePipeline:
     """
 
     def __init__(self, db_path: str | None = None) -> None:
-        self._path = Path(db_path or DEFAULT_DB_PATH)
+        self._path = _resolve_db_path(db_path or DEFAULT_DB_PATH)
         self._path.parent.mkdir(parents=True, exist_ok=True)
         self._store = UsageStore(str(self._path))
 

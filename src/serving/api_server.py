@@ -19,6 +19,7 @@ import logging
 import math
 import os
 import signal
+import sys
 import threading
 import time
 import uuid
@@ -208,7 +209,14 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
             raise ValueError(
                 f"Content-Length {content_length} exceeds maximum {_MAX_CONTENT_LENGTH}"
             )
-        return self.rfile.read(content_length)
+        connection = getattr(self, "connection", None)
+        if connection is not None and hasattr(connection, "settimeout"):
+            connection.settimeout(30.0)
+        try:
+            return self.rfile.read(content_length)
+        finally:
+            if connection is not None and hasattr(connection, "settimeout"):
+                connection.settimeout(None)
 
     def _get_server_info(self) -> dict:
         uptime = 0.0
@@ -387,7 +395,7 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
                 self._record_metrics(start, 500, "generation_error")
                 return
 
-        prompt_tokens = sum(len(m.get("content", "").split()) for m in request.messages)
+        prompt_tokens = sum(len((m.get("content") or "").split()) for m in request.messages)
         completion_tokens = len(content.split())
 
         response = ChatResponse(
@@ -408,6 +416,11 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
                 "total_tokens": prompt_tokens + completion_tokens,
             },
         )
+
+        if request.stream:
+            logger.warning(
+                "Streaming requested but not yet implemented; returning non-streaming response"
+            )
 
         self._send_json(200, response.to_dict())
         self._record_metrics(start, 200)
@@ -452,12 +465,10 @@ def create_server(
     if host not in ("127.0.0.1", "localhost", "::1") and (
         auth_middleware is None or not auth_middleware.is_configured
     ):
-        logger.error(
-            "Aborting: non-loopback host %s requires at least one configured API key "
-            "(set AURELIUS_API_KEYS or AURELIUS_API_KEY env var).",
-            host,
+        raise RuntimeError(
+            f"Non-loopback host {host} requires at least one configured API key "
+            f"(set AURELIUS_API_KEYS or AURELIUS_API_KEY env var)."
         )
-        sys.exit(1)
     return AureliusServer(
         host,
         port,
@@ -557,7 +568,6 @@ if __name__ == "__main__":
         sig_name = signal.Signals(signum).name
         logger.info("Received %s, shutting down gracefully...", sig_name)
         shutdown_event.set()
-        server.shutdown()
 
     signal.signal(signal.SIGTERM, _handle_signal)
     signal.signal(signal.SIGINT, _handle_signal)
@@ -567,4 +577,5 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         logger.info("Shutting down.")
     finally:
+        server.shutdown()
         logger.info("Server stopped.")

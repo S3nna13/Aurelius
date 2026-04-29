@@ -14,7 +14,7 @@ declare module 'express-serve-static-core' {
 
 const API_KEYS = new Map<string, AuthUser>()
 
-const DEFAULT_KEY = process.env.AURELIUS_API_KEY || 'dev-key'
+const DEFAULT_KEY = process.env.AURELIUS_API_KEY || ''
 if (DEFAULT_KEY) {
   API_KEYS.set(DEFAULT_KEY, { id: 'admin', role: 'admin', scopes: ['*'] })
 }
@@ -38,11 +38,8 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
     '/readyz',
     '/openapi.json',
     '/docs',
-    '/health/healthz',
-    '/health/readyz',
     '/api/auth/login',
     '/api/auth/register',
-    '/api/auth/users',
   ]
 
   if (publicPaths.includes(req.path)) {

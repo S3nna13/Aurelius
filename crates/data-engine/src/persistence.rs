@@ -35,18 +35,26 @@ pub(crate) fn resolve_data_path(raw_path: &str) -> Result<PathBuf, String> {
     }
 
     let joined = canonical_base.join(raw);
-    let canonical = joined.canonicalize().or_else(|_| {
-        let parent = joined.parent().ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidInput, "Invalid path"))?;
-        let file_name = joined.file_name().ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidInput, "Invalid path"))?;
-        let canonical_parent = fs::canonicalize(parent)?;
-        Ok::<_, std::io::Error>(canonical_parent.join(file_name))
-    }).map_err(|e| format!("Path resolution error: {}", e))?;
 
-    if !canonical.starts_with(&canonical_base) {
-        return Err("Path escapes data directory".to_string());
+    match joined.canonicalize() {
+        Ok(canonical) => {
+            if !canonical.starts_with(&canonical_base) {
+                return Err("Path escapes data directory".to_string());
+            }
+            Ok(canonical)
+        }
+        Err(_) => {
+            let parent = joined.parent().ok_or_else(|| "Invalid path".to_string())?;
+            let file_name = joined.file_name().ok_or_else(|| "Invalid path".to_string())?;
+            let canonical_parent = fs::canonicalize(parent)
+                .map_err(|e| format!("Path resolution error: {}", e))?;
+            let resolved = canonical_parent.join(file_name);
+            if !resolved.starts_with(&canonical_base) {
+                return Err("Path escapes data directory".to_string());
+            }
+            Ok(resolved)
+        }
     }
-
-    Ok(canonical)
 }
 
 use serde::{Deserialize, Serialize};
@@ -213,7 +221,7 @@ impl Persistence {
                 metrics_json: entry.value().metrics_json.clone(),
             }).collect(),
 
-            activity: engine.activity.read().unwrap().iter().map(|a| SerializedActivity {
+            activity: engine.activity.read().unwrap_or_else(|e| e.into_inner()).iter().map(|a| SerializedActivity {
                 id: a.id.clone(),
                 timestamp: a.timestamp,
                 command: a.command.clone(),
@@ -221,7 +229,7 @@ impl Persistence {
                 output: a.output.clone(),
             }).collect(),
 
-            notifications: engine.notifications.read().unwrap().iter().map(|n| SerializedNotification {
+            notifications: engine.notifications.read().unwrap_or_else(|e| e.into_inner()).iter().map(|n| SerializedNotification {
                 id: n.id.clone(),
                 timestamp: n.timestamp,
                 channel: n.channel.clone(),
@@ -233,7 +241,7 @@ impl Persistence {
                 delivered: n.delivered,
             }).collect(),
 
-            skills: engine.skills.read().unwrap().iter().map(|s| SerializedSkill {
+            skills: engine.skills.read().unwrap_or_else(|e| e.into_inner()).iter().map(|s| SerializedSkill {
                 id: s.id.clone(),
                 name: s.name.clone(),
                 description: s.description.clone(),
@@ -246,7 +254,7 @@ impl Persistence {
                 source: s.source.clone(),
             }).collect(),
 
-            workflows: engine.workflows.read().unwrap().iter().map(|w| SerializedWorkflow {
+            workflows: engine.workflows.read().unwrap_or_else(|e| e.into_inner()).iter().map(|w| SerializedWorkflow {
                 id: w.id.clone(),
                 name: w.name.clone(),
                 status: w.status.clone(),
@@ -256,7 +264,7 @@ impl Persistence {
                 source: w.source.clone(),
             }).collect(),
 
-            models: engine.models.read().unwrap().iter().map(|m| SerializedModelInfo {
+            models: engine.models.read().unwrap_or_else(|e| e.into_inner()).iter().map(|m| SerializedModelInfo {
                 id: m.id.clone(),
                 name: m.name.clone(),
                 description: m.description.clone(),
@@ -267,7 +275,7 @@ impl Persistence {
                 source: m.source.clone(),
             }).collect(),
 
-            training_runs: engine.training_runs.read().unwrap().iter().map(|r| SerializedTrainingRun {
+            training_runs: engine.training_runs.read().unwrap_or_else(|e| e.into_inner()).iter().map(|r| SerializedTrainingRun {
                 id: r.id.clone(),
                 name: r.name.clone(),
                 model_id: r.model_id.clone(),
@@ -294,7 +302,7 @@ impl Persistence {
             } else {
                 "production".to_string()
             },
-            config: engine.config.read().unwrap().clone(),
+            config: engine.config.read().unwrap_or_else(|e| e.into_inner()).clone(),
             timestamp: chrono::Utc::now().to_rfc3339(),
         };
 
@@ -338,7 +346,7 @@ impl Persistence {
 
         // Restore activity
         {
-            let mut activity = engine.activity.write().unwrap();
+            let mut activity = engine.activity.write().unwrap_or_else(|e| e.into_inner());
             activity.clear();
             for a in &snapshot.activity {
                 activity.push_back(crate::engine::InternalActivity {
@@ -353,7 +361,7 @@ impl Persistence {
 
         // Restore notifications
         {
-            let mut notifications = engine.notifications.write().unwrap();
+            let mut notifications = engine.notifications.write().unwrap_or_else(|e| e.into_inner());
             notifications.clear();
             for n in &snapshot.notifications {
                 notifications.push_back(crate::engine::InternalNotification {
@@ -372,7 +380,7 @@ impl Persistence {
 
         // Restore demo/live catalogs
         {
-            let mut skills = engine.skills.write().unwrap();
+            let mut skills = engine.skills.write().unwrap_or_else(|e| e.into_inner());
             skills.clear();
             for s in &snapshot.skills {
                 skills.push_back(crate::engine::InternalSkill {
@@ -391,7 +399,7 @@ impl Persistence {
         }
 
         {
-            let mut workflows = engine.workflows.write().unwrap();
+            let mut workflows = engine.workflows.write().unwrap_or_else(|e| e.into_inner());
             workflows.clear();
             for w in &snapshot.workflows {
                 workflows.push_back(crate::engine::InternalWorkflow {
@@ -407,7 +415,7 @@ impl Persistence {
         }
 
         {
-            let mut models = engine.models.write().unwrap();
+            let mut models = engine.models.write().unwrap_or_else(|e| e.into_inner());
             models.clear();
             for m in &snapshot.models {
                 models.push_back(crate::engine::InternalModelInfo {
@@ -424,7 +432,7 @@ impl Persistence {
         }
 
         {
-            let mut training_runs = engine.training_runs.write().unwrap();
+            let mut training_runs = engine.training_runs.write().unwrap_or_else(|e| e.into_inner());
             training_runs.clear();
             for run in &snapshot.training_runs {
                 training_runs.push(crate::engine::InternalTrainingRun {
@@ -453,7 +461,7 @@ impl Persistence {
 
         // Restore config
         {
-            let mut config = engine.config.write().unwrap();
+            let mut config = engine.config.write().unwrap_or_else(|e| e.into_inner());
             config.clear();
             for (key, value) in &snapshot.config {
                 config.insert(key.clone(), value.clone());
@@ -473,7 +481,7 @@ impl Persistence {
                 metrics_json: entry.value().metrics_json.clone(),
             }).collect(),
 
-            activity: engine.activity.read().unwrap().iter().map(|a| SerializedActivity {
+            activity: engine.activity.read().unwrap_or_else(|e| e.into_inner()).iter().map(|a| SerializedActivity {
                 id: a.id.clone(),
                 timestamp: a.timestamp,
                 command: a.command.clone(),
@@ -481,7 +489,7 @@ impl Persistence {
                 output: a.output.clone(),
             }).collect(),
 
-            notifications: engine.notifications.read().unwrap().iter().map(|n| SerializedNotification {
+            notifications: engine.notifications.read().unwrap_or_else(|e| e.into_inner()).iter().map(|n| SerializedNotification {
                 id: n.id.clone(),
                 timestamp: n.timestamp,
                 channel: n.channel.clone(),
@@ -493,7 +501,7 @@ impl Persistence {
                 delivered: n.delivered,
             }).collect(),
 
-            skills: engine.skills.read().unwrap().iter().map(|s| SerializedSkill {
+            skills: engine.skills.read().unwrap_or_else(|e| e.into_inner()).iter().map(|s| SerializedSkill {
                 id: s.id.clone(),
                 name: s.name.clone(),
                 description: s.description.clone(),
@@ -506,7 +514,7 @@ impl Persistence {
                 source: s.source.clone(),
             }).collect(),
 
-            workflows: engine.workflows.read().unwrap().iter().map(|w| SerializedWorkflow {
+            workflows: engine.workflows.read().unwrap_or_else(|e| e.into_inner()).iter().map(|w| SerializedWorkflow {
                 id: w.id.clone(),
                 name: w.name.clone(),
                 status: w.status.clone(),
@@ -516,7 +524,7 @@ impl Persistence {
                 source: w.source.clone(),
             }).collect(),
 
-            models: engine.models.read().unwrap().iter().map(|m| SerializedModelInfo {
+            models: engine.models.read().unwrap_or_else(|e| e.into_inner()).iter().map(|m| SerializedModelInfo {
                 id: m.id.clone(),
                 name: m.name.clone(),
                 description: m.description.clone(),
@@ -527,7 +535,7 @@ impl Persistence {
                 source: m.source.clone(),
             }).collect(),
 
-            training_runs: engine.training_runs.read().unwrap().iter().map(|r| SerializedTrainingRun {
+            training_runs: engine.training_runs.read().unwrap_or_else(|e| e.into_inner()).iter().map(|r| SerializedTrainingRun {
                 id: r.id.clone(),
                 name: r.name.clone(),
                 model_id: r.model_id.clone(),
@@ -554,7 +562,7 @@ impl Persistence {
             } else {
                 "production".to_string()
             },
-            config: engine.config.read().unwrap().clone(),
+            config: engine.config.read().unwrap_or_else(|e| e.into_inner()).clone(),
             timestamp: chrono::Utc::now().to_rfc3339(),
         };
 
@@ -805,43 +813,43 @@ impl Persistence {
         }
 
         {
-            let mut w = engine.activity.write().unwrap();
+            let mut w = engine.activity.write().unwrap_or_else(|e| e.into_inner());
             w.clear();
             *w = activity;
         }
 
         {
-            let mut w = engine.notifications.write().unwrap();
+            let mut w = engine.notifications.write().unwrap_or_else(|e| e.into_inner());
             w.clear();
             *w = notifications;
         }
 
         {
-            let mut w = engine.skills.write().unwrap();
+            let mut w = engine.skills.write().unwrap_or_else(|e| e.into_inner());
             w.clear();
             *w = skills;
         }
 
         {
-            let mut w = engine.workflows.write().unwrap();
+            let mut w = engine.workflows.write().unwrap_or_else(|e| e.into_inner());
             w.clear();
             *w = workflows;
         }
 
         {
-            let mut w = engine.models.write().unwrap();
+            let mut w = engine.models.write().unwrap_or_else(|e| e.into_inner());
             w.clear();
             *w = models;
         }
 
         {
-            let mut w = engine.training_runs.write().unwrap();
+            let mut w = engine.training_runs.write().unwrap_or_else(|e| e.into_inner());
             w.clear();
             *w = training_runs;
         }
 
         {
-            let mut w = engine.config.write().unwrap();
+            let mut w = engine.config.write().unwrap_or_else(|e| e.into_inner());
             w.clear();
             for (key, value) in &snapshot.config {
                 w.insert(key.clone(), value.clone());

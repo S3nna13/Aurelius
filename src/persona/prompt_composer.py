@@ -12,7 +12,7 @@ import re
 from dataclasses import dataclass
 from enum import IntEnum
 
-from .unified_persona import Guardrail, GuardrailSeverity, PersonaFacet, UnifiedPersona
+from .unified_persona import PersonaFacet, UnifiedPersona
 
 
 class SystemPromptPriority(IntEnum):
@@ -74,7 +74,9 @@ class PromptComposer:
         history: list[dict] | None = None,
         context_fragments: list[SystemPromptFragment] | None = None,
     ) -> list[dict]:
-        system_prompt = self.compose(persona, user_input=user_message, context_fragments=context_fragments)
+        system_prompt = self.compose(
+            persona, user_input=user_message, context_fragments=context_fragments
+        )
         messages: list[dict] = [{"role": "system", "content": system_prompt}]
         if history:
             for turn in history:
@@ -89,50 +91,60 @@ class PromptComposer:
     ) -> list[SystemPromptFragment]:
         fragments: list[SystemPromptFragment] = []
 
-        fragments.append(SystemPromptFragment(
-            priority=SystemPromptPriority(persona.priority),
-            content=persona.system_prompt,
-            source_id=persona.id,
-            immutable=persona.immutable_prompt,
-        ))
+        fragments.append(
+            SystemPromptFragment(
+                priority=SystemPromptPriority(persona.priority),
+                content=persona.system_prompt,
+                source_id=persona.id,
+                immutable=persona.immutable_prompt,
+            )
+        )
 
         for facet in persona.facets:
             facet_prompt = self._render_facet_prompt(facet)
             if facet_prompt:
                 facet_priority = self._facet_priority(facet)
-                fragments.append(SystemPromptFragment(
-                    priority=facet_priority,
-                    content=facet_prompt,
-                    source_id=f"{persona.id}.{facet.facet_type}",
-                    immutable=facet.facet_type in ("security", "constitution"),
-                ))
+                fragments.append(
+                    SystemPromptFragment(
+                        priority=facet_priority,
+                        content=facet_prompt,
+                        source_id=f"{persona.id}.{facet.facet_type}",
+                        immutable=facet.facet_type in ("security", "constitution"),
+                    )
+                )
 
         for guardrail in persona.guardrails:
             severity_value = getattr(guardrail.severity, "value", guardrail.severity)
             if severity_value in ("critical", "high"):
-                fragments.append(SystemPromptFragment(
-                    priority=SystemPromptPriority.DEVELOPER,
-                    content=f"MUST: {guardrail.text}",
-                    source_id=f"guardrail.{guardrail.id}",
-                    immutable=True,
-                ))
+                fragments.append(
+                    SystemPromptFragment(
+                        priority=SystemPromptPriority.DEVELOPER,
+                        content=f"MUST: {guardrail.text}",
+                        source_id=f"guardrail.{guardrail.id}",
+                        immutable=True,
+                    )
+                )
             else:
-                fragments.append(SystemPromptFragment(
-                    priority=SystemPromptPriority.OPERATOR,
-                    content=f"SHOULD: {guardrail.text}",
-                    source_id=f"guardrail.{guardrail.id}",
-                    immutable=False,
-                ))
+                fragments.append(
+                    SystemPromptFragment(
+                        priority=SystemPromptPriority.OPERATOR,
+                        content=f"SHOULD: {guardrail.text}",
+                        source_id=f"guardrail.{guardrail.id}",
+                        immutable=False,
+                    )
+                )
 
         if user_input and persona.intent_mappings:
             intent_hint = self._resolve_intent_hint(persona, user_input)
             if intent_hint:
-                fragments.append(SystemPromptFragment(
-                    priority=SystemPromptPriority.TOOL,
-                    content=intent_hint,
-                    source_id=f"intent.{persona.id}",
-                    immutable=False,
-                ))
+                fragments.append(
+                    SystemPromptFragment(
+                        priority=SystemPromptPriority.TOOL,
+                        content=intent_hint,
+                        source_id=f"intent.{persona.id}",
+                        immutable=False,
+                    )
+                )
 
         return fragments
 
@@ -151,7 +163,10 @@ class PromptComposer:
         if ft == "threat_intel":
             classifiers = cfg.get("query_classifiers", [])
             if classifiers:
-                return f"Classify queries as: {', '.join(classifiers)}. Respond with structured output per the relevant contract."
+                return (
+                    f"Classify queries as: {', '.join(classifiers)}. Respond "
+                    "with structured output per the relevant contract."
+                )
             return "Classify threat intelligence queries and respond with structured output."
 
         if ft == "agent_mode":
@@ -216,9 +231,9 @@ class PromptComposer:
             contract_name = default.output_contract_name
             if contract_name:
                 return (
-                    f"[intent=detect] "
-                    f"Classify the query and respond using the appropriate "
-                    f"structured-output contract."
+                    "[intent=detect] "
+                    "Classify the query and respond using the appropriate "
+                    "structured-output contract."
                 )
 
         return None
@@ -233,7 +248,9 @@ class PromptComposer:
         if not ordered:
             return ""
 
-        pieces = [f"[SOURCE:{f.source_id} PRIORITY:{f.priority.name}]\n{f.content}" for f in ordered]
+        pieces = [
+            f"[SOURCE:{f.source_id} PRIORITY:{f.priority.name}]\n{f.content}" for f in ordered
+        ]
         total = sum(len(p) for p in pieces) + len(self.separator) * (len(pieces) - 1)
 
         if total <= self.max_total_chars:
@@ -248,7 +265,9 @@ class PromptComposer:
             if ordered[idx].immutable:
                 continue
             remaining[idx] = ""
-            total = sum(len(p) for p in remaining if p) + len(self.separator) * max(0, sum(1 for p in remaining if p) - 1)
+            total = sum(len(p) for p in remaining if p) + len(self.separator) * max(
+                0, sum(1 for p in remaining if p) - 1
+            )
             if total <= self.max_total_chars:
                 break
 

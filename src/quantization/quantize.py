@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Literal
+from typing import Literal
 
 import torch
 
@@ -73,6 +73,7 @@ def _quantize_4bit(model: AureliusTransformer, device: str) -> None:
         return
     try:
         import bitsandbytes as bnb  # noqa: F401
+
         from src.quantization.gptq_quantizer import gptq_quantize  # noqa: F401
     except ImportError:
         logger.warning("bitsandbytes not available; falling back to 8-bit")

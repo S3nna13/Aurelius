@@ -1,5 +1,6 @@
 """Persist and load conversation history to/from JSON files."""
 
+import hashlib
 import json
 import os
 import re
@@ -14,6 +15,7 @@ except ImportError:  # pragma: no cover - optional dependency
     _HAS_FILELOCK = False
 
 _SAFE_ID = re.compile(r"^[a-zA-Z0-9_\-]{1,128}$")
+_INDEX_FILE = "index.json"
 
 
 class ConversationStore:
@@ -27,13 +29,49 @@ class ConversationStore:
         self.storage_dir = Path(os.path.expanduser(storage_dir)).resolve()
         self.storage_dir.mkdir(parents=True, exist_ok=True)
 
-    def _path(self, conversation_id: str) -> Path:
-        if not _SAFE_ID.match(conversation_id):
+    def _conversation_digest(self, conversation_id: str) -> str:
+        if not _SAFE_ID.fullmatch(conversation_id):
             raise ValueError(f"Invalid conversation_id: {conversation_id!r}")
-        path = (self.storage_dir / f"{conversation_id}.json").resolve()
-        if not str(path).startswith(str(self.storage_dir)):
-            raise ValueError("conversation_id escapes storage directory")
-        return path
+        return hashlib.sha256(conversation_id.encode("utf-8")).hexdigest()
+
+    def _index_path(self) -> Path:
+        return self.storage_dir / _INDEX_FILE
+
+    def _load_index(self) -> dict[str, str]:
+        path = self._index_path()
+        if not path.exists():
+            return {}
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        if not isinstance(data, dict):
+            return {}
+        index: dict[str, str] = {}
+        for key, value in data.items():
+            if isinstance(key, str) and isinstance(value, str):
+                index[key] = value
+        return index
+
+    def _save_index(self, index: dict[str, str]) -> None:
+        payload = json.dumps(index, ensure_ascii=False, indent=2)
+        fd, tmp = tempfile.mkstemp(
+            dir=self.storage_dir,
+            prefix=".tmp-index-",
+            suffix=".json",
+        )
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.write(payload)
+            os.replace(tmp, self._index_path())
+        except Exception:
+            try:
+                os.unlink(tmp)
+            except FileNotFoundError:
+                pass
+            raise
+
+    def _path(self, conversation_id: str) -> Path:
+        digest = self._conversation_digest(conversation_id)
+        return self.storage_dir / f"{digest}.json"
 
     def save(self, conversation_id: str, messages: list[dict]) -> None:
         """Atomically persist *messages* to disk."""
@@ -66,20 +104,41 @@ class ConversationStore:
         else:
             _write()
 
+        index = self._load_index()
+        index[conversation_id] = path.name
+        self._save_index(index)
+
     def load(self, conversation_id: str) -> list[dict]:
         path = self._path(conversation_id)
         if not path.exists():
             return []
         with open(path, encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
+        if isinstance(data, dict) and "messages" in data:
+            messages = data.get("messages", [])
+            return messages if isinstance(messages, list) else []
+        if isinstance(data, list):
+            return data
+        return []
 
     def list_conversations(self) -> list[str]:
-        return [p.stem for p in self.storage_dir.iterdir() if p.suffix == ".json"]
+        index = self._load_index()
+        if index:
+            return sorted(index.keys())
+        return [
+            p.stem
+            for p in self.storage_dir.iterdir()
+            if p.suffix == ".json" and p.name != _INDEX_FILE
+        ]
 
     def delete(self, conversation_id: str) -> bool:
         path = self._path(conversation_id)
         if path.exists():
             path.unlink()
+            index = self._load_index()
+            if conversation_id in index:
+                del index[conversation_id]
+                self._save_index(index)
             return True
         return False
 

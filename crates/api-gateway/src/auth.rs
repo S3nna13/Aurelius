@@ -1,16 +1,14 @@
 use std::sync::Arc;
 
 use axum::{
-    extract::Request,
+    extract::{Request, State},
     middleware::Next,
-    response::{IntoResponse, Response},
-    Json,
+    response::{IntoResponse, Response, Json},
 };
 use chrono::{Duration, Utc};
 use dashmap::DashMap;
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
-use tower_http::auth::AsyncRequireAuthorizationLayer;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Claims {
@@ -52,14 +50,6 @@ impl AuthService {
     pub fn new(secret: &str, expiry_hours: i64) -> Self {
         let api_keys = Arc::new(DashMap::new());
 
-        api_keys.insert("dev-key".into(), Claims {
-            sub: "admin".into(),
-            role: "admin".into(),
-            scopes: vec!["*".into()],
-            exp: 0,
-            iat: 0,
-        });
-
         AuthService {
             encoding_key: EncodingKey::from_secret(secret.as_bytes()),
             decoding_key: DecodingKey::from_secret(secret.as_bytes()),
@@ -92,39 +82,85 @@ impl AuthService {
     }
 
     pub fn validate_token(&self, token: &str) -> Result<Claims, jsonwebtoken::errors::Error> {
-        let token_data = decode::<Claims>(token, &self.decoding_key, &Validation::default())?;
+        let mut validation = Validation::new(jsonwebtoken::Algorithm::HS256);
+        validation.validate_exp = true;
+        validation.leeway = 60;
+        let token_data = decode::<Claims>(token, &self.decoding_key, &validation)?;
         Ok(token_data.claims)
     }
 }
 
 #[derive(Clone)]
-pub struct AuthMiddleware {
-    auth_service: Arc<AuthService>,
-    public_paths: Vec<String>,
+pub struct AuthState {
+    pub auth_service: Arc<AuthService>,
+    pub public_paths: Vec<&'static str>,
 }
 
-impl AuthMiddleware {
+impl AuthState {
     pub fn new(auth_service: Arc<AuthService>) -> Self {
-        AuthMiddleware {
+        AuthState {
             auth_service,
             public_paths: vec![
-                "/health".into(),
-                "/healthz".into(),
-                "/readyz".into(),
-                "/auth/login".into(),
-                "/openapi.json".into(),
-                "/docs".into(),
+                "/health",
+                "/healthz",
+                "/readyz",
+                "/auth/login",
+                "/openapi.json",
+                "/docs",
             ],
         }
+    }
+
+    fn is_public(&self, path: &str) -> bool {
+        self.public_paths.iter().any(|p| path.starts_with(*p))
     }
 }
 
 pub async fn auth_middleware(
-    axum::middleware::Next,
-    axum::extract::Request,
-    axum::extract::State,
-) -> axum::response::Response {
-    // Handled via tower layers
+    State(state): State<AuthState>,
+    mut req: Request,
+    next: Next,
+) -> Response {
+    let path = req.uri().path();
+
+    if state.is_public(path) {
+        return next.run(req).await;
+    }
+
+    let auth_header = req
+        .headers()
+        .get("Authorization")
+        .and_then(|v| v.to_str().ok());
+
+    let token = auth_header
+        .and_then(|h| h.strip_prefix("Bearer "))
+        .or(auth_header);
+
+    if let Some(token) = token {
+        if state.auth_service.validate_token(token).is_ok() {
+            return next.run(req).await;
+        }
+    }
+
+    let api_key = req
+        .headers()
+        .get("X-API-Key")
+        .and_then(|v| v.to_str().ok());
+
+    if let Some(key) = api_key {
+        if state.auth_service.validate_api_key(key).is_some() {
+            return next.run(req).await;
+        }
+    }
+
+    (
+        axum::http::StatusCode::UNAUTHORIZED,
+        Json(AuthError {
+            error: "unauthorized".into(),
+            message: "Valid authentication required".into(),
+        }),
+    )
+        .into_response()
 }
 
 pub fn public_paths() -> Vec<&'static str> {

@@ -23,11 +23,11 @@ function parseCron(expr: string): number | null {
   const every = parts[0] === '*' && parts[1] === '*' && parts[2] === '*' && parts[3] === '*' && parts[4] === '*'
   if (every) return 60000
   const minutes = parseInt(parts[0], 10)
-  if (!isNaN(minutes) && parts[1] === '*' && parts[2] === '*' && parts[3] === '*' && parts[4] === '*') {
+  if (!isNaN(minutes) && minutes > 0 && parts[1] === '*' && parts[2] === '*' && parts[3] === '*' && parts[4] === '*') {
     return minutes * 60000
   }
   const hours = parseInt(parts[1], 10)
-  if (parts[0] === '*' && !isNaN(hours) && parts[2] === '*' && parts[3] === '*' && parts[4] === '*') {
+  if (parts[0] === '*' && !isNaN(hours) && hours > 0 && parts[2] === '*' && parts[3] === '*' && parts[4] === '*') {
     return hours * 3600000
   }
   return null
@@ -80,7 +80,7 @@ router.post('/:id/toggle', requireScope('scheduler:admin'), (req, res) => {
 function scheduleTask(id: string, task: CronTask) {
   clearInterval(intervals.get(id))
   const ms = parseCron(task.cron)
-  if (!ms) return
+  if (!ms || ms < 60000) return
   const interval = setInterval(async () => {
     if (!task.enabled) return
     task.lastRun = new Date().toISOString()

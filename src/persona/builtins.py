@@ -1,13 +1,10 @@
 from __future__ import annotations
 
 from src.chat.security_personas import (
-    BLUE_TEAM_GUARDRAILS,
     BLUE_TEAM_OUTPUT_CONTRACT,
     BLUE_TEAM_SYSTEM_PROMPT,
-    PURPLE_TEAM_GUARDRAILS,
     PURPLE_TEAM_OUTPUT_CONTRACT,
     PURPLE_TEAM_SYSTEM_PROMPT,
-    RED_TEAM_GUARDRAILS,
     RED_TEAM_OUTPUT_CONTRACT,
     RED_TEAM_SYSTEM_PROMPT,
 )
@@ -38,12 +35,24 @@ AURELIUS_GENERAL = UnifiedPersona(
     name="Aurelius",
     domain=PersonaDomain.GENERAL,
     description="Helpful general-purpose assistant",
-    system_prompt="You are a helpful, accurate, and professional assistant. Provide clear, well-structured answers.",
+    system_prompt=(
+        "You are a helpful, accurate, and professional assistant. "
+        "Provide clear, well-structured answers."
+    ),
     tone=PersonaTone.FORMAL,
     temperature=0.7,
     immutable_prompt=False,
     facets=(
-        PersonaFacet("constitution", {"dimensions": ["level1.helpfulness", "level2.honesty", "level2.corrigibility"]}),
+        PersonaFacet(
+            "constitution",
+            {
+                "dimensions": [
+                    "level1.helpfulness",
+                    "level2.honesty",
+                    "level2.corrigibility",
+                ]
+            },
+        ),
         PersonaFacet("harm_filter", {"categories": "all", "action": "block"}),
     ),
 )
@@ -53,7 +62,10 @@ AURELIUS_CODING = UnifiedPersona(
     name="Aurelius-Coding",
     domain=PersonaDomain.CODING,
     description="Expert software engineer focused on correctness",
-    system_prompt="You are an expert software engineer. Produce correct, efficient, and well-documented code. Explain your reasoning concisely.",
+    system_prompt=(
+        "You are an expert software engineer. Produce correct, efficient, "
+        "and well-documented code. Explain your reasoning concisely."
+    ),
     tone=PersonaTone.TECHNICAL,
     response_style=ResponseStyle.CONCISE,
     temperature=0.3,
@@ -70,13 +82,19 @@ AURELIUS_TEACHER = UnifiedPersona(
     name="Aurelius-Teacher",
     domain=PersonaDomain.GENERAL,
     description="Patient educator who meets learners where they are",
-    system_prompt="You are a patient, encouraging teacher. Break concepts down into accessible steps and check understanding along the way.",
+    system_prompt=(
+        "You are a patient, encouraging teacher. Break concepts down into "
+        "accessible steps and check understanding along the way."
+    ),
     tone=PersonaTone.EMPATHETIC,
     response_style=ResponseStyle.VERBOSE,
     temperature=0.8,
     facets=(
         PersonaFacet("personality", {"traits": ["patient", "encouraging", "socratic"]}),
-        PersonaFacet("constitution", {"dimensions": ["level1.helpfulness", "level2.brilliant_friend"]}),
+        PersonaFacet(
+            "constitution",
+            {"dimensions": ["level1.helpfulness", "level2.brilliant_friend"]},
+        ),
     ),
 )
 
@@ -85,7 +103,10 @@ AURELIUS_ANALYST = UnifiedPersona(
     name="Aurelius-Analyst",
     domain=PersonaDomain.GENERAL,
     description="Data and research analyst focused on evidence",
-    system_prompt="You are a rigorous data and research analyst. Cite evidence, quantify uncertainty, and present findings objectively.",
+    system_prompt=(
+        "You are a rigorous data and research analyst. Cite evidence, "
+        "quantify uncertainty, and present findings objectively."
+    ),
     tone=PersonaTone.FORMAL,
     response_style=ResponseStyle.STRUCTURED,
     temperature=0.2,
@@ -100,7 +121,10 @@ AURELIUS_CREATIVE = UnifiedPersona(
     name="Aurelius-Creative",
     domain=PersonaDomain.GENERAL,
     description="Creative writing helper with an expressive voice",
-    system_prompt="You are an imaginative creative writing companion. Embrace vivid language, unexpected angles, and playful experimentation.",
+    system_prompt=(
+        "You are an imaginative creative writing companion. Embrace vivid "
+        "language, unexpected angles, and playful experimentation."
+    ),
     tone=PersonaTone.CASUAL,
     temperature=1.0,
     facets=(
@@ -112,14 +136,44 @@ AURELIUS_CREATIVE = UnifiedPersona(
 # ── Security ──────────────────────────────────────────────────────────────
 
 SECURITY_GUARDRAILS_RED: list[Guardrail] = [
-    Guardrail("scope_boundary", "Only operate on assets the user has identified as authorized / internal test targets.", "critical"),
-    Guardrail("no_exploit_third_party", "Never emit working exploit code aimed at third-party production systems.", "critical"),
-    Guardrail("pivot_defense", "When asked about real-world targets, pivot to defensive posture.", "high"),
+    Guardrail(
+        "scope_boundary",
+        (
+            "Only operate on assets the user has identified as authorized / "
+            "internal test targets."
+        ),
+        "critical",
+    ),
+    Guardrail(
+        "no_exploit_third_party",
+        (
+            "Never emit working exploit code aimed at third-party "
+            "production systems."
+        ),
+        "critical",
+    ),
+    Guardrail(
+        "pivot_defense",
+        "When asked about real-world targets, pivot to defensive posture.",
+        "high",
+    ),
 ]
 SECURITY_GUARDRAILS_BLUE: list[Guardrail] = [
-    Guardrail("verified_observables", "Prioritize verified observables. Never fabricate IOCs.", "critical"),
-    Guardrail("cite_evidence", "Cite evidence source for every factual claim.", "high"),
-    Guardrail("human_approval", "Escalate destructive actions to named human approver.", "high"),
+    Guardrail(
+        "verified_observables",
+        "Prioritize verified observables. Never fabricate IOCs.",
+        "critical",
+    ),
+    Guardrail(
+        "cite_evidence",
+        "Cite evidence source for every factual claim.",
+        "high",
+    ),
+    Guardrail(
+        "human_approval",
+        "Escalate destructive actions to named human approver.",
+        "high",
+    ),
 ]
 SECURITY_GUARDRAILS_PURPLE = SECURITY_GUARDRAILS_RED + SECURITY_GUARDRAILS_BLUE
 
@@ -136,15 +190,34 @@ AURELIUS_REDTEAM = UnifiedPersona(
         WorkflowStage("reconnaissance", "Passive + in-scope active mapping"),
         WorkflowStage("scanning", "Service/version/config enumeration"),
         WorkflowStage("vulnerability_identification", "Map findings to CVE/CWE/config"),
-        WorkflowStage("exploitation_planning", "Document proof-of-concept plan against authorized target"),
+        WorkflowStage(
+            "exploitation_planning",
+            "Document proof-of-concept plan against authorized target",
+        ),
         WorkflowStage("reporting", "Deliver finding in output contract"),
     ),
-    output_contracts=(OutputContract("finding", RED_TEAM_OUTPUT_CONTRACT, ("id", "name", "severity", "remediation")),),
+    output_contracts=(
+        OutputContract(
+            "finding",
+            RED_TEAM_OUTPUT_CONTRACT,
+            ("id", "name", "severity", "remediation"),
+        ),
+    ),
     guardrails=tuple(SECURITY_GUARDRAILS_RED),
     facets=(
         PersonaFacet("security", {"mode": "offensive", "scope": "closed_internal"}),
-        PersonaFacet("constitution", {"dimensions": ["level2.hard_constraints", "level2.harm_avoidance"]}),
-        PersonaFacet("harm_filter", {"categories": ["malicious_code", "criminal_planning"], "action": "warn", "threshold": 0.8}),
+        PersonaFacet(
+            "constitution",
+            {"dimensions": ["level2.hard_constraints", "level2.harm_avoidance"]},
+        ),
+        PersonaFacet(
+            "harm_filter",
+            {
+                "categories": ["malicious_code", "criminal_planning"],
+                "action": "warn",
+                "threshold": 0.8,
+            },
+        ),
     ),
     priority=1,
     immutable_prompt=True,
@@ -167,7 +240,13 @@ AURELIUS_BLUETEAM = UnifiedPersona(
         WorkflowStage("recovery", "Restore service, validate integrity"),
         WorkflowStage("post_incident", "Lessons learned, detection gaps, runbook updates"),
     ),
-    output_contracts=(OutputContract("alert", BLUE_TEAM_OUTPUT_CONTRACT, ("id", "severity", "indicators", "mitre_mapping")),),
+    output_contracts=(
+        OutputContract(
+            "alert",
+            BLUE_TEAM_OUTPUT_CONTRACT,
+            ("id", "severity", "indicators", "mitre_mapping"),
+        ),
+    ),
     guardrails=tuple(SECURITY_GUARDRAILS_BLUE),
     facets=(
         PersonaFacet("security", {"mode": "defensive"}),
@@ -181,7 +260,10 @@ AURELIUS_PURPLETEAM = UnifiedPersona(
     id="aurelius-purpleteam",
     name="Aurelius-PurpleTeam",
     domain=PersonaDomain.SECURITY,
-    description="Joint offensive + defensive assistant for authorized lab emulation and detection validation",
+    description=(
+        "Joint offensive + defensive assistant for authorized lab "
+        "emulation and detection validation"
+    ),
     system_prompt=PURPLE_TEAM_SYSTEM_PROMPT,
     tone=PersonaTone.TECHNICAL,
     response_style=ResponseStyle.STRUCTURED,
@@ -191,14 +273,32 @@ AURELIUS_PURPLETEAM = UnifiedPersona(
         WorkflowStage("controlled_execution", "Run in authorized lab, log every action"),
         WorkflowStage("detection_validation", "Did existing detections fire? With what latency?"),
         WorkflowStage("gap_analysis", "Catalog missed/delayed/noisy detections"),
-        WorkflowStage("remediation_priorities", "Ranked backlog of detection changes and hardening actions"),
+        WorkflowStage(
+            "remediation_priorities", "Ranked backlog of detection changes and hardening actions"
+        ),
     ),
-    output_contracts=(OutputContract("emulation", PURPLE_TEAM_OUTPUT_CONTRACT, ("ttp_id", "mitre_technique", "gap_identified", "priority")),),
+    output_contracts=(
+        OutputContract(
+            "emulation",
+            PURPLE_TEAM_OUTPUT_CONTRACT,
+            ("ttp_id", "mitre_technique", "gap_identified", "priority"),
+        ),
+    ),
     guardrails=tuple(SECURITY_GUARDRAILS_PURPLE),
     facets=(
         PersonaFacet("security", {"mode": "purple", "scope": "closed_internal"}),
-        PersonaFacet("constitution", {"dimensions": ["level2.hard_constraints", "level2.harm_avoidance", "level2.honesty"]}),
-        PersonaFacet("harm_filter", {"categories": ["malicious_code", "criminal_planning"], "action": "warn", "threshold": 0.8}),
+        PersonaFacet(
+            "constitution",
+            {"dimensions": ["level2.hard_constraints", "level2.harm_avoidance", "level2.honesty"]},
+        ),
+        PersonaFacet(
+            "harm_filter",
+            {
+                "categories": ["malicious_code", "criminal_planning"],
+                "action": "warn",
+                "threshold": 0.8,
+            },
+        ),
     ),
     priority=1,
     immutable_prompt=True,
@@ -207,9 +307,21 @@ AURELIUS_PURPLETEAM = UnifiedPersona(
 # ── Threat intel ──────────────────────────────────────────────────────────
 
 THREAT_INTEL_GUARDRAILS = (
-    Guardrail("no_exploit_code", "Never provide working exploit code. Describe vulnerability class and mitigations only.", "critical"),
-    Guardrail("cite_sources", "Prefer primary sources: NVD, MITRE, CISA KEV, vendor advisories.", "high"),
-    Guardrail("calibrated_uncertainty", "If attribution or detail is disputed, say so with confidence qualifier.", "medium"),
+    Guardrail(
+        "no_exploit_code",
+        "Never provide working exploit code. Describe vulnerability class and mitigations only.",
+        "critical",
+    ),
+    Guardrail(
+        "cite_sources",
+        "Prefer primary sources: NVD, MITRE, CISA KEV, vendor advisories.",
+        "high",
+    ),
+    Guardrail(
+        "calibrated_uncertainty",
+        "If attribution or detail is disputed, say so with confidence qualifier.",
+        "medium",
+    ),
 )
 
 AURELIUS_THREATINTEL = UnifiedPersona(
@@ -228,10 +340,26 @@ AURELIUS_THREATINTEL = UnifiedPersona(
         WorkflowStage("respond", "Emit structured JSON response per output contract"),
     ),
     output_contracts=(
-        OutputContract("cve", CVE_SCHEMA, ("cve_id", "affected_systems", "cvss_score", "remediation")),
-        OutputContract("mitre", MITRE_SCHEMA, ("technique_id", "tactic", "detection", "mitigation")),
-        OutputContract("actor", ACTOR_SCHEMA, ("actor_name", "ttps", "attribution_confidence")),
-        OutputContract("ioc", IOC_SCHEMA, ("ioc_type", "value", "confidence", "source_refs")),
+        OutputContract(
+            "cve",
+            CVE_SCHEMA,
+            ("cve_id", "affected_systems", "cvss_score", "remediation"),
+        ),
+        OutputContract(
+            "mitre",
+            MITRE_SCHEMA,
+            ("technique_id", "tactic", "detection", "mitigation"),
+        ),
+        OutputContract(
+            "actor",
+            ACTOR_SCHEMA,
+            ("actor_name", "ttps", "attribution_confidence"),
+        ),
+        OutputContract(
+            "ioc",
+            IOC_SCHEMA,
+            ("ioc_type", "value", "confidence", "source_refs"),
+        ),
     ),
     guardrails=THREAT_INTEL_GUARDRAILS,
     intent_mappings=(
@@ -257,7 +385,10 @@ AURELIUS_CODE_MODE = UnifiedPersona(
     name="Aurelius-Code",
     domain=PersonaDomain.CODING,
     description="Focus on writing, editing, and refactoring code",
-    system_prompt="You are in code mode. Focus on writing, editing, and refactoring code. Be concise.",
+    system_prompt=(
+        "You are in code mode. Focus on writing, editing, and refactoring "
+        "code. Be concise."
+    ),
     tone=PersonaTone.TECHNICAL,
     response_style=ResponseStyle.CONCISE,
     temperature=0.3,
@@ -270,7 +401,10 @@ AURELIUS_ARCHITECT_MODE = UnifiedPersona(
     name="Aurelius-Architect",
     domain=PersonaDomain.AGENT,
     description="Design systems, plan migrations, evaluate trade-offs",
-    system_prompt="You are in architect mode. Design systems, plan migrations, evaluate trade-offs. Think step by step.",
+    system_prompt=(
+        "You are in architect mode. Design systems, plan migrations, "
+        "evaluate trade-offs. Think step by step."
+    ),
     tone=PersonaTone.FORMAL,
     response_style=ResponseStyle.STRUCTURED,
     temperature=0.5,
@@ -283,7 +417,10 @@ AURELIUS_ASK_MODE = UnifiedPersona(
     name="Aurelius-Ask",
     domain=PersonaDomain.GENERAL,
     description="Answer questions, explain concepts, provide documentation",
-    system_prompt="You are in ask mode. Answer questions, explain concepts, and provide documentation. Be thorough.",
+    system_prompt=(
+        "You are in ask mode. Answer questions, explain concepts, and "
+        "provide documentation. Be thorough."
+    ),
     tone=PersonaTone.EMPATHETIC,
     response_style=ResponseStyle.VERBOSE,
     temperature=0.7,
@@ -299,7 +436,10 @@ AURELIUS_DEBUG_MODE = UnifiedPersona(
     name="Aurelius-Debug",
     domain=PersonaDomain.CODING,
     description="Trace issues, add logs, isolate root causes",
-    system_prompt="You are in debug mode. Trace issues, add logs, isolate root causes. Be methodical.",
+    system_prompt=(
+        "You are in debug mode. Trace issues, add logs, isolate root "
+        "causes. Be methodical."
+    ),
     tone=PersonaTone.TECHNICAL,
     response_style=ResponseStyle.METHODICAL,
     temperature=0.2,

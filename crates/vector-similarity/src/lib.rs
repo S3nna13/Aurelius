@@ -86,14 +86,15 @@ pub fn jaccard_similarity(set_a: Vec<f64>, set_b: Vec<f64>) -> f64 {
         return 0.0;
     }
 
-    let intersection: Vec<&f64> = set_a.iter().filter(|x| set_b.contains(x)).collect();
-    let union_size = set_a.len() + set_b.len() - intersection.len();
+    const EPS: f64 = 1e-10;
+    let intersection = set_a.iter().filter(|x| set_b.iter().any(|y| (*x - *y).abs() < EPS)).count();
+    let union_size = set_a.len() + set_b.len() - intersection;
 
     if union_size == 0 {
         return 0.0;
     }
 
-    intersection.len() as f64 / union_size as f64
+    intersection as f64 / union_size as f64
 }
 
 #[napi]

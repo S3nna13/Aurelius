@@ -38,14 +38,13 @@ function buildUrl(base: string, path: string, params?: Record<string, string | n
 
 async function request<T>(baseUrl: string, path: string, opts: ApiOptions): Promise<ApiResponse<T>> {
   const { method = 'GET', headers = {}, body, params, timeout = DEFAULT_TIMEOUT, retries = DEFAULT_RETRIES } = opts
-
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), timeout)
   const apiKey = getApiKey()
 
   let lastErr: Error | null = null
 
   for (let attempt = 0; attempt <= retries; attempt++) {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), timeout)
     try {
       const res = await fetch(buildUrl(baseUrl, path, params), {
         method,
@@ -73,6 +72,7 @@ async function request<T>(baseUrl: string, path: string, opts: ApiOptions): Prom
 
       return { data, error: null, status: res.status }
     } catch (err) {
+      clearTimeout(timer)
       lastErr = err instanceof Error ? err : new Error(String(err))
       if (attempt < retries && (err as Error).name !== 'AbortError') {
         await new Promise((r) => setTimeout(r, Math.min(1000 * 2 ** attempt, 5000)))
@@ -80,7 +80,6 @@ async function request<T>(baseUrl: string, path: string, opts: ApiOptions): Prom
     }
   }
 
-  clearTimeout(timer)
   const message = lastErr?.name === 'AbortError' ? 'Request timed out' : (lastErr?.message || 'Unknown error')
   return { data: null, error: message, status: 0 }
 }

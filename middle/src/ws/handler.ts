@@ -14,9 +14,11 @@ interface AuthenticatedSocket extends WebSocket {
 }
 
 const clients = new Set<AuthenticatedSocket>()
+const MAX_WS_MESSAGE_SIZE = 65536
+const WS_COMMANDS_REQUIRING_ADMIN = new Set(['command', 'agent:terminate', 'config:update'])
 
 export function setupWebSocket(server: Server): WebSocketServer {
-  const wss = new WebSocketServer({ server, path: '/ws' })
+  const wss = new WebSocketServer({ server, path: '/ws', maxPayload: MAX_WS_MESSAGE_SIZE })
 
   wss.on('connection', (ws: AuthenticatedSocket, req) => {
     const apiKey = req.headers['x-api-key'] || req.headers['authorization']
@@ -43,8 +45,13 @@ export function setupWebSocket(server: Server): WebSocketServer {
     }))
 
     ws.on('message', (raw) => {
+      const rawStr = raw.toString()
+      if (rawStr.length > MAX_WS_MESSAGE_SIZE) {
+        ws.send(JSON.stringify({ type: 'error', payload: { message: 'Message too large' } }))
+        return
+      }
       try {
-        const msg = JSON.parse(raw.toString()) as WsMessage
+        const msg = JSON.parse(rawStr) as WsMessage
         handleMessage(ws, msg)
       } catch {
         ws.send(JSON.stringify({ type: 'error', payload: { message: 'Invalid JSON' } }))
@@ -63,8 +70,19 @@ export function setupWebSocket(server: Server): WebSocketServer {
   return wss
 }
 
-function handleMessage(ws: WebSocket, msg: WsMessage): void {
+function handleMessage(ws: AuthenticatedSocket, msg: WsMessage): void {
   const engine = getEngine()
+  const user = ws.authUser
+
+  if (!user) {
+    ws.send(JSON.stringify({ type: 'error', payload: { message: 'Not authenticated' } }))
+    return
+  }
+
+  if (WS_COMMANDS_REQUIRING_ADMIN.has(msg.type) && user.role !== 'admin' && !user.scopes.includes('*')) {
+    ws.send(JSON.stringify({ type: 'error', payload: { message: 'Admin access required' } }))
+    return
+  }
 
   switch (msg.type) {
     case 'ping':
@@ -148,9 +166,19 @@ function handleMessage(ws: WebSocket, msg: WsMessage): void {
 }
 
 export function broadcastNotification(notification: unknown): void {
-  broadcastToAll({ type: 'notification', payload: notification })
+  const msg = JSON.stringify({ type: 'notification', payload: notification })
+  for (const ws of clients) {
+    if (ws.readyState === ws.OPEN) {
+      try { ws.send(msg) } catch {}
+    }
+  }
 }
 
 export function broadcastActivity(activity: unknown): void {
-  broadcastToAll({ type: 'activity:new', payload: activity })
+  const msg = JSON.stringify({ type: 'activity:new', payload: activity })
+  for (const ws of clients) {
+    if (ws.readyState === ws.OPEN) {
+      try { ws.send(msg) } catch {}
+    }
+  }
 }

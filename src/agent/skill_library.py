@@ -117,13 +117,13 @@ class VoyagerSkillLibrary:
     @staticmethod
     def _run_test_case(namespace: dict[str, Any], test_case: Any) -> None:
         if isinstance(test_case, str):
-            exec(test_case, {}, namespace)  # noqa: S102
+            exec(test_case, {}, namespace)  # noqa: S102  # nosec B102 - test case code is trusted skill verification input
             return
 
         if isinstance(test_case, dict):
             setup = test_case.get("setup")
             if isinstance(setup, str):
-                exec(setup, {}, namespace)  # noqa: S102
+                exec(setup, {}, namespace)  # noqa: S102  # nosec B102 - test case code is trusted skill verification input
             elif callable(setup):
                 setup(namespace)
 
@@ -135,7 +135,7 @@ class VoyagerSkillLibrary:
                 if result is False:
                     raise AssertionError("callable assertion returned False")
             else:
-                exec(str(assertion), {}, namespace)  # noqa: S102
+                exec(str(assertion), {}, namespace)  # noqa: S102  # nosec B102 - test case code is trusted skill verification input
             return
 
         raise TypeError("test cases must be strings or dicts")
@@ -168,7 +168,7 @@ class VoyagerSkillLibrary:
 
         try:
             base_namespace: dict[str, Any] = {}
-            exec(skill.code, {}, base_namespace)  # noqa: S102
+            exec(skill.code, {}, base_namespace)  # noqa: S102  # nosec B102 - skill code is loaded from the local skill library
         except Exception:
             return False
 

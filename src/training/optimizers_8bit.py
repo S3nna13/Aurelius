@@ -7,6 +7,7 @@ from torch.optim import Optimizer
 def _bitsandbytes_available() -> bool:
     try:
         import bitsandbytes
+
         return hasattr(bitsandbytes.optim, "AdamW8bit")
     except ImportError:
         return False
@@ -19,11 +20,20 @@ def _can_use_8bit() -> bool:
 def get_8bit_adamw(params, lr=3e-4, betas=(0.9, 0.95), eps=1e-8, weight_decay=0.1):
     if _can_use_8bit():
         import bitsandbytes as bnb
+
         return bnb.optim.AdamW8bit(
-            params, lr=lr, betas=betas, eps=eps, weight_decay=weight_decay,
+            params,
+            lr=lr,
+            betas=betas,
+            eps=eps,
+            weight_decay=weight_decay,
         )
     return torch.optim.AdamW(
-        params, lr=lr, betas=betas, eps=eps, weight_decay=weight_decay,
+        params,
+        lr=lr,
+        betas=betas,
+        eps=eps,
+        weight_decay=weight_decay,
     )
 
 
@@ -37,6 +47,7 @@ def get_8bit_muon(params, lr=0.02, momentum=0.95, weight_decay=0.1, ns_steps=5):
             ns_steps=ns_steps,
         )
     from src.training.muon import Muon
+
     return Muon(
         params,
         lr=lr,
@@ -59,15 +70,21 @@ class AdamW8bitWrapper(Optimizer):
         self._use_8bit = use_8bit and self._bitsandbytes_available()
         if self._use_8bit:
             import bitsandbytes as bnb
-            self._opt = bnb.optim.AdamW8bit(params, lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
+
+            self._opt = bnb.optim.AdamW8bit(
+                params, lr=lr, betas=betas, eps=eps, weight_decay=weight_decay
+            )
         else:
-            self._opt = torch.optim.AdamW(params, lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
+            self._opt = torch.optim.AdamW(
+                params, lr=lr, betas=betas, eps=eps, weight_decay=weight_decay
+            )
         super().__init__(params, dict(lr=lr, betas=betas, eps=eps, weight_decay=weight_decay))
 
     @staticmethod
     def _bitsandbytes_available() -> bool:
         try:
             import bitsandbytes
+
             return hasattr(bitsandbytes.optim, "AdamW8bit")
         except ImportError:
             return False

@@ -35,7 +35,10 @@ def tiny_model() -> AureliusTransformer:
 @pytest.fixture(autouse=True)
 def _ensure_qengine() -> None:
     """Ensure a quantized engine is available for 8-bit tests on CPU."""
-    if torch.backends.quantized.engine == "none" and "qnnpack" in torch.backends.quantized.supported_engines:
+    if (
+        torch.backends.quantized.engine == "none"
+        and "qnnpack" in torch.backends.quantized.supported_engines
+    ):
         torch.backends.quantized.engine = "qnnpack"
 
 
@@ -100,9 +103,7 @@ class TestQuantizePipelineWeightProperties:
         """After 8-bit quantization, Linear layers contain quantized packed params."""
         quantize(tiny_model, mode="8bit", device="cpu")
         packed_params_layers = [
-            name
-            for name, mod in tiny_model.named_modules()
-            if "PackedParams" in type(mod).__name__
+            name for name, mod in tiny_model.named_modules() if "PackedParams" in type(mod).__name__
         ]
         assert len(packed_params_layers) > 0
 
@@ -123,7 +124,9 @@ class TestQuantizePipelineWeightProperties:
                 unique_vals = param.data.unique().tolist()
                 # Allow for floating-point tolerance around 0, +scale, -scale
                 for val in unique_vals:
-                    assert any(abs(val - target) < 1e-4 for target in [-scale.item(), 0.0, scale.item()])
+                    assert any(
+                        abs(val - target) < 1e-4 for target in [-scale.item(), 0.0, scale.item()]
+                    )
 
 
 # ---------------------------------------------------------------------------

@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass
@@ -25,7 +25,9 @@ class NL2SHDataset:
         NL2SHPair("Create a new directory called project", "mkdir -p project"),
         NL2SHPair("Find all Python files recursively", "find . -name '*.py'"),
         NL2SHPair("Count lines in main.py", "wc -l main.py"),
-        NL2SHPair("Search for 'function' in all JavaScript files", "grep -r 'function' --include='*.js' ."),
+        NL2SHPair(
+            "Search for 'function' in all JavaScript files", "grep -r 'function' --include='*.js' ."
+        ),
         NL2SHPair("Show git log with one line per commit", "git log --oneline -n 20"),
         NL2SHPair("Show uncommitted changes", "git diff"),
         NL2SHPair("Copy config.yaml to config.backup.yaml", "cp config.yaml config.backup.yaml"),

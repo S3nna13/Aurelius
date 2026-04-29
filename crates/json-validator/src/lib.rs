@@ -1,4 +1,7 @@
+use std::collections::HashMap;
+
 use napi_derive::napi;
+use serde::Deserialize;
 use serde_json::Value;
 
 #[napi(object)]
@@ -20,7 +23,7 @@ pub struct TypeCheckResult {
 
 #[napi(object)]
 pub struct JsonStats {
-    pub size_bytes: usize,
+    pub size_bytes: u32,
     pub field_count: u32,
     pub depth: u32,
     pub max_array_length: u32,
@@ -185,7 +188,7 @@ impl JsonValidator {
     pub fn validate_schema(
         &self,
         json_str: String,
-        schema: SchemaDefinition,
+        schema_json: String,
     ) -> ValidationResult {
         let mut errors = Vec::new();
         let mut warnings = Vec::new();
@@ -199,6 +202,19 @@ impl JsonValidator {
                     warnings: vec![],
                     field_count: 0,
                     depth: 0,
+                };
+            }
+        };
+
+        let schema: SchemaDefinition = match serde_json::from_str(&schema_json) {
+            Ok(s) => s,
+            Err(e) => {
+                return ValidationResult {
+                    valid: false,
+                    errors: vec![format!("Invalid schema: {}", e)],
+                    warnings: vec![],
+                    field_count: count_fields(&value),
+                    depth: get_depth(&value),
                 };
             }
         };
@@ -225,7 +241,7 @@ impl JsonValidator {
         let actual_type = get_type_name(value);
 
         // Check null
-        if value.is_null() && !schema.nullable {
+        if value.is_null() && schema.nullable != Some(true) {
             errors.push(format!("{}: expected {}, got null", path, schema.type_name));
             return;
         }
@@ -244,10 +260,11 @@ impl JsonValidator {
 
         // Object validation
         if let Value::Object(map) = value {
-            let required = &schema.required_fields;
-            for field in required {
-                if !map.contains_key(field) {
-                    errors.push(format!("{}: missing required field '{}'", path, field));
+            if let Some(required) = &schema.required_fields {
+                for field in required {
+                    if !map.contains_key(field) {
+                        errors.push(format!("{}: missing required field '{}'", path, field));
+                    }
                 }
             }
 
@@ -264,9 +281,8 @@ impl JsonValidator {
 
             for (key, child) in map {
                 let child_path = format!("{}.{}", path, key);
-                // Check nested schemas
                 if let Some(nested) = &schema.properties {
-                    if let Some(field_schema) = nested.get(key) {
+                    if let Some(field_schema) = nested.get(key.as_str()) {
                         self.validate_against_schema(child, field_schema, errors, warnings, &child_path);
                     }
                 }
@@ -306,9 +322,15 @@ impl JsonValidator {
                 }
             }
             if let Some(pattern) = &schema.pattern {
-                let re = regex::Regex::new(pattern).unwrap_or_else(|_| regex::Regex::new(".*").unwrap());
-                if !re.is_match(s) {
-                    errors.push(format!("{}: does not match pattern '{}'", path, pattern));
+                match regex::Regex::new(pattern) {
+                    Ok(re) => {
+                        if !re.is_match(s.as_str()) {
+                            errors.push(format!("{}: does not match pattern '{}'", path, pattern));
+                        }
+                    }
+                    Err(_) => {
+                        errors.push(format!("{}: invalid regex pattern '{}'", path, pattern));
+                    }
                 }
             }
         }
@@ -341,7 +363,7 @@ impl JsonValidator {
         self.analyze_value(&value, &mut types, &mut max_arr_len, &mut has_nulls, &mut has_nested, 0);
 
         JsonStats {
-            size_bytes: json_str.len(),
+            size_bytes: json_str.len() as u32,
             field_count: count_fields(&value),
             depth: get_depth(&value),
             max_array_length: max_arr_len,
@@ -388,39 +410,48 @@ impl JsonValidator {
         let actual = get_type_name(&value);
         let is_valid = expected_type == "any" || actual == expected_type;
 
+        let message = if is_valid {
+            "Type check passed".to_string()
+        } else {
+            format!("Expected {}, got {}", expected_type, actual)
+        };
+
         TypeCheckResult {
             is_valid,
             expected_type,
             actual_type: actual,
-            message: if is_valid {
-                "Type check passed".to_string()
-            } else {
-                format!("Expected {}, got {}", expected_type, actual)
-            },
+            message,
         }
     }
 }
 
-#[napi(object)]
-pub struct SchemaDefinition {
-    pub type_name: String,
-    pub nullable: Option<bool>,
-    pub required_fields: Option<Vec<String>>,
-    pub properties: Option<Vec<SchemaProperty>>,
-    pub items_schema: Option<Box<SchemaDefinition>>,
-    pub min_fields: Option<u32>,
-    pub max_fields: Option<u32>,
-    pub min_items: Option<u32>,
-    pub max_items: Option<u32>,
-    pub min_length: Option<u32>,
-    pub max_length: Option<u32>,
-    pub pattern: Option<String>,
-    pub minimum: Option<f64>,
-    pub maximum: Option<f64>,
-}
-
-#[napi(object)]
-pub struct SchemaProperty {
-    pub name: String,
-    pub schema: SchemaDefinition,
+#[derive(Deserialize)]
+struct SchemaDefinition {
+    #[serde(rename = "typeName")]
+    type_name: String,
+    nullable: Option<bool>,
+    #[serde(default)]
+    required_fields: Option<Vec<String>>,
+    #[serde(default)]
+    properties: Option<HashMap<String, SchemaDefinition>>,
+    #[serde(default)]
+    items_schema: Option<Box<SchemaDefinition>>,
+    #[serde(default)]
+    min_fields: Option<u32>,
+    #[serde(default)]
+    max_fields: Option<u32>,
+    #[serde(default)]
+    min_items: Option<u32>,
+    #[serde(default)]
+    max_items: Option<u32>,
+    #[serde(default)]
+    min_length: Option<u32>,
+    #[serde(default)]
+    max_length: Option<u32>,
+    #[serde(default)]
+    pattern: Option<String>,
+    #[serde(default)]
+    minimum: Option<f64>,
+    #[serde(default)]
+    maximum: Option<f64>,
 }

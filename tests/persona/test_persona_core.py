@@ -1,6 +1,7 @@
 """Tests for persona management system — adding coverage."""
 
 import pytest
+
 from src.persona.builtins import BUILTIN_PERSONAS
 from src.persona.persona_registry import UnifiedPersonaRegistry
 from src.persona.unified_persona import UnifiedPersona

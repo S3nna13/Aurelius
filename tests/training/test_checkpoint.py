@@ -86,6 +86,36 @@ def test_load_restores_weights(tmp_path, small_model):
         assert p.data.abs().max().item() == pytest.approx(0.5)
 
 
+def test_save_and_load_optimizer_json(tmp_path):
+    """Optimizer state must round-trip through the safe JSON serializer."""
+    import torch.nn as nn
+
+    model = nn.Linear(4, 2)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+    batch = torch.randn(2, 4)
+    loss = model(batch).sum()
+    loss.backward()
+    optimizer.step()
+
+    ckpt_dir = save_checkpoint(
+        model,
+        optimizer,
+        step=2,
+        epoch=0,
+        train_loss=1.0,
+        output_dir=tmp_path,
+    )
+
+    assert (ckpt_dir / "optimizer.json").exists()
+
+    fresh = nn.Linear(4, 2)
+    restored_opt = torch.optim.Adam(fresh.parameters(), lr=0.01)
+    load_checkpoint(fresh, ckpt_dir, optimizer=restored_opt)
+
+    state = restored_opt.state_dict()["state"]
+    assert state, "Optimizer state was not restored"
+
+
 def test_best_checkpoint_tracking(tmp_path, small_model):
     """save_checkpoint must update best/ when val_loss improves."""
     save_checkpoint(

@@ -15,6 +15,7 @@ from src.persona import (
     AURELIUS_GENERAL,
     AURELIUS_TEACHER,
     BUILTIN_PERSONAS,
+    UnifiedPersona,
     UnifiedPersonaRegistry,
 )
 
@@ -98,7 +99,7 @@ class PersonaRegistry:
             if p.domain.value in ("general", "coding"):
                 self._unified.register(p)
 
-    def _to_legacy(self, unified: "UnifiedPersona") -> PersonaConfig:
+    def _to_legacy(self, unified: UnifiedPersona) -> PersonaConfig:
         return PersonaConfig(
             persona_id=unified.id,
             name=unified.name,
@@ -122,7 +123,9 @@ class PersonaRegistry:
         return self._to_legacy(unified)
 
     def list_personas(self) -> list[PersonaConfig]:
-        return [self._to_legacy(p) for p in self._unified.list_personas()]
+        # Keep the legacy surface scoped to the five public personas that older
+        # callers expect, while still allowing explicit registrations to extend it.
+        return list(self._personas.values())
 
     def apply_persona(
         self,

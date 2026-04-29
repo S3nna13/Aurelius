@@ -201,6 +201,7 @@ class ThreatIntelPersona:
 
     def classify_query(self, user_message: str) -> str:
         from src.persona.facets.threat_intel_facet import classify_query
+
         return classify_query(user_message)
 
     def schema_for(self, query_type: str) -> dict | None:
@@ -212,15 +213,20 @@ class ThreatIntelPersona:
         history: list[dict] | None = None,
     ) -> list[dict]:
         from src.persona import AURELIUS_THREATINTEL
+
         query_type = self.classify_query(user_message)
         messages: list[dict] = [{"role": "system", "content": AURELIUS_THREATINTEL.system_prompt}]
         if query_type != "general":
             hint = (
                 f"[intent={query_type}] "
-                f"Respond using the {query_type} structured-output contract defined in the system prompt."
+                f"Respond using the {query_type} structured-output contract "
+                "defined in the system prompt."
             )
         else:
-            hint = "[intent=detect] Classify the query and respond using the appropriate structured-output contract."
+            hint = (
+                "[intent=detect] Classify the query and respond using the "
+                "appropriate structured-output contract."
+            )
         messages.append({"role": "system", "content": hint})
         if history:
             for turn in history:

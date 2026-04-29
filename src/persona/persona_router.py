@@ -3,16 +3,29 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from .unified_persona import PersonaDomain, UnifiedPersona
+from .unified_persona import UnifiedPersona
 
 _CVE_RE = re.compile(r"CVE-\d{4}-\d{4,}", re.IGNORECASE)
 _MITRE_RE = re.compile(r"\bT\d{4}(?:\.\d{3})?\b")
 
-_SECURITY_KEYWORDS = frozenset([
-    "vulnerability", "cve", "cwe", "exploit", "pentest",
-    "red team", "blue team", "purple team",
-    "soc", "malware", "ransomware", "phishing", "ioc", "ttp",
-])
+_SECURITY_KEYWORDS = frozenset(
+    [
+        "vulnerability",
+        "cve",
+        "cwe",
+        "exploit",
+        "pentest",
+        "red team",
+        "blue team",
+        "purple team",
+        "soc",
+        "malware",
+        "ransomware",
+        "phishing",
+        "ioc",
+        "ttp",
+    ]
+)
 
 _PERSONALITY_KEYWORDS: dict[str, str] = {
     "aurelius-architect": "architect",
@@ -23,11 +36,76 @@ _PERSONALITY_KEYWORDS: dict[str, str] = {
 }
 
 _PERSONALITY_WORDS: dict[str, list[str]] = {
-    "architect": ["design", "build", "implement", "create", "develop", "refactor", "architecture", "structure", "pattern", "scaffold", "compose", "plan"],
-    "detective": ["debug", "fix", "investigate", "trace", "diagnose", "bug", "error", "issue", "broken", "crash", "reproduce", "locate"],
-    "guardian": ["security", "audit", "maintain", "vulnerability", "compliance", "harden", "monitor", "backup", "recovery", "upgrade", "dependency", "permissions"],
-    "analyst": ["analyze", "evaluate", "measure", "benchmark", "profile", "compare", "metric", "statistics", "report", "assess", "quantify", "inspect"],
-    "teacher": ["explain", "document", "guide", "teach", "tutorial", "describe", "walkthrough", "comment", "clarify", "onboard", "introduction", "example"],
+    "architect": [
+        "design",
+        "build",
+        "implement",
+        "create",
+        "develop",
+        "refactor",
+        "architecture",
+        "structure",
+        "pattern",
+        "scaffold",
+        "compose",
+        "plan",
+    ],
+    "detective": [
+        "debug",
+        "fix",
+        "investigate",
+        "trace",
+        "diagnose",
+        "bug",
+        "error",
+        "issue",
+        "broken",
+        "crash",
+        "reproduce",
+        "locate",
+    ],
+    "guardian": [
+        "security",
+        "audit",
+        "maintain",
+        "vulnerability",
+        "compliance",
+        "harden",
+        "monitor",
+        "backup",
+        "recovery",
+        "upgrade",
+        "dependency",
+        "permissions",
+    ],
+    "analyst": [
+        "analyze",
+        "evaluate",
+        "measure",
+        "benchmark",
+        "profile",
+        "compare",
+        "metric",
+        "statistics",
+        "report",
+        "assess",
+        "quantify",
+        "inspect",
+    ],
+    "teacher": [
+        "explain",
+        "document",
+        "guide",
+        "teach",
+        "tutorial",
+        "describe",
+        "walkthrough",
+        "comment",
+        "clarify",
+        "onboard",
+        "introduction",
+        "example",
+    ],
 }
 
 
@@ -38,6 +116,7 @@ class PersonaRouter:
     def route(self, user_input: str) -> UnifiedPersona:
         if self.registry is None:
             from .builtins import AURELIUS_GENERAL
+
             return AURELIUS_GENERAL
 
         if _CVE_RE.search(user_input) or _MITRE_RE.search(user_input):

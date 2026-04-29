@@ -35,8 +35,8 @@ pub fn uuid_is_valid(s: String) -> bool {
 pub fn uuid_timestamp(uuid_str: String) -> Option<f64> {
     let uuid = Uuid::parse_str(&uuid_str).ok()?;
     let ts = uuid.get_timestamp()?;
-    let unix = ts.to_unix();
-    Some(unix as f64 / 1000.0)
+    let (secs, subsec_nanos) = ts.to_unix();
+    Some(secs as f64 + subsec_nanos as f64 / 1_000_000_000.0)
 }
 
 #[napi]

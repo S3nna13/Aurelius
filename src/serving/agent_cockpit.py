@@ -266,7 +266,11 @@ if app:
         try:
             while True:
                 data = await websocket.receive_text()
-                msg = json.loads(data)
+                try:
+                    msg = json.loads(data)
+                except json.JSONDecodeError:
+                    await websocket.send_json({"type": "error", "content": "Invalid JSON"})
+                    continue
                 if msg.get("type") == "prompt":
                     adapter = router.get_adapter(session.get("agent_id", "coding"))
                     result = await adapter.execute(msg["content"])

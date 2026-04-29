@@ -66,34 +66,38 @@ fn chunk_by_tokens(text: &str, max_tokens: u32, overlap: u32) -> Vec<String> {
 fn chunk_by_chars(text: &str, max_chars: u32, overlap: u32, respect_sentences: bool, respect_paragraphs: bool) -> Vec<String> {
     let max = max_chars as usize;
     let ov = overlap as usize;
-    if text.len() <= max {
+    let char_count = text.chars().count();
+    if char_count <= max {
         return vec![text.to_string()];
     }
 
+    let chars: Vec<char> = text.chars().collect();
     let mut chunks = Vec::new();
     let mut start = 0;
 
-    while start < text.len() {
-        let mut end = (start + max).min(text.len());
+    while start < chars.len() {
+        let mut end = (start + max).min(chars.len());
 
-        if respect_paragraphs && end < text.len() {
-            if let Some(para_end) = text[start..end].rfind("\n\n") {
+        let slice: String = chars[start..end].iter().collect();
+        if respect_paragraphs && end < chars.len() {
+            if let Some(para_end) = slice.rfind("\n\n") {
                 end = start + para_end + 2;
             }
         }
 
-        if respect_sentences && end < text.len() {
-            if let Some(sent_end) = text[start..end].rfind(|c| c == '.' || c == '!' || c == '?') {
+        let slice: String = chars[start..end].iter().collect();
+        if respect_sentences && end < chars.len() {
+            if let Some(sent_end) = slice.rfind(|c| c == '.' || c == '!' || c == '?') {
                 end = start + sent_end + 1;
             }
         }
 
-        let chunk = &text[start..end];
+        let chunk: String = chars[start..end].iter().collect();
         if !chunk.trim().is_empty() {
-            chunks.push(chunk.to_string());
+            chunks.push(chunk);
         }
 
-        if end >= text.len() {
+        if end >= chars.len() {
             break;
         }
 
@@ -193,7 +197,7 @@ impl TextProcessor {
 
         let mut chunks = Vec::new();
         for chunk in sentences.chunks(max_sentences) {
-            chunks.push(chunk.join(". ") + ".");
+            chunks.push(chunk.join(" "));
         }
         chunks
     }

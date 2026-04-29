@@ -76,6 +76,10 @@ router.post('/agent', (req: Request, res: Response) => {
   const convId = conversationId || `conv_${Date.now()}`;
   if (!CONVERSATIONS.has(convId)) {
     CONVERSATIONS.set(convId, { messages: [], agent: 'general' });
+    if (CONVERSATIONS.size > 10000) {
+      const firstKey = CONVERSATIONS.keys().next().value
+      if (firstKey) CONVERSATIONS.delete(firstKey)
+    }
   }
   const conv = CONVERSATIONS.get(convId)!;
   conv.messages.push({ role: 'user', content: message });

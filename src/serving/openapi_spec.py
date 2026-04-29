@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import time
-
 
 def openapi_spec(host: str = "localhost", port: int = 8080) -> dict:
     scheme = "https" if port == 443 else "http"

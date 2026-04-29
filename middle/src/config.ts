@@ -10,6 +10,6 @@ export const config = {
   logLevel: process.env.MIDDLE_LOG_LEVEL || 'info',
   rateLimitRps: parseInt(process.env.RATE_LIMIT_RPS || '60', 10),
   rateLimitWindowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000', 10),
-  allowPublicRegistration: process.env.ALLOW_PUBLIC_REGISTRATION === 'false' ? false : true,
+  allowPublicRegistration: process.env.ALLOW_PUBLIC_REGISTRATION === 'true' ? true : false,
   serviceApiKey: process.env.AURELIUS_SERVICE_KEY || process.env.AURELIUS_API_KEY || '',
 }

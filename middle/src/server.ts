@@ -2,11 +2,12 @@ import express from 'express'
 import cors from 'cors'
 import { createServer } from 'http'
 import { config } from './config.js'
-import { authMiddleware } from './middleware/auth.js'
+import { authMiddleware, requireAdmin } from './middleware/auth.js'
 import { rateLimiter } from './middleware/rate-limiter.js'
 import { requestLogger } from './middleware/logger.js'
 import { errorHandler, notFoundHandler } from './middleware/error-handler.js'
 import { setupWebSocket } from './ws/handler.js'
+import { getEngine } from './engine.js'
 import healthRoutes from './routes/health.js'
 import agentsRoutes from './routes/agents.js'
 import activityRoutes from './routes/activity.js'
@@ -41,7 +42,8 @@ export function buildApp() {
   app.use(rateLimiter)
 
   // Public routes — exempted by auth middleware
-  app.use('/', healthRoutes)
+  app.use('/api', healthRoutes)
+  app.use(healthRoutes)
   app.use('/api/auth', authRoutes)
 
   // Protected routes — mounted after auth middleware
@@ -72,7 +74,46 @@ export function buildApp() {
   app.get('/api/workflows/:id', (req, res) => res.status(404).json({ error: 'Workflow not found' }))
   app.post('/api/workflows/:id/trigger', (_req, res) => res.status(501).json({ error: 'Not implemented' }))
   app.get('/api/status', (_req, res) => res.json({ status: 'ok', uptime: process.uptime() }))
-  app.post('/api/command', (_req, res) => res.status(501).json({ error: 'Not implemented' }))
+
+  // Command dispatch — used by scheduler and agent orchestration
+  app.post('/api/command', requireAdmin, (req, res) => {
+    const { agentId, command, payload } = req.body || {}
+    if (!command) {
+      res.status(400).json({ error: 'command required' })
+      return
+    }
+    const engine = getEngine()
+    if (agentId) {
+      const agents = engine.listAgents()
+      const agent = agents.find((a: any) => a.id === agentId)
+      if (!agent) {
+        res.status(404).json({ error: 'Agent not found' })
+        return
+      }
+    }
+    engine.appendActivity('command.dispatch', true, `Command ${command} sent to ${agentId || 'system'}`)
+    res.json({ success: true, agentId: agentId || null, command, dispatchedAt: new Date().toISOString() })
+  })
+
+  // OpenAI-compatible completions proxy for frontend
+  app.post('/api/v1/completions', async (req, res) => {
+    try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (config.serviceApiKey) {
+        headers['Authorization'] = `Bearer ${config.serviceApiKey}`
+        headers['X-Api-Key'] = config.serviceApiKey
+      }
+      const upstreamRes = await fetch(`${config.upstreamUrl}/v1/chat/completions`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(req.body),
+      })
+      const data = await upstreamRes.json()
+      res.status(upstreamRes.status).json(data)
+    } catch {
+      res.status(502).json({ error: 'Upstream unavailable' })
+    }
+  })
 
   // Provider router — unified Aurelius + OpenAI
   app.get('/api/provider/status', (_req, res) => {

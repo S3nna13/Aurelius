@@ -12,7 +12,6 @@ from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 from src.training.trainer import TrainConfig
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

@@ -29,6 +29,54 @@ class CheckpointMeta:
     config: dict  # model config as dict
 
 
+def _serialize_state(value: object) -> object:
+    """Convert optimizer state to a JSON-serializable structure."""
+    if isinstance(value, torch.Tensor):
+        return {
+            "__type__": "tensor",
+            "dtype": str(value.dtype).split(".")[-1],
+            "data": value.detach().cpu().tolist(),
+        }
+    if isinstance(value, dict):
+        return {
+            "__type__": "dict",
+            "items": [
+                [_serialize_state(key), _serialize_state(item)]
+                for key, item in value.items()
+            ],
+        }
+    if isinstance(value, list):
+        return {"__type__": "list", "items": [_serialize_state(item) for item in value]}
+    if isinstance(value, tuple):
+        return {"__type__": "tuple", "items": [_serialize_state(item) for item in value]}
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    raise TypeError(f"Unsupported checkpoint value type: {type(value)!r}")
+
+
+def _deserialize_state(value: object, *, device: str | torch.device = "cpu") -> object:
+    """Reconstruct a checkpoint state structure from JSON."""
+    if not isinstance(value, dict) or "__type__" not in value:
+        return value
+
+    kind = value.get("__type__")
+    if kind == "tensor":
+        dtype_name = str(value.get("dtype", "float32"))
+        dtype = getattr(torch, dtype_name, torch.float32)
+        return torch.tensor(value.get("data", []), dtype=dtype, device=device)
+    if kind == "dict":
+        items = value.get("items", [])
+        return {
+            _deserialize_state(key, device=device): _deserialize_state(item, device=device)
+            for key, item in items
+        }
+    if kind == "list":
+        return [_deserialize_state(item, device=device) for item in value.get("items", [])]
+    if kind == "tuple":
+        return tuple(_deserialize_state(item, device=device) for item in value.get("items", []))
+    return value
+
+
 def save_checkpoint(
     model: nn.Module,
     optimizer: torch.optim.Optimizer | None,
@@ -43,7 +91,7 @@ def save_checkpoint(
 
     Creates: output_dir/checkpoint-{step:07d}/
         model.pt       — model state dict
-        optimizer.pt   — optimizer state dict (if optimizer provided)
+        optimizer.json — optimizer state dict (if optimizer provided)
         meta.json      — CheckpointMeta as JSON
 
     Also updates output_dir/best/ symlink if val_loss is the lowest seen.
@@ -71,7 +119,8 @@ def save_checkpoint(
 
     # Save optimizer state dict
     if optimizer is not None:
-        torch.save(optimizer.state_dict(), ckpt_dir / "optimizer.pt")
+        with open(ckpt_dir / "optimizer.json", "w", encoding="utf-8") as f:
+            json.dump(_serialize_state(optimizer.state_dict()), f, indent=2)
 
     # Save metadata
     config = {}
@@ -146,10 +195,11 @@ def load_checkpoint(
     logger.info("Loaded model weights from %s", model_path)
 
     # Load optimizer state if requested
-    opt_path = ckpt_dir / "optimizer.pt"
+    opt_path = ckpt_dir / "optimizer.json"
     if optimizer is not None and opt_path.exists():
-        opt_state = torch.load(opt_path, map_location=map_location, weights_only=True)
-        optimizer.load_state_dict(opt_state)
+        with open(opt_path, encoding="utf-8") as f:
+            opt_state = json.load(f)
+        optimizer.load_state_dict(_deserialize_state(opt_state, device=map_location))
         logger.info("Loaded optimizer state from %s", opt_path)
 
     # Load metadata

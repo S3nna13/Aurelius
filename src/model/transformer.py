@@ -102,7 +102,7 @@ class TransformerBlock(nn.Module):
                     x, aux_loss = ffn_result
                     return x, kv, aux_loss
                 x = ffn_result
-                aux_loss = x.new_zeros(1)
+                aux_loss = x.new_zeros(())
             else:
                 x, aux_loss = self.ffn(self.ffn_norm(x))
         else:
@@ -110,7 +110,7 @@ class TransformerBlock(nn.Module):
                 x = self.mhc_ffn(x, self.ffn)
             else:
                 x = x + self.ffn(self.ffn_norm(x))
-            aux_loss = x.new_zeros(1)
+            aux_loss = x.new_zeros(())
 
         return x, kv, aux_loss
 

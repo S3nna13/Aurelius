@@ -30,7 +30,7 @@ function sendJson(path: string, body: unknown) {
         headers: {
           'Content-Type': 'application/json',
           'Content-Length': Buffer.byteLength(payload),
-          'X-API-Key': 'dev-key',
+          'X-API-Key': 'test-admin-key',
         },
       },
       (res) => {
@@ -100,7 +100,7 @@ describe('chat route', () => {
           headers: {
             'Content-Type': 'application/json',
             'Content-Length': Buffer.byteLength(payload),
-            'X-API-Key': 'dev-key',
+            'X-API-Key': 'test-admin-key',
           },
         },
         (res) => {

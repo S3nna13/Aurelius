@@ -41,7 +41,7 @@ describe('Health endpoints', () => {
 describe('Agent endpoints', () => {
   it('GET /api/agents returns list', async () => {
     const res = await fetch(`${BASE}/api/agents`, {
-      headers: { 'X-API-Key': 'dev-key' },
+      headers: { 'X-API-Key': 'test-admin-key' },
     })
     expect(res.status).toBe(200)
     const data = await res.json()
@@ -51,7 +51,7 @@ describe('Agent endpoints', () => {
 
   it('GET /api/agents returns agents with state', async () => {
     const res = await fetch(`${BASE}/api/agents`, {
-      headers: { 'X-API-Key': 'dev-key' },
+      headers: { 'X-API-Key': 'test-admin-key' },
     })
     const data = await res.json()
     if (data.agents.length > 0) {
@@ -64,7 +64,7 @@ describe('Agent endpoints', () => {
 describe('Activity endpoints', () => {
   it('GET /api/activity returns entries', async () => {
     const res = await fetch(`${BASE}/api/activity`, {
-      headers: { 'X-API-Key': 'dev-key' },
+      headers: { 'X-API-Key': 'test-admin-key' },
     })
     expect(res.status).toBe(200)
     const data = await res.json()
@@ -75,7 +75,7 @@ describe('Activity endpoints', () => {
 describe('Notification endpoints', () => {
   it('GET /api/notifications returns list', async () => {
     const res = await fetch(`${BASE}/api/notifications`, {
-      headers: { 'X-API-Key': 'dev-key' },
+      headers: { 'X-API-Key': 'test-admin-key' },
     })
     expect(res.status).toBe(200)
     const data = await res.json()
@@ -84,7 +84,7 @@ describe('Notification endpoints', () => {
 
   it('GET /api/notifications/stats returns stats', async () => {
     const res = await fetch(`${BASE}/api/notifications/stats`, {
-      headers: { 'X-API-Key': 'dev-key' },
+      headers: { 'X-API-Key': 'test-admin-key' },
     })
     expect(res.status).toBe(200)
     const data = await res.json()
@@ -96,7 +96,7 @@ describe('Notification endpoints', () => {
 describe('Config endpoints', () => {
   it('GET /api/config returns config', async () => {
     const res = await fetch(`${BASE}/api/config`, {
-      headers: { 'X-API-Key': 'dev-key' },
+      headers: { 'X-API-Key': 'test-admin-key' },
     })
     expect(res.status).toBe(200)
     const data = await res.json()
@@ -107,7 +107,7 @@ describe('Config endpoints', () => {
 describe('Memory endpoints', () => {
   it('GET /api/memory/layers returns layers', async () => {
     const res = await fetch(`${BASE}/api/memory/layers`, {
-      headers: { 'X-API-Key': 'dev-key' },
+      headers: { 'X-API-Key': 'test-admin-key' },
     })
     expect(res.status).toBe(200)
     const data = await res.json()
@@ -118,7 +118,7 @@ describe('Memory endpoints', () => {
 describe('Log endpoints', () => {
   it('GET /api/logs returns logs', async () => {
     const res = await fetch(`${BASE}/api/logs`, {
-      headers: { 'X-API-Key': 'dev-key' },
+      headers: { 'X-API-Key': 'test-admin-key' },
     })
     expect(res.status).toBe(200)
     const data = await res.json()
@@ -129,7 +129,7 @@ describe('Log endpoints', () => {
 describe('System endpoints', () => {
   it('GET /api/system returns system info', async () => {
     const res = await fetch(`${BASE}/api/system`, {
-      headers: { 'X-API-Key': 'dev-key' },
+      headers: { 'X-API-Key': 'test-admin-key' },
     })
     expect(res.status).toBe(200)
     const data = await res.json()
@@ -142,7 +142,7 @@ describe('System endpoints', () => {
 describe('Stats endpoints', () => {
   it('GET /api/stats returns stats', async () => {
     const res = await fetch(`${BASE}/api/stats`, {
-      headers: { 'X-API-Key': 'dev-key' },
+      headers: { 'X-API-Key': 'test-admin-key' },
     })
     expect(res.status).toBe(200)
     const data = await res.json()

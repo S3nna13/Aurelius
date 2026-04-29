@@ -45,15 +45,16 @@ fn tokenize(text: &str) -> Vec<String> {
 }
 
 fn generate_snippet(text: &str, query: &str, window: usize) -> String {
-    let lower = text.to_lowercase();
-    let q_lower = query.to_lowercase();
-    if let Some(pos) = lower.find(&q_lower) {
-        let start = pos.saturating_sub(window);
-        let end = (pos + q_lower.len() + window).min(text.len());
-        let mut snippet = &text[start..end];
-        if start > 0 { snippet = &snippet[..]; }
+    let text_lower: String = text.to_lowercase();
+    let q_lower: String = query.to_lowercase();
+    if let Some(byte_pos) = text_lower.find(&q_lower) {
+        let char_pos = text_lower[..byte_pos].chars().count();
+        let q_chars = q_lower.chars().count();
+        let start = char_pos.saturating_sub(window);
+        let end = (char_pos + q_chars + window).min(text.chars().count());
+        let snippet: String = text.chars().skip(start).take(end - start).collect();
         let prefix = if start > 0 { "..." } else { "" };
-        let suffix = if end < text.len() { "..." } else { "" };
+        let suffix = if end < text.chars().count() { "..." } else { "" };
         format!("{}{}{}", prefix, snippet, suffix)
     } else {
         text.chars().take(window * 2).collect()
@@ -62,7 +63,7 @@ fn generate_snippet(text: &str, query: &str, window: usize) -> String {
 
 #[napi]
 pub struct SearchIndex {
-    inverted_index: Arc<DashMap<String, HashMap<String, Vec<f64>>>>,
+    inverted_index: Arc<DashMap<String, HashMap<String, Vec<(String, f64)>>>>,
     doc_store: Arc<DashMap<String, HashMap<String, String>>>,
     doc_lengths: Arc<DashMap<String, HashMap<String, u32>>>,
     autocomplete_trie: Arc<DashMap<String, Trie<String, u32>>>,
@@ -126,13 +127,13 @@ impl SearchIndex {
         for (term, freq) in &term_freq {
             let tf = freq / doc_len;
             let mut idx = self.inverted_index.get_mut(&field_key).unwrap();
-            idx.entry(term.clone()).or_insert_with(Vec::new).push(tf);
+            idx.entry(term.clone()).or_insert_with(Vec::new).push((id.clone(), tf));
 
             // Update autocomplete trie
             if let Some(mut trie) = self.autocomplete_trie.get_mut(&field_key) {
                 for i in 1..=term.len().min(10) {
                     let prefix = term[..i].to_string();
-                    let existing = trie.get(&prefix).unwrap_or(&0);
+                    let existing = *trie.get(&prefix).unwrap_or(&0);
                     trie.insert(prefix, existing + 1);
                 }
             }
@@ -165,20 +166,18 @@ impl SearchIndex {
         // BM25 scoring
         let mut scores: HashMap<String, f64> = HashMap::new();
 
+        let doc_lengths_map: HashMap<String, u32> = self.doc_lengths.get(&field_key)
+            .map(|l| l.iter().map(|(k, &v)| (k.clone(), v)).collect())
+            .unwrap_or_default();
+
         for token in &tokens {
             if let Some(postings) = index.get(token) {
                 let n_q = postings.len() as f64;
                 let idf = ((total_docs - n_q + 0.5) / (n_q + 0.5) + 1.0).ln();
-
-                // We need doc_ids; reconstruct from doc store
-                if let Some(docs) = self.doc_store.get(&field_key) {
-                    for (doc_id, doc_content) in docs.iter() {
-                        let doc_tokens = tokenize(doc_content);
-                        let doc_len = doc_tokens.len() as f64;
-                        let tf = doc_tokens.iter().filter(|t| *t == token).count() as f64;
-                        let score = idf * ((tf * (k1 + 1.0)) / (tf + k1 * (1.0 - b + b * (doc_len / avgdl))));
-                        *scores.entry(doc_id.clone()).or_insert(0.0) += score;
-                    }
+                for (doc_id, tf) in postings {
+                    let doc_len = doc_lengths_map.get(doc_id).map(|&l| l as f64).unwrap_or(1.0);
+                    let score = idf * ((tf * (k1 + 1.0)) / (tf + k1 * (1.0 - b + b * (doc_len / avgdl))));
+                    *scores.entry(doc_id.clone()).or_insert(0.0) += score;
                 }
             }
         }
@@ -189,11 +188,12 @@ impl SearchIndex {
 
         results.truncate(limit);
 
+        let doc_contents: HashMap<String, String> = self.doc_store.get(&field_key)
+            .map(|docs| docs.iter().map(|(k, v)| (k.clone(), v.clone())).collect())
+            .unwrap_or_default();
+
         results.into_iter().map(|(id, score)| {
-            let content = self.doc_store.get(&field_key)
-                .and_then(|docs| docs.get(&id))
-                .cloned()
-                .unwrap_or_default();
+            let content = doc_contents.get(&id).cloned().unwrap_or_default();
             SearchResult {
                 id,
                 field: field_key.clone(),
@@ -216,14 +216,19 @@ impl SearchIndex {
         };
 
         let q = stemmed[0].clone();
-        let mut suggestions: Vec<(String, u32)> = trie
-            .get_raw_descendant_distance(&q)
-            .map(|sub| {
-                sub.iter()
-                    .map(|(key, &val)| (key.clone(), val))
-                    .collect::<Vec<_>>()
-            })
-            .unwrap_or_default();
+        let mut suggestions: Vec<(String, u32)> = Vec::new();
+        if let Some(&val) = trie.get(&q) {
+            suggestions.push((q.clone(), val));
+        }
+        let prefix = q.clone();
+        for _ in 0..limit {
+            let extended = format!("{}{}", prefix, suggestions.len());
+            if let Some(&val) = trie.get(&extended) {
+                suggestions.push((extended, val));
+            } else {
+                break;
+            }
+        }
 
         suggestions.sort_by(|a, b| b.1.cmp(&a.1));
         suggestions.truncate(limit);

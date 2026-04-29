@@ -36,6 +36,7 @@ export default function GlobalSearch({ onClose }: GlobalSearchProps) {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const searchIdRef = useRef(0);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -49,83 +50,92 @@ export default function GlobalSearch({ onClose }: GlobalSearchProps) {
     }
     const timer = setTimeout(async () => {
       setLoading(true);
+      const thisSearch = ++searchIdRef.current;
       try {
         const all: SearchResult[] = [];
-        // Search notifications
-        const notifRes = await fetch('/api/notifications');
-        if (notifRes.ok) {
-          const data = await notifRes.json();
-          (data.notifications || []).forEach((n: any) => {
-            if (
-              n.title?.toLowerCase().includes(query.toLowerCase()) ||
-              n.body?.toLowerCase().includes(query.toLowerCase())
-            ) {
-              all.push({
-                id: n.id,
-                type: 'notification',
-                title: n.title,
-                subtitle: n.body?.slice(0, 60) + (n.body?.length > 60 ? '...' : ''),
-                path: '/notifications',
-              });
-            }
-          });
-        }
-        // Search skills
-        const skillsRes = await fetch('/api/skills');
-        if (skillsRes.ok) {
-          const data = await skillsRes.json();
-          (data.skills || []).forEach((s: any) => {
-            const text = `${s.skill_id || s.id || ''} ${s.description || ''}`.toLowerCase();
-            if (text.includes(query.toLowerCase())) {
-              all.push({
-                id: s.skill_id || s.id,
-                type: 'skill',
-                title: s.skill_id || s.id,
-                subtitle: s.description?.slice(0, 60) || 'Skill',
-                path: '/skills',
-              });
-            }
-          });
-        }
-        // Search workflows
-        const wfRes = await fetch('/api/workflows');
-        if (wfRes.ok) {
-          const data = await wfRes.json();
-          (data.workflows || []).forEach((w: any) => {
-            const text = `${w.name || w.id || ''}`.toLowerCase();
-            if (text.includes(query.toLowerCase())) {
-              all.push({
-                id: w.id,
-                type: 'workflow',
-                title: w.name || w.id,
-                subtitle: w.status || 'Workflow',
-                path: '/workflows',
-              });
-            }
-          });
-        }
-        // Search agents from status
-        const statusRes = await fetch('/api/status');
-        if (statusRes.ok) {
-          const data = await statusRes.json();
-          (data.agents || []).forEach((a: any) => {
-            if (a.id?.toLowerCase().includes(query.toLowerCase())) {
-              all.push({
-                id: a.id,
-                type: 'agent',
-                title: a.id,
-                subtitle: `State: ${a.state}`,
-                path: `/agents/${a.id}`,
-              });
-            }
-          });
-        }
+        try {
+          const notifRes = await fetch('/api/notifications');
+          if (notifRes.ok) {
+            const data = await notifRes.json();
+            (data.notifications || []).forEach((n: any) => {
+              if (
+                n.title?.toLowerCase().includes(query.toLowerCase()) ||
+                n.body?.toLowerCase().includes(query.toLowerCase())
+              ) {
+                all.push({
+                  id: n.id,
+                  type: 'notification',
+                  title: n.title,
+                  subtitle: n.body?.slice(0, 60) + (n.body?.length > 60 ? '...' : ''),
+                  path: '/notifications',
+                });
+              }
+            });
+          }
+        } catch { /* skip failed source */ }
+        try {
+          const skillsRes = await fetch('/api/skills');
+          if (skillsRes.ok) {
+            const data = await skillsRes.json();
+            (data.skills || []).forEach((s: any) => {
+              const text = `${s.skill_id || s.id || ''} ${s.description || ''}`.toLowerCase();
+              if (text.includes(query.toLowerCase())) {
+                all.push({
+                  id: s.skill_id || s.id,
+                  type: 'skill',
+                  title: s.skill_id || s.id,
+                  subtitle: s.description?.slice(0, 60) || 'Skill',
+                  path: '/skills',
+                });
+              }
+            });
+          }
+        } catch { /* skip failed source */ }
+        try {
+          const wfRes = await fetch('/api/workflows');
+          if (wfRes.ok) {
+            const data = await wfRes.json();
+            (data.workflows || []).forEach((w: any) => {
+              const text = `${w.name || w.id || ''}`.toLowerCase();
+              if (text.includes(query.toLowerCase())) {
+                all.push({
+                  id: w.id,
+                  type: 'workflow',
+                  title: w.name || w.id,
+                  subtitle: w.status || 'Workflow',
+                  path: '/workflows',
+                });
+              }
+            });
+          }
+        } catch { /* skip failed source */ }
+        try {
+          const statusRes = await fetch('/api/status');
+          if (statusRes.ok) {
+            const data = await statusRes.json();
+            (data.agents || []).forEach((a: any) => {
+              if (a.id?.toLowerCase().includes(query.toLowerCase())) {
+                all.push({
+                  id: a.id,
+                  type: 'agent',
+                  title: a.id,
+                  subtitle: `State: ${a.state}`,
+                  path: `/agents/${a.id}`,
+                });
+              }
+            });
+          }
+        } catch { /* skip failed source */ }
+        if (thisSearch !== searchIdRef.current) return;
         setResults(all.slice(0, 20));
         setSelectedIndex(0);
       } catch {
+        if (thisSearch !== searchIdRef.current) return;
         setResults([]);
       } finally {
-        setLoading(false);
+        if (thisSearch === searchIdRef.current) {
+          setLoading(false);
+        }
       }
     }, 200);
     return () => clearTimeout(timer);

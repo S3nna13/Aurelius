@@ -6,15 +6,8 @@ Inspired by Claude Code, OPENDEV, Terminal-Bench, NL2SH, YAMLE.
 
 from __future__ import annotations
 
-import asyncio
 import os
-import shlex
-import signal
-import subprocess
-import sys
-import time
 from pathlib import Path
-from typing import Any
 
 try:
     from prompt_toolkit import PromptSession
@@ -32,18 +25,15 @@ except ImportError:
     PromptStyle = None
     _HAS_PROMPT_TOOLKIT = False
 from rich.console import Console
-from rich.layout import Layout
-from rich.live import Live
 from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.rule import Rule
-from rich.spinner import Spinner
 from rich.syntax import Syntax
 from rich.table import Table
 from rich.text import Text
 
 from .agent_engine import AgentEngine
-from .dragon_mascot import AURELIUS_BANNER, AURELIUS_MASCOT, DRAGON_ART, WELCOME_HEADER
+from .dragon_mascot import DRAGON_ART, WELCOME_HEADER
 
 LIGHTNING_BLUE = "#00BFFF"
 DRAGON_GREEN = "#00FF88"
@@ -111,25 +101,37 @@ class AureliusCLI:
         console.clear()
         header = Text(WELCOME_HEADER, style=LIGHTNING_BLUE)
         console.print(header)
-        console.print(Panel(DRAGON_ART, border_style=LIGHTNING_BLUE, title="[bold]AURELIUS — The Coding Dragon[/bold]"))
+        console.print(
+            Panel(
+                DRAGON_ART,
+                border_style=LIGHTNING_BLUE,
+                title="[bold]AURELIUS — The Coding Dragon[/bold]",
+            )
+        )
 
         info = Table.grid(padding=1)
         info.add_column(style=f"bold {DRAGON_GREEN}")
-        info.add_column(style=f"dim {LIGHTNING_DIM}")
+        info.add_column(style=f"dim {LIGHTNING_BLUE_DIM}")
         info.add_row("⚡ Mode:", "AI Coding Terminal")
         info.add_row("⚡ Engine:", "Dual-Agent (Planner + Executor)")
         info.add_row("⚡ Safety:", "Deny-first Tool Authorization")
         info.add_row("⚡ Context:", "Adaptive Compaction + Session Memory")
 
-        console.print(Panel(info, border_style=LIGHTNING_BLUE, title="[bold]System Status[/bold]"))
+        console.print(
+            Panel(info, border_style=LIGHTNING_BLUE, title="[bold]System Status[/bold]")
+        )
         console.print(f"\n[{LIGHTNING_BLUE}]Type /help for commands, or just ask me anything![/]\n")
-        console.print(Rule(style=LIGHTNING_DIM))
+        console.print(Rule(style=LIGHTNING_BLUE_DIM))
 
     def _get_prompt(self) -> str:
         path = self.engine.session.workspace or os.getcwd()
         short_path = os.path.basename(path)
         symbol = PROMPT_SYMBOL[self._prompt_index % len(PROMPT_SYMBOL)]
-        return f"\n[{LIGHTNING_BLUE}]╭─[/] [{DRAGON_GREEN}]{short_path}[/] [{LIGHTNING_BLUE_DIM}]{self._message_count + 1}[/]\n[{LIGHTNING_BLUE}]╰─{symbol}[/] "
+        return (
+            f"\n[{LIGHTNING_BLUE}]╭─[/] [{DRAGON_GREEN}]{short_path}[/] "
+            f"[{LIGHTNING_BLUE_DIM}]{self._message_count + 1}[/]\n"
+            f"[{LIGHTNING_BLUE}]╰─{symbol}[/] "
+        )
 
     def _stream_response(self, text: str) -> None:
         console.print()
@@ -150,7 +152,9 @@ class AureliusCLI:
                     try:
                         lang = fence_lines[0].replace("```", "").strip() or "python"
                         syntax = Syntax(code, lang, theme="monokai", line_numbers=True)
-                        console.print(Panel(syntax, border_style=LIGHTNING_BLUE, title=f"[bold]{lang}[/bold]"))
+                        console.print(
+                            Panel(syntax, border_style=LIGHTNING_BLUE, title=f"[bold]{lang}[/bold]")
+                        )
                     except Exception:
                         console.print(code)
                     fence_lines = []
@@ -217,7 +221,10 @@ class AureliusCLI:
 
                     if self._message_count % 5 == 0:
                         s = self.engine.session
-                        mem = f"⚡ Mem: {len(s.messages)} msgs | {len(s.memory)} keys | {len(self.engine.tool.history)} cmds"
+                        mem = (
+                            f"⚡ Mem: {len(s.messages)} msgs | "
+                            f"{len(s.memory)} keys | {len(self.engine.tool.history)} cmds"
+                        )
                         console.print(Text("─" * 50, style=f"dim {LIGHTNING_BLUE_DIM}"))
                         console.print(Text(mem, style=f"dim {LIGHTNING_BLUE_DIM}"))
 

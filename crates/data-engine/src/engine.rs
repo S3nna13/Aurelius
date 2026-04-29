@@ -433,7 +433,7 @@ impl DataEngineInner {
             success,
             output: output.to_string(),
         };
-        let mut log = self.activity.write().unwrap();
+        let mut log = self.activity.write().unwrap_or_else(|e| e.into_inner());
         log.push_back(InternalActivity {
             id: entry.id.clone(),
             timestamp: entry.timestamp,
@@ -446,7 +446,7 @@ impl DataEngineInner {
     }
 
     pub fn get_activity(&self, limit: Option<u32>) -> Vec<crate::ActivityEntry> {
-        let log = self.activity.read().unwrap();
+        let log = self.activity.read().unwrap_or_else(|e| e.into_inner());
         let limit = limit.unwrap_or(100).min(MAX_ACTIVITY as u32) as usize;
         log.iter().rev().take(limit).map(|a| crate::ActivityEntry {
             id: a.id.clone(), timestamp: a.timestamp,
@@ -456,7 +456,7 @@ impl DataEngineInner {
     }
 
     pub fn search_activity(&self, query: &str, limit: Option<u32>) -> Vec<crate::ActivityEntry> {
-        let log = self.activity.read().unwrap();
+        let log = self.activity.read().unwrap_or_else(|e| e.into_inner());
         let limit = limit.unwrap_or(100).min(MAX_ACTIVITY as u32) as usize;
         let q = query.to_lowercase();
         log.iter().rev()
@@ -470,7 +470,7 @@ impl DataEngineInner {
     }
 
     pub fn clear_activity(&self) -> u32 {
-        let mut log = self.activity.write().unwrap();
+        let mut log = self.activity.write().unwrap_or_else(|e| e.into_inner());
         let count = log.len() as u32;
         log.clear();
         count
@@ -490,7 +490,7 @@ impl DataEngineInner {
             read: false,
             delivered: false,
         };
-        let mut list = self.notifications.write().unwrap();
+        let mut list = self.notifications.write().unwrap_or_else(|e| e.into_inner());
         list.push_back(InternalNotification {
             id: n.id.clone(), timestamp: n.timestamp,
             channel: n.channel.clone(), priority: n.priority.clone(),
@@ -502,7 +502,7 @@ impl DataEngineInner {
     }
 
     pub fn get_notifications(&self, category: Option<&str>, priority: Option<&str>, read: Option<bool>, limit: Option<u32>) -> Vec<crate::Notification> {
-        let list = self.notifications.read().unwrap();
+        let list = self.notifications.read().unwrap_or_else(|e| e.into_inner());
         let limit = limit.unwrap_or(100).min(MAX_NOTIFICATIONS as u32) as usize;
         list.iter().rev()
             .filter(|n| {
@@ -521,7 +521,7 @@ impl DataEngineInner {
     }
 
     pub fn mark_notification_read(&self, id: &str) -> bool {
-        let mut list = self.notifications.write().unwrap();
+        let mut list = self.notifications.write().unwrap_or_else(|e| e.into_inner());
         for n in list.iter_mut() {
             if n.id == id { n.read = true; return true; }
         }
@@ -529,7 +529,7 @@ impl DataEngineInner {
     }
 
     pub fn mark_all_notifications_read(&self, category: Option<&str>) -> u32 {
-        let mut list = self.notifications.write().unwrap();
+        let mut list = self.notifications.write().unwrap_or_else(|e| e.into_inner());
         let mut count = 0;
         for n in list.iter_mut() {
             if let Some(c) = category { if n.category != c { continue; } }
@@ -539,14 +539,14 @@ impl DataEngineInner {
     }
 
     pub fn get_notification_stats(&self) -> crate::NotificationStats {
-        let list = self.notifications.read().unwrap();
+        let list = self.notifications.read().unwrap_or_else(|e| e.into_inner());
         let total = list.len() as u32;
         let unread = list.iter().filter(|n| !n.read).count() as u32;
         crate::NotificationStats { unread, total }
     }
 
     pub fn clear_notifications(&self) -> u32 {
-        let mut list = self.notifications.write().unwrap();
+        let mut list = self.notifications.write().unwrap_or_else(|e| e.into_inner());
         let count = list.len() as u32;
         list.clear();
         count
@@ -555,14 +555,14 @@ impl DataEngineInner {
     // -- Memory --
 
     pub fn get_memory_layers(&self) -> Vec<crate::MemoryLayer> {
-        let layers = self.memory_layers.read().unwrap();
+        let layers = self.memory_layers.read().unwrap_or_else(|e| e.into_inner());
         layers.iter().map(|(name, entries)| crate::MemoryLayer {
             name: name.clone(), entries: entries.len() as u32,
         }).collect()
     }
 
     pub fn add_memory_entry(&self, layer_name: &str, content: &str) {
-        let mut layers = self.memory_layers.write().unwrap();
+        let mut layers = self.memory_layers.write().unwrap_or_else(|e| e.into_inner());
         let entry = InternalMemoryEntry {
             id: Self::gen_id(),
             content: content.to_string(),
@@ -575,7 +575,7 @@ impl DataEngineInner {
     }
 
     pub fn get_memory_entries(&self, layer: Option<&str>, query: Option<&str>, limit: Option<u32>) -> Vec<crate::MemoryEntry> {
-        let layers = self.memory_layers.read().unwrap();
+        let layers = self.memory_layers.read().unwrap_or_else(|e| e.into_inner());
         const MAX_LIMIT: u32 = 1000;
         let limit = limit.unwrap_or(50).min(MAX_LIMIT) as usize;
         let mut results = Vec::new();
@@ -598,7 +598,7 @@ impl DataEngineInner {
     }
 
     pub fn delete_memory_entry(&self, id: &str) -> bool {
-        let mut layers = self.memory_layers.write().unwrap();
+        let mut layers = self.memory_layers.write().unwrap_or_else(|e| e.into_inner());
         for entries in layers.values_mut() {
             if let Some(pos) = entries.iter().position(|e| e.id == id) {
                 entries.remove(pos);
@@ -611,21 +611,21 @@ impl DataEngineInner {
     // -- Config --
 
     pub fn get_config(&self, key: &str) -> Option<String> {
-        self.config.read().unwrap().get(key).cloned()
+        self.config.read().unwrap_or_else(|e| e.into_inner()).get(key).cloned()
     }
 
     pub fn get_all_config(&self) -> std::collections::HashMap<String, String> {
-        self.config.read().unwrap().clone()
+        self.config.read().unwrap_or_else(|e| e.into_inner()).clone()
     }
 
     pub fn set_config(&self, key: &str, value: &str) {
-        self.config.write().unwrap().insert(key.to_string(), value.to_string());
+        self.config.write().unwrap_or_else(|e| e.into_inner()).insert(key.to_string(), value.to_string());
     }
 
     // -- Logs --
 
     pub fn append_log(&self, level: &str, logger: &str, message: &str) {
-        let mut logs = self.logs.write().unwrap();
+        let mut logs = self.logs.write().unwrap_or_else(|e| e.into_inner());
         logs.push_back(InternalLog {
             timestamp: Utc::now().format("%Y-%m-%dT%H:%M:%S").to_string(),
             level: level.to_string(),
@@ -636,7 +636,7 @@ impl DataEngineInner {
     }
 
     pub fn get_logs(&self, level: Option<&str>, query: Option<&str>, limit: Option<u32>) -> Vec<crate::LogRecord> {
-        let logs = self.logs.read().unwrap();
+        let logs = self.logs.read().unwrap_or_else(|e| e.into_inner());
         let limit = limit.unwrap_or(100).min(MAX_LOGS as u32) as usize;
         logs.iter().rev()
             .filter(|l| {
@@ -654,7 +654,7 @@ impl DataEngineInner {
     }
 
     pub fn search_logs(&self, query: &str, level: Option<&str>, limit: Option<u32>) -> Vec<crate::LogRecord> {
-        let logs = self.logs.read().unwrap();
+        let logs = self.logs.read().unwrap_or_else(|e| e.into_inner());
         let limit = limit.unwrap_or(100).min(MAX_LOGS as u32) as usize;
         let q = query.to_lowercase();
         logs.iter().rev()
@@ -670,7 +670,7 @@ impl DataEngineInner {
     }
 
     pub fn clear_logs(&self) -> u32 {
-        let mut logs = self.logs.write().unwrap();
+        let mut logs = self.logs.write().unwrap_or_else(|e| e.into_inner());
         let count = logs.len() as u32;
         logs.clear();
         count
@@ -679,7 +679,7 @@ impl DataEngineInner {
     // -- Skills --
 
     pub fn list_skills(&self) -> Vec<crate::SkillEntry> {
-        self.skills.read().unwrap().iter().map(|s| crate::SkillEntry {
+        self.skills.read().unwrap_or_else(|e| e.into_inner()).iter().map(|s| crate::SkillEntry {
             id: s.id.clone(), name: s.name.clone(), description: s.description.clone(),
             active: s.active, version: s.version.clone(), category: s.category.clone(),
             risk_score: s.risk_score, allow_level: s.allow_level.clone(),
@@ -688,7 +688,7 @@ impl DataEngineInner {
     }
 
     pub fn get_skill(&self, id: &str) -> Option<crate::SkillEntry> {
-        self.skills.read().unwrap().iter().find(|s| s.id == id).map(|s| crate::SkillEntry {
+        self.skills.read().unwrap_or_else(|e| e.into_inner()).iter().find(|s| s.id == id).map(|s| crate::SkillEntry {
             id: s.id.clone(), name: s.name.clone(), description: s.description.clone(),
             active: s.active, version: s.version.clone(), category: s.category.clone(),
             risk_score: s.risk_score, allow_level: s.allow_level.clone(),
@@ -699,7 +699,7 @@ impl DataEngineInner {
     // -- Workflows --
 
     pub fn list_workflows(&self) -> Vec<crate::WorkflowEntry> {
-        self.workflows.read().unwrap().iter().map(|w| crate::WorkflowEntry {
+        self.workflows.read().unwrap_or_else(|e| e.into_inner()).iter().map(|w| crate::WorkflowEntry {
             id: w.id.clone(), name: w.name.clone(), status: w.status.clone(),
             last_run: w.last_run, duration: w.duration, event_count: w.event_count,
             source: w.source.clone(),
@@ -707,7 +707,7 @@ impl DataEngineInner {
     }
 
     pub fn get_workflow(&self, id: &str) -> Option<crate::WorkflowEntry> {
-        self.workflows.read().unwrap().iter().find(|w| w.id == id).map(|w| crate::WorkflowEntry {
+        self.workflows.read().unwrap_or_else(|e| e.into_inner()).iter().find(|w| w.id == id).map(|w| crate::WorkflowEntry {
             id: w.id.clone(), name: w.name.clone(), status: w.status.clone(),
             last_run: w.last_run, duration: w.duration, event_count: w.event_count,
             source: w.source.clone(),
@@ -715,7 +715,7 @@ impl DataEngineInner {
     }
 
     pub fn update_workflow_status(&self, id: &str, status: &str) -> bool {
-        let mut wf = self.workflows.write().unwrap();
+        let mut wf = self.workflows.write().unwrap_or_else(|e| e.into_inner());
         for w in wf.iter_mut() {
             if w.id == id { w.status = status.to_string(); w.last_run = Utc::now().timestamp() as f64; w.event_count += 1; return true; }
         }
@@ -725,7 +725,7 @@ impl DataEngineInner {
     // -- Models --
 
     pub fn list_models(&self) -> Vec<crate::ModelInfo> {
-        self.models.read().unwrap().iter().map(|m| crate::ModelInfo {
+        self.models.read().unwrap_or_else(|e| e.into_inner()).iter().map(|m| crate::ModelInfo {
             id: m.id.clone(), name: m.name.clone(), description: m.description.clone(),
             path: m.path.clone(), parameter_count: m.parameter_count,
             state: m.state.clone(), loaded_at: m.loaded_at.clone(),
@@ -734,7 +734,7 @@ impl DataEngineInner {
     }
 
     pub fn get_model(&self, id: &str) -> Option<crate::ModelInfo> {
-        self.models.read().unwrap().iter().find(|m| m.id == id).map(|m| crate::ModelInfo {
+        self.models.read().unwrap_or_else(|e| e.into_inner()).iter().find(|m| m.id == id).map(|m| crate::ModelInfo {
             id: m.id.clone(), name: m.name.clone(), description: m.description.clone(),
             path: m.path.clone(), parameter_count: m.parameter_count,
             state: m.state.clone(), loaded_at: m.loaded_at.clone(),
@@ -743,7 +743,7 @@ impl DataEngineInner {
     }
 
     pub fn set_model_state(&self, id: &str, state: &str) -> bool {
-        let mut models = self.models.write().unwrap();
+        let mut models = self.models.write().unwrap_or_else(|e| e.into_inner());
         for m in models.iter_mut() {
             if m.id == id { m.state = state.to_string(); m.loaded_at = Some(Utc::now().to_rfc3339()); return true; }
         }
@@ -753,7 +753,7 @@ impl DataEngineInner {
     // -- Training Runs --
 
     pub fn list_training_runs(&self) -> Vec<crate::TrainingRunSummary> {
-        self.training_runs.read().unwrap().iter().map(|r| crate::TrainingRunSummary {
+        self.training_runs.read().unwrap_or_else(|e| e.into_inner()).iter().map(|r| crate::TrainingRunSummary {
             id: r.id.clone(), name: r.name.clone(), model_id: r.model_id.clone(),
             status: r.status.clone(), started_at: r.started_at,
             current_epoch: r.current_epoch, total_epochs: r.total_epochs,
@@ -764,7 +764,7 @@ impl DataEngineInner {
     }
 
     pub fn get_training_run(&self, id: &str) -> Option<crate::TrainingRunDetail> {
-        self.training_runs.read().unwrap().iter().find(|r| r.id == id).map(|r| {
+        self.training_runs.read().unwrap_or_else(|e| e.into_inner()).iter().find(|r| r.id == id).map(|r| {
             let steps = r.data_points.iter().map(|p| p.step).collect::<Vec<_>>();
             let train_losses = r.data_points.iter().map(|p| p.train_loss).collect::<Vec<_>>();
             let val_losses = r.data_points.iter().map(|p| p.val_loss).collect::<Vec<_>>();
@@ -783,7 +783,7 @@ impl DataEngineInner {
     }
 
     pub fn create_training_run(&self, name: &str, model_id: &str, total_epochs: u32) -> crate::TrainingRunSummary {
-        let mut runs = self.training_runs.write().unwrap();
+        let mut runs = self.training_runs.write().unwrap_or_else(|e| e.into_inner());
         let run = InternalTrainingRun {
             id: Self::gen_id(), name: name.into(), model_id: model_id.into(),
             status: "queued".into(), started_at: Utc::now().timestamp() as f64,
@@ -806,18 +806,18 @@ impl DataEngineInner {
     // -- Stats --
 
     pub fn get_stats(&self) -> crate::SystemStats {
-        let activity = self.activity.read().unwrap();
-        let notifications = self.notifications.read().unwrap();
-        let logs = self.logs.read().unwrap();
-        let memory = self.memory_layers.read().unwrap();
+        let activity = self.activity.read().unwrap_or_else(|e| e.into_inner());
+        let notifications = self.notifications.read().unwrap_or_else(|e| e.into_inner());
+        let logs = self.logs.read().unwrap_or_else(|e| e.into_inner());
+        let memory = self.memory_layers.read().unwrap_or_else(|e| e.into_inner());
 
         crate::SystemStats {
-            agent_count: self.agents.len() as u32,
-            activity_count: activity.len() as u32,
-            notification_count: notifications.len() as u32,
-            notification_unread: notifications.iter().filter(|n| !n.read).count() as u32,
-            memory_entry_count: memory.values().map(|v| v.len() as u32).sum(),
-            log_count: logs.len() as u32,
+            agent_count: (self.agents.len() as u64).min(u32::MAX as u64) as u32,
+            activity_count: (activity.len() as u64).min(u32::MAX as u64) as u32,
+            notification_count: (notifications.len() as u64).min(u32::MAX as u64) as u32,
+            notification_unread: (notifications.iter().filter(|n| !n.read).count() as u64).min(u32::MAX as u64) as u32,
+            memory_entry_count: memory.values().map(|v| (v.len() as u64).min(u32::MAX as u64) as u32).sum(),
+            log_count: (logs.len() as u64).min(u32::MAX as u64) as u32,
         }
     }
 }

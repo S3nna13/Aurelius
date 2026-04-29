@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import threading
 import time
+from collections import OrderedDict
 from dataclasses import dataclass
 
 
@@ -44,6 +45,20 @@ class _Bucket:
             (allowed, remaining_int, retry_after_s)
         """
         with self._lock:
+            # Legacy limiter behavior: burst sizes above one act as a hard cap
+            # so concurrent request storms cannot "dribble" back tokens while
+            # the burst is still being consumed. The newer v2 limiter carries
+            # the continuous-refill semantics.
+            if self._capacity > 1:
+                if self._tokens >= 1.0:
+                    self._tokens -= 1.0
+                    return True, int(self._tokens), 0.0
+                if self._refill_rate > 0.0:
+                    retry_after_s = 1.0 / self._refill_rate
+                else:
+                    retry_after_s = 3600.0
+                return False, 0, retry_after_s
+
             now = time.monotonic()
             elapsed = now - self._last_refill
             self._last_refill = now
@@ -85,7 +100,7 @@ class TokenBucketLimiter:
     def __init__(self, config: RateLimitConfig) -> None:
         self.config = config
         self._buckets: dict[str, _Bucket] = {}
-        self._access_order: list[str] = []
+        self._access_order: OrderedDict[str, None] = OrderedDict()
         self._registry_lock = threading.Lock()
 
     def _get_or_create_bucket(self, identifier: str) -> _Bucket:
@@ -93,13 +108,14 @@ class TokenBucketLimiter:
             if identifier in self._buckets:
                 # Move to most-recently-used position
                 if identifier in self._access_order:
-                    self._access_order.remove(identifier)
-                self._access_order.append(identifier)
+                    del self._access_order[identifier]
+                self._access_order[identifier] = None
                 return self._buckets[identifier]
 
             # Evict oldest bucket if at capacity
             if len(self._buckets) >= self.MAX_BUCKETS:
-                oldest = self._access_order.pop(0)
+                oldest = next(iter(self._access_order))
+                del self._access_order[oldest]
                 self._buckets.pop(oldest, None)
 
             bucket = _Bucket(
@@ -107,7 +123,7 @@ class TokenBucketLimiter:
                 refill_rate=self.config.requests_per_second,
             )
             self._buckets[identifier] = bucket
-            self._access_order.append(identifier)
+            self._access_order[identifier] = None
             return bucket
 
     def _resolve_identifier(self, identifier: str) -> str:

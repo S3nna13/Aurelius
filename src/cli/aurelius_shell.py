@@ -8,7 +8,8 @@ Powered by Aurelius backend only. Lightning blue (#00BFFF) theme.
 from __future__ import annotations
 
 import os
-import subprocess
+import shlex
+import subprocess  # nosec B404 - internal command runner wrapper
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -174,9 +175,12 @@ class AureliusShell:
 
     def run_shell(self, command: str, cwd: str | None = None, timeout: int = 30) -> str:
         try:
-            result = subprocess.run(  # noqa: S602
-                command,
-                shell=True,
+            argv = shlex.split(command)
+            if not argv:
+                return "Command is empty"
+            result = subprocess.run(  # noqa: S603  # nosec
+                argv,
+                shell=False,
                 capture_output=True,
                 text=True,
                 timeout=timeout,

@@ -23,7 +23,9 @@ def test_instantiates_with_custom_storage_dir(tmp_path):
 
 def test_save_creates_file(store, tmp_path):
     store.save("conv1", MESSAGES)
-    assert (tmp_path / "conv1.json").exists()
+    files = list(tmp_path.glob("*.json"))
+    assert any(p.name == "index.json" for p in files)
+    assert any(p.name != "index.json" for p in files)
 
 
 def test_load_returns_saved_messages(store):

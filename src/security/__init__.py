@@ -95,6 +95,11 @@ from src.security.sarif_reporter import (
     SarifResult,
     SarifRule,
 )
+from src.security.sbom_generator import (
+    SBOM_REGISTRY,
+    SBOMResult,
+    generate_sbom,
+)
 from src.security.soc_pipeline import (
     DEFAULT_SOC_PIPELINE,
     DecideStage,
@@ -234,6 +239,9 @@ __all__ = [
     "SandboxResult",
     "SandboxExecutor",
     "SANDBOX_EXECUTOR",
+    "SBOM_REGISTRY",
+    "SBOMResult",
+    "generate_sbom",
     # rate_abuse_detector
     "AbuseAlert",
     "AbusePattern",

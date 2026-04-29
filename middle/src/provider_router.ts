@@ -134,11 +134,15 @@ export class ProviderRouter {
     }
 
     try {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 30000)
       const response = await fetch(`${config.upstreamUrl}/v1/chat/completions`, {
         method: 'POST',
         headers,
         body: JSON.stringify(payload),
+        signal: controller.signal,
       });
+      clearTimeout(timer)
 
       if (!response.ok) {
         throw new Error(`Aurelius upstream returned ${response.status}`);
@@ -170,6 +174,8 @@ export class ProviderRouter {
     };
 
     try {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 30000)
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -177,7 +183,9 @@ export class ProviderRouter {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload),
+        signal: controller.signal,
       });
+      clearTimeout(timer)
 
       if (!response.ok) {
         throw new Error(`OpenAI upstream returned ${response.status}`);

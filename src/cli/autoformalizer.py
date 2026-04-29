@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 
 @dataclass
@@ -21,7 +21,11 @@ class Autoformalizer:
     Iterates: LLM generates formal proof → checker verifies → feedback → refine.
     """
 
-    def __init__(self, llm_fn: Callable[[str], str] | None = None, checker_fn: Callable[[str], bool] | None = None):
+    def __init__(
+        self,
+        llm_fn: Callable[[str], str] | None = None,
+        checker_fn: Callable[[str], bool] | None = None,
+    ):
         self.llm_fn = llm_fn or (lambda p: f"theorem {p[:20]} ...")
         self.checker_fn = checker_fn or (lambda p: True)
         self.theorems: list[Theorem] = []

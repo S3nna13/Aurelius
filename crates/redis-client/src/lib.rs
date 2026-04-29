@@ -21,9 +21,9 @@ pub struct RedisConfig {
 pub struct RedisInfo {
     pub connected: bool,
     pub latency_ms: f64,
-    pub keys_count: Option<u64>,
+    pub keys_count: Option<i64>,
     pub server_version: Option<String>,
-    pub memory_used: Option<u64>,
+    pub memory_used: Option<i64>,
 }
 
 #[napi(object)]
@@ -78,14 +78,13 @@ impl RedisClient {
         Ok(())
     }
 
-    async fn get_conn(&self) -> Result<std::sync::Arc<tokio::sync::Mutex<ConnectionManager>>> {
-        let mut pool = self.pool.lock().await;
+    async fn get_conn(&self) -> Result<()> {
+        let pool = self.pool.lock().await;
         if pool.is_none() {
             drop(pool);
             self.connect().await?;
         }
-
-        Ok(self.pool.clone())
+        Ok(())
     }
 
     #[napi]
@@ -111,11 +110,11 @@ impl RedisClient {
         let conn = guard.as_mut().ok_or_else(|| napi::Error::from_reason("Not connected"))?;
 
         if let Some(ttl) = ttl_seconds {
-            conn.set_ex(key, value, ttl as u64)
+            let _: () = conn.set_ex(&key, &value, ttl as u64)
                 .await
                 .map_err(|e| napi::Error::from_reason(format!("Redis set error: {}", e)))?;
         } else {
-            conn.set(key, value)
+            let _: () = conn.set(&key, &value)
                 .await
                 .map_err(|e| napi::Error::from_reason(format!("Redis set error: {}", e)))?;
         }
@@ -176,7 +175,7 @@ impl RedisClient {
         let conn = guard.as_mut().ok_or_else(|| napi::Error::from_reason("Not connected"))?;
 
         let result: bool = conn
-            .expire(key, seconds as u64)
+            .expire(&key, seconds as i64)
             .await
             .map_err(|e| napi::Error::from_reason(format!("Redis expire error: {}", e)))?;
 
@@ -296,7 +295,7 @@ impl RedisClient {
         let conn = guard.as_mut().ok_or_else(|| napi::Error::from_reason("Not connected"))?;
 
         let result: Vec<String> = conn
-            .lrange(key, start, stop)
+            .lrange(&key, start as isize, stop as isize)
             .await
             .map_err(|e| napi::Error::from_reason(format!("Redis lrange error: {}", e)))?;
 
@@ -334,13 +333,13 @@ impl RedisClient {
 
         let latency = start.elapsed().as_secs_f64() * 1000.0;
 
-        let info_str: String = conn
-            .info()
+        let info_str: String = redis::cmd("INFO")
+            .query_async(&mut *conn)
             .await
             .map_err(|e| napi::Error::from_reason(format!("Redis info error: {}", e)))?;
 
-        let keys: u64 = conn
-            .dbsize()
+        let keys: u64 = redis::cmd("DBSIZE")
+            .query_async(&mut *conn)
             .await
             .map_err(|e| napi::Error::from_reason(format!("Redis dbsize error: {}", e)))?;
 
@@ -352,14 +351,14 @@ impl RedisClient {
                 server_version = Some(val.trim().to_string());
             }
             if let Some(val) = line.strip_prefix("used_memory:") {
-                memory_used = val.trim().parse::<u64>().ok();
+                memory_used = val.trim().parse::<u64>().ok().map(|m| m as i64);
             }
         }
 
         Ok(RedisInfo {
             connected: ping_result.to_uppercase() == "PONG",
             latency_ms: (latency * 100.0).round() / 100.0,
-            keys_count: Some(keys),
+            keys_count: Some(keys as i64),
             server_version,
             memory_used,
         })

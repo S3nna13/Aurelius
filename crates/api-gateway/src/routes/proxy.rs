@@ -50,10 +50,11 @@ async fn proxy_handler(
         crate::rate_limit::RateLimitResult::Allowed { .. } => {}
     }
 
+    let req_path = req.uri().path().to_string();
     match state.proxy_client.proxy_request(req).await {
         Ok(resp) => {
             let latency = start.elapsed().as_secs_f64() * 1000.0;
-            let path = resp.uri().path().to_string();
+            let path = req_path;
             let status = resp.status().as_u16();
             state.metrics.record_request(&path, status, latency);
             resp.into_response()

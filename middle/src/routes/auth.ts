@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { registerApiKey, unregisterApiKey } from '../middleware/auth.js'
+import { registerApiKey, unregisterApiKey, validateApiKey, requireScope } from '../middleware/auth.js'
 import { validateBody } from '../middleware/validation.js'
 import { v4 as uuidv4 } from 'uuid'
 import { config } from '../config.js'
@@ -18,7 +18,7 @@ const users = new Map<string, User>()
 const userSessions = new Map<string, { token: string; expiresAt: number }>()
 const inviteTokens = new Map<string, { role: 'admin' | 'user'; used: boolean }>()
 
-const adminKey = process.env.AURELIUS_API_KEY || 'dev-key'
+const adminKey = process.env.AURELIUS_API_KEY || ''
 if (adminKey) {
   users.set('admin', {
     id: 'admin',
@@ -41,7 +41,9 @@ router.post('/login', validateBody([
       const expiresAt = Date.now() + 86400000
       userSessions.set(token, { token, expiresAt })
 
-      registerApiKey(apiKey, { id: user.id, role: user.role, scopes: ['read', 'write'] })
+      const existingScopes = validateApiKey(apiKey)?.scopes
+      const scopes = existingScopes || (user.role === 'admin' ? ['*'] : ['read', 'write'])
+      registerApiKey(apiKey, { id: user.id, role: user.role, scopes })
 
       res.json({
         success: true,
@@ -115,7 +117,7 @@ function cleanupExpiredSessions() {
 // Run cleanup every 5 minutes
 setInterval(cleanupExpiredSessions, 300_000)
 
-router.get('/users', (_req, res) => {
+router.get('/users', requireScope('auth:read'), (_req, res) => {
   cleanupExpiredSessions()
   const userList = Array.from(users.values()).map((u) => ({
     id: u.id,

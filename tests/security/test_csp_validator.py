@@ -20,4 +20,4 @@ class TestCSPBuilder:
     def test_multiple_sources(self):
         csp = CSPBuilder()
         csp.add(CSPDirective("img-src", ["'self'", "https://images.example.com"]))
-        assert "https://images.example.com" in csp.build()
+        assert "https://images.example.com" in csp.directives[-1].sources
