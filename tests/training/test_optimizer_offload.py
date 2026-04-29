@@ -3,18 +3,15 @@
 from __future__ import annotations
 
 import tempfile
+from pathlib import Path
 
 import torch  # noqa: F401
 import torch._dynamo  # noqa: F401
 import torch._inductor.test_operators  # noqa: F401
-from pathlib import Path
-
-import pytest
 import torch.nn as nn
 
-from src.training.optimizer_offload import OptimizerOffloader
 from src.training.muon import Muon
-
+from src.training.optimizer_offload import OptimizerOffloader
 
 # ---------------------------------------------------------------------------
 # Helpers

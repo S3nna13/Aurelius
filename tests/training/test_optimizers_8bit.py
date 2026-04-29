@@ -4,16 +4,14 @@ from __future__ import annotations
 
 import sys
 from types import ModuleType
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 import torch
 import torch.nn as nn
 
-from src.training.optimizers_8bit import Muon8bit, get_8bit_adamw, get_8bit_muon
 from src.training.muon import Muon
-
+from src.training.optimizers_8bit import Muon8bit, get_8bit_adamw, get_8bit_muon
 
 # ---------------------------------------------------------------------------
 # Helpers

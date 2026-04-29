@@ -6,7 +6,6 @@ import struct
 from pathlib import Path
 
 import pytest
-import torch
 from safetensors.torch import save_file
 
 from scripts.export_gguf import export_gguf
@@ -46,8 +45,7 @@ def checkpoint_dir(tmp_path: Path, tiny_model: AureliusTransformer) -> Path:
     ckpt_dir.mkdir()
     # Clone tensors to break weight sharing (tied embeddings) before saving
     state_dict = {
-        k: v.detach().contiguous().cpu().clone()
-        for k, v in tiny_model.state_dict().items()
+        k: v.detach().contiguous().cpu().clone() for k, v in tiny_model.state_dict().items()
     }
     save_file(state_dict, ckpt_dir / "model.safetensors")
     return ckpt_dir
@@ -157,8 +155,7 @@ class TestGGUFExport:
         ckpt_dir = tmp_path / "ckpt"
         ckpt_dir.mkdir()
         state_dict = {
-            k: v.detach().contiguous().cpu().clone()
-            for k, v in model.state_dict().items()
+            k: v.detach().contiguous().cpu().clone() for k, v in model.state_dict().items()
         }
         save_file(state_dict, ckpt_dir / "model.safetensors")
 
