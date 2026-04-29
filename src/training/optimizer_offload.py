@@ -3,7 +3,6 @@ from __future__ import annotations
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Any
 
 import torch
 
@@ -11,7 +10,11 @@ import torch
 class OptimizerOffloader:
     def __init__(self, optimizer: torch.optim.Optimizer, offload_dir: str | Path | None = None):
         self.optimizer = optimizer
-        self.offload_dir = Path(offload_dir) if offload_dir else Path(tempfile.mkdtemp(prefix="aurelius_opt_offload_"))
+        self.offload_dir = (
+            Path(offload_dir)
+            if offload_dir
+            else Path(tempfile.mkdtemp(prefix="aurelius_opt_offload_"))
+        )
         self.offload_dir.mkdir(parents=True, exist_ok=True)
         self._param_ids: list[int] = []
         self._offloaded: list[tuple[int, str]] = []

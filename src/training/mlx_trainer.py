@@ -13,9 +13,7 @@ exportable to MLX format.
 from __future__ import annotations
 
 import logging
-import math
-import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -69,6 +67,7 @@ class MLXTrainer:
             import mlx.core as mx
             import mlx.nn as nn
             import mlx.optim as optim
+
             self.mx = mx
             self.mlx_nn = nn
             self.mlx_optim = optim
@@ -83,7 +82,6 @@ class MLXTrainer:
 
         Loads a PyTorch safetensors checkpoint and converts to MLX format.
         """
-        import json
 
         model = None
         model_path = Path(self.cfg.model_path)
@@ -91,6 +89,7 @@ class MLXTrainer:
         if model_path.exists() and (model_path / "model.safetensors").exists():
             try:
                 from safetensors import safe_open
+
                 tensors = {}
                 with safe_open(str(model_path / "model.safetensors"), framework="pt") as f:
                     for key in f.keys():
@@ -113,9 +112,7 @@ class MLXTrainer:
             self.cfg.batch_size,
             self.cfg.seq_len,
         )
-        logger.info(
-            "To use: convert PyTorch model to MLX format, then set model_path in MLXConfig"
-        )
+        logger.info("To use: convert PyTorch model to MLX format, then set model_path in MLXConfig")
 
     def convert_from_pytorch(self, pt_checkpoint_dir: str, output_dir: str) -> None:
         """Convert a PyTorch safetensors checkpoint to MLX format.
@@ -124,7 +121,6 @@ class MLXTrainer:
             pt_checkpoint_dir: Path to PyTorch checkpoint directory.
             output_dir: Where to save MLX-format weights.
         """
-        import json
         from pathlib import Path
 
         import numpy as np
@@ -145,8 +141,6 @@ class MLXTrainer:
                 weights[key] = tensor.float().numpy()
 
         # Save as MLX-compatible safetensors
-        from safetensors import safe_open as _  # noqa: F811
-        from safetensors.torch import save_file as _save_file
 
         np.savez(out_dir / "weights.npz", **weights)
         logger.info(f"Converted {len(weights)} tensors to {out_dir / 'weights.npz'}")

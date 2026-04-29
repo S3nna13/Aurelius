@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Literal
 
 
 @dataclass
@@ -51,17 +51,20 @@ class TrainingConfig:
 
     def to_dict(self) -> dict:
         import dataclasses
+
         return dataclasses.asdict(self)
 
     @classmethod
     def from_dict(cls, d: dict) -> TrainingConfig:
         import dataclasses
+
         fields = {f.name for f in dataclasses.fields(cls)}
         return cls(**{k: v for k, v in d.items() if k in fields})
 
     @classmethod
     def from_yaml(cls, path: str) -> TrainingConfig:
         import yaml
+
         with open(path) as f:
             raw = yaml.safe_load(f)
 
@@ -98,9 +101,15 @@ class TrainingConfig:
     @classmethod
     def aurelius_1b(cls) -> TrainingConfig:
         return cls(
-            vocab_size=128000, n_layers=24, n_heads=16, d_model=2048,
-            n_kv_heads=8, d_ff=5632, max_seq_len=8192,
-            batch_size=4, learning_rate=3e-4,
+            vocab_size=128000,
+            n_layers=24,
+            n_heads=16,
+            d_model=2048,
+            n_kv_heads=8,
+            d_ff=5632,
+            max_seq_len=8192,
+            batch_size=4,
+            learning_rate=3e-4,
         )
 
 
