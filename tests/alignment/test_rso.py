@@ -2,6 +2,7 @@
 
 import pytest
 import torch
+
 from aurelius.alignment.rso import (
     RSOConfig,
     RSOLoss,
