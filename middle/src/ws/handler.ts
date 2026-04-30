@@ -1,7 +1,6 @@
 import { WebSocketServer, type WebSocket } from 'ws'
 import type { Server } from 'http'
 import { getEngine } from '../engine.js'
-import { registerApiKey, type AuthUser } from '../middleware/auth.js'
 
 interface WsMessage {
   type: string
@@ -22,7 +21,7 @@ function broadcast(data: unknown): void {
 export function setupWebSocket(server: Server): WebSocketServer {
   const wss = new WebSocketServer({ server, path: '/ws' })
 
-  wss.on('connection', (ws, req) => {
+  wss.on('connection', (ws) => {
     clients.add(ws)
 
     const engine = getEngine()

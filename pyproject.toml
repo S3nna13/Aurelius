@@ -77,7 +77,7 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "S"]
 ignore = ["S105", "S311"]
-per-file-ignores = {"tests/**" = ["S101", "S108"], "**/__init__.py" = ["E402"], "training_data/**" = ["E501"], "scripts/**" = ["S101", "S603", "S607"]}
+per-file-ignores = {"tests/**" = ["S101", "S108", "S104"], "**/__init__.py" = ["E402", "F403"], "training_data/**" = ["E501"], "scripts/**" = ["S101", "S603", "S607"], "src/persona/**" = ["E501"], "src/serving/aurelius_server.py" = ["S104"]}
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

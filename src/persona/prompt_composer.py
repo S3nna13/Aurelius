@@ -162,7 +162,10 @@ class PromptComposer:
         if ft == "threat_intel":
             classifiers = cfg.get("query_classifiers", [])
             if classifiers:
-                return f"Classify queries as: {', '.join(classifiers)}. Respond with structured output per the relevant contract."
+                return (
+                    f"Classify queries as: {', '.join(classifiers)}. "
+                    "Respond with structured output per the relevant contract."
+                )
             return "Classify threat intelligence queries and respond with structured output."
 
         if ft == "agent_mode":
