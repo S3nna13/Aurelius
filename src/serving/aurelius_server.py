@@ -41,6 +41,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import re
 import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -96,6 +97,7 @@ _STATIC_CONTENT_TYPES = {
     ".svg": "image/svg+xml",
     ".txt": "text/plain; charset=utf-8",
 }
+_SAFE_ASSET_PART = re.compile(r"^[a-zA-Z0-9._-]{1,128}$")
 
 
 def _resolve_frontend_asset(relative_path: str) -> Path | None:
@@ -103,6 +105,8 @@ def _resolve_frontend_asset(relative_path: str) -> Path | None:
     clean_path = relative_path.split("?", 1)[0].split("#", 1)[0]
     candidate = Path(unquote(clean_path).lstrip("/"))
     if candidate.is_absolute() or any(part in {"", ".", ".."} for part in candidate.parts):
+        return None
+    if any(not _SAFE_ASSET_PART.fullmatch(part) for part in candidate.parts):
         return None
 
     resolved = (_FRONTEND_DIST / candidate).resolve()

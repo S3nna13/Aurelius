@@ -15,6 +15,7 @@ except ImportError:  # pragma: no cover - optional dependency
     _HAS_FILELOCK = False
 
 _SAFE_ID = re.compile(r"^[a-zA-Z0-9_\-]{1,128}$")
+_SAFE_PATH_PART = re.compile(r"^[a-zA-Z0-9._-]{1,128}$")
 _INDEX_FILE = "index.json"
 
 
@@ -26,8 +27,19 @@ class ConversationStore:
     """
 
     def __init__(self, storage_dir: str = "~/.aurelius/conversations") -> None:
-        self.storage_dir = Path(os.path.expanduser(storage_dir)).resolve()
+        self.storage_dir = self._resolve_storage_dir(storage_dir)
         self.storage_dir.mkdir(parents=True, exist_ok=True)
+
+    def _resolve_storage_dir(self, storage_dir: str) -> Path:
+        """Resolve a storage directory only after validating each path part."""
+        candidate = Path(os.path.expanduser(storage_dir))
+        parts = candidate.parts[1:] if candidate.is_absolute() else candidate.parts
+        if not parts:
+            raise ValueError("storage_dir must not be empty")
+        for part in parts:
+            if part in {"", ".", ".."} or not _SAFE_PATH_PART.fullmatch(part):
+                raise ValueError(f"Invalid storage_dir segment: {part!r}")
+        return candidate.resolve()
 
     def _conversation_digest(self, conversation_id: str) -> str:
         if not _SAFE_ID.fullmatch(conversation_id):

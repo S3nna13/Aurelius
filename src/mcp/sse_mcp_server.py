@@ -13,6 +13,7 @@ from __future__ import annotations
 import http.server
 import json
 import logging
+import re
 import socketserver
 import threading
 from collections.abc import Callable
@@ -24,6 +25,7 @@ from .mcp_server import MCPServer, register_mcp_server
 logger = logging.getLogger(__name__)
 
 _MAX_REQUEST_BODY = 1 * 1024 * 1024  # 1 MiB hard cap on incoming POST bodies
+_SAFE_ORIGIN_RE = re.compile(r"^https?://[A-Za-z0-9.-]+(?::\d+)?$")
 
 
 def _normalize_origin(origin: str) -> str | None:
@@ -31,13 +33,18 @@ def _normalize_origin(origin: str) -> str | None:
     origin = origin.strip()
     if not origin or "\r" in origin or "\n" in origin:
         return None
+    if not _SAFE_ORIGIN_RE.fullmatch(origin):
+        return None
 
     parsed = urlsplit(origin)
-    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
         return None
-    if parsed.path or parsed.query or parsed.fragment or "@" in parsed.netloc:
+    if parsed.path or parsed.query or parsed.fragment or parsed.username or parsed.password:
         return None
-    return f"{parsed.scheme}://{parsed.netloc}"
+    origin_text = f"{parsed.scheme}://{parsed.hostname}"
+    if parsed.port is not None:
+        origin_text = f"{origin_text}:{parsed.port}"
+    return origin_text
 
 # ---------------------------------------------------------------------------
 # Configuration

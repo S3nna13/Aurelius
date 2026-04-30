@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import atexit
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -33,6 +34,7 @@ except ImportError as _exc:  # pragma: no cover
 
 DEFAULT_DB_PATH: str = os.environ.get("AURELIUS_USAGE_DB", "/var/lib/aurelius/usage.redb")
 _DATA_ROOT = Path(os.environ.get("AURELIUS_DATA_DIR", "/var/lib/aurelius")).expanduser().resolve()
+_SAFE_PATH_PART = re.compile(r"^[a-zA-Z0-9._-]{1,128}$")
 
 
 def _resolve_db_path(db_path: str | None) -> Path:
@@ -43,6 +45,11 @@ def _resolve_db_path(db_path: str | None) -> Path:
     candidate = Path(db_path).expanduser()
     if candidate.is_absolute():
         candidate = Path(*candidate.parts[1:])
+    if not candidate.parts:
+        raise ValueError("db_path must not be empty")
+    for part in candidate.parts:
+        if part in {"", ".", ".."} or not _SAFE_PATH_PART.fullmatch(part):
+            raise ValueError(f"Invalid db_path segment: {part!r}")
     resolved = (_DATA_ROOT / candidate).resolve()
     if resolved != _DATA_ROOT and not resolved.is_relative_to(_DATA_ROOT):
         raise ValueError("db_path must stay within AURELIUS_DATA_DIR")
