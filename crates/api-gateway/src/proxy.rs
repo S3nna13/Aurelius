@@ -1,8 +1,8 @@
 use axum::{
     body::Body,
-    extract::{Request, State},
-    http::{HeaderMap, HeaderValue, StatusCode, Uri},
-    response::{IntoResponse, Response},
+    extract::Request,
+    http::{HeaderMap, StatusCode},
+    response::Response,
 };
 use std::sync::Arc;
 use std::time::Instant;

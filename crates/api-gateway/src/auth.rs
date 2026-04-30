@@ -19,33 +19,22 @@ pub struct Claims {
     pub iat: usize,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct LoginRequest {
-    pub api_key: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct LoginResponse {
-    pub token: String,
-    pub token_type: String,
-    pub expires_in: i64,
-}
-
 #[derive(Debug, Serialize)]
 pub struct AuthError {
     pub error: String,
     pub message: String,
 }
 
+#[allow(dead_code)]
 #[derive(Clone)]
 pub struct AuthService {
     encoding_key: EncodingKey,
     decoding_key: DecodingKey,
-    jwt_secret: Arc<String>,
     jwt_expiry_hours: i64,
     api_keys: Arc<DashMap<String, Claims>>,
 }
 
+#[allow(dead_code)]
 impl AuthService {
     pub fn new(secret: &str, expiry_hours: i64) -> Self {
         let api_keys = Arc::new(DashMap::new());
@@ -53,7 +42,6 @@ impl AuthService {
         AuthService {
             encoding_key: EncodingKey::from_secret(secret.as_bytes()),
             decoding_key: DecodingKey::from_secret(secret.as_bytes()),
-            jwt_secret: Arc::new(secret.to_string()),
             jwt_expiry_hours: expiry_hours,
             api_keys,
         }
@@ -121,7 +109,7 @@ impl AuthState {
 
 pub async fn auth_middleware(
     State(state): State<AuthState>,
-    mut req: Request,
+    req: Request,
     next: Next,
 ) -> Response {
     let path = req.uri().path();
@@ -139,18 +127,18 @@ pub async fn auth_middleware(
         .and_then(|h| h.strip_prefix("Bearer "))
         .or(auth_header);
 
-    if let Some(token) = token {
-        if state.auth_service.validate_token(token).is_ok() {
-            return next.run(req).await;
-        }
+    if let Some(token) = token
+        && state.auth_service.validate_token(token).is_ok()
+    {
+        return next.run(req).await;
     }
 
     let api_key = req.headers().get("X-API-Key").and_then(|v| v.to_str().ok());
 
-    if let Some(key) = api_key {
-        if state.auth_service.validate_api_key(key).is_some() {
-            return next.run(req).await;
-        }
+    if let Some(key) = api_key
+        && state.auth_service.validate_api_key(key).is_some()
+    {
+        return next.run(req).await;
     }
 
     (
@@ -161,15 +149,4 @@ pub async fn auth_middleware(
         }),
     )
         .into_response()
-}
-
-pub fn public_paths() -> Vec<&'static str> {
-    vec![
-        "/health",
-        "/healthz",
-        "/readyz",
-        "/auth/login",
-        "/openapi.json",
-        "/docs",
-    ]
 }

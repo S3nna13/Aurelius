@@ -3,7 +3,6 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use dashmap::DashMap;
-use tokio::sync::Mutex;
 
 #[derive(Clone)]
 pub struct Metrics {
@@ -47,7 +46,7 @@ impl Metrics {
             .inner
             .latencies
             .entry("all".to_string())
-            .or_insert_with(Vec::new);
+            .or_default();
         latencies.push(latency_ms);
         if latencies.len() > 1000 {
             latencies.remove(0);

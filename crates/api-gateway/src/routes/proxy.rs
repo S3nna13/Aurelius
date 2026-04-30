@@ -1,35 +1,21 @@
-use std::sync::Arc;
 use std::time::Instant;
 
 use axum::{
-    Router,
-    extract::{Request, State},
-    http::StatusCode,
     response::IntoResponse,
+    Router,
+    extract::Request,
+    http::StatusCode,
     routing::any,
 };
 
-use crate::{metrics::Metrics, proxy::ProxyClient, rate_limit::RateLimiter};
-
-#[derive(Clone)]
-struct ProxyState {
-    proxy: ProxyClient,
-    limiter: RateLimiter,
-    metrics: Metrics,
-}
-
-pub fn routes(
-    proxy: ProxyClient,
-    limiter: RateLimiter,
-    metrics: Metrics,
-) -> Router<crate::app_state::AppState> {
+pub fn routes() -> Router<crate::app_state::AppState> {
     Router::new()
         .route("/v1/*path", any(proxy_handler))
         .route("/api/*path", any(proxy_handler))
 }
 
 async fn proxy_handler(
-    State(state): State<crate::app_state::AppState>,
+    axum::extract::State(state): axum::extract::State<crate::app_state::AppState>,
     req: Request,
 ) -> impl axum::response::IntoResponse {
     let start = Instant::now();
@@ -45,11 +31,14 @@ async fn proxy_handler(
             return (
                 StatusCode::TOO_MANY_REQUESTS,
                 [("Retry-After", retry_after.to_string())],
-                format!("{{ \"error\": \"Rate limit exceeded\", \"retry_after\": {retry_after} }}"),
+                format!("{{ \"error\": \"Rate limit exceeded\", \"retry_after\": {retry_after} }}")
+                    .to_string(),
             )
                 .into_response();
         }
-        crate::rate_limit::RateLimitResult::Allowed { .. } => {}
+        crate::rate_limit::RateLimitResult::Allowed { remaining, reset } => {
+            let _ = (remaining, reset);
+        }
     }
 
     let req_path = req.uri().path().to_string();
@@ -66,7 +55,7 @@ async fn proxy_handler(
             state
                 .metrics
                 .record_request("/error", status.as_u16(), latency);
-            (status, format!("{{ \"error\": \"Upstream unavailable\" }}")).into_response()
+            (status, "{ \"error\": \"Upstream unavailable\" }".to_string()).into_response()
         }
     }
 }

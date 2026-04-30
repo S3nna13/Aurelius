@@ -34,7 +34,7 @@ fn validate_vectors(a: &[f64], b: &[f64]) -> Result<(), String> {
 
 #[napi]
 pub fn cosine_similarity(a: Vec<f64>, b: Vec<f64>) -> f64 {
-    if let Err(_) = validate_vectors(&a, &b) {
+    if validate_vectors(&a, &b).is_err() {
         return 0.0;
     }
 
@@ -51,7 +51,7 @@ pub fn cosine_similarity(a: Vec<f64>, b: Vec<f64>) -> f64 {
 
 #[napi]
 pub fn dot_product(a: Vec<f64>, b: Vec<f64>) -> f64 {
-    if let Err(_) = validate_vectors(&a, &b) {
+    if validate_vectors(&a, &b).is_err() {
         return 0.0;
     }
 
@@ -60,7 +60,7 @@ pub fn dot_product(a: Vec<f64>, b: Vec<f64>) -> f64 {
 
 #[napi]
 pub fn euclidean_distance(a: Vec<f64>, b: Vec<f64>) -> f64 {
-    if let Err(_) = validate_vectors(&a, &b) {
+    if validate_vectors(&a, &b).is_err() {
         return 0.0;
     }
 
@@ -73,7 +73,7 @@ pub fn euclidean_distance(a: Vec<f64>, b: Vec<f64>) -> f64 {
 
 #[napi]
 pub fn manhattan_distance(a: Vec<f64>, b: Vec<f64>) -> f64 {
-    if let Err(_) = validate_vectors(&a, &b) {
+    if validate_vectors(&a, &b).is_err() {
         return 0.0;
     }
 
