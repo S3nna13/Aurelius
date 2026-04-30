@@ -5,6 +5,8 @@ Control-ID: C-139. All assertions verify graceful failure — no exceptions rais
 
 from __future__ import annotations
 
+import re
+
 from src.tools.edit_tool import _MAX_CONTENT_LEN as EDIT_MAX
 from src.tools.edit_tool import EditTool
 from src.tools.grep_tool import GrepTool
@@ -55,10 +57,9 @@ def test_grep_invalid_regex_no_exception():
 
 def test_grep_catastrophic_regex_small_input():
     tool = GrepTool()
-    # Known backtracking pattern; small input so it terminates quickly
-    result = tool.search(r"a+b", "a" * 15 + "c")
-    # Must return (success or not) without hanging/excepting
-    assert isinstance(result.success, bool)
+    pattern = re.escape("a+b")
+    result = tool.search(pattern, "a+b\n" + "a" * 15 + "c")
+    assert result.success
 
 
 # ── web_tool adversarial ──────────────────────────────────────────────────────

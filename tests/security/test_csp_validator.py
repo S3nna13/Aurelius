@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from urllib.parse import urlsplit
+
 from src.security.csp_validator import CSPBuilder, CSPDirective
 
 
@@ -20,4 +22,7 @@ class TestCSPBuilder:
     def test_multiple_sources(self):
         csp = CSPBuilder()
         csp.add(CSPDirective("img-src", ["'self'", "https://images.example.com"]))
-        assert "https://images.example.com" in csp.directives[-1].sources
+        parsed = urlsplit(csp.directives[-1].sources[-1])
+        assert parsed.scheme == "https"
+        assert parsed.hostname == "images.example.com"
+        assert f"{parsed.scheme}://{parsed.hostname}" == "https://images.example.com"

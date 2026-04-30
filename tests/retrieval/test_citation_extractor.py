@@ -45,7 +45,8 @@ def test_extract_url():
     assert len(urls) >= 1
     parsed = urlsplit(urls[0].source)
     assert parsed.scheme == "https"
-    assert parsed.netloc == "example.com"
+    assert parsed.hostname == "example.com"
+    assert parsed.path == "/path"
 
 
 # ---------------------------------------------------------------------------
