@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from .unified_persona import PersonaDomain, UnifiedPersona
+from .unified_persona import OutputContract, PersonaDomain, UnifiedPersona
 
 
 class PersonaNotFoundError(KeyError):
@@ -34,9 +34,7 @@ class UnifiedPersonaRegistry:
 
     def register(self, persona: UnifiedPersona) -> None:
         if persona.id in self._personas:
-            raise PersonaAlreadyRegisteredError(
-                f"Persona {persona.id!r} is already registered"
-            )
+            raise PersonaAlreadyRegisteredError(f"Persona {persona.id!r} is already registered")
         self._personas[persona.id] = persona
         self._domain_index[persona.domain].append(persona.id)
 
@@ -51,8 +49,7 @@ class UnifiedPersonaRegistry:
     def get(self, persona_id: str) -> UnifiedPersona:
         if persona_id not in self._personas:
             raise PersonaNotFoundError(
-                f"Persona {persona_id!r} not found. "
-                f"Known: {sorted(self._personas)}"
+                f"Persona {persona_id!r} not found. Known: {sorted(self._personas)}"
             )
         return self._personas[persona_id]
 
@@ -99,9 +96,7 @@ class UnifiedPersonaRegistry:
         ]
 
     def find_by_facet(self, facet_type: str) -> list[UnifiedPersona]:
-        return [
-            p for p in self._personas.values() if p.has_facet(facet_type)
-        ]
+        return [p for p in self._personas.values() if p.has_facet(facet_type)]
 
     def find_by_domain(self, domain: PersonaDomain) -> list[UnifiedPersona]:
         ids = self._domain_index.get(domain, [])
@@ -145,9 +140,8 @@ class UnifiedPersonaRegistry:
     @staticmethod
     def _validate_against_contract(
         response_obj: dict | str,
-        contract: "OutputContract",
+        contract: OutputContract,
     ) -> tuple[bool, list[str]]:
-        from .unified_persona import OutputContract
 
         if isinstance(response_obj, str):
             return True, []

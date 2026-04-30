@@ -11,7 +11,15 @@ from ..unified_persona import OutputContract
 
 CVE_SCHEMA: dict[str, Any] = {
     "type": "object",
-    "required": ["cve_id", "affected_systems", "cvss_score", "cvss_vector", "exploit_status", "remediation", "references"],
+    "required": [
+        "cve_id",
+        "affected_systems",
+        "cvss_score",
+        "cvss_vector",
+        "exploit_status",
+        "remediation",
+        "references",
+    ],
     "properties": {
         "cve_id": {"type": "string"},
         "affected_systems": {"type": "array", "items": {"type": "string"}},
@@ -25,7 +33,15 @@ CVE_SCHEMA: dict[str, Any] = {
 
 MITRE_SCHEMA: dict[str, Any] = {
     "type": "object",
-    "required": ["technique_id", "tactic", "description", "usage_examples", "detection", "mitigation", "sub_techniques"],
+    "required": [
+        "technique_id",
+        "tactic",
+        "description",
+        "usage_examples",
+        "detection",
+        "mitigation",
+        "sub_techniques",
+    ],
     "properties": {
         "technique_id": {"type": "string"},
         "tactic": {"type": "string"},
@@ -39,7 +55,14 @@ MITRE_SCHEMA: dict[str, Any] = {
 
 ACTOR_SCHEMA: dict[str, Any] = {
     "type": "object",
-    "required": ["actor_name", "aliases", "ttps", "target_sectors", "notable_campaigns", "attribution_confidence"],
+    "required": [
+        "actor_name",
+        "aliases",
+        "ttps",
+        "target_sectors",
+        "notable_campaigns",
+        "attribution_confidence",
+    ],
     "properties": {
         "actor_name": {"type": "string"},
         "aliases": {"type": "array", "items": {"type": "string"}},
@@ -52,7 +75,15 @@ ACTOR_SCHEMA: dict[str, Any] = {
 
 IOC_SCHEMA: dict[str, Any] = {
     "type": "object",
-    "required": ["ioc_type", "value", "first_seen", "last_seen", "associated_actor", "confidence", "source_refs"],
+    "required": [
+        "ioc_type",
+        "value",
+        "first_seen",
+        "last_seen",
+        "associated_actor",
+        "confidence",
+        "source_refs",
+    ],
     "properties": {
         "ioc_type": {"type": "string"},
         "value": {"type": "string"},

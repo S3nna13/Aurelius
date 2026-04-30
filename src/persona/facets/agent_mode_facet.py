@@ -5,7 +5,9 @@ from __future__ import annotations
 from ..unified_persona import PersonaFacet
 
 
-def create_agent_mode_facet(mode: str = "code", allowed_tools: tuple[str, ...] = ()) -> PersonaFacet:
+def create_agent_mode_facet(
+    mode: str = "code", allowed_tools: tuple[str, ...] = ()
+) -> PersonaFacet:
     return PersonaFacet(
         facet_type="agent_mode",
         config={"mode": mode, "allowed_tools": list(allowed_tools)},

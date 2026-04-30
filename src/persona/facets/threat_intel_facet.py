@@ -43,13 +43,22 @@ def classify_query(user_message: str) -> str:
         return "mitre"
     if _ACTOR_RE.search(user_message):
         return "actor"
-    if _HASH_RE.search(user_message) or _IP_RE.search(user_message) or _DOMAIN_RE.search(user_message):
+    if (
+        _HASH_RE.search(user_message)
+        or _IP_RE.search(user_message)
+        or _DOMAIN_RE.search(user_message)
+    ):
         return "ioc"
     return "general"
 
 
 def validate_threat_intel_response(query_type: str, response_obj: Any) -> tuple[bool, list[str]]:
-    from ..contracts.threat_intel_contracts import CVE_SCHEMA, MITRE_SCHEMA, ACTOR_SCHEMA, IOC_SCHEMA
+    from ..contracts.threat_intel_contracts import (
+        ACTOR_SCHEMA,
+        CVE_SCHEMA,
+        IOC_SCHEMA,
+        MITRE_SCHEMA,
+    )
 
     schemas = {"cve": CVE_SCHEMA, "mitre": MITRE_SCHEMA, "actor": ACTOR_SCHEMA, "ioc": IOC_SCHEMA}
 

@@ -20,6 +20,13 @@ Usage:
     messages = composer.build_messages(persona, "Explain CVE-2024-3094")
 """
 
+from .persona_registry import (
+    PersonaAlreadyRegisteredError,
+    PersonaNotFoundError,
+    UnifiedPersonaRegistry,
+)
+from .persona_router import PersonaRouter, RoutingResult
+from .prompt_composer import PromptComposer, SystemPromptFragment, SystemPromptPriority
 from .unified_persona import (
     Guardrail,
     GuardrailScope,
@@ -33,13 +40,6 @@ from .unified_persona import (
     UnifiedPersona,
     WorkflowStage,
 )
-from .persona_registry import (
-    PersonaAlreadyRegisteredError,
-    PersonaNotFoundError,
-    UnifiedPersonaRegistry,
-)
-from .persona_router import PersonaRouter, RoutingResult
-from .prompt_composer import PromptComposer, SystemPromptFragment, SystemPromptPriority
 
 __all__ = [
     "Guardrail",

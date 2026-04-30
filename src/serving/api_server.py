@@ -199,6 +199,7 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
         version = os.environ.get("AURELIUS_VERSION", "0.1.0")
         try:
             import psutil
+
             mem = psutil.Process().memory_info()
             rss = mem.rss
         except ImportError:
@@ -416,7 +417,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Aurelius API server")
     parser.add_argument("--host", default="127.0.0.1", help="Bind host (default: 127.0.0.1)")
     parser.add_argument("--port", type=int, default=8080, help="Bind port (default: 8080)")
-    parser.add_argument("--timeout", type=int, default=30, help="Graceful shutdown timeout (default: 30s)")
+    parser.add_argument(
+        "--timeout", type=int, default=30, help="Graceful shutdown timeout (default: 30s)"
+    )
     args = parser.parse_args()
 
     generate_fn = make_mock_generate_fn()

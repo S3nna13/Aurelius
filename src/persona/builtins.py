@@ -10,23 +10,7 @@ Consolidates personas from:
 
 from __future__ import annotations
 
-from .unified_persona import (
-    Guardrail,
-    GuardrailScope,
-    GuardrailSeverity,
-    IntentMapping,
-    OutputContract,
-    PersonaDomain,
-    PersonaFacet,
-    PersonaTone,
-    ResponseStyle,
-    UnifiedPersona,
-    WorkflowStage,
-)
 from .contracts.security_contracts import (
-    BLUE_TEAM_OUTPUT_CONTRACT,
-    PURPLE_TEAM_OUTPUT_CONTRACT,
-    RED_TEAM_OUTPUT_CONTRACT,
     SECURITY_ALERT_CONTRACT,
     SECURITY_EMULATION_CONTRACT,
     SECURITY_FINDING_CONTRACT,
@@ -34,14 +18,21 @@ from .contracts.security_contracts import (
 )
 from .contracts.threat_intel_contracts import (
     ACTOR_CONTRACT,
-    ACTOR_SCHEMA,
     CVE_CONTRACT,
-    CVE_SCHEMA,
     IOC_CONTRACT,
-    IOC_SCHEMA,
     MITRE_CONTRACT,
-    MITRE_SCHEMA,
-    THREAT_INTEL_GUARDRAILS,
+)
+from .unified_persona import (
+    Guardrail,
+    GuardrailScope,
+    GuardrailSeverity,
+    IntentMapping,
+    PersonaDomain,
+    PersonaFacet,
+    PersonaTone,
+    ResponseStyle,
+    UnifiedPersona,
+    WorkflowStage,
 )
 
 RED_TEAM_SYSTEM_PROMPT = """\
@@ -200,7 +191,10 @@ AURELIUS_GENERAL = UnifiedPersona(
     temperature=0.7,
     immutable_prompt=False,
     facets=(
-        PersonaFacet("constitution", {"dimensions": ["level1.helpfulness", "level2.honesty", "level2.corrigibility"]}),
+        PersonaFacet(
+            "constitution",
+            {"dimensions": ["level1.helpfulness", "level2.honesty", "level2.corrigibility"]},
+        ),
         PersonaFacet("harm_filter", {"categories": "all", "action": "block"}),
     ),
 )
@@ -233,7 +227,9 @@ AURELIUS_TEACHER = UnifiedPersona(
     temperature=0.8,
     facets=(
         PersonaFacet("personality", {"traits": ["patient", "encouraging", "socratic"]}),
-        PersonaFacet("constitution", {"dimensions": ["level1.helpfulness", "level2.brilliant_friend"]}),
+        PersonaFacet(
+            "constitution", {"dimensions": ["level1.helpfulness", "level2.brilliant_friend"]}
+        ),
     ),
 )
 
@@ -279,18 +275,34 @@ AURELIUS_REDTEAM = UnifiedPersona(
         WorkflowStage("reconnaissance", "Passive + in-scope active mapping"),
         WorkflowStage("scanning", "Service/version/config enumeration"),
         WorkflowStage("vulnerability_identification", "Map findings to CVE/CWE/config"),
-        WorkflowStage("exploitation_planning", "Document proof-of-concept plan against authorized target"),
+        WorkflowStage(
+            "exploitation_planning", "Document proof-of-concept plan against authorized target"
+        ),
         WorkflowStage("reporting", "Deliver finding in output contract"),
     ),
     output_contracts=(SECURITY_FINDING_CONTRACT,),
     guardrails=tuple(
-        Guardrail(id=f"rt-{i}", text=g, severity=GuardrailSeverity.CRITICAL, scope=GuardrailScope.OFFENSIVE)
+        Guardrail(
+            id=f"rt-{i}",
+            text=g,
+            severity=GuardrailSeverity.CRITICAL,
+            scope=GuardrailScope.OFFENSIVE,
+        )
         for i, g in enumerate(SECURITY_GUARDRAILS["red_team"])
     ),
     facets=(
         PersonaFacet("security", {"mode": "offensive", "scope": "closed_internal"}),
-        PersonaFacet("constitution", {"dimensions": ["level2.hard_constraints", "level2.harm_avoidance"]}),
-        PersonaFacet("harm_filter", {"categories": ["malicious_code", "criminal_planning"], "action": "warn", "threshold": 0.8}),
+        PersonaFacet(
+            "constitution", {"dimensions": ["level2.hard_constraints", "level2.harm_avoidance"]}
+        ),
+        PersonaFacet(
+            "harm_filter",
+            {
+                "categories": ["malicious_code", "criminal_planning"],
+                "action": "warn",
+                "threshold": 0.8,
+            },
+        ),
     ),
     priority=1,
     immutable_prompt=True,
@@ -315,7 +327,9 @@ AURELIUS_BLUETEAM = UnifiedPersona(
     ),
     output_contracts=(SECURITY_ALERT_CONTRACT,),
     guardrails=tuple(
-        Guardrail(id=f"bt-{i}", text=g, severity=GuardrailSeverity.HIGH, scope=GuardrailScope.DEFENSIVE)
+        Guardrail(
+            id=f"bt-{i}", text=g, severity=GuardrailSeverity.HIGH, scope=GuardrailScope.DEFENSIVE
+        )
         for i, g in enumerate(SECURITY_GUARDRAILS["blue_team"])
     ),
     facets=(
@@ -340,17 +354,31 @@ AURELIUS_PURPLETEEAM = UnifiedPersona(
         WorkflowStage("controlled_execution", "Run in authorized lab, log every action"),
         WorkflowStage("detection_validation", "Did existing detections fire? With what latency?"),
         WorkflowStage("gap_analysis", "Catalog missed/delayed/noisy detections"),
-        WorkflowStage("remediation_priorities", "Ranked backlog of detection changes and hardening actions"),
+        WorkflowStage(
+            "remediation_priorities", "Ranked backlog of detection changes and hardening actions"
+        ),
     ),
     output_contracts=(SECURITY_EMULATION_CONTRACT,),
     guardrails=tuple(
-        Guardrail(id=f"pt-{i}", text=g, severity=GuardrailSeverity.CRITICAL, scope=GuardrailScope.ALL)
+        Guardrail(
+            id=f"pt-{i}", text=g, severity=GuardrailSeverity.CRITICAL, scope=GuardrailScope.ALL
+        )
         for i, g in enumerate(SECURITY_GUARDRAILS["purple_team"])
     ),
     facets=(
         PersonaFacet("security", {"mode": "purple", "scope": "closed_internal"}),
-        PersonaFacet("constitution", {"dimensions": ["level2.hard_constraints", "level2.harm_avoidance", "level2.honesty"]}),
-        PersonaFacet("harm_filter", {"categories": ["malicious_code", "criminal_planning"], "action": "warn", "threshold": 0.8}),
+        PersonaFacet(
+            "constitution",
+            {"dimensions": ["level2.hard_constraints", "level2.harm_avoidance", "level2.honesty"]},
+        ),
+        PersonaFacet(
+            "harm_filter",
+            {
+                "categories": ["malicious_code", "criminal_planning"],
+                "action": "warn",
+                "threshold": 0.8,
+            },
+        ),
     ),
     priority=1,
     immutable_prompt=True,
@@ -373,9 +401,24 @@ AURELIUS_THREATEL = UnifiedPersona(
     ),
     output_contracts=(CVE_CONTRACT, MITRE_CONTRACT, ACTOR_CONTRACT, IOC_CONTRACT),
     guardrails=(
-        Guardrail("no_exploit_code", "Never provide working exploit code. Describe vulnerability class and mitigations only.", GuardrailSeverity.CRITICAL, GuardrailScope.ALL),
-        Guardrail("cite_sources", "Prefer primary sources: NVD, MITRE, CISA KEV, vendor advisories.", GuardrailSeverity.HIGH, GuardrailScope.ALL),
-        Guardrail("calibrated_uncertainty", "If attribution or detail is disputed, say so with confidence qualifier.", GuardrailSeverity.MEDIUM, GuardrailScope.ALL),
+        Guardrail(
+            "no_exploit_code",
+            "Never provide working exploit code. Describe vulnerability class and mitigations only.",
+            GuardrailSeverity.CRITICAL,
+            GuardrailScope.ALL,
+        ),
+        Guardrail(
+            "cite_sources",
+            "Prefer primary sources: NVD, MITRE, CISA KEV, vendor advisories.",
+            GuardrailSeverity.HIGH,
+            GuardrailScope.ALL,
+        ),
+        Guardrail(
+            "calibrated_uncertainty",
+            "If attribution or detail is disputed, say so with confidence qualifier.",
+            GuardrailSeverity.MEDIUM,
+            GuardrailScope.ALL,
+        ),
     ),
     intent_mappings=(
         IntentMapping("question", "structured_output", "general"),

@@ -44,7 +44,14 @@ PURPLE_TEAM_OUTPUT_CONTRACT: dict[str, Any] = {
 SECURITY_FINDING_CONTRACT = OutputContract(
     name="finding",
     schema=RED_TEAM_OUTPUT_CONTRACT,
-    required_fields=("id", "name", "severity", "affected_asset", "proof_of_concept_steps", "remediation"),
+    required_fields=(
+        "id",
+        "name",
+        "severity",
+        "affected_asset",
+        "proof_of_concept_steps",
+        "remediation",
+    ),
 )
 
 SECURITY_ALERT_CONTRACT = OutputContract(
@@ -56,7 +63,13 @@ SECURITY_ALERT_CONTRACT = OutputContract(
 SECURITY_EMULATION_CONTRACT = OutputContract(
     name="emulation",
     schema=PURPLE_TEAM_OUTPUT_CONTRACT,
-    required_fields=("ttp_id", "mitre_technique", "detection_rule_proposed", "gap_identified", "priority"),
+    required_fields=(
+        "ttp_id",
+        "mitre_technique",
+        "detection_rule_proposed",
+        "gap_identified",
+        "priority",
+    ),
 )
 
 SECURITY_GUARDRAILS = {

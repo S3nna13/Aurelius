@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from ..unified_persona import OutputContract
 
 GENERAL_QA_CONTRACT = OutputContract(

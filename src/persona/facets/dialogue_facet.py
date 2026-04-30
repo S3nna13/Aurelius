@@ -28,7 +28,9 @@ def create_dialogue_facet(required_slots: list[str] | None = None) -> PersonaFac
     )
 
 
-def classify_transition(current_state: DialogueState, user_input: str, slots_filled: list[str] | None = None) -> DialogueState:
+def classify_transition(
+    current_state: DialogueState, user_input: str, slots_filled: list[str] | None = None
+) -> DialogueState:
     text = user_input.lower()
 
     if any(kw in text for kw in _CLOSING_KEYWORDS):
