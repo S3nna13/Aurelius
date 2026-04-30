@@ -1,3 +1,4 @@
+import crypto from 'crypto'
 import type { Request, Response, NextFunction } from 'express'
 
 export interface AuthUser {
@@ -19,6 +20,15 @@ const API_KEYS = new Map<string, AuthUser>()
 const DEFAULT_KEY = process.env.AURELIUS_API_KEY || 'dev-key'
 API_KEYS.set(DEFAULT_KEY, { id: 'admin', role: 'admin', scopes: ['*'] })
 
+function timingSafeCompare(a: string, b: string): boolean {
+  if (a.length !== b.length) return false
+  try {
+    return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b))
+  } catch {
+    return false
+  }
+}
+
 export function registerApiKey(key: string, user: AuthUser): void {
   API_KEYS.set(key, user)
 }
@@ -36,17 +46,14 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
     ? authHeader.replace(/^Bearer\s+/i, '').trim()
     : null
 
-  if (apiKey && API_KEYS.has(apiKey)) {
-    req.user = API_KEYS.get(apiKey)
-    next()
-    return
-  }
-
-  const queryKey = req.query.api_key as string | undefined
-  if (queryKey && API_KEYS.has(queryKey)) {
-    req.user = API_KEYS.get(queryKey)
-    next()
-    return
+  if (apiKey) {
+    for (const [key, user] of API_KEYS) {
+      if (timingSafeCompare(apiKey, key)) {
+        req.user = user
+        next()
+        return
+      }
+    }
   }
 
   res.status(401).json({ error: 'Unauthorized', message: 'Valid API key required' })

@@ -54,7 +54,7 @@ router.post('/:id/state', (req, res) => {
     res.status(404).json({ error: 'Agent not found' })
     return
   }
-  engine.upsertAgent(agent.id, state, agent.role, agent.metrics_json)
+  engine.upsertAgent(agent.id, state, agent.role, agent.metricsJson)
   engine.appendActivity(`agent.${agent.id}.state`, true, `State changed to ${state}`)
   res.json({ success: true, state })
 })
