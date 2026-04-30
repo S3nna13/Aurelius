@@ -251,7 +251,7 @@ class RedditPipeline:
         for entry in available:
             url = entry["url"]
             fname = self._safe_name(entry["name"], "reddit.zst")
-            local_path = str(target / fname)
+            local_path = self._resolve_within_root(target, fname)
 
             existing = state.get("downloaded_files", {}).get(url)
             if existing:
@@ -271,7 +271,7 @@ class RedditPipeline:
                     total = int(resp.headers.get("Content-Length", 0))
                     downloaded = 0
                     chunk_size = 65536
-                    temp_path = local_path + ".tmp"
+                    temp_path = local_path.with_name(f"{local_path.name}.tmp")
                     with open(temp_path, "wb") as f:
                         while True:
                             chunk = resp.read(chunk_size)
@@ -283,9 +283,9 @@ class RedditPipeline:
                                 _tqdm.write(
                                     f"  {fname}: {downloaded / 1024**2:.1f}/{total / 1024**2:.1f} MB"
                                 )
-                    shutil.move(temp_path, local_path)
-                self._mark_downloaded(target_dir, url, local_path)
-                downloaded_paths.append(local_path)
+                    shutil.move(str(temp_path), str(local_path))
+                self._mark_downloaded(target_dir, url, str(local_path))
+                downloaded_paths.append(str(local_path))
                 if self.config.get("request_delay"):
                     time.sleep(self.config["request_delay"])
             except Exception as exc:
@@ -559,7 +559,7 @@ class RedditPipeline:
     ) -> int:
         """Create threaded conversation JSONL from raw processed JSONL files."""
         in_dir = Path(input_dir)
-        out = Path(output_path)
+        out = Path(output_path).expanduser().resolve()
         out.parent.mkdir(parents=True, exist_ok=True)
 
         all_items: list[dict] = []
@@ -594,7 +594,7 @@ class RedditPipeline:
     def create_pretrain_data(self, input_dir: str, output_dir: str) -> int:
         """Create raw pretraining text from processed JSONL files."""
         in_dir = Path(input_dir)
-        out_dir_p = Path(output_dir)
+        out_dir_p = Path(output_dir).expanduser().resolve()
         out_dir_p.mkdir(parents=True, exist_ok=True)
 
         total_written = 0
@@ -630,7 +630,9 @@ class RedditPipeline:
                     total_written += 1
 
                     if len(shard_lines) >= shard_size:
-                        shard_path = out_dir_p / f"pretrain_reddit_{shard_idx:04d}.jsonl"
+                        shard_path = self._resolve_within_root(
+                            out_dir_p, f"pretrain_reddit_{shard_idx:04d}.jsonl"
+                        )
                         with open(shard_path, "w") as sf:
                             for sl in shard_lines:
                                 sf.write(sl + "\n")
@@ -656,7 +658,7 @@ class RedditPipeline:
 
     def run(self, output_dir: str, file_types: list[str] | None = None) -> dict[str, Any]:
         """Orchestrate full pipeline: download, process, and produce outputs."""
-        base = Path(output_dir)
+        base = Path(output_dir).expanduser().resolve()
         base.mkdir(parents=True, exist_ok=True)
         raw_dir = base / "raw"
         raw_dir.mkdir(exist_ok=True)
@@ -684,7 +686,7 @@ class RedditPipeline:
             results["processed"].append(stats)
 
         if self.config.get("include_conversations", True):
-            conv_path = base / "conversations.jsonl"
+            conv_path = self._resolve_within_root(base, "conversations.jsonl")
             n_conv = self.create_conversation_data(str(processed_dir), str(conv_path))
             results["conversations"] = n_conv
 
