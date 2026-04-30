@@ -13,6 +13,11 @@ COPY src/ src/
 # Install dependencies
 RUN uv sync --no-dev
 
+# Run as non-root user
+RUN useradd -m -r -s /bin/bash aurelius && \
+    chown -R aurelius:aurelius /app
+USER aurelius
+
 EXPOSE 8080
 
 # Health check against the actual /health endpoint
