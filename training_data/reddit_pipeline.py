@@ -79,8 +79,7 @@ _DEFAULT_CONFIG = {
 def _clean_text(text: str) -> str:
     if not text:
         return ""
-    text = re.sub(r"!\[([^]]*)\]\([^)]+\)", r"\1", text)
-    text = re.sub(r"\[([^]]+)\]\([^)]+\)", r"\1", text)
+    text = _strip_markdown_links(text)
     text = re.sub(r"`{1,3}[^`]*`{1,3}", "", text)
     text = re.sub(r"^#{1,6}\s+", "", text, flags=re.MULTILINE)
     text = re.sub(r"\*{1,2}([^*]+)\*{1,2}", r"\1", text)
@@ -92,6 +91,27 @@ def _clean_text(text: str) -> str:
     text = re.sub(r"\n{3,}", "\n\n", text)
     text = text.strip()
     return text
+
+
+def _strip_markdown_links(text: str) -> str:
+    """Remove inline markdown links/images without regex backtracking."""
+    out: list[str] = []
+    i = 0
+    while i < len(text):
+        is_image = text.startswith("![", i)
+        is_link = is_image or text.startswith("[", i)
+        if is_link:
+            label_start = i + 2 if is_image else i + 1
+            label_end = text.find("]", label_start)
+            if label_end != -1 and label_end + 1 < len(text) and text[label_end + 1] == "(":
+                url_end = text.find(")", label_end + 2)
+                if url_end != -1:
+                    out.append(text[label_start:label_end])
+                    i = url_end + 1
+                    continue
+        out.append(text[i])
+        i += 1
+    return "".join(out)
 
 
 def _is_bot(text: str) -> bool:
