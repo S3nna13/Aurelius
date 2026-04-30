@@ -42,7 +42,7 @@ const logLevels = ['debug', 'info', 'warn', 'error'];
 const defaultConfig: RuntimeConfig = {
   agent_mode: 'default',
   log_level: 'info',
-  api_endpoint: 'http://localhost:7870',
+  api_endpoint: import.meta.env.VITE_API_BASE_URL || window.location.origin,
   require_auth: false,
   audit_logging: true,
   auto_lock: false,

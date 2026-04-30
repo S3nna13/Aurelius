@@ -19,6 +19,7 @@ from src.serving.hermes_notifier import HermesNotifier
 @pytest.fixture(scope="module")
 def server():
     srv = create_aurelius_server("127.0.0.1", 0)
+    srv.runtime_config["require_auth"] = False
     srv.hermes = HermesNotifier()
     thread = threading.Thread(target=srv.serve_forever, daemon=True)
     thread.start()

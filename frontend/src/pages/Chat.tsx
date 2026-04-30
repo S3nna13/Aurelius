@@ -211,7 +211,7 @@ export default function Chat() {
           >
             <Trash2 size={14} />
           </button>
-          <span className="text-xs text-[#9e9eb0]">OpenClaw v1.0</span>
+          <span className="text-xs text-[#9e9eb0]">OpenClaw v{import.meta.env.VITE_APP_VERSION || '1.0'}</span>
         </div>
       </div>
 

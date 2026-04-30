@@ -17,7 +17,9 @@ export function createApp() {
 
   const app = express();
 
-  app.use(cors({ origin: true, credentials: true }));
+  app.set('trust proxy', 1);
+  const allowedOrigins: string[] = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000,http://localhost:5173').split(',').map(s => s.trim())
+  app.use(cors({ origin: allowedOrigins, credentials: true }));
   app.use(requestLoggerMiddleware());
   app.use(express.json({ limit: '1mb' }));
   app.use(metricsMiddleware);
@@ -62,6 +64,6 @@ export function startServer() {
   const server = app.listen(config.port, config.host, () => {
     console.log(`Aurelius Gateway — http://localhost:${config.port}`);
   });
-  setupWebSocket(server);
+  setupWebSocket(server, config.apiKey);
   return server;
 }

@@ -55,14 +55,9 @@ export function markAllNotificationsRead(req: Request, res: Response): void {
 }
 
 export function getNotifPrefs(_req: Request, res: Response): void {
-  try {
-    const prefs = getEngine().getNotificationPreferences();
-    res.json({ preferences: prefs });
-  } catch {
-    const raw = getEngine().getConfig('notification_preferences');
-    const preferences = raw ? JSON.parse(raw) : {};
-    res.json({ preferences });
-  }
+  const raw = getEngine().getConfig('notification_preferences');
+  const preferences = raw ? JSON.parse(raw) : {};
+  res.json({ preferences });
 }
 
 export function setNotifPrefs(req: Request, res: Response): void {
@@ -71,10 +66,6 @@ export function setNotifPrefs(req: Request, res: Response): void {
     res.status(400).json({ error: 'preferences must be an object' });
     return;
   }
-  try {
-    getEngine().setNotificationPreferences(preferences as Record<string, boolean>);
-  } catch {
-    getEngine().setConfig('notification_preferences', JSON.stringify(preferences || {}));
-  }
+  getEngine().setConfig('notification_preferences', JSON.stringify(preferences || {}));
   res.json({ success: true });
 }

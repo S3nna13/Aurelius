@@ -4,7 +4,7 @@
 // The Aurelius architecture remains the intellectual property of the authors.
 
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
-import { useState, useEffect, useCallback } from 'react';
+import { lazy, Suspense, useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -16,21 +16,21 @@ import KeyboardShortcuts from './components/KeyboardShortcuts';
 import SessionLock from './components/SessionLock';
 import OnboardingTour from './components/OnboardingTour';
 
-import Dashboard from './pages/Dashboard';
-import Chat from './pages/Chat';
-import Notifications from './pages/Notifications';
-import Skills from './pages/Skills';
-import Workflows from './pages/Workflows';
-import Memory from './pages/Memory';
-import Settings from './pages/Settings';
-import AgentDetail from './pages/AgentDetail';
-import Logs from './pages/Logs';
-import ScheduledTasks from './pages/ScheduledTasks';
-import AgentComparison from './pages/AgentComparison';
-import HealthCheckPage from './pages/HealthCheck';
-import ApiDocs from './pages/ApiDocs';
-import Models from './pages/Models';
-import Training from './pages/Training';
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Chat = lazy(() => import('./pages/Chat'));
+const Notifications = lazy(() => import('./pages/Notifications'));
+const Skills = lazy(() => import('./pages/Skills'));
+const Workflows = lazy(() => import('./pages/Workflows'));
+const Memory = lazy(() => import('./pages/Memory'));
+const Settings = lazy(() => import('./pages/Settings'));
+const AgentDetail = lazy(() => import('./pages/AgentDetail'));
+const Logs = lazy(() => import('./pages/Logs'));
+const ScheduledTasks = lazy(() => import('./pages/ScheduledTasks'));
+const AgentComparison = lazy(() => import('./pages/AgentComparison'));
+const HealthCheckPage = lazy(() => import('./pages/HealthCheck'));
+const ApiDocs = lazy(() => import('./pages/ApiDocs'));
+const Models = lazy(() => import('./pages/Models'));
+const Training = lazy(() => import('./pages/Training'));
 
 const pageVariants = {
   initial: { opacity: 0, y: 8 },
@@ -50,24 +50,26 @@ function AnimatedRoutes() {
         exit="exit"
         transition={{ duration: 0.18 }}
       >
-        <Routes location={location}>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/chat" element={<Chat />} />
-          <Route path="/notifications" element={<Notifications />} />
-          <Route path="/skills" element={<Skills />} />
-          <Route path="/workflows" element={<Workflows />} />
-          <Route path="/memory" element={<Memory />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/agents/:id" element={<AgentDetail />} />
-          <Route path="/agents" element={<AgentComparison />} />
-          <Route path="/logs" element={<Logs />} />
-          <Route path="/tasks" element={<ScheduledTasks />} />
-          <Route path="/health" element={<HealthCheckPage />} />
-          <Route path="/api-docs" element={<ApiDocs />} />
-          <Route path="/models" element={<Models />} />
-          <Route path="/training" element={<Training />} />
-          <Route path="/training/:id" element={<Training />} />
-        </Routes>
+        <Suspense fallback={<div className="flex items-center justify-center p-12 text-aurelius-muted">Loading...</div>}>
+          <Routes location={location}>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/chat" element={<Chat />} />
+            <Route path="/notifications" element={<Notifications />} />
+            <Route path="/skills" element={<Skills />} />
+            <Route path="/workflows" element={<Workflows />} />
+            <Route path="/memory" element={<Memory />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/agents/:id" element={<AgentDetail />} />
+            <Route path="/agents" element={<AgentComparison />} />
+            <Route path="/logs" element={<Logs />} />
+            <Route path="/tasks" element={<ScheduledTasks />} />
+            <Route path="/health" element={<HealthCheckPage />} />
+            <Route path="/api-docs" element={<ApiDocs />} />
+            <Route path="/models" element={<Models />} />
+            <Route path="/training" element={<Training />} />
+            <Route path="/training/:id" element={<Training />} />
+          </Routes>
+        </Suspense>
       </motion.div>
     </AnimatePresence>
   );

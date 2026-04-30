@@ -7,7 +7,8 @@ import os
 from .tool_registry import TOOL_REGISTRY, ToolResult, ToolSpec
 
 FILE_DENY_PATHS: frozenset[str] = frozenset(
-    [
+    os.path.realpath(p)
+    for p in [
         "/etc/passwd",
         "/etc/shadow",
         os.path.expanduser("~/.ssh/"),

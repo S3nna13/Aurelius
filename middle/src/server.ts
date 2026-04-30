@@ -20,6 +20,7 @@ import pluginsRoutes from './routes/plugins.js'
 export function buildApp() {
   const app = express()
 
+  app.set('trust proxy', 1)
   app.use(cors({ origin: config.corsOrigin, credentials: true }))
   app.use(express.json({ limit: '1mb' }))
   app.use(requestLogger)

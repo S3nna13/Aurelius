@@ -1,3 +1,7 @@
+import shutil
+
+import pytest
+
 from src.multimodal.voice_engine import VoiceConfig, VoiceEngine, VoiceEngineState
 
 
@@ -11,6 +15,10 @@ class TestVoiceEngine:
         result = ve.transcribe(b"fake audio data")
         assert "unavailable" in result
 
+    @pytest.mark.skipif(
+        not shutil.which("say"),
+        reason="requires macOS 'say' command",
+    )
     def test_synthesize_returns_bytes(self):
         ve = VoiceEngine()
         result = ve._synthesize_internal("hello", "default")

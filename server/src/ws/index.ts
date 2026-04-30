@@ -1,5 +1,6 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import type { Server as HttpServer } from 'http';
+import type { Server as HttpsServer } from 'https';
 import { subscribeToChannel, unsubscribeFromChannel, unsubscribeAll } from './hub.js';
 
 interface WsClient {
@@ -11,21 +12,20 @@ const clients = new Map<WebSocket, WsClient>();
 const HEARTBEAT_INTERVAL = 15_000;
 const HEARTBEAT_TIMEOUT = 60_000;
 
-export function setupWebSocket(server: HttpServer): WebSocketServer {
+export function setupWebSocket(server: HttpServer | HttpsServer, apiKey?: string): WebSocketServer {
   const wss = new WebSocketServer({ server, path: '/ws' });
 
-  const heartbeat = setInterval(() => {
-    const now = Date.now();
-    for (const [ws, client] of clients) {
-      if (now - client.lastPong > HEARTBEAT_TIMEOUT) {
-        ws.terminate();
-        clients.delete(ws);
-        unsubscribeAll(ws);
+  wss.on('connection', (ws, req) => {
+    // Authenticate WebSocket connections
+    if (apiKey) {
+      const urlParams = new URLSearchParams(req.url?.split('?')[1] || '');
+      const wsKey = urlParams.get('api_key') || req.headers['x-api-key'] as string | undefined;
+      if (!wsKey || wsKey !== apiKey) {
+        ws.close(4001, 'Authentication required');
+        return;
       }
     }
-  }, HEARTBEAT_INTERVAL);
 
-  wss.on('connection', (ws) => {
     clients.set(ws, { ws, lastPong: Date.now() });
 
     ws.on('message', (raw) => {

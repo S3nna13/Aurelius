@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
+import crypto from 'crypto';
 import type { GatewayConfig } from '../config.js';
 
 export function authMiddleware(config: GatewayConfig) {
@@ -12,7 +13,14 @@ export function authMiddleware(config: GatewayConfig) {
       return;
     }
 
-    if (config.apiKey && apiKey !== config.apiKey) {
+    if (!config.apiKey) {
+      res.status(500).json({ error: 'Server misconfigured', message: 'API key not configured' });
+      return;
+    }
+
+    const bufKey = Buffer.from(apiKey);
+    const bufExpected = Buffer.from(config.apiKey);
+    if (bufKey.length !== bufExpected.length || !crypto.timingSafeEqual(bufKey, bufExpected)) {
       res.status(401).json({ error: 'Unauthorized', message: 'Invalid API key' });
       return;
     }

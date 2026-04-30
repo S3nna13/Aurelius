@@ -15,6 +15,8 @@ router.post('/command', async (req, res) => {
   engine.appendActivity('chat.command', true, command)
 
   try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30_000)
     const upstreamRes = await fetch(`${config.upstreamUrl}/v1/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -23,7 +25,9 @@ router.post('/command', async (req, res) => {
         messages: [{ role: 'user', content: command }],
         max_tokens: 1024,
       }),
+      signal: controller.signal,
     })
+    clearTimeout(timeoutId)
 
     if (!upstreamRes.ok) {
       const text = await upstreamRes.text()

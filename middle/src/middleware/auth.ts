@@ -1,5 +1,6 @@
 import crypto from 'crypto'
 import type { Request, Response, NextFunction } from 'express'
+import { config } from '../config.js'
 
 export interface AuthUser {
   id: string
@@ -17,16 +18,21 @@ declare global {
 
 const API_KEYS = new Map<string, AuthUser>()
 
-const DEFAULT_KEY = process.env.AURELIUS_API_KEY || 'dev-key'
-API_KEYS.set(DEFAULT_KEY, { id: 'admin', role: 'admin', scopes: ['*'] })
+if (!config.apiKey) {
+  throw new Error('AURELIUS_API_KEY environment variable is required')
+}
+API_KEYS.set(config.apiKey, { id: 'admin', role: 'admin', scopes: ['*'] })
 
 function timingSafeCompare(a: string, b: string): boolean {
-  if (a.length !== b.length) return false
-  try {
-    return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b))
-  } catch {
+  const bufA = Buffer.from(a)
+  const bufB = Buffer.from(b)
+  if (bufA.length !== bufB.length) {
+    const longer = bufA.length > bufB.length ? bufA : bufB
+    const shorter = bufA.length > bufB.length ? bufB : bufA
+    crypto.timingSafeEqual(longer.subarray(0, shorter.length), shorter)
     return false
   }
+  return crypto.timingSafeEqual(bufA, bufB)
 }
 
 export function registerApiKey(key: string, user: AuthUser): void {
@@ -41,10 +47,8 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
     return
   }
 
-  const authHeader = req.headers['x-api-key'] || req.headers['authorization']
-  const apiKey = typeof authHeader === 'string'
-    ? authHeader.replace(/^Bearer\s+/i, '').trim()
-    : null
+  const apiKeyHeader = req.headers['x-api-key']
+  const apiKey = typeof apiKeyHeader === 'string' ? apiKeyHeader.trim() : null
 
   if (apiKey) {
     for (const [key, user] of API_KEYS) {
