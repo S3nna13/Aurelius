@@ -58,7 +58,7 @@ export default function Logs() {
     if (error) toast('Failed to load logs', 'error');
   }, [error, toast]);
 
-  const entries = data?.entries || [];
+  const entries = useMemo(() => data?.entries || [], [data]);
 
   const filtered = useMemo(() => {
     let result = [...entries];
@@ -76,6 +76,7 @@ export default function Logs() {
   const paginated = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentPage(1);
   }, [level, search]);
 

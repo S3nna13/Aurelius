@@ -1,3 +1,5 @@
+import { useId } from 'react';
+
 interface DataPoint {
   label: string;
   value: number;
@@ -18,6 +20,8 @@ export default function LineChart({
   color = '#4fc3f7',
   title,
 }: LineChartProps) {
+  const uid = useId();
+
   if (data.length === 0) return null;
 
   const padding = { top: 20, right: 20, bottom: 30, left: 40 };
@@ -46,7 +50,7 @@ export default function LineChart({
     Math.round(minValue + (range * i) / yTicks)
   );
 
-  const gradientId = `lg-${Math.random().toString(36).slice(2, 8)}`;
+  const gradientId = `lg-${uid}`;
 
   return (
     <div className="w-full">

@@ -3,6 +3,7 @@ import { RefreshCw, Pause } from 'lucide-react';
 
 const STORAGE_KEY = 'aurelius-auto-refresh';
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAutoRefresh() {
   const [enabled, setEnabled] = useState(() => {
     try {

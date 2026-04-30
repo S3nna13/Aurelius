@@ -33,6 +33,7 @@ export default function ChatSuggestions({ input, onSelect, visible }: ChatSugges
     : suggestions.filter((s) => s.command.includes(input.toLowerCase()) || s.description.toLowerCase().includes(input.toLowerCase()));
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedIndex(0);
   }, [input]);
 

@@ -64,6 +64,7 @@ export default function HealthCheckPage() {
   });
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (data?.checks) setManualChecks(data.checks);
   }, [data]);
 
@@ -119,7 +120,7 @@ export default function HealthCheckPage() {
       const res = await fetch('/api/status');
       const data = await res.json();
       const agents = data.agents || [];
-      const online = agents.filter((a: any) => a.state?.toUpperCase() === 'ACTIVE' || a.state?.toUpperCase() === 'RUNNING').length;
+      const online = agents.filter((a: { state?: string }) => a.state?.toUpperCase() === 'ACTIVE' || a.state?.toUpperCase() === 'RUNNING').length;
       checks.push({
         name: 'agents',
         status: online > 0 ? 'healthy' : agents.length > 0 ? 'warning' : 'critical',

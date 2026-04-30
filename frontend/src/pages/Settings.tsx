@@ -117,6 +117,7 @@ export default function SettingsPage() {
   }, [toast]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData();
   }, [fetchData]);
 
@@ -478,7 +479,7 @@ export default function SettingsPage() {
           onClose={() => setImportOpen(false)}
           onImport={(data) => {
             if (typeof data === 'object' && data !== null && 'config' in data) {
-              setConfig({ ...defaultConfig, ...(data as any).config });
+              setConfig({ ...defaultConfig, ...(data as { config?: RuntimeConfig }).config });
             }
           }}
           title="Import Settings"

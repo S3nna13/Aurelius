@@ -7,7 +7,7 @@ export function useFavorites() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) return new Set(JSON.parse(raw));
-    } catch {}
+    } catch { /* ignore invalid stored data */ }
     return new Set<string>();
   });
 

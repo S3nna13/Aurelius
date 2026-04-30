@@ -44,6 +44,7 @@ export default function GlobalSearch({ onClose }: GlobalSearchProps) {
 
   useEffect(() => {
     if (query.length < 2) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setResults([]);
       return;
     }
@@ -55,7 +56,7 @@ export default function GlobalSearch({ onClose }: GlobalSearchProps) {
         const notifRes = await fetch('/api/notifications');
         if (notifRes.ok) {
           const data = await notifRes.json();
-          (data.notifications || []).forEach((n: any) => {
+          (data.notifications || []).forEach((n: { id: string; title?: string; body?: string }) => {
             if (
               n.title?.toLowerCase().includes(query.toLowerCase()) ||
               n.body?.toLowerCase().includes(query.toLowerCase())
@@ -63,8 +64,8 @@ export default function GlobalSearch({ onClose }: GlobalSearchProps) {
               all.push({
                 id: n.id,
                 type: 'notification',
-                title: n.title,
-                subtitle: n.body?.slice(0, 60) + (n.body?.length > 60 ? '...' : ''),
+                title: n.title || '',
+                subtitle: (n.body || '').slice(0, 60) + ((n.body?.length || 0) > 60 ? '...' : ''),
                 path: '/notifications',
               });
             }
@@ -74,13 +75,13 @@ export default function GlobalSearch({ onClose }: GlobalSearchProps) {
         const skillsRes = await fetch('/api/skills');
         if (skillsRes.ok) {
           const data = await skillsRes.json();
-          (data.skills || []).forEach((s: any) => {
+          (data.skills || []).forEach((s: { skill_id?: string; id?: string; description?: string }) => {
             const text = `${s.skill_id || s.id || ''} ${s.description || ''}`.toLowerCase();
             if (text.includes(query.toLowerCase())) {
               all.push({
-                id: s.skill_id || s.id,
+                id: s.skill_id || s.id || '',
                 type: 'skill',
-                title: s.skill_id || s.id,
+                title: s.skill_id || s.id || '',
                 subtitle: s.description?.slice(0, 60) || 'Skill',
                 path: '/skills',
               });
@@ -91,13 +92,13 @@ export default function GlobalSearch({ onClose }: GlobalSearchProps) {
         const wfRes = await fetch('/api/workflows');
         if (wfRes.ok) {
           const data = await wfRes.json();
-          (data.workflows || []).forEach((w: any) => {
+          (data.workflows || []).forEach((w: { id?: string; name?: string; status?: string }) => {
             const text = `${w.name || w.id || ''}`.toLowerCase();
             if (text.includes(query.toLowerCase())) {
               all.push({
-                id: w.id,
+                id: w.id || '',
                 type: 'workflow',
-                title: w.name || w.id,
+                title: w.name || w.id || '',
                 subtitle: w.status || 'Workflow',
                 path: '/workflows',
               });
@@ -108,7 +109,7 @@ export default function GlobalSearch({ onClose }: GlobalSearchProps) {
         const statusRes = await fetch('/api/status');
         if (statusRes.ok) {
           const data = await statusRes.json();
-          (data.agents || []).forEach((a: any) => {
+          (data.agents || []).forEach((a: { id?: string; state?: string }) => {
             if (a.id?.toLowerCase().includes(query.toLowerCase())) {
               all.push({
                 id: a.id,

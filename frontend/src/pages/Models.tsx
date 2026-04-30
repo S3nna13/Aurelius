@@ -23,7 +23,7 @@ export default function Models() {
 
   const fetchModels = useCallback(async () => {
     try {
-      const res: any = await api.get('/models')
+      const res = await api.get('/models') as { models?: ModelInfo[] }
       setModels(res.models || [])
       setError(null)
     } catch (err) {
@@ -33,6 +33,7 @@ export default function Models() {
     }
   }, [])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchModels() }, [fetchModels])
 
   const toggleModel = async (id: string, currentState: string) => {
@@ -49,7 +50,7 @@ export default function Models() {
     } catch { /* ignore */ }
   }
 
-  const loadedCount = models.filter((m: any) => m.state === 'loaded').length
+  const loadedCount = models.filter((m) => m.state === 'loaded').length
 
   return (
     <div className="space-y-6">
@@ -73,7 +74,7 @@ export default function Models() {
         <div className="aurelius-card text-center py-12 text-[#9e9eb0]"><Cpu size={32} className="mx-auto mb-3 opacity-40" /><p>No models found.</p></div>
       ) : (
         <div className="grid gap-4">
-          {models.map((m: any) => (
+          {models.map((m) => (
             <div key={m.id} className="aurelius-card flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${stateColors[m.state] || stateColors.unloaded}`}>

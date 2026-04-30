@@ -71,6 +71,7 @@ export default function AgentDetail() {
     }
   }, [id, toast])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchAgent() }, [fetchAgent])
 
   const sendCommand = async () => {

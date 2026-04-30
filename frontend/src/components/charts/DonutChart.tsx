@@ -19,19 +19,19 @@ export default function DonutChart({ data, size = 160, title }: DonutChartProps)
   const circumference = 2 * Math.PI * radius;
   const center = size / 2;
 
-  let offset = 0;
+  const segments = data.map((d, i) => {
+    const segmentLength = (d.value / total) * circumference;
+    const dashArray = `${segmentLength} ${circumference - segmentLength}`;
+    const cumOffset = data.slice(0, i).reduce((sum, x) => sum + (x.value / total) * circumference, 0);
+    return { ...d, segmentLength, dashArray, dashOffset: -cumOffset };
+  });
 
   return (
     <div className="flex flex-col items-center">
       {title && <p className="text-xs font-bold text-[#9e9eb0] uppercase tracking-wider mb-2">{title}</p>}
       <div className="flex items-center gap-4">
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-          {data.map((d, i) => {
-            const segmentLength = (d.value / total) * circumference;
-            const dashArray = `${segmentLength} ${circumference - segmentLength}`;
-            const dashOffset = -offset;
-            offset += segmentLength;
-            return (
+          {segments.map((d, i) => (
               <circle
                 key={i}
                 cx={center}
@@ -40,15 +40,14 @@ export default function DonutChart({ data, size = 160, title }: DonutChartProps)
                 fill="none"
                 stroke={d.color}
                 strokeWidth={strokeWidth}
-                strokeDasharray={dashArray}
-                strokeDashoffset={dashOffset}
+                strokeDasharray={d.dashArray}
+                strokeDashoffset={d.dashOffset}
                 transform={`rotate(-90 ${center} ${center})`}
                 strokeLinecap="round"
               >
                 <title>{`${d.label}: ${d.value} (${Math.round((d.value / total) * 100)}%)`}</title>
               </circle>
-            );
-          })}
+          ))}
           <text x={center} y={center - 4} textAnchor="middle" fill="#e0e0e0" fontSize="18" fontWeight="bold">
             {total}
           </text>

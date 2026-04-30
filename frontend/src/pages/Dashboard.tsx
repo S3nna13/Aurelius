@@ -63,6 +63,7 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchActivity();
     const interval = setInterval(fetchActivity, 15000);
     return () => clearInterval(interval);

@@ -46,6 +46,7 @@ export default function Training() {
     }
   }, [])
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetch() }, [fetch])
 
   return (
