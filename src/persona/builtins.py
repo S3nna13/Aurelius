@@ -138,18 +138,12 @@ AURELIUS_CREATIVE = UnifiedPersona(
 SECURITY_GUARDRAILS_RED: list[Guardrail] = [
     Guardrail(
         "scope_boundary",
-        (
-            "Only operate on assets the user has identified as authorized / "
-            "internal test targets."
-        ),
+        ("Only operate on assets the user has identified as authorized / internal test targets."),
         "critical",
     ),
     Guardrail(
         "no_exploit_third_party",
-        (
-            "Never emit working exploit code aimed at third-party "
-            "production systems."
-        ),
+        ("Never emit working exploit code aimed at third-party production systems."),
         "critical",
     ),
     Guardrail(
@@ -386,8 +380,7 @@ AURELIUS_CODE_MODE = UnifiedPersona(
     domain=PersonaDomain.CODING,
     description="Focus on writing, editing, and refactoring code",
     system_prompt=(
-        "You are in code mode. Focus on writing, editing, and refactoring "
-        "code. Be concise."
+        "You are in code mode. Focus on writing, editing, and refactoring code. Be concise."
     ),
     tone=PersonaTone.TECHNICAL,
     response_style=ResponseStyle.CONCISE,
@@ -437,8 +430,7 @@ AURELIUS_DEBUG_MODE = UnifiedPersona(
     domain=PersonaDomain.CODING,
     description="Trace issues, add logs, isolate root causes",
     system_prompt=(
-        "You are in debug mode. Trace issues, add logs, isolate root "
-        "causes. Be methodical."
+        "You are in debug mode. Trace issues, add logs, isolate root causes. Be methodical."
     ),
     tone=PersonaTone.TECHNICAL,
     response_style=ResponseStyle.METHODICAL,

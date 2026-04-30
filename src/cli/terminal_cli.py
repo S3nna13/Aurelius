@@ -46,11 +46,13 @@ console = Console()
 # ─── Styling ───────────────────────────────────────────────────────────────
 
 STYLE = (
-    PromptStyle([
-        ("prompt", f"bold {LIGHTNING_BLUE}"),
-        ("dragon", f"bold {DRAGON_GREEN}"),
-        ("separator", f"dim {LIGHTNING_BLUE_DIM}"),
-    ])
+    PromptStyle(
+        [
+            ("prompt", f"bold {LIGHTNING_BLUE}"),
+            ("dragon", f"bold {DRAGON_GREEN}"),
+            ("separator", f"dim {LIGHTNING_BLUE_DIM}"),
+        ]
+    )
     if _HAS_PROMPT_TOOLKIT
     else None
 )
@@ -66,10 +68,10 @@ PROMPT_SYMBOL = [
 bindings = KeyBindings() if _HAS_PROMPT_TOOLKIT else None
 
 if bindings is not None:
+
     @bindings.add("c-c")
     def _(event):
         event.app.exit()
-
 
     @bindings.add("tab")
     def _(event):
@@ -117,9 +119,7 @@ class AureliusCLI:
         info.add_row("⚡ Safety:", "Deny-first Tool Authorization")
         info.add_row("⚡ Context:", "Adaptive Compaction + Session Memory")
 
-        console.print(
-            Panel(info, border_style=LIGHTNING_BLUE, title="[bold]System Status[/bold]")
-        )
+        console.print(Panel(info, border_style=LIGHTNING_BLUE, title="[bold]System Status[/bold]"))
         console.print(f"\n[{LIGHTNING_BLUE}]Type /help for commands, or just ask me anything![/]\n")
         console.print(Rule(style=LIGHTNING_BLUE_DIM))
 

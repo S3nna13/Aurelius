@@ -6,11 +6,7 @@ from .agent_runtime import AgentRuntime, AgentSpec
 
 
 def _new_messages(runtime: AgentRuntime, recipient: str, start_index: int) -> list[str]:
-    return [
-        msg.content
-        for msg in runtime.mailbox[start_index:]
-        if msg.recipient == recipient
-    ]
+    return [msg.content for msg in runtime.mailbox[start_index:] if msg.recipient == recipient]
 
 
 class SupervisorCoordinator:

@@ -64,9 +64,7 @@ class AgentMemory:
             age = now - entry.timestamp
             recency = self.decay_rate ** (age / 3600)
             relevance = (
-                1.0
-                if any(kw in entry.content.lower() for kw in query.lower().split())
-                else 0.1
+                1.0 if any(kw in entry.content.lower() for kw in query.lower().split()) else 0.1
             )
             score = entry.importance * recency * relevance
             entry.access_count += 1

@@ -367,9 +367,7 @@ class TrainConfig:
             use_8bit=raw.get("optimizer", {}).get("use_8bit", cls.use_8bit),
             muon_lr=raw.get("optimizer", {}).get("muon_lr", cls.muon_lr),
             muon_momentum=raw.get("optimizer", {}).get("muon_momentum", cls.muon_momentum),
-            use_zclip=raw.get("gradient", {}).get(
-                "use_zclip", cls.use_zclip
-            ),
+            use_zclip=raw.get("gradient", {}).get("use_zclip", cls.use_zclip),
             zclip_z_threshold=raw.get("gradient", {}).get(
                 "zclip_z_threshold", cls.zclip_z_threshold
             ),
@@ -640,6 +638,7 @@ class AureliusTrainer:
         self.optimizer_offloader: Any | None = None
         if cfg.use_optimizer_offload:
             from src.training.optimizer_offload import OptimizerOffloader
+
             optim = self.muon_optimizer if self.muon_optimizer is not None else self.adamw_optimizer
             self.optimizer_offloader = OptimizerOffloader(
                 optim,
@@ -686,6 +685,7 @@ class AureliusTrainer:
 
         if self.cfg.use_8bit:
             from src.training.optimizers_8bit import AdamW8bitWrapper
+
             return AdamW8bitWrapper(
                 param_groups,
                 lr=self.cfg.lr,
@@ -744,6 +744,7 @@ class AureliusTrainer:
         )
         if self.cfg.use_8bit:
             from src.training.optimizers_8bit import AdamW8bitWrapper
+
             adamw_opt = AdamW8bitWrapper(
                 [
                     {"params": adamw_decay, "weight_decay": self.cfg.weight_decay},

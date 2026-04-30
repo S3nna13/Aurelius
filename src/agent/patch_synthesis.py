@@ -153,7 +153,9 @@ class PatchSynthesizer:
             # Verify old lines match
             actual = result_lines[old_start_0 : old_start_0 + len(old_hunk_lines)]
             # Normalise for comparison (strip trailing newline differences)
-            if [line.rstrip("\n") for line in actual] != [line.rstrip("\n") for line in old_hunk_lines]:  # noqa: E501
+            if [line.rstrip("\n") for line in actual] != [
+                line.rstrip("\n") for line in old_hunk_lines
+            ]:  # noqa: E501
                 raise PatchError(
                     f"Hunk at old_start={hunk.old_start} does not match source. "
                     f"Expected:\n{''.join(old_hunk_lines)}\nGot:\n{''.join(actual)}"

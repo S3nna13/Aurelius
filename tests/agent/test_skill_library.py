@@ -34,13 +34,16 @@ def test_verify_skill_uses_test_cases(tmp_path) -> None:
         description="increment values",
     )
 
-    assert library.verify_skill(
-        skill,
-        [
-            "assert add_one(1) == 2",
-            {"assertion": "assert add_one(3) == 4"},
-        ],
-    ) is True
+    assert (
+        library.verify_skill(
+            skill,
+            [
+                "assert add_one(1) == 2",
+                {"assertion": "assert add_one(3) == 4"},
+            ],
+        )
+        is True
+    )
 
     assert library.verify_skill(skill, ["assert add_one(1) == 99"]) is False
 

@@ -76,9 +76,7 @@ class QuickInstructionManager:
     def extract_query(self, query_logits: list[int], tokenizer) -> str:
         return tokenizer.decode(query_logits)
 
-    def classify_domain(
-        self, domain_logits: list[float], domain_labels: list[str]
-    ) -> str:
+    def classify_domain(self, domain_logits: list[float], domain_labels: list[str]) -> str:
         idx = max(range(len(domain_logits)), key=lambda i: domain_logits[i])
         return domain_labels[idx] if idx < len(domain_labels) else "general"
 

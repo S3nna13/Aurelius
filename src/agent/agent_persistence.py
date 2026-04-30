@@ -52,9 +52,14 @@ class AgentPersistence:
             return False
         data = json.loads(fp.read_text())
         for a in data.get("agents", []):
-            spec = AgentSpec(id=a["id"], name=a["name"], role=a["role"],
-                             system_prompt=a["system_prompt"], tools=a["tools"],
-                             max_iterations=a["max_iterations"])
+            spec = AgentSpec(
+                id=a["id"],
+                name=a["name"],
+                role=a["role"],
+                system_prompt=a["system_prompt"],
+                tools=a["tools"],
+                max_iterations=a["max_iterations"],
+            )
             runtime.register_agent(spec)
         return True
 

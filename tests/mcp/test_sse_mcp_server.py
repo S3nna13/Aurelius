@@ -40,9 +40,12 @@ class TestSSEMCPServerConfigDefaults:
 
     def test_custom_values(self):
         cfg = SSEMCPServerConfig(
-            host="0.0.0.0", port=9999, path="/mcp", cors_origins=["https://example.com"]  # noqa: S104
+            host="127.0.0.1",
+            port=9999,
+            path="/mcp",
+            cors_origins=["https://example.com"],  # noqa: S104
         )
-        assert cfg.host == "0.0.0.0"  # noqa: S104
+        assert cfg.host == "127.0.0.1"
         assert cfg.port == 9999
         assert cfg.path == "/mcp"
         assert cfg.cors_origins == ["https://example.com"]

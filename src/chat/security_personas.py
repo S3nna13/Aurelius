@@ -342,6 +342,7 @@ class SecurityPersonaRegistry:
 
     def __post_init__(self) -> None:
         from src.persona import UnifiedPersonaRegistry
+
         self._unified = UnifiedPersonaRegistry()
         self._defaults_loaded: bool = False
 
@@ -350,6 +351,7 @@ class SecurityPersonaRegistry:
         if self._defaults_loaded:
             return
         from src.persona import BUILTIN_PERSONAS
+
         for p in BUILTIN_PERSONAS:
             if p.domain.value == "security":
                 self._unified.register(p)

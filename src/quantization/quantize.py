@@ -84,6 +84,7 @@ def _quantize_nf4(model: AureliusTransformer, device: str) -> None:
     """NF4 quantization for QLoRA-style inference."""
     try:
         import bitsandbytes as bnb
+
         for name, param in model.named_parameters():
             if "weight" in name and param.dim() >= 2:
                 param.data = bnb.nn.Params4bit(param.data, requires_grad=False).data

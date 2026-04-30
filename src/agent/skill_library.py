@@ -100,10 +100,15 @@ class VoyagerSkillLibrary:
 
         if "error" in execution_result.lower() or "fail" in execution_result.lower():
             skill.failure_count += 1
-            self._skill_history.append({
-                "skill": name, "task": task, "result": "failure",
-                "feedback": env_feedback, "code_before": skill.code[:200],
-            })
+            self._skill_history.append(
+                {
+                    "skill": name,
+                    "task": task,
+                    "result": "failure",
+                    "feedback": env_feedback,
+                    "code_before": skill.code[:200],
+                }
+            )
         else:
             skill.success_count += 1
 
@@ -196,9 +201,7 @@ class VoyagerSkillLibrary:
                     "success_count": skill.success_count,
                     "failure_count": skill.failure_count,
                     "dependencies": list(skill.dependencies),
-                    "embedding": (
-                        list(skill.embedding) if skill.embedding is not None else None
-                    ),
+                    "embedding": (list(skill.embedding) if skill.embedding is not None else None),
                 }
                 for name, skill in self.skills.items()
             },

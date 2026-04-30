@@ -66,9 +66,7 @@ def openapi_spec(host: str = "localhost", port: int = 8080) -> dict:
                     "summary": "OpenAPI specification",
                     "operationId": "getOpenApi",
                     "tags": ["Docs"],
-                    "responses": {
-                        "200": {"description": "OpenAPI spec in JSON format"}
-                    },
+                    "responses": {"200": {"description": "OpenAPI spec in JSON format"}},
                 }
             },
             "/v1/models": {
@@ -181,30 +179,22 @@ def openapi_spec(host: str = "localhost", port: int = 8080) -> dict:
                                                     "properties": {
                                                         "index": {"type": "integer"},
                                                         "message": {
-                                            "type": "object",
-                                            "properties": {
-                                                "role": {"type": "string"},
-                                                "content": {"type": "string"},
-                                            },
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "role": {"type": "string"},
+                                                                "content": {"type": "string"},
+                                                            },
                                                         },
-                                                        "finish_reason": {
-                                                            "type": "string"
-                                                        },
+                                                        "finish_reason": {"type": "string"},
                                                     },
                                                 },
                                             },
                                             "usage": {
                                                 "type": "object",
                                                 "properties": {
-                                                    "prompt_tokens": {
-                                                        "type": "integer"
-                                                    },
-                                                    "completion_tokens": {
-                                                        "type": "integer"
-                                                    },
-                                                    "total_tokens": {
-                                                        "type": "integer"
-                                                    },
+                                                    "prompt_tokens": {"type": "integer"},
+                                                    "completion_tokens": {"type": "integer"},
+                                                    "total_tokens": {"type": "integer"},
                                                 },
                                             },
                                         },
@@ -261,4 +251,5 @@ def render_docs_page(host: str, port: int) -> str:
 
 def generate_openapi_json(host: str = "localhost", port: int = 8080) -> str:
     import json
+
     return json.dumps(openapi_spec(host, port), indent=2)

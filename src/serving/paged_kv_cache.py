@@ -37,9 +37,7 @@ class BlockTable:
 
     def _take_block(self) -> int:
         if not self._free_blocks:
-            raise MemoryError(
-                "Out of KV cache blocks: need 1, have 0"
-            )
+            raise MemoryError("Out of KV cache blocks: need 1, have 0")
         p_id = self._free_blocks.pop(0)
         self._blocks[p_id] = Block(block_id=p_id, num_tokens=self.block_size)
         return p_id

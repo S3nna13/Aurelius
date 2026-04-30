@@ -368,31 +368,57 @@ class AureliusConfig:
     def aurelius_2_7b(cls) -> "AureliusConfig":
         """2.7B dense: 32 layers, d_model=2560, GQA 20:5."""
         return cls(
-            d_model=2560, n_layers=32, n_heads=20, n_kv_heads=5,
-            head_dim=128, d_ff=7168, vocab_size=128000,
-            max_seq_len=8192, rope_theta=500_000.0,
-            rms_norm_eps=1e-6, dropout=0.0, tie_embeddings=True,
+            d_model=2560,
+            n_layers=32,
+            n_heads=20,
+            n_kv_heads=5,
+            head_dim=128,
+            d_ff=7168,
+            vocab_size=128000,
+            max_seq_len=8192,
+            rope_theta=500_000.0,
+            rms_norm_eps=1e-6,
+            dropout=0.0,
+            tie_embeddings=True,
         )
 
     @classmethod
     def aurelius_3b(cls) -> "AureliusConfig":
         """3B dense: 32 layers, d_model=2560, GQA 20:5, wider FFN."""
         return cls(
-            d_model=2560, n_layers=34, n_heads=20, n_kv_heads=5,
-            head_dim=128, d_ff=8192, vocab_size=128000,
-            max_seq_len=16384, rope_theta=500_000.0,
-            rms_norm_eps=1e-6, dropout=0.1, tie_embeddings=True,
+            d_model=2560,
+            n_layers=34,
+            n_heads=20,
+            n_kv_heads=5,
+            head_dim=128,
+            d_ff=8192,
+            vocab_size=128000,
+            max_seq_len=16384,
+            rope_theta=500_000.0,
+            rms_norm_eps=1e-6,
+            dropout=0.1,
+            tie_embeddings=True,
         )
 
     @classmethod
     def aurelius_3b_moe(cls) -> "AureliusConfig":
         """3B MoE: 32 layers, 8 experts, top-2, every 2 layers."""
         return cls(
-            d_model=2048, n_layers=32, n_heads=16, n_kv_heads=8,
-            head_dim=128, d_ff=5632, vocab_size=128000,
-            max_seq_len=16384, rope_theta=500_000.0,
-            rms_norm_eps=1e-6, dropout=0.1, tie_embeddings=True,
-            moe_enabled=True, moe_num_experts=8, moe_top_k=2,
+            d_model=2048,
+            n_layers=32,
+            n_heads=16,
+            n_kv_heads=8,
+            head_dim=128,
+            d_ff=5632,
+            vocab_size=128000,
+            max_seq_len=16384,
+            rope_theta=500_000.0,
+            rms_norm_eps=1e-6,
+            dropout=0.1,
+            tie_embeddings=True,
+            moe_enabled=True,
+            moe_num_experts=8,
+            moe_top_k=2,
             moe_every_n_layers=2,
         )
 
@@ -400,21 +426,39 @@ class AureliusConfig:
     def aurelius_7b(cls) -> "AureliusConfig":
         """7B dense: 36 layers, d_model=3584, GQA 28:4."""
         return cls(
-            d_model=3584, n_layers=36, n_heads=28, n_kv_heads=4,
-            head_dim=128, d_ff=10240, vocab_size=128000,
-            max_seq_len=32768, rope_theta=500_000.0,
-            rms_norm_eps=1e-6, dropout=0.1, tie_embeddings=True,
+            d_model=3584,
+            n_layers=36,
+            n_heads=28,
+            n_kv_heads=4,
+            head_dim=128,
+            d_ff=10240,
+            vocab_size=128000,
+            max_seq_len=32768,
+            rope_theta=500_000.0,
+            rms_norm_eps=1e-6,
+            dropout=0.1,
+            tie_embeddings=True,
         )
 
     @classmethod
     def aurelius_7b_moe(cls) -> "AureliusConfig":
         """7B MoE: 32 layers, 16 experts, top-4."""
         return cls(
-            d_model=2560, n_layers=32, n_heads=20, n_kv_heads=5,
-            head_dim=128, d_ff=7168, vocab_size=128000,
-            max_seq_len=32768, rope_theta=500_000.0,
-            rms_norm_eps=1e-6, dropout=0.1, tie_embeddings=True,
-            moe_enabled=True, moe_num_experts=16, moe_top_k=4,
+            d_model=2560,
+            n_layers=32,
+            n_heads=20,
+            n_kv_heads=5,
+            head_dim=128,
+            d_ff=7168,
+            vocab_size=128000,
+            max_seq_len=32768,
+            rope_theta=500_000.0,
+            rms_norm_eps=1e-6,
+            dropout=0.1,
+            tie_embeddings=True,
+            moe_enabled=True,
+            moe_num_experts=16,
+            moe_top_k=4,
             moe_every_n_layers=1,
         )
 
@@ -422,34 +466,64 @@ class AureliusConfig:
     def aurelius_3b_original(cls) -> "AureliusConfig":
         """3.0B dense: 28 layers, d_model=3072, GQA 24:6 (original)."""
         return cls(
-            d_model=3072, n_layers=28, n_heads=24, n_kv_heads=6,
-            head_dim=128, d_ff=8192, vocab_size=128000,
-            max_seq_len=4096, rope_theta=500_000.0,
-            rms_norm_eps=1e-6, dropout=0.0, tie_embeddings=True,
+            d_model=3072,
+            n_layers=28,
+            n_heads=24,
+            n_kv_heads=6,
+            head_dim=128,
+            d_ff=8192,
+            vocab_size=128000,
+            max_seq_len=4096,
+            rope_theta=500_000.0,
+            rms_norm_eps=1e-6,
+            dropout=0.0,
+            tie_embeddings=True,
         )
 
     @classmethod
     def aurelius_moe_5b(cls) -> "AureliusConfig":
         """5-6B MoE: 24 layers, d_model=2048, 8 experts, top-2."""
         return cls(
-            d_model=2048, n_layers=24, n_heads=16, n_kv_heads=8,
-            head_dim=128, d_ff=5632, vocab_size=128000,
-            max_seq_len=8192, rope_theta=500_000.0,
-            rms_norm_eps=1e-6, dropout=0.0, tie_embeddings=True,
-            moe_enabled=True, moe_num_experts=8, moe_top_k=2,
-            moe_every_n_layers=2, moe_capacity_factor=1.25,
+            d_model=2048,
+            n_layers=24,
+            n_heads=16,
+            n_kv_heads=8,
+            head_dim=128,
+            d_ff=5632,
+            vocab_size=128000,
+            max_seq_len=8192,
+            rope_theta=500_000.0,
+            rms_norm_eps=1e-6,
+            dropout=0.0,
+            tie_embeddings=True,
+            moe_enabled=True,
+            moe_num_experts=8,
+            moe_top_k=2,
+            moe_every_n_layers=2,
+            moe_capacity_factor=1.25,
         )
 
     @classmethod
     def aurelius_flash_284b(cls) -> "AureliusConfig":
         """284B Flash config: 43 layers, d_model=4096, CSA/HCA hybrid, 256 MoE experts."""
         return cls(
-            d_model=4096, n_layers=43, n_heads=32, n_kv_heads=8,
-            head_dim=128, d_ff=11264, vocab_size=128000,
-            max_seq_len=1_000_000, rope_theta=500_000.0,
-            rms_norm_eps=1e-6, dropout=0.0, tie_embeddings=True,
-            moe_enabled=True, moe_num_experts=256, moe_top_k=6,
-            moe_every_n_layers=1, moe_capacity_factor=1.25,
+            d_model=4096,
+            n_layers=43,
+            n_heads=32,
+            n_kv_heads=8,
+            head_dim=128,
+            d_ff=11264,
+            vocab_size=128000,
+            max_seq_len=1_000_000,
+            rope_theta=500_000.0,
+            rms_norm_eps=1e-6,
+            dropout=0.0,
+            tie_embeddings=True,
+            moe_enabled=True,
+            moe_num_experts=256,
+            moe_top_k=6,
+            moe_every_n_layers=1,
+            moe_capacity_factor=1.25,
             moe_jitter_noise=0.0,
             hybrid_attention_enabled=True,
             attention_compression_rate_csa=4,
@@ -471,12 +545,23 @@ class AureliusConfig:
     def aurelius_pro_1_6t(cls) -> "AureliusConfig":
         """1.6T Pro config: 61 layers, d_model=7168, CSA/HCA hybrid, 384 MoE experts."""
         return cls(
-            d_model=7168, n_layers=61, n_heads=56, n_kv_heads=8,
-            head_dim=128, d_ff=18432, vocab_size=128000,
-            max_seq_len=1_000_000, rope_theta=500_000.0,
-            rms_norm_eps=1e-6, dropout=0.0, tie_embeddings=True,
-            moe_enabled=True, moe_num_experts=384, moe_top_k=6,
-            moe_every_n_layers=1, moe_capacity_factor=1.25,
+            d_model=7168,
+            n_layers=61,
+            n_heads=56,
+            n_kv_heads=8,
+            head_dim=128,
+            d_ff=18432,
+            vocab_size=128000,
+            max_seq_len=1_000_000,
+            rope_theta=500_000.0,
+            rms_norm_eps=1e-6,
+            dropout=0.0,
+            tie_embeddings=True,
+            moe_enabled=True,
+            moe_num_experts=384,
+            moe_top_k=6,
+            moe_every_n_layers=1,
+            moe_capacity_factor=1.25,
             moe_jitter_noise=0.0,
             hybrid_attention_enabled=True,
             attention_compression_rate_csa=4,

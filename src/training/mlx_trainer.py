@@ -67,6 +67,7 @@ class MLXTrainer:
             import mlx.core as mx
             import mlx.nn as nn
             import mlx.optim as optim
+
             self.mx = mx
             self.mlx_nn = nn
             self.mlx_optim = optim
@@ -88,6 +89,7 @@ class MLXTrainer:
         if model_path.exists() and (model_path / "model.safetensors").exists():
             try:
                 from safetensors import safe_open
+
                 tensors = {}
                 with safe_open(str(model_path / "model.safetensors"), framework="pt") as f:
                     for key in f.keys():
@@ -110,9 +112,7 @@ class MLXTrainer:
             self.cfg.batch_size,
             self.cfg.seq_len,
         )
-        logger.info(
-            "To use: convert PyTorch model to MLX format, then set model_path in MLXConfig"
-        )
+        logger.info("To use: convert PyTorch model to MLX format, then set model_path in MLXConfig")
 
     def convert_from_pytorch(self, pt_checkpoint_dir: str, output_dir: str) -> None:
         """Convert a PyTorch safetensors checkpoint to MLX format.

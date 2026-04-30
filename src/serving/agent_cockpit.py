@@ -193,11 +193,7 @@ if app:
         if not record:
             raise HTTPException(404, "Workspace not found")
         return {
-            "files": [
-                entry.name
-                for entry in Path(record.path).iterdir()
-                if entry.is_file()
-            ][:100]
+            "files": [entry.name for entry in Path(record.path).iterdir() if entry.is_file()][:100]
         }
 
     @app.get("/agents")
@@ -290,4 +286,3 @@ def start_server(host: str = "127.0.0.1", port: int = 8080) -> None:
     import uvicorn
 
     uvicorn.run(app, host=host, port=port)
-

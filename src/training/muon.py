@@ -120,9 +120,7 @@ class Muon(Optimizer):
                 if p.grad is None:
                     continue
                 if p.grad.ndim < 2:
-                    raise ValueError(
-                        "Muon requires 2D+ parameters. Use AdamW for 1D params."
-                    )
+                    raise ValueError("Muon requires 2D+ parameters. Use AdamW for 1D params.")
 
                 g = p.grad.float()
 

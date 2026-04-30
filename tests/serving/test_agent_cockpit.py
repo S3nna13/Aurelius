@@ -45,4 +45,3 @@ def test_workspace_session_flow(client: TestClient):
     result = prompt.json()["result"]
     assert result["mode"] == "coding"
     assert "Summarize" in result["prompt"]
-

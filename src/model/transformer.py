@@ -17,6 +17,7 @@ from .rms_norm import RMSNorm
 def _build_attention(config: AureliusConfig, layer_idx: int, n_layers: int) -> nn.Module:
     if config.mla_enabled:
         from .mla_wrapper import MLACompatibleAttention
+
         return MLACompatibleAttention(config)
 
     if not config.hybrid_attention_enabled:
@@ -57,7 +58,9 @@ class TransformerBlock(nn.Module):
         )
         if use_moe:
             self.ffn = SparseMoELayer(
-                config.d_model, config.d_ff, config.moe_num_experts,
+                config.d_model,
+                config.d_ff,
+                config.moe_num_experts,
                 config.moe_top_k,
             )
         else:
@@ -66,6 +69,7 @@ class TransformerBlock(nn.Module):
         self.use_mhc = config.mhc_enabled
         if self.use_mhc:
             from .mhc import ManifoldConstrainedHyperConnection
+
             self.mhc_attn = ManifoldConstrainedHyperConnection(
                 config.d_model,
                 config.mhc_expansion_factor,
@@ -154,6 +158,7 @@ class AureliusTransformer(nn.Module):
         self.mtp: nn.Module | None = None
         if self.config.mtp_enabled:
             from .mtp import MTPModule
+
             self.mtp = MTPModule(
                 d_model=self.config.d_model,
                 vocab_size=self.config.vocab_size,
@@ -238,10 +243,12 @@ class AureliusTransformer(nn.Module):
         for i, layer in enumerate(self.layers):
             past_kv = past_key_values[i] if past_key_values is not None else None
             if self.config.use_gradient_checkpointing and self.training:
+
                 def make_ckpt_fn(item):
                     def fn(x, freqs_cis, mask):
                         out, kv, aux = item(x, freqs_cis, mask, None)  # noqa: E741
                         return out, kv[0], kv[1], aux
+
                     return fn
 
                 x, k, v, aux = ckpt(make_ckpt_fn(layer), x, freqs_cis, mask, use_reentrant=False)

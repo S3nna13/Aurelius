@@ -46,6 +46,7 @@ def _normalize_origin(origin: str) -> str | None:
         origin_text = f"{origin_text}:{parsed.port}"
     return origin_text
 
+
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------

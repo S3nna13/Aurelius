@@ -1,4 +1,5 @@
 """Dragon ASCII art for Aurelius CLI terminal."""
+
 import textwrap
 
 AURELIUS_BANNER = textwrap.dedent("""\

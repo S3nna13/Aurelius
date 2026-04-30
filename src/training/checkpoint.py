@@ -48,8 +48,7 @@ def _serialize_state(value: object) -> object:
         return {
             "__type__": "dict",
             "items": [
-                [_serialize_state(key), _serialize_state(item)]
-                for key, item in value.items()
+                [_serialize_state(key), _serialize_state(item)] for key, item in value.items()
             ],
         }
     if isinstance(value, list):

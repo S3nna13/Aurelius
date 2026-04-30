@@ -438,15 +438,13 @@ Respond with a numbered plan, one step per line:"""
 
     def _status_text(self) -> str:
         mem = self.session.memory or {}
-        return (
-            f"""**Session Status**
+        return f"""**Session Status**
   Session: {self.session.id[:12]}
   Messages: {len(self.session.messages)}
   Workspace: {self.session.workspace or os.getcwd()}
   Memory keys: {list(mem.keys())}
   Tool history: {len(self.tool.history)} commands
   NL2SH cache: {len(self.nl2sh._cache)} entries"""
-        )
 
     def _save_session(self, path: str) -> None:
         data = {
