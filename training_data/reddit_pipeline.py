@@ -75,6 +75,8 @@ _DEFAULT_CONFIG = {
     "request_delay": 1.0,
 }
 
+_SAFE_PATH_PART = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
+
 
 def _clean_text(text: str) -> str:
     if not text:
@@ -159,6 +161,19 @@ class RedditPipeline:
         cleaned = re.sub(r"[^A-Za-z0-9._-]", "_", name).strip("._-")
         return cleaned or fallback
 
+    def _resolve_root_dir(self, root: str | Path) -> Path:
+        candidate = Path(root).expanduser()
+        if candidate.is_absolute():
+            candidate = Path(*candidate.parts[1:])
+        if not candidate.parts:
+            raise ValueError("root path must not be empty")
+        safe_parts: list[str] = []
+        for part in candidate.parts:
+            if part in {"", ".", ".."} or not _SAFE_PATH_PART.fullmatch(part):
+                raise ValueError(f"Invalid path segment: {part!r}")
+            safe_parts.append(part)
+        return Path(*safe_parts).resolve()
+
     def _resolve_within_root(
         self,
         root: str | Path,
@@ -166,9 +181,18 @@ class RedditPipeline:
         *,
         must_exist: bool = False,
     ) -> Path:
-        base = Path(root).expanduser().resolve()
+        base = self._resolve_root_dir(root)
         path = Path(candidate).expanduser()
-        resolved = path.resolve(strict=must_exist) if path.is_absolute() else (base / path).resolve(strict=must_exist)
+        if path.is_absolute():
+            path = Path(*path.parts[1:])
+        if not path.parts:
+            raise ValueError("candidate path must not be empty")
+        safe_parts: list[str] = []
+        for part in path.parts:
+            if part in {"", ".", ".."} or not _SAFE_PATH_PART.fullmatch(part):
+                raise ValueError(f"Path escapes root: {candidate!r}")
+            safe_parts.append(part)
+        resolved = base.joinpath(*safe_parts).resolve(strict=must_exist)
         try:
             resolved.relative_to(base)
         except ValueError as exc:
@@ -181,7 +205,7 @@ class RedditPipeline:
 
     def _state_path(self, base_dir: str) -> Path:
         state_name = self._safe_name(self.config.get("state_file", "_state.json"), "_state.json")
-        return Path(base_dir).expanduser().resolve() / state_name
+        return self._resolve_root_dir(base_dir) / state_name
 
     def _load_state(self, base_dir: str) -> dict[str, Any]:
         path = self._state_path(base_dir)
@@ -231,22 +255,19 @@ class RedditPipeline:
                 req = urllib.request.Request(url, headers={"User-Agent": "Aurelius/1.0"})  # noqa: S310
                 with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310
                     html = resp.read().decode("utf-8")
-                pattern = re.compile(
-                    r'href="([^"]*('
-                    r"RS_\d{4}-\d{2}\.zst|"
-                    r"RC_\d{4}-\d{2}\.zst"
-                    r'))"'
-                )
-                for match in pattern.finditer(html):
-                    fname = match.group(1)
-                    files.append(
-                        {
-                            "name": fname,
-                            "url": f"{url}{fname}",
-                            "type": ftype,
-                            "source": "pushshift",
-                        }
-                    )
+                for chunk in html.split('href="')[1:]:
+                    fname = chunk.split('"', 1)[0]
+                    if fname.endswith(".zst") and (
+                        fname.startswith("RS_") or fname.startswith("RC_")
+                    ):
+                        files.append(
+                            {
+                                "name": fname,
+                                "url": f"{url}{fname}",
+                                "type": ftype,
+                                "source": "pushshift",
+                            }
+                        )
             except Exception as exc:
                 logger.warning("Failed to list Pushshift files for %s: %s", ftype, exc)
         files.sort(key=lambda f: f["name"])
@@ -259,7 +280,7 @@ class RedditPipeline:
         limit: int | None = None,
     ) -> list[str]:
         """Download Pushshift monthly files, returning list of downloaded paths."""
-        target = Path(target_dir).expanduser().resolve()
+        target = self._resolve_root_dir(target_dir)
         target.mkdir(parents=True, exist_ok=True)
         state = self._load_state(target_dir)
         downloaded_paths: list[str] = []
@@ -350,7 +371,7 @@ class RedditPipeline:
     ) -> dict[str, Any]:
         """Process a single Pushshift NDJSON file, writing raw JSONL lines."""
         fname = Path(filepath).name
-        out = Path(output_dir).expanduser().resolve()
+        out = self._resolve_root_dir(output_dir)
         out.mkdir(parents=True, exist_ok=True)
 
         safe_fname = self._safe_name(fname.replace(".zst", "").replace(".gz", ""), "reddit")

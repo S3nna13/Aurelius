@@ -47,10 +47,12 @@ def _resolve_db_path(db_path: str | None) -> Path:
         candidate = Path(*candidate.parts[1:])
     if not candidate.parts:
         raise ValueError("db_path must not be empty")
+    safe_parts: list[str] = []
     for part in candidate.parts:
         if part in {"", ".", ".."} or not _SAFE_PATH_PART.fullmatch(part):
             raise ValueError(f"Invalid db_path segment: {part!r}")
-    resolved = (_DATA_ROOT / candidate).resolve()
+        safe_parts.append(part)
+    resolved = _DATA_ROOT.joinpath(*safe_parts).resolve()
     if resolved != _DATA_ROOT and not resolved.is_relative_to(_DATA_ROOT):
         raise ValueError("db_path must stay within AURELIUS_DATA_DIR")
     return resolved
