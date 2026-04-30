@@ -19,17 +19,17 @@ FILE_DENY_PATHS: frozenset[str] = frozenset(
 
 class FileTool:
     def __init__(self, base_dir: str | None = None) -> None:
-        self.base_dir = os.path.abspath(base_dir) if base_dir is not None else None
+        self.base_dir = os.path.realpath(base_dir) if base_dir is not None else None
 
     def is_denied(self, path: str) -> bool:
-        """Check if any deny path is a prefix of the absolute path."""
-        abs_path = os.path.abspath(path)
+        """Check if any deny path is a prefix of the resolved path."""
+        abs_path = os.path.realpath(path)
         return any(abs_path.startswith(deny) for deny in FILE_DENY_PATHS)
 
     def _check_base_dir(self, path: str) -> str | None:
         """Return error string if path is outside base_dir, else None."""
         if self.base_dir is not None:
-            abs_path = os.path.abspath(path)
+            abs_path = os.path.realpath(path)
             if not abs_path.startswith(self.base_dir):
                 return f"path {path!r} is outside base_dir {self.base_dir!r}"
         return None

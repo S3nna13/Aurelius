@@ -36,6 +36,10 @@ class CodeRunnerTool:
         self.config = config or CodeRunnerConfig()
 
     def run(self, code: str) -> CodeRunnerResult:
+        if not self.is_safe(code):
+            return CodeRunnerResult(
+                stdout="", stderr="code rejected: unsafe pattern detected", exit_code=1
+            )
         try:
             proc = subprocess.run(  # noqa: S603
                 [sys.executable, "-c", code],
