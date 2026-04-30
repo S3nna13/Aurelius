@@ -29,6 +29,13 @@ class CheckpointMeta:
     config: dict  # model config as dict
 
 
+def _save_tensor_state_dict(model: nn.Module, path: Path) -> None:
+    """Persist model weights with safetensors instead of executable pickle data."""
+    from safetensors.torch import save_model
+
+    save_model(model, str(path))
+
+
 def _serialize_state(value: object) -> object:
     """Convert optimizer state to a JSON-serializable structure."""
     if isinstance(value, torch.Tensor):
@@ -90,9 +97,9 @@ def save_checkpoint(
     """Save model + optimizer state + metadata to a numbered checkpoint directory.
 
     Creates: output_dir/checkpoint-{step:07d}/
-        model.pt       — model state dict
-        optimizer.json — optimizer state dict (if optimizer provided)
-        meta.json      — CheckpointMeta as JSON
+        model.safetensors — model state dict
+        optimizer.json    — optimizer state dict (if optimizer provided)
+        meta.json         — CheckpointMeta as JSON
 
     Also updates output_dir/best/ symlink if val_loss is the lowest seen.
     Deletes oldest checkpoints beyond keep_last_n.
@@ -115,7 +122,7 @@ def save_checkpoint(
     ckpt_dir.mkdir(parents=True, exist_ok=True)
 
     # Save model state dict
-    torch.save(model.state_dict(), ckpt_dir / "model.pt")
+    _save_tensor_state_dict(model, ckpt_dir / "model.safetensors")
 
     # Save optimizer state dict
     if optimizer is not None:
@@ -168,7 +175,7 @@ def load_checkpoint(
 
     Args:
         model: Model to load weights into.
-        checkpoint_path: Path to checkpoint directory (contains model.pt, meta.json).
+        checkpoint_path: Path to checkpoint directory (contains model.safetensors, meta.json).
         optimizer: Optional optimizer to restore state into.
         strict: If True, model.load_state_dict is called with strict=True.
         map_location: Device to load tensors onto.
@@ -177,21 +184,22 @@ def load_checkpoint(
         CheckpointMeta loaded from meta.json.
 
     Raises:
-        FileNotFoundError: If model.pt or meta.json not found.
+        FileNotFoundError: If model.safetensors or meta.json not found.
     """
     ckpt_dir = Path(checkpoint_path)
 
-    model_path = ckpt_dir / "model.pt"
+    model_path = ckpt_dir / "model.safetensors"
     meta_path = ckpt_dir / "meta.json"
 
     if not model_path.exists():
-        raise FileNotFoundError(f"model.pt not found in {ckpt_dir}")
+        raise FileNotFoundError(f"model.safetensors not found in {ckpt_dir}")
     if not meta_path.exists():
         raise FileNotFoundError(f"meta.json not found in {ckpt_dir}")
 
     # Load model weights
-    state_dict = torch.load(model_path, map_location=map_location, weights_only=True)
-    model.load_state_dict(state_dict, strict=strict)
+    from safetensors.torch import load_model
+
+    load_model(model, model_path, strict=strict, device=map_location)
     logger.info("Loaded model weights from %s", model_path)
 
     # Load optimizer state if requested

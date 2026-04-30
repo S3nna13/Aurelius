@@ -32,11 +32,11 @@ def small_model():
 
 
 def test_save_creates_files(tmp_path, small_model):
-    """save_checkpoint must create model.pt and meta.json."""
+    """save_checkpoint must create model.safetensors and meta.json."""
     ckpt_dir = save_checkpoint(
         small_model, None, step=10, epoch=1, train_loss=2.5, output_dir=tmp_path
     )
-    assert (ckpt_dir / "model.pt").exists()
+    assert (ckpt_dir / "model.safetensors").exists()
     assert (ckpt_dir / "meta.json").exists()
 
 
