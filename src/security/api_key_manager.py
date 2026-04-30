@@ -7,16 +7,19 @@ import hmac
 import secrets
 from dataclasses import dataclass, field
 
-_PBKDF2_ROUNDS = 390_000
+_SCRYPT_N = 2**15
+_SCRYPT_R = 8
+_SCRYPT_P = 1
 
 
 def _hash_key(raw_key: str, salt: bytes) -> str:
     """Derive a slow hash for *raw_key* using per-key salt."""
-    return hashlib.pbkdf2_hmac(
-        "sha256",
+    return hashlib.scrypt(
         raw_key.encode("utf-8"),
-        salt,
-        _PBKDF2_ROUNDS,
+        salt=salt,
+        n=_SCRYPT_N,
+        r=_SCRYPT_R,
+        p=_SCRYPT_P,
     ).hex()
 
 

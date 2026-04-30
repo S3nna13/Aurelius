@@ -42,9 +42,8 @@ def _resolve_db_path(db_path: str | None) -> Path:
 
     candidate = Path(db_path).expanduser()
     if candidate.is_absolute():
-        resolved = candidate.resolve()
-    else:
-        resolved = (_DATA_ROOT / candidate).resolve()
+        candidate = Path(*candidate.parts[1:])
+    resolved = (_DATA_ROOT / candidate).resolve()
     if resolved != _DATA_ROOT and not resolved.is_relative_to(_DATA_ROOT):
         raise ValueError("db_path must stay within AURELIUS_DATA_DIR")
     return resolved
