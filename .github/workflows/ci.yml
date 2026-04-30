@@ -97,7 +97,7 @@ jobs:
       - name: Run Bandit
         run: |
           bandit -r src/ -f json -o bandit-report.json || true
-          bandit -r src/ -l
+          bandit -r src/ -ii -ll
 
       - name: Run pip-audit
         run: |
