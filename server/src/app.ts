@@ -20,6 +20,12 @@ export function createApp() {
   app.set('trust proxy', 1);
   const allowedOrigins: string[] = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000,http://localhost:5173').split(',').map(s => s.trim())
   app.use(cors({ origin: allowedOrigins, credentials: true }));
+  app.use((_req, res, next) => {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+    res.setHeader('X-Content-Type-Options', 'nosniff')
+    res.setHeader('X-Frame-Options', 'DENY')
+    next()
+  })
   app.use(requestLoggerMiddleware());
   app.use(express.json({ limit: '1mb' }));
   app.use(metricsMiddleware);

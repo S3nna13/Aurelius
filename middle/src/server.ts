@@ -22,6 +22,12 @@ export function buildApp() {
 
   app.set('trust proxy', 1)
   app.use(cors({ origin: config.corsOrigin, credentials: true }))
+  app.use((_req, res, next) => {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+    res.setHeader('X-Content-Type-Options', 'nosniff')
+    res.setHeader('X-Frame-Options', 'DENY')
+    next()
+  })
   app.use(express.json({ limit: '1mb' }))
   app.use(requestLogger)
   app.use(authMiddleware)

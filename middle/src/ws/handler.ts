@@ -1,6 +1,7 @@
 import { WebSocketServer, type WebSocket } from 'ws'
 import type { Server } from 'http'
 import { getEngine } from '../engine.js'
+import { config } from '../config.js'
 
 interface WsMessage {
   type: string
@@ -21,7 +22,16 @@ function broadcast(data: unknown): void {
 export function setupWebSocket(server: Server): WebSocketServer {
   const wss = new WebSocketServer({ server, path: '/ws' })
 
-  wss.on('connection', (ws) => {
+  wss.on('connection', (ws, req) => {
+    if (config.apiKey) {
+      const urlParams = new URLSearchParams(req.url?.split('?')[1] || '')
+      const wsKey = urlParams.get('api_key') || req.headers['x-api-key'] as string | undefined
+      if (!wsKey || wsKey !== config.apiKey) {
+        ws.close(4001, 'Authentication required')
+        return
+      }
+    }
+
     clients.add(ws)
 
     const engine = getEngine()

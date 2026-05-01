@@ -7,7 +7,6 @@ export function status(_req: Request, res: Response): void {
   const agents = engine.listAgents();
   const memoryLayers = engine.getMemoryLayers();
   const notifStats = engine.getNotificationStats();
-  const config = engine.getAllConfig();
 
   const agentsOnline = agents.filter(a =>
     ['ACTIVE', 'RUNNING', 'IDLE'].includes(a.state.toUpperCase())

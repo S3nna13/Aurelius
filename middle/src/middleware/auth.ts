@@ -40,7 +40,7 @@ export function registerApiKey(key: string, user: AuthUser): void {
 }
 
 export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
-  const publicPaths = ['/health', '/healthz', '/readyz', '/openapi.json', '/docs']
+  const publicPaths = ['/api/health', '/api/healthz', '/api/readyz', '/openapi.json', '/docs']
 
   if (publicPaths.includes(req.path)) {
     next()

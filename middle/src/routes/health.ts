@@ -4,14 +4,10 @@ import { getEngine } from '../engine.js'
 const router = Router()
 
 router.get('/health', (_req, res) => {
-  const engine = getEngine()
-  const stats = engine.getNotificationStats()
   res.json({
     status: 'ok',
-    version: engine.getConfig('app.version') || '0.1.0',
+    version: getEngine().getConfig('app.version') || '0.1.0',
     uptime: process.uptime(),
-    memory: process.memoryUsage(),
-    notifications: stats,
   })
 })
 
