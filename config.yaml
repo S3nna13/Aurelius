@@ -1,0 +1,35 @@
+aurelius_150m:
+  d_model: 768
+  n_heads: 12
+  d_ff: 3072
+  n_layers: 12
+  vocab_size: 50257
+  max_seq_len: 2048
+  d_mem: 256
+  episodic_slots: 512
+  lts_capacity: 1024
+  consolidation_freq: 64
+  graph_threshold: 0.65
+  dropout: 0.0
+
+training:
+  batch_size: 16
+  micro_batch_size: 4
+  learning_rate: 3e-4
+  min_lr: 1e-5
+  weight_decay: 0.1
+  beta1: 0.9
+  beta2: 0.95
+  warmup_steps: 1000
+  total_steps: 100000
+  grad_clip: 1.0
+  optimizer: "adamw"
+  scheduler: "cosine"
+  memory_loss_weight: 0.1
+  consolidation_loss_weight: 0.05
+
+data:
+  pretrain_corpus: 10B_tokens
+  memory_curriculum: 2B_tokens
+  eval_interval: 500
+  save_interval: 2000

@@ -1,0 +1,62 @@
+aurelius_32b:
+  d_model: 7168
+  n_heads: 56
+  d_ff: 28672
+  n_layers: 81
+  vocab_size: 50257
+  max_seq_len: 32768
+  d_mem: 1536
+  episodic_slots: 16384
+  lts_capacity: 32768
+  consolidation_freq: 2048
+  graph_threshold: 0.65
+  dropout: 0.0
+  d_brain: 2048
+  n_actions: 12
+  n_known_tools: 512
+  n_simulations: 48
+  skill_dim: 1024
+  max_skills: 32768
+  n_top_k_skills: 32
+  max_agent_context: 65536
+  replay_capacity: 500000
+
+training:
+  batch_size: 1
+  micro_batch_size: 1
+  learning_rate: 5.0e-5
+  min_lr: 3.0e-6
+  weight_decay: 0.1
+  beta1: 0.9
+  beta2: 0.95
+  warmup_steps: 16000
+  total_steps: 3000000
+  grad_clip: 1.0
+  optimizer: "adamw"
+  scheduler: "cosine"
+  memory_loss_weight: 0.1
+  consolidation_loss_weight: 0.05
+  agent_loss_weight: 0.2
+  brain_loss_weight: 0.15
+  gradient_checkpointing: true
+  mixed_precision: bf16
+  cpu_offload: true
+  agent_rl_coef: 0.25
+  imitation_coef: 1.0
+
+data:
+  pretrain_corpus: "4T_tokens"
+  memory_curriculum: 160B_tokens
+  agent_demonstrations: 5B_tokens
+  eval_interval: 2000
+  save_interval: 20000
+
+infrastructure:
+  n_gpus: 256
+  gpu_type: "H100_80GB"
+  distributed_strategy: "fsdp"
+  cpu_offload_params: true
+  activation_memory_budget_mb: 1048576
+  kv_cache_quant_bits: 8
+  tensor_parallel: 16
+  pipeline_parallel: 8
