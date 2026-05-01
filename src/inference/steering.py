@@ -131,10 +131,10 @@ class SteeringHook:
 
             def make_hook(d):
                 def hook(module, input, output):
-                    # output is (hidden_state, kv_cache) for TransformerBlock
-                    h, kv = output
+                    # output is (hidden_state, kv_cache, aux_loss) for TransformerBlock
+                    h, kv, aux = output
                     h = h + self.alpha * d.unsqueeze(0).unsqueeze(0)
-                    return (h, kv)
+                    return (h, kv, aux)
 
                 return hook
 

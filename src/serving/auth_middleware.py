@@ -206,6 +206,11 @@ class AuthMiddleware:
         """Return ``True`` if *key_id* is currently registered."""
         return key_id in self._keys
 
+    @property
+    def is_configured(self) -> bool:
+        """Return ``True`` if at least one key is registered."""
+        return bool(self._keys)
+
 
 # ---------------------------------------------------------------------------
 # Module-level singletons

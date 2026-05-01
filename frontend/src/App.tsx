@@ -4,7 +4,7 @@
 // The Aurelius architecture remains the intellectual property of the authors.
 
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
-import { lazy, Suspense, useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -15,22 +15,44 @@ import GlobalSearch from './components/GlobalSearch';
 import KeyboardShortcuts from './components/KeyboardShortcuts';
 import SessionLock from './components/SessionLock';
 import OnboardingTour from './components/OnboardingTour';
-
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const Chat = lazy(() => import('./pages/Chat'));
-const Notifications = lazy(() => import('./pages/Notifications'));
-const Skills = lazy(() => import('./pages/Skills'));
-const Workflows = lazy(() => import('./pages/Workflows'));
-const Memory = lazy(() => import('./pages/Memory'));
-const Settings = lazy(() => import('./pages/Settings'));
-const AgentDetail = lazy(() => import('./pages/AgentDetail'));
-const Logs = lazy(() => import('./pages/Logs'));
-const ScheduledTasks = lazy(() => import('./pages/ScheduledTasks'));
-const AgentComparison = lazy(() => import('./pages/AgentComparison'));
-const HealthCheckPage = lazy(() => import('./pages/HealthCheck'));
-const ApiDocs = lazy(() => import('./pages/ApiDocs'));
-const Models = lazy(() => import('./pages/Models'));
-const Training = lazy(() => import('./pages/Training'));
+import NotificationFeed from './components/NotificationFeed';
+import KeyboardShortcutsHelp from './components/KeyboardShortcutsHelp';
+import { AuthGuard } from './components/AuthGuard';
+import Dashboard from './pages/Dashboard';
+import BrainConsole from './pages/BrainConsole';
+import Plugins from './pages/Plugins';
+import TraceList from './pages/TraceList';
+import TraceDetail from './pages/TraceDetail';
+import Chat from './pages/Chat';
+import Notifications from './pages/Notifications';
+import Skills from './pages/Skills';
+import Workflows from './pages/Workflows';
+import Memory from './pages/Memory';
+import Settings from './pages/Settings';
+import AgentDetail from './pages/AgentDetail';
+import Logs from './pages/Logs';
+import ScheduledTasks from './pages/ScheduledTasks';
+import AgentComparison from './pages/AgentComparison';
+import AgentGrid from './pages/AgentGrid';
+import AgentSpawnForm from './pages/AgentSpawnForm';
+import AgentWorkspace from './pages/AgentWorkspace';
+import AgentSkillBuilder from './pages/AgentSkillBuilder';
+import AgentPlayground from './pages/AgentPlayground';
+import AgentTemplates from './pages/AgentTemplates';
+import AgentKnowledgeBase from './pages/AgentKnowledgeBase';
+import AgentToolsRegistry from './pages/AgentToolsRegistry';
+import HealthCheckPage from './pages/HealthCheck';
+import ApiDocs from './pages/ApiDocs';
+import Login from './pages/Login';
+import Users from './pages/Users';
+import NotFound from './pages/NotFound';
+import ServerError from './pages/ServerError';
+import Analytics from './pages/Analytics';
+import DataExplorer from './pages/DataExplorer';
+import Models from './pages/Models';
+import Training from './pages/Training';
+import TrainingDetail from './pages/TrainingDetail';
+import Playground from './pages/Playground';
 
 const pageVariants = {
   initial: { opacity: 0, y: 8 },
@@ -50,26 +72,43 @@ function AnimatedRoutes() {
         exit="exit"
         transition={{ duration: 0.18 }}
       >
-        <Suspense fallback={<div className="flex items-center justify-center p-12 text-aurelius-muted">Loading...</div>}>
-          <Routes location={location}>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/chat" element={<Chat />} />
-            <Route path="/notifications" element={<Notifications />} />
-            <Route path="/skills" element={<Skills />} />
-            <Route path="/workflows" element={<Workflows />} />
-            <Route path="/memory" element={<Memory />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/agents/:id" element={<AgentDetail />} />
-            <Route path="/agents" element={<AgentComparison />} />
-            <Route path="/logs" element={<Logs />} />
-            <Route path="/tasks" element={<ScheduledTasks />} />
-            <Route path="/health" element={<HealthCheckPage />} />
-            <Route path="/api-docs" element={<ApiDocs />} />
-            <Route path="/models" element={<Models />} />
-            <Route path="/training" element={<Training />} />
-            <Route path="/training/:id" element={<Training />} />
-          </Routes>
-        </Suspense>
+        <Routes location={location}>
+          <Route path="/login" element={<Login />} />
+          <Route path="/" element={<AuthGuard><Dashboard /></AuthGuard>} />
+          <Route path="/chat" element={<AuthGuard><Chat /></AuthGuard>} />
+          <Route path="/notifications" element={<AuthGuard><Notifications /></AuthGuard>} />
+          <Route path="/skills" element={<AuthGuard><Skills /></AuthGuard>} />
+          <Route path="/workflows" element={<AuthGuard><Workflows /></AuthGuard>} />
+          <Route path="/memory" element={<AuthGuard><Memory /></AuthGuard>} />
+          <Route path="/settings" element={<AuthGuard><Settings /></AuthGuard>} />
+          <Route path="/agents/compare" element={<AuthGuard><AgentComparison /></AuthGuard>} />
+          <Route path="/agents/grid" element={<AuthGuard><AgentGrid /></AuthGuard>} />
+          <Route path="/agents/new" element={<AuthGuard><AgentSpawnForm /></AuthGuard>} />
+          <Route path="/agents/:id" element={<AuthGuard><AgentDetail /></AuthGuard>} />
+          <Route path="/agents/:id/workspace" element={<AuthGuard><AgentWorkspace /></AuthGuard>} />
+          <Route path="/agents/skills" element={<AuthGuard><AgentSkillBuilder /></AuthGuard>} />
+          <Route path="/agents/playground" element={<AuthGuard><AgentPlayground /></AuthGuard>} />
+          <Route path="/agents/templates" element={<AuthGuard><AgentTemplates /></AuthGuard>} />
+          <Route path="/agents/knowledge" element={<AuthGuard><AgentKnowledgeBase /></AuthGuard>} />
+          <Route path="/agents/tools" element={<AuthGuard><AgentToolsRegistry /></AuthGuard>} />
+          <Route path="/brain" element={<AuthGuard><BrainConsole /></AuthGuard>} />
+          <Route path="/logs" element={<AuthGuard><Logs /></AuthGuard>} />
+          <Route path="/tasks" element={<AuthGuard><ScheduledTasks /></AuthGuard>} />
+          <Route path="/traces" element={<AuthGuard><TraceList /></AuthGuard>} />
+          <Route path="/traces/:id" element={<AuthGuard><TraceDetail /></AuthGuard>} />
+          <Route path="/health" element={<AuthGuard><HealthCheckPage /></AuthGuard>} />
+          <Route path="/api-docs" element={<AuthGuard><ApiDocs /></AuthGuard>} />
+          <Route path="/users" element={<AuthGuard><Users /></AuthGuard>} />
+          <Route path="/analytics" element={<AuthGuard><Analytics /></AuthGuard>} />
+          <Route path="/data" element={<AuthGuard><DataExplorer /></AuthGuard>} />
+          <Route path="/training" element={<AuthGuard><Training /></AuthGuard>} />
+          <Route path="/training/:id" element={<AuthGuard><TrainingDetail /></AuthGuard>} />
+          <Route path="/models" element={<AuthGuard><Models /></AuthGuard>} />
+          <Route path="/playground" element={<AuthGuard><Playground /></AuthGuard>} />
+          <Route path="/plugins" element={<AuthGuard><Plugins /></AuthGuard>} />
+          <Route path="/500" element={<ServerError />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
       </motion.div>
     </AnimatePresence>
   );
@@ -144,8 +183,10 @@ function App() {
       {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}
       {searchOpen && <GlobalSearch onClose={() => setSearchOpen(false)} />}
       <KeyboardShortcuts />
+      <KeyboardShortcutsHelp />
       <SessionLock />
       <OnboardingTour />
+      <NotificationFeed />
     </ToastProvider>
   );
 }

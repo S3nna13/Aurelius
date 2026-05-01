@@ -68,7 +68,7 @@ class MedusaModel(nn.Module):
         x = self.base.embed(input_ids)
         freqs_cis = self.base.freqs_cis[: input_ids.shape[1]]
         for layer in self.base.layers:
-            x, _ = layer(x, freqs_cis, mask=None, past_kv=None)
+            x, _, _ = layer(x, freqs_cis, mask=None, past_kv=None)
         return self.base.norm(x)  # (B, seq_len, d_model)
 
     def forward(

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useApiStore } from '../stores/apiStore'
 
 interface AuthState {
@@ -30,8 +30,8 @@ export function useAuth(): AuthState {
       setError('Invalid API key')
       return false
     } catch {
-      setApiKey(key)
-      return true
+      setError('Network error during authentication')
+      return false
     } finally {
       setLoading(false)
     }
@@ -42,7 +42,10 @@ export function useAuth(): AuthState {
     setError(null)
   }, [setApiKey])
 
+  const hydrated = useRef(false)
   useEffect(() => {
+    if (hydrated.current) return
+    hydrated.current = true
     const saved = localStorage.getItem('aurelius-api-key')
     if (saved) {
       setApiKey(saved)

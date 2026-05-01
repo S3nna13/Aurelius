@@ -12,7 +12,7 @@ class JailbreakSignal(StrEnum):
     IGNORE_INSTRUCTIONS = "ignore_instructions"
     HYPOTHETICAL = "hypothetical"
     PROMPT_INJECTION = "prompt_injection"
-    TOKEN_SMUGGLING = "token_smuggling"
+    TOKEN_SMUGGLING = "token_smuggling"  # noqa: S105
 
 
 @dataclass

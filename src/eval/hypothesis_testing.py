@@ -109,7 +109,7 @@ def bootstrap_confidence_interval(
     Sample pairs with replacement, compute mean diff each time.
     Return (alpha/2, 1-alpha/2) percentiles.
     """
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # noqa: S311
     n = len(scores_a)
     diffs = [a - b for a, b in zip(scores_a, scores_b)]
     boot_means: list[float] = []
@@ -341,7 +341,7 @@ def bootstrap_test(
     seed: int = 42,
 ) -> TestResult:
     """Bootstrap significance test for difference in means."""
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # noqa: S311
     n_a = len(scores_a)
     n_b = len(scores_b)
     observed_diff = sum(scores_a) / n_a - sum(scores_b) / n_b
@@ -379,7 +379,7 @@ def permutation_test(
     seed: int = 42,
 ) -> TestResult:
     """Permutation test for difference in means."""
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # noqa: S311
     n_a = len(scores_a)
     n_b = len(scores_b)
     observed_stat = sum(scores_a) / n_a - sum(scores_b) / n_b

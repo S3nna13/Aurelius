@@ -1,0 +1,11 @@
+{
+  "name": "aurelius-uuid-gen",
+  "version": "0.1.0",
+  "private": true,
+  "napi": {
+    "binaryName": "aurelius-uuid-gen",
+    "targets": ["aarch64-apple-darwin", "x86_64-apple-darwin"]
+  },
+  "scripts": { "build": "napi build --release --platform" },
+  "devDependencies": { "@napi-rs/cli": "^3.0.0" }
+}

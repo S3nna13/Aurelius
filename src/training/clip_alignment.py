@@ -219,7 +219,7 @@ class CLIPAlignmentTrainer:
         x = self.model.embed(input_ids)
         freqs_cis = self.model.freqs_cis[:S]
         for layer in self.model.layers:
-            x, _ = layer(x, freqs_cis, mask=None, past_kv=None)
+            x, _, _ = layer(x, freqs_cis, mask=None, past_kv=None)
         x = self.model.norm(x)  # (B, S, d_model)
         return x.mean(dim=1)  # (B, d_model)
 

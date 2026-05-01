@@ -240,7 +240,7 @@ class ActivationSearchSpace:
 
     def sample(self) -> str:
         """Uniformly sample one activation name."""
-        return random.choice(self.choices)
+        return random.choice(self.choices)  # noqa: S311
 
     def evaluate(
         self,

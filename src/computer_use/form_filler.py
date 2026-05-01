@@ -11,7 +11,7 @@ from enum import Enum
 
 class FieldType(Enum):
     TEXT = "text"
-    PASSWORD = "password"
+    PASSWORD = "password"  # noqa: S105
     EMAIL = "email"
     NUMBER = "number"
     CHECKBOX = "checkbox"

@@ -179,7 +179,7 @@ def bootstrap_elo_ci(
     if not results:
         return {}
 
-    rng = random.Random(42)
+    rng = random.Random(42)  # noqa: S311
     n = len(results)
 
     # Collect all model names up front so every bootstrap sample includes them

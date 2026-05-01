@@ -25,6 +25,7 @@ interface ApiStoreState {
 
   setBaseUrl: (url: string) => void
   setApiKey: (key: string) => void
+  clearApiKey: () => void
   setHealth: (health: HealthStatus) => void
   setModels: (models: ModelInfo[]) => void
   setLoading: (loading: boolean) => void
@@ -45,6 +46,10 @@ export const useApiStore = create<ApiStoreState>()(
       setApiKey: (key) => {
         localStorage.setItem('aurelius-api-key', key)
         set({ apiKey: key })
+      },
+      clearApiKey: () => {
+        localStorage.removeItem('aurelius-api-key')
+        set({ apiKey: '' })
       },
       setHealth: (health) => set({ health }),
       setModels: (models) => set({ models }),

@@ -24,6 +24,7 @@ from .compatibility import (
     parse_semver,
 )
 from .config import AureliusConfig
+from .csa_attention import CompressedSparseAttention
 from .dp_aware_moe_routing import DPAwareMoERouter
 from .dsa_attention import DSAAttention, DSAConfig, LightningIndexer
 from .factory import (
@@ -48,6 +49,7 @@ from .ffn import SwiGLUFFN
 from .fim_lm import FIMConfig, FIMDocument, FIMLossFilter, FIMTransformer
 from .flash_mla import FlashMLAAttention, FlashMLAConfig
 from .gqa_absorbed import GQAAbsorbedAttention, GQAAbsorbedConfig
+from .hca_attention import HeavilyCompressedAttention
 from .head_registry import (
     HEAD_REGISTRY,
     HeadFactoryError,
@@ -106,6 +108,7 @@ from .manifest_v2 import (
     upgrade_to_v2,
     v2_to_v1_dict,
 )
+from .mhc import ManifoldConstrainedHyperConnection, MHCLayer
 from .mla_256 import MLA256Attention, MLA256Config
 from .model_merging import (
     MERGING_REGISTRY,
@@ -172,6 +175,9 @@ MODEL_COMPONENT_REGISTRY["vision_cross_attention"] = VisionCrossAttention
 from .matryoshka_embedding import MatryoshkaConfig, MatryoshkaEmbedding
 
 MODEL_COMPONENT_REGISTRY["matryoshka_embedding"] = MatryoshkaEmbedding
+MODEL_COMPONENT_REGISTRY["csa_attention"] = CompressedSparseAttention
+MODEL_COMPONENT_REGISTRY["hca_attention"] = HeavilyCompressedAttention
+MODEL_COMPONENT_REGISTRY["mhc"] = ManifoldConstrainedHyperConnection
 
 _module = sys.modules[__name__]
 sys.modules.setdefault("src.model", _module)
@@ -228,6 +234,8 @@ __all__ = [
     "AureliusTransformer",
     "CheckpointMigrator",
     "ChunkedLocalAttention",
+    "CompressedSparseAttention",
+    "HeavilyCompressedAttention",
     "CompatibilityError",
     "CompatibilityVerdict",
     "DEFAULT_BACKBONE_BUILDERS",
@@ -239,6 +247,8 @@ __all__ = [
     "HeadKind",
     "HeadSpec",
     "LambdaAttention",
+    "ManifoldConstrainedHyperConnection",
+    "MHCLayer",
     "SharedMTPHead",
     "MERGING_REGISTRY",
     "MergeError",

@@ -1,9 +1,31 @@
-"""Persona registry — define and apply chat personas."""
+"""Persona registry — define and apply chat personas.
+
+BACKWARD-COMPATIBLE WRAPPER: delegates to UnifiedPersonaRegistry.
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
+
+from src.persona import (
+    AURELIUS_ANALYST,
+    AURELIUS_CODING,
+    AURELIUS_CREATIVE,
+    AURELIUS_GENERAL,
+    AURELIUS_TEACHER,
+    BUILTIN_PERSONAS,
+    UnifiedPersona,
+    UnifiedPersonaRegistry,
+)
+
+_LEGACY_TO_UNIFIED: dict[str, str] = {
+    "assistant": "aurelius-general",
+    "coding": "aurelius-coding",
+    "teacher": "aurelius-teacher",
+    "analyst": "aurelius-analyst",
+    "creative": "aurelius-creative",
+}
 
 
 class PersonaTone(StrEnum):
@@ -25,7 +47,7 @@ class PersonaConfig:
 
 
 class PersonaRegistry:
-    """Registry of named chat personas."""
+    """Backward-compatible wrapper delegating to UnifiedPersonaRegistry."""
 
     DEFAULT_PERSONAS: dict[str, PersonaConfig] = {
         "assistant": PersonaConfig(
@@ -33,99 +55,103 @@ class PersonaRegistry:
             name="Assistant",
             description="Helpful general-purpose assistant",
             tone=PersonaTone.FORMAL,
-            system_prompt=(
-                "You are a helpful, accurate, and professional assistant. "
-                "Provide clear, well-structured answers."
-            ),
-            temperature=0.7,
+            system_prompt=AURELIUS_GENERAL.system_prompt,
+            temperature=AURELIUS_GENERAL.temperature,
         ),
         "coding": PersonaConfig(
             persona_id="coding",
             name="Coding Expert",
             description="Expert software engineer focused on correctness",
             tone=PersonaTone.TECHNICAL,
-            system_prompt=(
-                "You are an expert software engineer. Produce correct, efficient, "
-                "and well-documented code. Explain your reasoning concisely."
-            ),
-            temperature=0.3,
+            system_prompt=AURELIUS_CODING.system_prompt,
+            temperature=AURELIUS_CODING.temperature,
         ),
         "teacher": PersonaConfig(
             persona_id="teacher",
             name="Teacher",
             description="Patient educator who meets the learner where they are",
             tone=PersonaTone.EMPATHETIC,
-            system_prompt=(
-                "You are a patient, encouraging teacher. Break concepts down into "
-                "accessible steps and check understanding along the way."
-            ),
-            temperature=0.8,
+            system_prompt=AURELIUS_TEACHER.system_prompt,
+            temperature=AURELIUS_TEACHER.temperature,
         ),
         "analyst": PersonaConfig(
             persona_id="analyst",
             name="Analyst",
             description="Data and research analyst focused on evidence",
             tone=PersonaTone.FORMAL,
-            system_prompt=(
-                "You are a rigorous data and research analyst. Cite evidence, "
-                "quantify uncertainty, and present findings objectively."
-            ),
-            temperature=0.2,
+            system_prompt=AURELIUS_ANALYST.system_prompt,
+            temperature=AURELIUS_ANALYST.temperature,
         ),
         "creative": PersonaConfig(
             persona_id="creative",
             name="Creative Writer",
             description="Creative writing helper with an expressive voice",
             tone=PersonaTone.CASUAL,
-            system_prompt=(
-                "You are an imaginative creative writing companion. Embrace "
-                "vivid language, unexpected angles, and playful experimentation."
-            ),
-            temperature=1.0,
+            system_prompt=AURELIUS_CREATIVE.system_prompt,
+            temperature=AURELIUS_CREATIVE.temperature,
         ),
     }
 
     def __init__(self) -> None:
-        # Shallow copy so mutations don't affect the class-level dict
         self._personas: dict[str, PersonaConfig] = dict(self.DEFAULT_PERSONAS)
+        self._unified = UnifiedPersonaRegistry()
+        for p in BUILTIN_PERSONAS:
+            if p.domain.value in ("general", "coding"):
+                self._unified.register(p)
 
-    # ------------------------------------------------------------------
-    # CRUD
-    # ------------------------------------------------------------------
+    def _to_legacy(self, unified: UnifiedPersona) -> PersonaConfig:
+        return PersonaConfig(
+            persona_id=unified.id,
+            name=unified.name,
+            description=unified.description,
+            tone=PersonaTone(unified.tone.value),
+            system_prompt=unified.system_prompt,
+            temperature=unified.temperature,
+        )
 
     def register(self, config: PersonaConfig) -> None:
-        """Add or overwrite a persona."""
         self._personas[config.persona_id] = config
 
     def get(self, persona_id: str) -> PersonaConfig | None:
-        """Return the PersonaConfig for *persona_id*, or None if not found."""
-        return self._personas.get(persona_id)
+        if persona_id in self._personas:
+            return self._personas[persona_id]
+        unified_id = _LEGACY_TO_UNIFIED.get(persona_id, persona_id)
+        try:
+            unified = self._unified.get(unified_id)
+        except Exception:
+            return None
+        return self._to_legacy(unified)
 
     def list_personas(self) -> list[PersonaConfig]:
-        """Return all registered personas."""
+        # Keep the legacy surface scoped to the five public personas that older
+        # callers expect, while still allowing explicit registrations to extend it.
         return list(self._personas.values())
-
-    # ------------------------------------------------------------------
-    # Conversation integration
-    # ------------------------------------------------------------------
 
     def apply_persona(
         self,
         messages: list[dict],
         persona_id: str,
     ) -> list[dict]:
-        """Prepend the persona's system prompt to *messages*.
+        from src.persona import PromptComposer
 
-        If a system message already exists at position 0, it is replaced.
-        Returns a new list (the original is not mutated).
-        """
         config = self.get(persona_id)
         if config is None:
             raise KeyError(f"Unknown persona: {persona_id!r}")
 
-        system_msg: dict = {"role": "system", "content": config.system_prompt}
+        # If resolved from unified registry, use PromptComposer for facet composition
+        unified_id = _LEGACY_TO_UNIFIED.get(persona_id, persona_id)
+        try:
+            unified = self._unified.get(unified_id)
+        except Exception:
+            unified = None
 
+        if unified is not None:
+            composer = PromptComposer()
+            system_prompt = composer.compose(unified)
+        else:
+            system_prompt = config.system_prompt
+
+        system_msg: dict = {"role": "system", "content": system_prompt}
         if messages and messages[0].get("role") == "system":
             return [system_msg, *messages[1:]]
-
         return [system_msg, *messages]

@@ -201,7 +201,7 @@ class ProbeInterventionExperiment:
             x = self.model.embed(input_ids)
             freqs_cis = self.model.freqs_cis[:S]
             for i, layer in enumerate(self.model.layers):
-                x, _ = layer(x, freqs_cis, None, None)
+                x, _, _ = layer(x, freqs_cis, None, None)
                 if i == layer_idx:
                     break
         return x  # (batch, seq, d_model)
@@ -226,7 +226,7 @@ class ProbeInterventionExperiment:
             for i, layer in enumerate(self.model.layers):
                 if i <= start_layer_idx:
                     continue
-                x, _ = layer(x, freqs_cis, None, None)
+                x, _, _ = layer(x, freqs_cis, None, None)
             x = self.model.norm(x)
             logits = self.model.lm_head(x)
         return logits

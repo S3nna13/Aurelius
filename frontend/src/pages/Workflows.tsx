@@ -1,118 +1,107 @@
-import { useState, useEffect } from 'react'
-import { GitBranch, Loader2, RefreshCw, Play, Square, Clock, CheckCircle, XCircle, AlertTriangle } from 'lucide-react'
-import { useToast } from '../components/ToastProvider'
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  GitBranch, Play, Square, Plus, Trash2, GripVertical,
+  CheckCircle, XCircle, Clock, Loader2, Settings,
+} from 'lucide-react';
+import { useApi } from '../hooks/useApi';
+import EmptyState from '../components/EmptyState';
+import Skeleton from '../components/Skeleton';
+import Modal from '../components/ui/Modal';
+import Input from '../components/ui/Input';
+import Select from '../components/ui/Select';
+
+interface WorkflowStep {
+  id: string; name: string; type: string;
+  config: Record<string, unknown>;
+}
 
 interface Workflow {
-  id: string
-  name: string
-  status: 'running' | 'completed' | 'failed' | 'pending'
-  steps: number
-  currentStep: number
-  startedAt: string
-  duration?: string
+  id: string; name: string; description: string;
+  steps: WorkflowStep[]; enabled: boolean;
+  lastRun?: string; lastStatus?: string;
 }
 
-const mockWorkflows: Workflow[] = [
-  { id: 'wf-1', name: 'Data Pipeline', status: 'running', steps: 5, currentStep: 3, startedAt: new Date(Date.now() - 120000).toISOString(), duration: '2m 34s' },
-  { id: 'wf-2', name: 'Model Evaluation', status: 'completed', steps: 8, currentStep: 8, startedAt: new Date(Date.now() - 3600000).toISOString(), duration: '45m 12s' },
-  { id: 'wf-3', name: 'Training Run', status: 'completed', steps: 3, currentStep: 3, startedAt: new Date(Date.now() - 7200000).toISOString(), duration: '1h 12m' },
-  { id: 'wf-4', name: 'Data Export', status: 'failed', steps: 4, currentStep: 2, startedAt: new Date(Date.now() - 600000).toISOString(), duration: '3m 45s' },
-  { id: 'wf-5', name: 'System Backup', status: 'pending', steps: 6, currentStep: 0, startedAt: new Date().toISOString(), duration: '-' },
-]
-
-const statusColors: Record<string, string> = {
-  running: 'text-[#4fc3f7] bg-[#4fc3f7]/10 border-[#4fc3f7]/20',
-  completed: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-  failed: 'text-rose-400 bg-rose-500/10 border-rose-500/20',
-  pending: 'text-[#9e9eb0] bg-[#2d2d44]/20 border-[#2d2d44]/40',
-}
-
-const statusIcons: Record<string, typeof Play> = {
-  running: Play, completed: CheckCircle, failed: XCircle, pending: AlertTriangle,
-}
+const STEP_TYPES = [
+  { id: 'agent_task', name: 'Agent Task', color: 'text-[#4fc3f7]' },
+  { id: 'tool_call', name: 'Tool Call', color: 'text-amber-400' },
+  { id: 'condition', name: 'Condition', color: 'text-violet-400' },
+  { id: 'delay', name: 'Delay', color: 'text-gray-400' },
+  { id: 'notification', name: 'Notification', color: 'text-emerald-400' },
+];
 
 export default function Workflows() {
-  const { toast } = useToast()
-  const [workflows, setWorkflows] = useState<Workflow[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true)
-      try {
-        const res = await fetch('/api/status')
-        if (res.ok) {
-          const data = await res.json()
-          if (data.workflows) setWorkflows(data.workflows)
-          else setWorkflows(mockWorkflows)
-        } else {
-          setWorkflows(mockWorkflows)
-        }
-      } catch {
-        setWorkflows(mockWorkflows)
-      }
-      setLoading(false)
-    }
-    load()
-  }, [])
-
-  const startWorkflow = async (id: string) => {
-    toast(`Workflow ${id} triggered`, 'success')
-    setWorkflows((prev) => prev.map((w) => w.id === id ? { ...w, status: 'running', currentStep: 1, startedAt: new Date().toISOString() } : w))
-  }
-
-  const stopWorkflow = async (id: string) => {
-    toast(`Workflow ${id} stopped`, 'info')
-    setWorkflows((prev) => prev.map((w) => w.id === id ? { ...w, status: 'pending', currentStep: 0 } : w))
-  }
+  const { data, loading } = useApi<{ workflows: Workflow[] }>('/workflows', { refreshInterval: 10000 });
+  const [selected, setSelected] = useState<Workflow | null>(null);
+  const [showNew, setShowNew] = useState(false);
+  const [newName, setNewName] = useState('');
+  const workflows = data?.workflows || [];
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-[#e0e0e0] flex items-center gap-2"><GitBranch size={20} className="text-[#4fc3f7]" /> Workflows</h2>
-        <button onClick={() => setLoading(true)} disabled={loading} className="aurelius-btn-outline flex items-center gap-1.5 text-sm disabled:opacity-50"><RefreshCw size={14} /> Refresh</button>
+        <h2 className="text-lg font-bold text-[#e0e0e0] flex items-center gap-2">
+          <GitBranch size={20} className="text-[#4fc3f7]" />
+          Workflows
+        </h2>
+        <button onClick={() => setShowNew(true)} className="aurelius-btn-primary flex items-center gap-2 text-sm">
+          <Plus size={14} /> New Workflow
+        </button>
       </div>
 
-      {loading ? (
-        <div className="aurelius-card text-center py-12 text-[#9e9eb0]"><Loader2 size={24} className="mx-auto mb-2 animate-spin opacity-60" /><p>Loading workflows...</p></div>
-      ) : (
-        <div className="space-y-3">
-          {workflows.map((wf) => {
-            const StatusIcon = statusIcons[wf.status] || GitBranch
-            return (
-              <div key={wf.id} className="aurelius-card space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <StatusIcon size={18} className={wf.status === 'running' ? 'text-[#4fc3f7]' : wf.status === 'completed' ? 'text-emerald-400' : wf.status === 'failed' ? 'text-rose-400' : 'text-[#9e9eb0]'} />
-                    <div>
-                      <p className="text-sm font-medium text-[#e0e0e0]">{wf.name}</p>
-                      <p className="text-[10px] text-[#9e9eb0]">{wf.id}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${statusColors[wf.status]}`}>{wf.status}</span>
-                    {wf.status === 'running' ? (
-                      <button onClick={() => stopWorkflow(wf.id)} className="p-1.5 rounded text-[#9e9eb0] hover:text-rose-400 hover:bg-rose-500/10 transition-colors"><Square size={14} /></button>
-                    ) : (
-                      <button onClick={() => startWorkflow(wf.id)} className="p-1.5 rounded text-[#9e9eb0] hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors"><Play size={14} /></button>
-                    )}
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs text-[#9e9eb0]">
-                    <span>Progress: {wf.currentStep}/{wf.steps} steps</span>
-                    <span className="flex items-center gap-1"><Clock size={10} />{wf.duration || 'In progress'}</span>
-                  </div>
-                  <div className="w-full bg-[#0f0f1a] rounded-full h-1.5">
-                    <div className={`h-1.5 rounded-full transition-all duration-500 ${wf.status === 'failed' ? 'bg-rose-400' : wf.status === 'completed' ? 'bg-emerald-400' : wf.status === 'running' ? 'bg-[#4fc3f7] animate-pulse' : 'bg-[#2d2d44]'}`}
-                      style={{ width: `${wf.steps > 0 ? (wf.currentStep / wf.steps) * 100 : 0}%` }} />
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
+      {loading && <Skeleton className="h-32" />}
+
+      {!loading && workflows.length === 0 && (
+        <EmptyState icon={GitBranch} title="No Workflows" description="Create automated workflows to chain agent tasks together." />
       )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {workflows.map(wf => (
+          <motion.div key={wf.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            onClick={() => setSelected(wf)}
+            className="aurelius-card p-4 hover:border-[#4fc3f7]/30 cursor-pointer transition-all"
+          >
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <h3 className="text-sm font-semibold text-[#e0e0e0]">{wf.name}</h3>
+                <p className="text-xs text-[#9e9eb0] mt-0.5">{wf.description}</p>
+              </div>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${wf.enabled ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20' : 'text-[#9e9eb0] bg-[#0f0f1a] border border-[#2d2d44]'}`}>
+                {wf.enabled ? 'Active' : 'Disabled'}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {wf.steps.slice(0, 5).map((step, i) => (
+                <div key={step.id} className="flex items-center gap-1">
+                  <span className="text-[10px] bg-[#0f0f1a] border border-[#2d2d44] px-2 py-0.5 rounded text-[#9e9eb0]">{step.name}</span>
+                  {i < wf.steps.length - 1 && <span className="text-[#2d2d44] text-xs">→</span>}
+                </div>
+              ))}
+              {wf.steps.length > 5 && <span className="text-[10px] text-[#9e9eb0]">+{wf.steps.length - 5} more</span>}
+            </div>
+            {wf.lastRun && (
+              <div className="flex items-center gap-2 mt-3 text-[10px] text-[#9e9eb0]">
+                <span>Last run: {wf.lastRun}</span>
+                {wf.lastStatus === 'completed' && <CheckCircle size={10} className="text-emerald-400" />}
+                {wf.lastStatus === 'failed' && <XCircle size={10} className="text-rose-400" />}
+              </div>
+            )}
+          </motion.div>
+        ))}
+      </div>
+
+      <AnimatePresence>
+        {showNew && (
+          <Modal onClose={() => setShowNew(false)}>
+            <div className="space-y-4">
+              <h3 className="text-lg font-bold text-[#e0e0e0]">New Workflow</h3>
+              <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Workflow name" />
+              <textarea placeholder="Description" className="w-full bg-[#0f0f1a] border border-[#2d2d44] rounded-lg p-3 text-sm text-[#e0e0e0] h-24 resize-none" />
+              <button className="aurelius-btn-primary w-full">Create Workflow</button>
+            </div>
+          </Modal>
+        )}
+      </AnimatePresence>
     </div>
-  )
+  );
 }

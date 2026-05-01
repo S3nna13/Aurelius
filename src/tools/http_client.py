@@ -62,9 +62,9 @@ class SimpleHTTPClient:
 
         from urllib.request import Request, urlopen
 
-        req = Request(url, method="GET")  # noqa: S310
+        req = Request(url, method="GET")  # noqa: S310  # nosec
         try:
-            resp = urlopen(req, timeout=self.timeout_seconds)  # noqa: S310
+            resp = urlopen(req, timeout=self.timeout_seconds)  # noqa: S310  # nosec
             body = resp.read().decode("utf-8", errors="replace")
             return HTTPResponse(status=resp.status, body=body)
         except Exception as e:
@@ -79,10 +79,10 @@ class SimpleHTTPClient:
         from urllib.request import Request, urlopen
 
         payload = json.dumps(data).encode("utf-8")
-        req = Request(url, data=payload, method="POST")  # noqa: S310
+        req = Request(url, data=payload, method="POST")  # noqa: S310  # nosec
         req.add_header("Content-Type", "application/json")
         try:
-            resp = urlopen(req, timeout=self.timeout_seconds)  # noqa: S310
+            resp = urlopen(req, timeout=self.timeout_seconds)  # noqa: S310  # nosec
             body = resp.read().decode("utf-8", errors="replace")
             return HTTPResponse(status=resp.status, body=body)
         except Exception as e:

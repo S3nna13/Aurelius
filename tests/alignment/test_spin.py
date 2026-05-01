@@ -10,6 +10,7 @@ import copy
 
 import torch
 import torch.nn as nn
+
 from aurelius.alignment.spin import (
     SPINDataCollector,
     SPINLoss,

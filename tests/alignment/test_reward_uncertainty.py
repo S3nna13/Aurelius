@@ -2,6 +2,7 @@
 
 import pytest
 import torch
+
 from aurelius.alignment.reward_uncertainty import (
     DeepEnsembleReward,
     MCDropoutReward,

@@ -7,13 +7,19 @@ interface Bucket {
 }
 
 const buckets = new Map<string, Bucket>()
+const MAX_BUCKETS = 10000
 
 export function rateLimiter(req: Request, res: Response, next: NextFunction): void {
-  const key = req.user?.id || req.ip || 'anonymous'
+  const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || req.ip || 'anonymous'
+  const key = req.user?.id || clientIp
   const now = Date.now()
   let bucket = buckets.get(key)
 
   if (!bucket) {
+    if (buckets.size >= MAX_BUCKETS) {
+      res.status(503).json({ error: 'Server busy', message: 'Rate limiter capacity exceeded' })
+      return
+    }
     bucket = { tokens: config.rateLimitRps, lastRefill: now }
     buckets.set(key, bucket)
   }

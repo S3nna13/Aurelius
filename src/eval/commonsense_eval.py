@@ -180,7 +180,7 @@ _ARC_TEMPLATES = [
 
 def generate_hellaswag_tasks(n: int, seed: int = 42) -> list[CommonsenseTask]:
     """Generate n synthetic HellaSwag-style activity-completion tasks."""
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # noqa: S311
     tasks: list[CommonsenseTask] = []
 
     for i in range(n):
@@ -207,7 +207,7 @@ def generate_hellaswag_tasks(n: int, seed: int = 42) -> list[CommonsenseTask]:
 
 def generate_winogrande_tasks(n: int, seed: int = 42) -> list[CommonsenseTask]:
     """Generate n Winogrande-style pronoun-resolution tasks."""
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # noqa: S311
     tasks: list[CommonsenseTask] = []
 
     for i in range(n):
@@ -234,7 +234,7 @@ def generate_winogrande_tasks(n: int, seed: int = 42) -> list[CommonsenseTask]:
 
 def generate_arc_tasks(n: int, seed: int = 42) -> list[CommonsenseTask]:
     """Generate n ARC-style 4-choice science question tasks."""
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # noqa: S311
     tasks: list[CommonsenseTask] = []
 
     for i in range(n):

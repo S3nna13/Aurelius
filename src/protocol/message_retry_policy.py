@@ -47,7 +47,7 @@ class RetryPolicy:
         base = min(base, self.max_delay_seconds)
 
         if self.jitter:
-            base += random.uniform(0.0, self.jitter_max_seconds)
+            base += random.uniform(0.0, self.jitter_max_seconds)  # noqa: S311
 
         return round(base, 3)
 

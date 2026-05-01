@@ -20,7 +20,6 @@ from typing import Any
 
 import torch
 import yaml
-from safetensors.torch import load_file, save_file
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader
@@ -30,6 +29,18 @@ from src.training.muon import Muon
 from src.training.zclip import ZClip
 
 logger = logging.getLogger(__name__)
+
+
+def _save_safetensors(state_dict: dict[str, torch.Tensor], path: Path) -> None:
+    from safetensors.torch import save_file
+
+    save_file(state_dict, path)
+
+
+def _load_safetensors(path: Path) -> dict[str, torch.Tensor]:
+    from safetensors.torch import load_file
+
+    return load_file(path)
 
 
 def set_seed(seed: int) -> None:
@@ -204,6 +215,23 @@ class TrainConfig:
     # Model
     model_name: str = "aurelius-1.3b"
 
+    # Model dimensions (read from YAML model section)
+    model_d_model: int = 2048
+    model_n_layers: int = 24
+    model_n_heads: int = 16
+    model_n_kv_heads: int = 8
+    model_head_dim: int = 128
+    model_d_ff: int = 5632
+    model_vocab_size: int = 128_000
+    model_max_seq_len: int = 8192
+    model_rope_theta: float = 500_000.0
+    model_tie_embeddings: bool = True
+    model_moe_enabled: bool = False
+    model_moe_num_experts: int = 8
+    model_moe_top_k: int = 2
+    model_moe_every_n_layers: int = 2
+    model_moe_capacity_factor: float = 1.25
+
     # Optimizer
     lr: float = 3e-4
     min_lr: float = 3e-5
@@ -248,6 +276,7 @@ class TrainConfig:
 
     # Optimizer variant
     use_muon: bool = True  # Use Muon for matrix params + AdamW for embeddings
+    use_8bit: bool = False  # Use 8-bit AdamW to reduce optimizer memory (~50% savings)
     muon_lr: float = 0.02  # Muon learning rate (much higher than AdamW's 3e-4)
     muon_momentum: float = 0.95
 
@@ -255,6 +284,10 @@ class TrainConfig:
     use_zclip: bool = False
     zclip_z_threshold: float = 2.5
     zclip_ema_alpha: float = 0.01
+
+    # SSD optimizer offloading (for tight-memory runs >2.7B)
+    use_optimizer_offload: bool = False
+    optimizer_offload_dir: str | None = None
 
     # DeepSpeed
     deepspeed_config: str | None = None
@@ -272,8 +305,27 @@ class TrainConfig:
         with open(path) as f:
             raw = yaml.safe_load(f)
 
+        model = raw.get("model", {})
+
         return cls(
-            model_name=raw.get("model", {}).get("name", cls.model_name),
+            model_name=model.get("name", cls.model_name),
+            model_d_model=model.get("d_model", cls.model_d_model),
+            model_n_layers=model.get("n_layers", cls.model_n_layers),
+            model_n_heads=model.get("n_heads", cls.model_n_heads),
+            model_n_kv_heads=model.get("n_kv_heads", cls.model_n_kv_heads),
+            model_head_dim=model.get("head_dim", cls.model_head_dim),
+            model_d_ff=model.get("d_ff", cls.model_d_ff),
+            model_vocab_size=model.get("vocab_size", cls.model_vocab_size),
+            model_max_seq_len=model.get("max_seq_len", cls.model_max_seq_len),
+            model_rope_theta=model.get("rope_theta", cls.model_rope_theta),
+            model_tie_embeddings=model.get("tie_embeddings", cls.model_tie_embeddings),
+            model_moe_enabled=model.get("moe_enabled", cls.model_moe_enabled),
+            model_moe_num_experts=model.get("moe_num_experts", cls.model_moe_num_experts),
+            model_moe_top_k=model.get("moe_top_k", cls.model_moe_top_k),
+            model_moe_every_n_layers=model.get("moe_every_n_layers", cls.model_moe_every_n_layers),
+            model_moe_capacity_factor=model.get(
+                "moe_capacity_factor", cls.model_moe_capacity_factor
+            ),
             lr=raw.get("optimizer", {}).get("lr", cls.lr),
             min_lr=raw.get("scheduler", {}).get("min_lr", cls.min_lr),
             beta1=raw.get("optimizer", {}).get("beta1", cls.beta1),
@@ -312,13 +364,20 @@ class TrainConfig:
             seed=raw.get("training", {}).get("seed", cls.seed),
             total_tokens=raw.get("training", {}).get("total_tokens", cls.total_tokens),
             use_muon=raw.get("optimizer", {}).get("use_muon", cls.use_muon),
+            use_8bit=raw.get("optimizer", {}).get("use_8bit", cls.use_8bit),
             muon_lr=raw.get("optimizer", {}).get("muon_lr", cls.muon_lr),
             muon_momentum=raw.get("optimizer", {}).get("muon_momentum", cls.muon_momentum),
-            use_zclip=raw.get("optimizer", {}).get("use_zclip", cls.use_zclip),
-            zclip_z_threshold=raw.get("optimizer", {}).get(
+            use_zclip=raw.get("gradient", {}).get("use_zclip", cls.use_zclip),
+            zclip_z_threshold=raw.get("gradient", {}).get(
                 "zclip_z_threshold", cls.zclip_z_threshold
             ),
-            zclip_ema_alpha=raw.get("optimizer", {}).get("zclip_ema_alpha", cls.zclip_ema_alpha),
+            zclip_ema_alpha=raw.get("gradient", {}).get("zclip_ema_alpha", cls.zclip_ema_alpha),
+            use_optimizer_offload=raw.get("optimizer", {}).get(
+                "use_optimizer_offload", cls.use_optimizer_offload
+            ),
+            optimizer_offload_dir=raw.get("optimizer", {}).get(
+                "optimizer_offload_dir", cls.optimizer_offload_dir
+            ),
         )
 
 
@@ -393,7 +452,7 @@ class CheckpointManager:
         state_dict = {
             k: v.detach().contiguous().cpu().clone() for k, v in unwrapped.state_dict().items()
         }
-        save_file(state_dict, ckpt_dir / "model.safetensors")
+        _save_safetensors(state_dict, ckpt_dir / "model.safetensors")
 
         # Save optimizer + scheduler state (torch format for complex state)
         # When Muon is used, also save Muon state so resume works correctly.
@@ -440,7 +499,7 @@ class CheckpointManager:
         ckpt_dir = Path(ckpt_dir)
 
         # Load model weights
-        state_dict = load_file(ckpt_dir / "model.safetensors")
+        state_dict = _load_safetensors(ckpt_dir / "model.safetensors")
         model.load_state_dict(state_dict, strict=True)
 
         # Load optimizer + scheduler
@@ -575,6 +634,21 @@ class AureliusTrainer:
                 cfg.zclip_ema_alpha,
             )
 
+        # Optimizer SSD offloading (opt-in for tight-memory runs)
+        self.optimizer_offloader: Any | None = None
+        if cfg.use_optimizer_offload:
+            from src.training.optimizer_offload import OptimizerOffloader
+
+            optim = self.muon_optimizer if self.muon_optimizer is not None else self.adamw_optimizer
+            self.optimizer_offloader = OptimizerOffloader(
+                optim,
+                offload_dir=cfg.optimizer_offload_dir,
+            )
+            logger.info(
+                "Optimizer offloading enabled -> %s",
+                self.optimizer_offloader.offload_dir,
+            )
+
         # Training state
         self.global_step: int = 0
         self.tokens_seen: int = 0
@@ -592,7 +666,7 @@ class AureliusTrainer:
         return self._build_adamw()
 
     def _build_adamw(self) -> AdamW:
-        """Build standard AdamW with weight-decay exclusion for bias/norm params."""
+        """Build AdamW (optionally 8-bit) with weight-decay exclusion for bias/norm params."""
         decay_params: list[torch.nn.Parameter] = []
         no_decay_params: list[torch.nn.Parameter] = []
 
@@ -604,11 +678,23 @@ class AureliusTrainer:
             else:
                 decay_params.append(param)
 
+        param_groups = [
+            {"params": decay_params, "weight_decay": self.cfg.weight_decay},
+            {"params": no_decay_params, "weight_decay": 0.0},
+        ]
+
+        if self.cfg.use_8bit:
+            from src.training.optimizers_8bit import AdamW8bitWrapper
+
+            return AdamW8bitWrapper(
+                param_groups,
+                lr=self.cfg.lr,
+                betas=(self.cfg.beta1, self.cfg.beta2),
+                eps=self.cfg.eps,
+            )
+
         return AdamW(
-            [
-                {"params": decay_params, "weight_decay": self.cfg.weight_decay},
-                {"params": no_decay_params, "weight_decay": 0.0},
-            ],
+            param_groups,
             lr=self.cfg.lr,
             betas=(self.cfg.beta1, self.cfg.beta2),
             eps=self.cfg.eps,
@@ -618,7 +704,7 @@ class AureliusTrainer:
         """Build [Muon, AdamW] optimizer pair.
 
         Muon: all 2D weight matrices in transformer projection layers.
-        AdamW: embeddings, normalization weights, lm_head, 1D params.
+        AdamW (optionally 8-bit): embeddings, normalization weights, lm_head, 1D params.
         """
         muon_params: list[torch.nn.Parameter] = []
         adamw_decay: list[torch.nn.Parameter] = []
@@ -650,18 +736,35 @@ class AureliusTrainer:
             momentum=self.cfg.muon_momentum,
             weight_decay=self.cfg.weight_decay,
         )
-        adamw_opt = AdamW(
-            [
-                {"params": adamw_decay, "weight_decay": self.cfg.weight_decay},
-                {"params": adamw_no_decay, "weight_decay": 0.0},
-            ],
+
+        adamw_kwargs = dict(
             lr=self.cfg.lr,
             betas=(self.cfg.beta1, self.cfg.beta2),
             eps=self.cfg.eps,
         )
+        if self.cfg.use_8bit:
+            from src.training.optimizers_8bit import AdamW8bitWrapper
+
+            adamw_opt = AdamW8bitWrapper(
+                [
+                    {"params": adamw_decay, "weight_decay": self.cfg.weight_decay},
+                    {"params": adamw_no_decay, "weight_decay": 0.0},
+                ],
+                **adamw_kwargs,
+            )
+        else:
+            adamw_opt = AdamW(
+                [
+                    {"params": adamw_decay, "weight_decay": self.cfg.weight_decay},
+                    {"params": adamw_no_decay, "weight_decay": 0.0},
+                ],
+                **adamw_kwargs,
+            )
+
         logger.info(
-            "Muon: %d params | AdamW: %d params",
+            "Muon: %d params | AdamW (%s): %d params",
             sum(p.numel() for p in muon_params),
+            "8bit" if self.cfg.use_8bit else "32bit",
             sum(p.numel() for p in adamw_decay) + sum(p.numel() for p in adamw_no_decay),
         )
         return [muon_opt, adamw_opt]
@@ -762,6 +865,12 @@ class AureliusTrainer:
             step_loss_accum += loss.detach().float().item()
             micro_steps_in_accum += 1
 
+            # Capture MoE aux loss for logging when MoE is enabled
+            moe_aux_loss_val = None
+            model = self.accelerator.unwrap_model(self.model)
+            if getattr(model, "last_moe_aux_loss", None) is not None:
+                moe_aux_loss_val = model.last_moe_aux_loss.float().item()
+
             # Check if a full global step has completed
             if self.accelerator.sync_gradients:
                 self.global_step += 1
@@ -784,6 +893,8 @@ class AureliusTrainer:
                         "train/tokens_seen": self.tokens_seen,
                         "train/step": self.global_step,
                     }
+                    if moe_aux_loss_val is not None:
+                        metrics["train/moe_aux_loss"] = moe_aux_loss_val
 
                     if self.accelerator.is_main_process:
                         logger.info(
@@ -905,7 +1016,24 @@ def main() -> None:
     from src.model.config import AureliusConfig
     from src.model.transformer import AureliusTransformer
 
-    model = AureliusTransformer(AureliusConfig())
+    model_config = AureliusConfig(
+        d_model=cfg.model_d_model,
+        n_layers=cfg.model_n_layers,
+        n_heads=cfg.model_n_heads,
+        n_kv_heads=cfg.model_n_kv_heads,
+        head_dim=cfg.model_head_dim,
+        d_ff=cfg.model_d_ff,
+        vocab_size=cfg.model_vocab_size,
+        max_seq_len=cfg.model_max_seq_len,
+        rope_theta=cfg.model_rope_theta,
+        tie_embeddings=cfg.model_tie_embeddings,
+        moe_enabled=cfg.model_moe_enabled,
+        moe_num_experts=cfg.model_moe_num_experts,
+        moe_top_k=cfg.model_moe_top_k,
+        moe_every_n_layers=cfg.model_moe_every_n_layers,
+        moe_capacity_factor=cfg.model_moe_capacity_factor,
+    )
+    model = AureliusTransformer(model_config)
     train_loader, val_loader = build_dataloaders(cfg)
     trainer = AureliusTrainer(model, train_loader, val_loader, cfg)
     trainer.train()

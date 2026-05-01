@@ -144,7 +144,7 @@ class RedTeamGenerator:
     TEMPLATES = _TEMPLATES
 
     def __init__(self, seed: int = 42) -> None:
-        self._rng = random.Random(seed)
+        self._rng = random.Random(seed)  # noqa: S311
 
     def generate(self, category: AttackCategory, n: int = 5) -> list[RedTeamCase]:
         templates = _TEMPLATES[category]

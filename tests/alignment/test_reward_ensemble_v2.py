@@ -22,13 +22,14 @@ from __future__ import annotations
 
 import torch
 import torch.nn as nn
+from torch import Tensor
+
 from aurelius.alignment.reward_ensemble_v2 import (
     EnsembleConfig,
     RewardAgreementFilter,
     RewardCalibrator,
     RewardEnsemble,
 )
-from torch import Tensor
 
 # ---------------------------------------------------------------------------
 # Constants

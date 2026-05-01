@@ -183,7 +183,12 @@ class CheckpointedLayer(nn.Module):
         def _fn(*a: Any, **kw: Any) -> Any:
             return self.layer(*a, **kw)
 
-        return torch.utils.checkpoint.checkpoint(_fn, *args, use_reentrant=False, **kwargs)
+        result = torch.utils.checkpoint.checkpoint(_fn, *args, use_reentrant=False, **kwargs)
+        if isinstance(result, tuple) and len(result) == 3 and isinstance(result[2], torch.Tensor):
+            # Preserve the historical (output, kv) layer contract while dropping
+            # the auxiliary loss term that checkpointing does not need to expose.
+            return result[0], result[1]
+        return result
 
 
 def apply_selective_checkpointing(

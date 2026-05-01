@@ -240,7 +240,7 @@ class MaskedDiffusionTrainer:
             S = input_ids.size(1)
             freqs_cis = model.freqs_cis[:S]
             for layer in model.layers:
-                x, _ = layer(x, freqs_cis, None, None)
+                x, _, _ = layer(x, freqs_cis, None, None)
             x = model.norm(x)
             return x
         # Generic fallback: run full forward and return logits as proxy hidden states
@@ -370,7 +370,7 @@ class DiffusionDecoder:
             S = input_ids.size(1)
             freqs_cis = model.freqs_cis[:S]
             for layer in model.layers:
-                x, _ = layer(x, freqs_cis, None, None)
+                x, _, _ = layer(x, freqs_cis, None, None)
             x = model.norm(x)
             return x
         result = model(input_ids)

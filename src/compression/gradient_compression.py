@@ -33,7 +33,7 @@ class GradientCompressor:
 
     def __init__(self, config: GradCompressionConfig | None = None) -> None:
         self.config = config or GradCompressionConfig()
-        self._rng = random.Random(42)
+        self._rng = random.Random(42)  # noqa: S311
 
     # ------------------------------------------------------------------
     # Public API

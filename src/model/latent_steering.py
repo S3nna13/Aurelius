@@ -174,7 +174,7 @@ def apply_steering_hook(
     vec = steering_vector  # (d_model,)
 
     def hook_fn(module, input, output):
-        h, kv = output  # TransformerBlock returns (hidden_states, kv)
+        h, kv, _aux = output  # TransformerBlock returns (hidden_states, kv, aux_loss)
 
         if method == "add":
             h = h + alpha * vec.to(h.device)
@@ -194,7 +194,7 @@ def apply_steering_hook(
         else:
             raise ValueError(f"Unknown steering method: {method!r}")
 
-        return h, kv
+        return h, kv, _aux
 
     handle = model.layers[resolved].register_forward_hook(hook_fn)
     return handle

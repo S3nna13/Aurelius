@@ -107,5 +107,4 @@ crates/usage-store/target/
 crates/usage-store/*.node
 crates/usage-store/Cargo.lock
 
-# Tools submodule (uninitialized)
-tools/jsonl-merge/
+# Tools workspace member

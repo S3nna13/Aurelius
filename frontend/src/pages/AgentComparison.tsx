@@ -1,164 +1,124 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  Bot,
-  Activity,
-  HeartPulse,
-  Zap,
-  Pause,
-  Play,
-  ArrowLeft,
-  BarChart3,
-} from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Bot, Search, Filter, Star, Clock, Code, BookOpen, Server, MessageSquare, Pen, GraduationCap, Database, Calendar, Wrench, Shield, BarChart3 } from 'lucide-react';
+import Input from '../components/ui/Input';
 import { useApi } from '../hooks/useApi';
+import EmptyState from '../components/EmptyState';
+import Skeleton from '../components/Skeleton';
 
-interface AgentStatus {
-  id: string;
-  state: string;
+const CATEGORY_ICONS: Record<string, typeof Bot> = {
+  coding: Code, research: BookOpen, devops: Server, communication: MessageSquare,
+  creative: Pen, education: GraduationCap, data: Database, productivity: Calendar, meta: Wrench,
+};
+
+const CATEGORY_COLORS: Record<string, string> = {
+  coding: 'text-emerald-400', research: 'text-[#4fc3f7]', devops: 'text-amber-400',
+  communication: 'text-violet-400', creative: 'text-rose-400', education: 'text-cyan-400',
+  data: 'text-indigo-400', productivity: 'text-lime-400', meta: 'text-gray-400',
+};
+
+interface RegistryAgent {
+  id: string; name: string; category: string; description: string; capabilities: string[]; enabled: boolean;
 }
 
-const agentRoles: Record<string, string> = {
-  hermes: 'Notification Router',
-  openclaw: 'Task Orchestrator',
-  cerebrum: 'Memory Manager',
-  vigil: 'Security Warden',
-  default: 'System Agent',
-};
-
-const mockMetrics: Record<string, Record<string, number>> = {
-  hermes: { messages_routed: 1240, uptime_pct: 99.8, latency_ms: 12 },
-  openclaw: { tasks_completed: 342, uptime_pct: 99.5, latency_ms: 45 },
-  cerebrum: { queries_served: 8901, uptime_pct: 99.9, latency_ms: 28 },
-  vigil: { alerts_processed: 567, uptime_pct: 99.7, latency_ms: 8 },
-};
-
 export default function AgentComparison() {
-  const navigate = useNavigate();
-  const [selected, setSelected] = useState<string[]>([]);
+  const [search, setSearch] = useState('');
+  const [category, setCategory] = useState('all');
+  const { data, loading } = useApi<{ agents: RegistryAgent[]; categories: string[] }>('/registry', { refreshInterval: 5000 });
+  const agents = data?.agents || [];
+  const categories = data?.categories || [];
 
-  const { data } = useApi<{ agents: AgentStatus[] }>('/status', {
-    refreshInterval: 10000,
+  const filtered = agents.filter(a => {
+    if (category !== 'all' && a.category !== category) return false;
+    return !search || a.name.toLowerCase().includes(search.toLowerCase()) || a.description.toLowerCase().includes(search.toLowerCase());
   });
 
-  const agents = data?.agents || [];
-
-  const toggleAgent = (id: string) => {
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((a) => a !== id) : prev.length < 3 ? [...prev, id] : prev
-    );
-  };
-
-  const compared = agents.filter((a) => selected.includes(a.id));
+  const enabled = agents.filter(a => a.enabled).length;
+  const categories_list = ['all', ...categories];
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => navigate('/')}
-          className="p-2 rounded-lg text-aurelius-muted hover:text-aurelius-text hover:bg-aurelius-border/40 transition-colors"
-        >
-          <ArrowLeft size={18} />
-        </button>
-        <h2 className="text-lg font-bold text-aurelius-text flex items-center gap-2">
-          <BarChart3 size={20} className="text-aurelius-accent" />
-          Agent Comparison
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-bold text-[#e0e0e0] flex items-center gap-2">
+          <Bot size={20} className="text-[#4fc3f7]" /> Agent Registry
+          <span className="text-sm font-normal text-[#9e9eb0]">({agents.length} types, {enabled} active)</span>
         </h2>
+        <div className="flex gap-2">
+          <div className="relative"><Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9e9eb0]" /><Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search agents..." className="pl-8 py-1.5 text-sm w-48" /></div>
+          <select value={category} onChange={e => setCategory(e.target.value)} className="bg-[#0f0f1a] border border-[#2d2d44] rounded-lg px-3 py-1.5 text-sm text-[#e0e0e0]">
+            {categories_list.map(c => <option key={c} value={c}>{c === 'all' ? 'All Types' : c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+          </select>
+        </div>
       </div>
 
-      <p className="text-sm text-aurelius-muted">
-        Select up to 3 agents to compare side-by-side.
-      </p>
-
-      {/* Agent Selector */}
-      <div className="flex flex-wrap gap-2">
-        {agents.map((agent) => {
-          const isSelected = selected.includes(agent.id);
-          const stateUpper = agent.state.toUpperCase();
-          const isActive = stateUpper === 'ACTIVE' || stateUpper === 'RUNNING';
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+        {categories.map(c => {
+          const Icon = CATEGORY_ICONS[c] || Bot;
+          const count = agents.filter(a => a.category === c).length;
+          const active = agents.filter(a => a.category === c && a.enabled).length;
           return (
-            <button
-              key={agent.id}
-              onClick={() => toggleAgent(agent.id)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium border transition-colors ${
-                isSelected
-                  ? 'bg-aurelius-accent/10 text-aurelius-accent border-aurelius-accent/30'
-                  : 'bg-aurelius-bg text-aurelius-muted border-aurelius-border hover:border-aurelius-accent/20'
-              }`}
-            >
-              {isActive ? <Play size={12} className="text-emerald-400" /> : <Pause size={12} className="text-amber-400" />}
-              {agent.id}
+            <button key={c} onClick={() => setCategory(c)}
+              className={`aurelius-card p-3 text-center hover:border-[#4fc3f7]/30 transition-all ${category === c ? 'border-[#4fc3f7]/50' : ''}`}>
+              <Icon size={16} className={`mx-auto mb-1 ${CATEGORY_COLORS[c] || 'text-[#4fc3f7]'}`} />
+              <p className="text-[10px] text-[#e0e0e0] font-medium">{c}</p>
+              <p className="text-[9px] text-[#9e9eb0]">{active}/{count} active</p>
             </button>
           );
         })}
       </div>
 
-      {/* Comparison Grid */}
-      {compared.length > 0 && (
-        <div className={`grid gap-4 ${compared.length === 1 ? 'grid-cols-1' : compared.length === 2 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
-          {compared.map((agent) => {
-            const metrics = mockMetrics[agent.id.toLowerCase()] || {};
-            const stateUpper = agent.state.toUpperCase();
-            const isActive = stateUpper === 'ACTIVE' || stateUpper === 'RUNNING';
+      {loading && <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">{ [1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-28" />) }</div>}
+      {!loading && filtered.length === 0 && <EmptyState icon={Bot} title="No Agent Types" description="All agent types are registered. Try adjusting filters." />}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {filtered.map(agent => {
+          const Icon = CATEGORY_ICONS[agent.category] || Bot;
+          const color = CATEGORY_COLORS[agent.category] || 'text-[#4fc3f7]';
+          return (
+            <motion.div key={agent.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+              className="aurelius-card p-4 hover:border-[#4fc3f7]/30 transition-all group"
+            >
+              <div className="flex items-start gap-3 mb-3">
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${color} bg-white/5`}>
+                  <Icon size={16} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-sm font-semibold text-[#e0e0e0] truncate">{agent.name}</h3>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] ${color}`}>{agent.category}</span>
+                    {agent.enabled && <span className="text-[10px] text-emerald-400">● Active</span>}
+                  </div>
+                </div>
+              </div>
+              <p className="text-xs text-[#9e9eb0] line-clamp-2 mb-3">{agent.description}</p>
+              <div className="flex flex-wrap gap-1">
+                {agent.capabilities.slice(0, 5).map(cap => (
+                  <span key={cap} className="text-[9px] text-[#4fc3f7] bg-[#4fc3f7]/10 px-1.5 py-0.5 rounded">{cap}</span>
+                ))}
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      <div className="aurelius-card p-4">
+        <h3 className="text-sm font-semibold text-[#e0e0e0] mb-3">Registry Summary</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center text-xs">
+          {categories.map(c => {
+            const count = agents.filter(a => a.category === c).length;
+            const active = agents.filter(a => a.category === c && a.enabled).length;
+            const Icon = CATEGORY_ICONS[c] || Bot;
+            const color = CATEGORY_COLORS[c] || 'text-[#4fc3f7]';
             return (
-              <div key={agent.id} className="aurelius-card space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-aurelius-accent/10 text-aurelius-accent flex items-center justify-center border border-aurelius-accent/20">
-                    <Bot size={18} />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-aurelius-text">
-                      {agent.id.replace(/^\w/, (c) => c.toUpperCase())}
-                    </h3>
-                    <p className="text-xs text-aurelius-muted">
-                      {agentRoles[agent.id.toLowerCase()] || agentRoles.default}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between py-2 border-b border-aurelius-border/50">
-                    <span className="text-xs text-aurelius-muted flex items-center gap-1">
-                      <Activity size={12} /> State
-                    </span>
-                    <span className={`text-xs font-bold ${isActive ? 'text-emerald-400' : 'text-amber-400'}`}>
-                      {agent.state}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between py-2 border-b border-aurelius-border/50">
-                    <span className="text-xs text-aurelius-muted flex items-center gap-1">
-                      <HeartPulse size={12} /> Uptime
-                    </span>
-                    <span className="text-xs font-bold text-aurelius-text">
-                      {metrics.uptime_pct?.toFixed(1) ?? '—'}%
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between py-2 border-b border-aurelius-border/50">
-                    <span className="text-xs text-aurelius-muted flex items-center gap-1">
-                      <Zap size={12} /> Latency
-                    </span>
-                    <span className="text-xs font-bold text-aurelius-text">
-                      {metrics.latency_ms ?? '—'} ms
-                    </span>
-                  </div>
-                  {Object.entries(metrics).filter(([k]) => !['uptime_pct', 'latency_ms'].includes(k)).map(([key, value]) => (
-                    <div key={key} className="flex items-center justify-between py-2 border-b border-aurelius-border/50">
-                      <span className="text-xs text-aurelius-muted capitalize">{key.replace(/_/g, ' ')}</span>
-                      <span className="text-xs font-bold text-aurelius-text">{value.toLocaleString()}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <button
-                  onClick={() => navigate(`/agents/${agent.id}`)}
-                  className="w-full aurelius-btn-outline text-xs"
-                >
-                  View Details
-                </button>
+              <div key={c} className="bg-[#0f0f1a] p-2 rounded-lg">
+                <Icon size={12} className={`mx-auto ${color}`} />
+                <p className={`font-bold mt-0.5 ${color}`}>{active}/{count}</p>
+                <p className="text-[9px] text-[#9e9eb0]">{c}</p>
               </div>
             );
           })}
         </div>
-      )}
+      </div>
     </div>
   );
 }

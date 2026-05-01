@@ -35,6 +35,7 @@ export default function LicenseGate({ children }: LicenseGateProps) {
       .catch(() => {
         setValid(false);
         setChecking(false);
+        setError('Network error during validation. Click to retry.');
       });
   }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
@@ -51,7 +52,7 @@ export default function LicenseGate({ children }: LicenseGateProps) {
       });
       const data = await res.json();
       if (data.success) {
-        localStorage.setItem('aurelius-api-key', key.trim().slice(-16));
+        localStorage.setItem('aurelius-api-key', key.trim());
         localStorage.setItem('aurelius-license-tier', data.tier);
         setValid(true);
       } else {

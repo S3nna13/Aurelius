@@ -84,7 +84,7 @@ class ExperienceReplayBuffer:
             self._buffer.append(tokens)
         elif self.config.reservoir_sampling:
             # Replace slot j with probability buffer_size / total_seen
-            j = random.randint(0, self._total_seen - 1)
+            j = random.randint(0, self._total_seen - 1)  # noqa: S311
             if j < self.config.buffer_size:
                 self._buffer[j] = tokens
         else:
@@ -103,7 +103,7 @@ class ExperienceReplayBuffer:
         if n <= len(self._buffer):
             return random.sample(self._buffer, n)
         # with replacement when requesting more than available
-        return random.choices(self._buffer, k=n)
+        return random.choices(self._buffer, k=n)  # noqa: S311
 
     # ------------------------------------------------------------------
     def __len__(self) -> int:

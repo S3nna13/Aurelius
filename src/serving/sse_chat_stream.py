@@ -228,7 +228,7 @@ def parse_sse_event(line: str) -> dict | None:
     elif body.endswith("\n"):
         # single newline alone is malformed — SSE requires blank-line end
         raise SSEParseError("frame must end with blank line (\\n\\n)")
-    body = body.strip()
+    body = body.strip("\r\n ")
     if body == _DONE_SENTINEL:
         return None
     if not body:

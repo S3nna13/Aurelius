@@ -58,7 +58,7 @@ def create_bigbird_mask(
 
     # 3. Random keys: each non-global token attends to n_random_keys extra random positions
     if n_random_keys > 0:
-        rng = random.Random(seed)
+        rng = random.Random(seed)  # noqa: S311
         for i in range(g, T):
             # Candidate positions are everything not already attended by token i
             already_attended = mask[i].nonzero(as_tuple=True)[0].tolist()

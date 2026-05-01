@@ -178,9 +178,9 @@ class OneShotSuperNet(nn.Module):
     def sample_subnet(self) -> SubnetSpec:
         """Randomly sample a valid subnet specification."""
         return SubnetSpec(
-            d_model=random.choice(self.config.d_model_choices),
-            d_ff=random.choice(self.config.d_ff_choices),
-            n_layers=random.choice(self.config.n_layer_choices),
+            d_model=random.choice(self.config.d_model_choices),  # noqa: S311
+            d_ff=random.choice(self.config.d_ff_choices),  # noqa: S311
+            n_layers=random.choice(self.config.n_layer_choices),  # noqa: S311
         )
 
     def get_subnet_params(self, spec: SubnetSpec) -> int:

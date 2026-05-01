@@ -1,19 +1,34 @@
 import js from '@eslint/js'
 import tseslint from 'typescript-eslint'
+import { defineConfig, globalIgnores } from 'eslint/config'
 
-export default tseslint.config(
-  js.configs.recommended,
-  ...tseslint.configs.recommended,
+const nodeGlobals = {
+  Buffer: 'readonly',
+  __dirname: 'readonly',
+  __filename: 'readonly',
+  clearInterval: 'readonly',
+  clearTimeout: 'readonly',
+  console: 'readonly',
+  global: 'readonly',
+  module: 'readonly',
+  process: 'readonly',
+  require: 'readonly',
+  setInterval: 'readonly',
+  setTimeout: 'readonly',
+}
+
+export default defineConfig([
+  globalIgnores(['dist']),
   {
     files: ['src/**/*.ts'],
+    extends: [
+      js.configs.recommended,
+      tseslint.configs.recommended,
+    ],
     languageOptions: {
-      parserOptions: {
-        project: './tsconfig.json',
-      },
-    },
-    rules: {
-      '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-namespace': 'off',
+      ecmaVersion: 'latest',
+      globals: nodeGlobals,
+      sourceType: 'module',
     },
   },
-)
+])

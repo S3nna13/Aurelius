@@ -19,6 +19,7 @@ import logging
 import math
 import os
 import signal
+import sys
 import threading
 import time
 import uuid
@@ -26,7 +27,9 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-from .auth_middleware import AuthMiddleware
+from .auth_middleware import DEFAULT_AUTH_MIDDLEWARE, AuthConfig, AuthMiddleware
+from .cors_middleware import CORS
+from .metrics_middleware import METRICS
 from .openapi_spec import openapi_spec, render_docs_page
 from .rate_limiter import RateLimiterChain, TokenBucketLimiter
 from .request_coalescer import RequestCoalescer
@@ -166,6 +169,23 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         logger.debug("%s - %s", self.address_string(), format % args)
 
+    def send_response(self, code: int, message: str | None = None) -> None:
+        super().send_response(code, message)
+        CORS.add_headers(self)
+
+    def do_OPTIONS(self):
+        CORS.handle_preflight(self)
+
+    def _record_metrics(self, start_time: float, status: int, error: str | None = None) -> None:
+        latency = (time.perf_counter() - start_time) * 1000
+        METRICS.record_request(
+            method=self.command,
+            path=self.path.split("?")[0],
+            status=status,
+            latency_ms=latency,
+            error_type=error,
+        )
+
     def _send_json(self, status: int, data: dict) -> None:
         body = json.dumps(data).encode("utf-8")
         self.send_response(status)
@@ -189,7 +209,14 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
             raise ValueError(
                 f"Content-Length {content_length} exceeds maximum {_MAX_CONTENT_LENGTH}"
             )
-        return self.rfile.read(content_length)
+        connection = getattr(self, "connection", None)
+        if connection is not None and hasattr(connection, "settimeout"):
+            connection.settimeout(30.0)
+        try:
+            return self.rfile.read(content_length)
+        finally:
+            if connection is not None and hasattr(connection, "settimeout"):
+                connection.settimeout(None)
 
     def _get_server_info(self) -> dict:
         uptime = 0.0
@@ -211,24 +238,47 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
         }
 
     def do_GET(self):
+        start = time.perf_counter()
+        if self.path == "/metrics":
+            METRICS.connection_opened()
+            try:
+                text = METRICS.prometheus_text()
+                body = text.encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "text/plain; version=0.0.4")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+                self._record_metrics(start, 200)
+            finally:
+                METRICS.connection_closed()
+            return
         if self.path == "/health":
             info = self._get_server_info()
             self._send_json(200, {"status": "ok", **info})
+            self._record_metrics(start, 200)
             return
         if self.path == "/healthz":
-            self._send_json(200, {"alive": True})
+            METRICS.connection_opened()
+            try:
+                self._send_json(200, {"alive": True})
+                self._record_metrics(start, 200)
+            finally:
+                METRICS.connection_closed()
             return
         if self.path == "/readyz":
             started = getattr(self.server, "_started_at", None)
             ready = started is not None
             status = 200 if ready else 503
             self._send_json(status, {"ready": ready})
+            self._record_metrics(start, status)
             return
         if self.path == "/openapi.json":
             host = self.server.server_address[0] if self.server else "localhost"
             port = self.server.server_address[1] if self.server else 8080
             spec = openapi_spec(host, port)
             self._send_json(200, spec)
+            self._record_metrics(start, 200)
             return
         if self.path == "/docs":
             host = self.server.server_address[0] if self.server else "localhost"
@@ -240,54 +290,68 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
+            self._record_metrics(start, 200)
             return
         if not _check_auth_and_rate_limit(self):
+            self._record_metrics(start, 401)
             return
         if self.path == "/v1/models":
+            model_id = getattr(self.server, "model_id", "aurelius")
+            is_mock = getattr(self.server, "_is_mock", False)
+            entry = {
+                "id": model_id,
+                "object": "model",
+                "created": int(time.time()),
+                "owned_by": "aurelius",
+            }
+            if is_mock:
+                entry["metadata"] = {"mock": True}
             self._send_json(
                 200,
                 {
                     "object": "list",
-                    "data": [
-                        {
-                            "id": "aurelius",
-                            "object": "model",
-                            "created": int(time.time()),
-                            "owned_by": "aurelius",
-                        }
-                    ],
+                    "data": [entry],
                 },
             )
+            self._record_metrics(start, 200)
         else:
             self._send_error(404, "Not found")
+            self._record_metrics(start, 404)
 
     def do_POST(self):
+        start = time.perf_counter()
         if self.path != "/v1/chat/completions":
             self._send_error(404, "Not found")
+            self._record_metrics(start, 404)
             return
         if not _check_auth_and_rate_limit(self):
+            self._record_metrics(start, 401)
             return
 
         try:
             raw_body = self._read_body()
         except ValueError as exc:
             self._send_error(413, str(exc))
+            self._record_metrics(start, 413)
             return
 
         try:
             body = json.loads(raw_body)
         except json.JSONDecodeError as exc:
             self._send_error(400, f"Invalid JSON: {exc}")
+            self._record_metrics(start, 400)
             return
 
         if "messages" not in body:
             self._send_error(400, "Missing required field: messages")
+            self._record_metrics(start, 400)
             return
 
         try:
             request = _validate_chat_request(body)
         except ValueError as exc:
             self._send_error(400, f"Invalid request parameters: {exc}")
+            self._record_metrics(start, 400)
             return
 
         def _generate() -> str:
@@ -312,6 +376,7 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
                 except Exception:
                     logger.exception("generate_fn raised an exception")
                     self._send_error(500, "Internal server error")
+                    self._record_metrics(start, 500, "generation_error")
                     return
             else:
                 try:
@@ -319,6 +384,7 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
                 except Exception:
                     logger.exception("generate_fn raised an exception")
                     self._send_error(500, "Internal server error")
+                    self._record_metrics(start, 500, "generation_error")
                     return
         else:
             try:
@@ -326,9 +392,10 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
             except Exception:
                 logger.exception("generate_fn raised an exception")
                 self._send_error(500, "Internal server error")
+                self._record_metrics(start, 500, "generation_error")
                 return
 
-        prompt_tokens = sum(len(m.get("content", "").split()) for m in request.messages)
+        prompt_tokens = sum(len((m.get("content") or "").split()) for m in request.messages)
         completion_tokens = len(content.split())
 
         response = ChatResponse(
@@ -350,7 +417,13 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
             },
         )
 
+        if request.stream:
+            logger.warning(
+                "Streaming requested but not yet implemented; returning non-streaming response"
+            )
+
         self._send_json(200, response.to_dict())
+        self._record_metrics(start, 200)
 
 
 class AureliusServer(HTTPServer):
@@ -360,6 +433,7 @@ class AureliusServer(HTTPServer):
         port: int,
         generate_fn: Callable[["ChatRequest"], str],
         *,
+        model_id: str = "aurelius",
         auth_middleware: AuthMiddleware | None = None,
         rate_limiter: TokenBucketLimiter | RateLimiterChain | None = None,
         coalescer: RequestCoalescer | None = None,
@@ -371,6 +445,7 @@ class AureliusServer(HTTPServer):
             bind_and_activate=bind_and_activate,
         )
         self.generate_fn = generate_fn
+        self.model_id = model_id
         self.auth_middleware = auth_middleware
         self.rate_limiter = rate_limiter
         self.coalescer = coalescer
@@ -381,15 +456,24 @@ def create_server(
     port: int,
     generate_fn: Callable[["ChatRequest"], str],
     *,
+    model_id: str = "aurelius",
     auth_middleware: AuthMiddleware | None = None,
     rate_limiter: TokenBucketLimiter | RateLimiterChain | None = None,
     coalescer: RequestCoalescer | None = None,
     bind_and_activate: bool = True,
 ) -> AureliusServer:
+    if host not in ("127.0.0.1", "localhost", "::1") and (
+        auth_middleware is None or not auth_middleware.is_configured
+    ):
+        raise RuntimeError(
+            f"Non-loopback host {host} requires at least one configured API key "
+            f"(set AURELIUS_API_KEYS or AURELIUS_API_KEY env var)."
+        )
     return AureliusServer(
         host,
         port,
         generate_fn,
+        model_id=model_id,
         auth_middleware=auth_middleware,
         rate_limiter=rate_limiter,
         coalescer=coalescer,
@@ -409,21 +493,72 @@ def make_mock_generate_fn() -> Callable[["ChatRequest"], str]:
     return _generate
 
 
+def _load_auth_from_env() -> AuthMiddleware:
+    """Load AuthMiddleware from AURELIUS_API_KEYS environment variable.
+
+    Format: key_id:raw_key:scope1,scope2;...
+    Falls back to DEFAULT_AUTH_MIDDLEWARE if the variable is unset.
+    """
+    api_keys_env = os.environ.get("AURELIUS_API_KEYS", "")
+    if not api_keys_env:
+        single_key = os.environ.get("AURELIUS_API_KEY", "")
+        if single_key:
+            auth_config = AuthConfig(keys={}, require_auth=True)
+            auth_mw = AuthMiddleware(auth_config)
+            auth_mw.add_key("default", single_key, frozenset())
+            return auth_mw
+        return DEFAULT_AUTH_MIDDLEWARE
+    auth_config = AuthConfig(keys={}, require_auth=True)
+    auth_mw = AuthMiddleware(auth_config)
+    for key_def in api_keys_env.split(";"):
+        key_def = key_def.strip()
+        if not key_def:
+            continue
+        parts = key_def.split(":")
+        if len(parts) < 2:
+            logger.warning("Skipping malformed AURELIUS_API_KEYS entry: %s", key_def)
+            continue
+        key_id = parts[0]
+        raw_key = parts[1]
+        scopes = frozenset(parts[2].split(",")) if len(parts) > 2 and parts[2] else frozenset()
+        auth_mw.add_key(key_id, raw_key, scopes)
+    return auth_mw
+
+
 if __name__ == "__main__":
     import argparse
+    import sys
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
     parser = argparse.ArgumentParser(description="Aurelius API server")
     parser.add_argument("--host", default="127.0.0.1", help="Bind host (default: 127.0.0.1)")
-    parser.add_argument("--port", type=int, default=8080, help="Bind port (default: 8080)")
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8080,
+        help="Bind port (default: 8080)",
+    )
     parser.add_argument(
         "--timeout", type=int, default=30, help="Graceful shutdown timeout (default: 30s)"
     )
     args = parser.parse_args()
 
+    auth_mw = _load_auth_from_env()
+
+    # Security: require at least one API key when binding non-loopback
+    if args.host not in ("127.0.0.1", "localhost", "::1"):
+        if not auth_mw.is_configured:
+            logger.error(
+                "Aborting: non-loopback host %s requires at least one configured API key "
+                "(set AURELIUS_API_KEYS env var).",
+                args.host,
+            )
+            sys.exit(1)
+
     generate_fn = make_mock_generate_fn()
-    server = create_server(args.host, args.port, generate_fn)
+    server = create_server(args.host, args.port, generate_fn, auth_middleware=auth_mw)
+    server._is_mock = True
     server._started_at = time.time()
     logger.info("Aurelius API server listening on http://%s:%d", args.host, args.port)
 
@@ -433,7 +568,6 @@ if __name__ == "__main__":
         sig_name = signal.Signals(signum).name
         logger.info("Received %s, shutting down gracefully...", sig_name)
         shutdown_event.set()
-        server.shutdown()
 
     signal.signal(signal.SIGTERM, _handle_signal)
     signal.signal(signal.SIGINT, _handle_signal)
@@ -443,4 +577,5 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         logger.info("Shutting down.")
     finally:
+        server.shutdown()
         logger.info("Server stopped.")

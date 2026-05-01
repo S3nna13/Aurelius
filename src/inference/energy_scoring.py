@@ -213,7 +213,7 @@ def langevin_refine(
 
             present_key_values = []
             for layer in model.layers:
-                x, kv = layer(x, freqs_cis, None, None)
+                x, kv, _aux = layer(x, freqs_cis, None, None)
                 present_key_values.append(kv)
 
             x = model.norm(x)

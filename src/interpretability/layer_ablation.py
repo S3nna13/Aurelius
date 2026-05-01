@@ -118,7 +118,7 @@ class LayerAblator:
         freqs_cis = model.freqs_cis[past_len : past_len + S]
 
         for i, layer in enumerate(model.layers):
-            x, _kv = layer(x, freqs_cis, None, None)
+            x, _kv, _aux = layer(x, freqs_cis, None, None)
 
             if i == ablate_layer_idx:
                 if ablation_type == AblationType.ZERO:
@@ -205,7 +205,7 @@ class LayerAblator:
             x = model.embed(input_ids)
             freqs_cis = model.freqs_cis[:S]
             for i, layer in enumerate(model.layers):
-                x, _kv = layer(x, freqs_cis, None, None)
+                x, _kv, _aux = layer(x, freqs_cis, None, None)
             x = model.norm(x)
             logits = model.lm_head(x)
         finally:

@@ -113,7 +113,7 @@ class LanguageTaggedDataset:
             List of sampled dicts.
         """
         if rng is None:
-            rng = random.Random()
+            rng = random.Random()  # noqa: S311
 
         languages = list(probs.keys())
         weights = [probs[lang] for lang in languages]

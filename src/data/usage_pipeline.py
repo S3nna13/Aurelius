@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import atexit
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +33,29 @@ except ImportError as _exc:  # pragma: no cover
 
 
 DEFAULT_DB_PATH: str = os.environ.get("AURELIUS_USAGE_DB", "/var/lib/aurelius/usage.redb")
+_DATA_ROOT = Path(os.environ.get("AURELIUS_DATA_DIR", "/var/lib/aurelius")).expanduser().resolve()
+_SAFE_PATH_PART = re.compile(r"^[a-zA-Z0-9._-]{1,128}$")
+
+
+def _resolve_db_path(db_path: str | None) -> Path:
+    """Resolve the usage database path under the managed data root."""
+    if db_path is None:
+        return (_DATA_ROOT / "usage.redb").resolve()
+
+    candidate = Path(db_path).expanduser()
+    if candidate.is_absolute():
+        candidate = Path(*candidate.parts[1:])
+    if not candidate.parts:
+        raise ValueError("db_path must not be empty")
+    safe_parts: list[str] = []
+    for part in candidate.parts:
+        if part in {"", ".", ".."} or not _SAFE_PATH_PART.fullmatch(part):
+            raise ValueError(f"Invalid db_path segment: {part!r}")
+        safe_parts.append(part)
+    resolved = _DATA_ROOT.joinpath(*safe_parts).resolve()
+    if resolved != _DATA_ROOT and not resolved.is_relative_to(_DATA_ROOT):
+        raise ValueError("db_path must stay within AURELIUS_DATA_DIR")
+    return resolved
 
 
 class UsagePipeline:
@@ -42,7 +66,7 @@ class UsagePipeline:
     """
 
     def __init__(self, db_path: str | None = None) -> None:
-        self._path = Path(db_path or DEFAULT_DB_PATH)
+        self._path = _resolve_db_path(db_path or DEFAULT_DB_PATH)
         self._path.parent.mkdir(parents=True, exist_ok=True)
         self._store = UsageStore(str(self._path))
 

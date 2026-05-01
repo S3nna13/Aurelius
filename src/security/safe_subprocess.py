@@ -23,7 +23,8 @@ Pure standard library.
 from __future__ import annotations
 
 import os
-import subprocess  # noqa: S404 -- this module IS the hardened wrapper
+import subprocess  # nosec B404 -- this module IS the hardened wrapper
+import tempfile
 import time
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -80,7 +81,7 @@ def _build_env(
     if env_allowlist is None:
         return {
             "PATH": "/usr/bin:/bin",
-            "HOME": cwd if cwd else "/tmp",  # noqa: S108  # subprocess fallback HOME; process is sandboxed, not sensitive data
+            "HOME": cwd if cwd else tempfile.gettempdir(),  # noqa: S108  # subprocess fallback HOME; process is sandboxed, not sensitive data
             "LANG": "C.UTF-8",
         }
     parent = os.environ
@@ -151,7 +152,7 @@ def run_safe(
     stderr = ""
     returncode = -1
     try:
-        proc = subprocess.run(  # noqa: S603 -- allowlist + shell=False
+        proc = subprocess.run(  # noqa: S603  # nosec
             argv_list,
             shell=False,
             capture_output=True,

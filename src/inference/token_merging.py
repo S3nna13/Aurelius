@@ -338,7 +338,7 @@ class ToMeWrapper(nn.Module):
             if freqs_cis is not None:
                 # TransformerBlock-style: forward(x, freqs_cis, mask, past_kv)
                 freqs_merged = freqs_cis[:T_merged]
-                out, _kv = inner_layer(x_merged, freqs_merged, None, None)
+                out, _kv, _aux = inner_layer(x_merged, freqs_merged, None, None)
             else:
                 out = inner_layer(x_merged)
                 if isinstance(out, tuple):

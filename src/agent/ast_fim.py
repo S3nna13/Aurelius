@@ -216,7 +216,7 @@ class FIMTokenizer:
         if fmt == FIMFormat.SPM:
             return self.format_spm(span)
         # RANDOM
-        chosen = random.choice([FIMFormat.PSM, FIMFormat.SPM])
+        chosen = random.choice([FIMFormat.PSM, FIMFormat.SPM])  # noqa: S311
         return self.format_span(span, chosen)
 
     def parse_completion(self, completion: str) -> str:

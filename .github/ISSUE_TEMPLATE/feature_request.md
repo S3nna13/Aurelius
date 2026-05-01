@@ -1,33 +1,24 @@
 ---
 name: Feature request
-about: Suggest an idea for Aurelius
-title: '[FEAT] '
+about: Suggest an enhancement for Aurelius
+title: '[FEATURE] '
 labels: enhancement
-assignees: ''
-
+assignees: s3nna13
 ---
 
-**Is your feature request related to a problem? Please describe.**
-A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+## Problem Statement
+A clear description of what problem this feature would solve.
 
-**Describe the solution you'd like**
-A clear and concise description of what you want to happen.
+## Proposed Solution
+A clear description of what you want to happen.
 
-**Describe alternatives you've considered**
-A clear and concise description of any alternative solutions or features you've considered.
+## Layer
+Which layer(s) does this affect?
+- [ ] Rust crate (crates/)
+- [ ] Python backend (src/)
+- [ ] Node.js BFF (middle/)
+- [ ] Frontend (frontend/)
+- [ ] Infrastructure (deployment/, .github/, Docker)
 
-**Which surface would this affect?**
-- [ ] model
-- [ ] training
-- [ ] alignment
-- [ ] inference
-- [ ] eval
-- [ ] data
-- [ ] serving
-- [ ] cli
-- [ ] agent
-- [ ] security
-- [ ] other: ___
-
-**Additional context**
-Add any other context or screenshots about the feature request here.
+## Additional Context
+Add any other context, references, or examples.

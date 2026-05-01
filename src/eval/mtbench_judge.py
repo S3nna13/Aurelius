@@ -189,9 +189,9 @@ def _parse_pairwise_verdict(output: str) -> str:
     if m is None:
         return "invalid"
     token = m.group(1).strip().lower()
-    if token == "a":
+    if token == "a":  # noqa: S105
         return "A"
-    if token == "b":
+    if token == "b":  # noqa: S105
         return "B"
     if token in ("c", "tie"):
         return "tie"

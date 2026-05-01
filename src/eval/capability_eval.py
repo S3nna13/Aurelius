@@ -221,7 +221,7 @@ class CapabilityEvaluator:
 
 def create_synthetic_examples(n_per_task: int = 5, seed: int = 42) -> list[EvalExample]:
     """Create simple synthetic eval examples for each task."""
-    random.Random(seed)
+    random.Random(seed)  # noqa: S311
     examples: list[EvalExample] = []
 
     # --- reasoning ---

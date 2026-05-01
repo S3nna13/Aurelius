@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { getEngine } from '../engine.js'
+import { requireScope } from '../middleware/auth.js'
 
 const router = Router()
 
@@ -14,7 +15,7 @@ router.get('/', (req, res) => {
   res.json({ logs })
 })
 
-router.post('/', (req, res) => {
+router.post('/', requireScope('logs:write'), (req, res) => {
   const engine = getEngine()
   const { level, logger, message } = req.body || {}
   if (!level || !message) {

@@ -1,4 +1,5 @@
 mod engine;
+mod persistence;
 
 use engine::DataEngineInner;
 use napi_derive::napi;
@@ -73,6 +74,7 @@ pub struct SkillEntry {
     pub category: String,
     pub risk_score: f64,
     pub allow_level: String,
+    pub source: String,
 }
 
 #[napi(object)]
@@ -83,6 +85,7 @@ pub struct WorkflowEntry {
     pub last_run: f64,
     pub duration: f64,
     pub event_count: u32,
+    pub source: String,
 }
 
 #[napi(object)]
@@ -94,6 +97,7 @@ pub struct ModelInfo {
     pub parameter_count: i64,
     pub state: String,
     pub loaded_at: Option<String>,
+    pub source: String,
 }
 
 #[napi(object)]
@@ -119,6 +123,7 @@ pub struct TrainingRunSummary {
     pub current_lr: f64,
     pub total_steps: u32,
     pub data_point_count: u32,
+    pub source: String,
 }
 
 #[napi(object)]
@@ -138,6 +143,7 @@ pub struct TrainingRunDetail {
     pub val_losses: Vec<f64>,
     pub learning_rates: Vec<f64>,
     pub accuracies: Vec<f64>,
+    pub source: String,
 }
 
 #[napi(object)]
@@ -159,13 +165,17 @@ pub struct SystemStats {
 #[napi]
 pub struct DataEngine {
     inner: DataEngineInner,
+    persistence: std::sync::Mutex<Option<persistence::Persistence>>,
 }
 
 #[napi]
 impl DataEngine {
     #[napi(constructor)]
     pub fn new() -> Self {
-        DataEngine { inner: DataEngineInner::new() }
+        DataEngine {
+            inner: DataEngineInner::new(),
+            persistence: std::sync::Mutex::new(None),
+        }
     }
 
     #[napi]
@@ -204,13 +214,28 @@ impl DataEngine {
     }
 
     #[napi]
-    pub fn add_notification(&self, channel: String, priority: String, category: String, title: String, body: String) -> Notification {
-        self.inner.add_notification(&channel, &priority, &category, &title, &body)
+    pub fn add_notification(
+        &self,
+        channel: String,
+        priority: String,
+        category: String,
+        title: String,
+        body: String,
+    ) -> Notification {
+        self.inner
+            .add_notification(&channel, &priority, &category, &title, &body)
     }
 
     #[napi]
-    pub fn get_notifications(&self, category: Option<String>, priority: Option<String>, read: Option<bool>, limit: Option<u32>) -> Vec<Notification> {
-        self.inner.get_notifications(category.as_deref(), priority.as_deref(), read, limit)
+    pub fn get_notifications(
+        &self,
+        category: Option<String>,
+        priority: Option<String>,
+        read: Option<bool>,
+        limit: Option<u32>,
+    ) -> Vec<Notification> {
+        self.inner
+            .get_notifications(category.as_deref(), priority.as_deref(), read, limit)
     }
 
     #[napi]
@@ -239,8 +264,14 @@ impl DataEngine {
     }
 
     #[napi]
-    pub fn get_memory_entries(&self, layer: Option<String>, query: Option<String>, limit: Option<u32>) -> Vec<MemoryEntry> {
-        self.inner.get_memory_entries(layer.as_deref(), query.as_deref(), limit)
+    pub fn get_memory_entries(
+        &self,
+        layer: Option<String>,
+        query: Option<String>,
+        limit: Option<u32>,
+    ) -> Vec<MemoryEntry> {
+        self.inner
+            .get_memory_entries(layer.as_deref(), query.as_deref(), limit)
     }
 
     #[napi]
@@ -269,12 +300,23 @@ impl DataEngine {
     }
 
     #[napi]
-    pub fn get_logs(&self, level: Option<String>, query: Option<String>, limit: Option<u32>) -> Vec<LogRecord> {
-        self.inner.get_logs(level.as_deref(), query.as_deref(), limit)
+    pub fn get_logs(
+        &self,
+        level: Option<String>,
+        query: Option<String>,
+        limit: Option<u32>,
+    ) -> Vec<LogRecord> {
+        self.inner
+            .get_logs(level.as_deref(), query.as_deref(), limit)
     }
 
     #[napi]
-    pub fn search_logs(&self, query: String, level: Option<String>, limit: Option<u32>) -> Vec<LogRecord> {
+    pub fn search_logs(
+        &self,
+        query: String,
+        level: Option<String>,
+        limit: Option<u32>,
+    ) -> Vec<LogRecord> {
         self.inner.search_logs(&query, level.as_deref(), limit)
     }
 
@@ -296,6 +338,41 @@ impl DataEngine {
     #[napi]
     pub fn clear_logs(&self) -> u32 {
         self.inner.clear_logs()
+    }
+
+    #[napi]
+    pub fn export_json(&self) -> String {
+        use persistence::Persistence;
+        let p = Persistence::new("", 0);
+        p.export_json(&self.inner)
+            .unwrap_or_else(|e| format!("{{\"error\": \"{e}\"}}"))
+    }
+
+    #[napi]
+    pub fn import_json(&self, json: String) -> bool {
+        use persistence::Persistence;
+        let p = Persistence::new("", 0);
+        p.import_json(&self.inner, &json).is_ok()
+    }
+
+    #[napi]
+    pub fn save_to_file(&self, path: String) -> bool {
+        use persistence::Persistence;
+        if persistence::resolve_data_path(&path).is_err() {
+            return false;
+        }
+        let p = Persistence::new(&path, 0);
+        p.save(&self.inner).is_ok()
+    }
+
+    #[napi]
+    pub fn load_from_file(&self, path: String) -> bool {
+        use persistence::Persistence;
+        if persistence::resolve_data_path(&path).is_err() {
+            return false;
+        }
+        let p = Persistence::new(&path, 0);
+        p.load(&self.inner).is_ok()
     }
 
     // -- Skills --
@@ -357,7 +434,13 @@ impl DataEngine {
     }
 
     #[napi]
-    pub fn create_training_run(&self, name: String, model_id: String, total_epochs: u32) -> TrainingRunSummary {
-        self.inner.create_training_run(&name, &model_id, total_epochs)
+    pub fn create_training_run(
+        &self,
+        name: String,
+        model_id: String,
+        total_epochs: u32,
+    ) -> TrainingRunSummary {
+        self.inner
+            .create_training_run(&name, &model_id, total_epochs)
     }
 }

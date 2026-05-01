@@ -222,7 +222,7 @@ class FedAvgServer:
     def select_clients(self, round_id: int) -> list[int]:
         """Select client_fraction * n_clients client IDs (deterministic seed)."""
         k = max(1, round(self.client_fraction * self.n_clients))
-        rng = random.Random(round_id)
+        rng = random.Random(round_id)  # noqa: S311
         all_ids = list(range(self.n_clients))
         return rng.sample(all_ids, k)
 

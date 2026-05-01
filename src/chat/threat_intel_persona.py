@@ -195,72 +195,50 @@ _DOMAIN_RE = re.compile(
 
 @dataclass
 class ThreatIntelPersona:
-    """Stateless classifier + message-builder + response-validator."""
+    """Backward-compatible wrapper delegating to ThreatIntelFacet + UnifiedPersona."""
 
     system_prompt: str = field(default=THREAT_INTEL_SYSTEM_PROMPT)
 
-    # ---- classification ------------------------------------------------------
-
     def classify_query(self, user_message: str) -> str:
-        """Return one of ``cve`` | ``mitre`` | ``actor`` | ``ioc`` | ``general``."""
-        if not isinstance(user_message, str) or not user_message:
-            return "general"
-        if _CVE_RE.search(user_message):
-            return "cve"
-        if _MITRE_RE.search(user_message):
-            return "mitre"
-        if _ACTOR_RE.search(user_message):
-            return "actor"
-        if (
-            _HASH_RE.search(user_message)
-            or _IP_RE.search(user_message)
-            or _DOMAIN_RE.search(user_message)
-        ):
-            return "ioc"
-        return "general"
+        from src.persona.facets.threat_intel_facet import classify_query
 
-    # ---- schema lookup -------------------------------------------------------
+        return classify_query(user_message)
 
     def schema_for(self, query_type: str) -> dict | None:
         return _SCHEMAS.get(query_type)
-
-    # ---- message assembly ----------------------------------------------------
 
     def build_messages(
         self,
         user_message: str,
         history: list[dict] | None = None,
     ) -> list[dict]:
-        """Assemble ``[system, intent-hint, *history, user]`` message list."""
-        qtype = self.classify_query(user_message)
-        hint = (
-            f"[intent={qtype}] "
-            f"Respond using the {qtype} structured-output contract "
-            "defined in the system prompt. Refuse requests to weaponize."
-        )
-        messages: list[dict] = [
-            {"role": "system", "content": self.system_prompt},
-            {"role": "system", "content": hint},
-        ]
+        from src.persona import AURELIUS_THREATINTEL
+
+        query_type = self.classify_query(user_message)
+        messages: list[dict] = [{"role": "system", "content": AURELIUS_THREATINTEL.system_prompt}]
+        if query_type != "general":
+            hint = (
+                f"[intent={query_type}] "
+                f"Respond using the {query_type} structured-output contract "
+                "defined in the system prompt."
+            )
+        else:
+            hint = (
+                "[intent=detect] Classify the query and respond using the "
+                "appropriate structured-output contract."
+            )
+        messages.append({"role": "system", "content": hint})
         if history:
             for turn in history:
-                # shallow copy to avoid aliasing caller state
                 messages.append({"role": turn["role"], "content": turn["content"]})
         messages.append({"role": "user", "content": user_message})
         return messages
-
-    # ---- response validation -------------------------------------------------
 
     def validate_response(
         self,
         query_type: str,
         response_obj: dict,
     ) -> tuple[bool, list[str]]:
-        """Check that ``response_obj`` has all required fields for ``query_type``.
-
-        Returns ``(valid, errors)``. ``general`` always validates true (freeform).
-        Unknown query-types produce an error.
-        """
         errors: list[str] = []
         if query_type == "general":
             return True, errors

@@ -12,7 +12,7 @@ import re
 from dataclasses import dataclass
 from enum import IntEnum
 
-from .unified_persona import GuardrailSeverity, PersonaFacet, UnifiedPersona
+from .unified_persona import PersonaFacet, UnifiedPersona
 
 
 class SystemPromptPriority(IntEnum):
@@ -114,7 +114,8 @@ class PromptComposer:
                 )
 
         for guardrail in persona.guardrails:
-            if guardrail.severity in (GuardrailSeverity.CRITICAL, GuardrailSeverity.HIGH):
+            severity_value = getattr(guardrail.severity, "value", guardrail.severity)
+            if severity_value in ("critical", "high"):
                 fragments.append(
                     SystemPromptFragment(
                         priority=SystemPromptPriority.DEVELOPER,
@@ -163,8 +164,8 @@ class PromptComposer:
             classifiers = cfg.get("query_classifiers", [])
             if classifiers:
                 return (
-                    f"Classify queries as: {', '.join(classifiers)}. "
-                    "Respond with structured output per the relevant contract."
+                    f"Classify queries as: {', '.join(classifiers)}. Respond "
+                    "with structured output per the relevant contract."
                 )
             return "Classify threat intelligence queries and respond with structured output."
 

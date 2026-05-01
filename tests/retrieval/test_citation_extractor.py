@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from urllib.parse import urlsplit
+
 from src.retrieval.citation_extractor import (
     RETRIEVAL_REGISTRY,
     CitationExtractor,
@@ -41,7 +43,10 @@ def test_extract_url():
     cits = EX.extract(text)
     urls = [c for c in cits if c.citation_type == CitationType.URL]
     assert len(urls) >= 1
-    assert "https://example.com" in urls[0].source
+    parsed = urlsplit(urls[0].source)
+    assert parsed.scheme == "https"
+    assert parsed.hostname == "example.com"
+    assert parsed.path == "/path"
 
 
 # ---------------------------------------------------------------------------

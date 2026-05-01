@@ -272,14 +272,14 @@ class StitchedModel(nn.Module):
 
         # Bottom layers from model_a
         for layer in self.bottom_layers:
-            x, _ = layer(x, freqs_a)
+            x, _, _ = layer(x, freqs_a)
 
         # Stitching layer (Linear or Identity)
         x = self.stitching_layer(x)
 
         # Top layers from model_b
         for layer in self.top_layers:
-            x, _ = layer(x, freqs_b)
+            x, _, _ = layer(x, freqs_b)
 
         # Final norm + head from model_b
         x = self.norm(x)

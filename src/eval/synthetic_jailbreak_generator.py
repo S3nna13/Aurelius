@@ -67,7 +67,7 @@ class SyntheticJailbreakGenerator:
         if not isinstance(body, str):
             raise TypeError("payload must be str or None")
 
-        rng = random.Random(seed)
+        rng = random.Random(seed)  # noqa: S311
         out: list[SyntheticProbe] = []
         m = len(_TEMPLATES)
         for i in range(n):

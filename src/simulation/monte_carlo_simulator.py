@@ -28,7 +28,7 @@ class MonteCarloSimulator:
 
     def __init__(self, config: MCConfig | None = None) -> None:
         self.config = config if config is not None else MCConfig()
-        self._rng = random.Random(self.config.seed)
+        self._rng = random.Random(self.config.seed)  # noqa: S311
 
     def compute_returns(self, rewards: list[float], gamma: float | None = None) -> list[float]:
         """Compute discounted returns G_t = r_t + gamma * G_{t+1}, working backwards."""

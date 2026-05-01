@@ -64,3 +64,11 @@ class DebugCommands:
 
 
 DEBUG_COMMANDS = DebugCommands()
+
+
+def health_check(args) -> int:
+    """Run the CLI health check and return an exit code."""
+    from src.cli.main import _run_health
+
+    _run_health(args)
+    return 0

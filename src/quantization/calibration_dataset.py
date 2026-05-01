@@ -143,7 +143,7 @@ class CalibrationDataset:
         if n < 0:
             raise ValueError("n must be non-negative.")
 
-        rng = random.Random(seed)
+        rng = random.Random(seed)  # noqa: S311
         population = list(self._samples)
         k = min(n, len(population))
 

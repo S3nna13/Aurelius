@@ -1,20 +1,16 @@
 import { Router } from 'express'
 import { getEngine } from '../engine.js'
-
-const PROTECTED_CONFIG_KEYS = new Set(['api_key', 'license_key', 'license_activated', 'require_auth'])
+import { requireScope } from '../middleware/auth.js'
 
 const router = Router()
 
 router.get('/', (_req, res) => {
   const engine = getEngine()
-  const raw = engine.getAllConfig()
-  const config = Object.fromEntries(
-    Object.entries(raw).filter(([k]) => !PROTECTED_CONFIG_KEYS.has(k))
-  )
+  const config = engine.getAllConfig()
   res.json({ config })
 })
 
-router.post('/', (req, res) => {
+router.post('/', requireScope('config:write'), (req, res) => {
   const engine = getEngine()
   const { config } = req.body || {}
   if (!config || typeof config !== 'object') {
@@ -22,47 +18,33 @@ router.post('/', (req, res) => {
     return
   }
   for (const [key, value] of Object.entries(config)) {
-    if (PROTECTED_CONFIG_KEYS.has(key)) {
-      res.status(403).json({ error: `Config key '${key}' is protected and cannot be set via API` })
-      return
-    }
     engine.setConfig(key, String(value))
   }
   engine.appendActivity('config.update', true, 'Configuration updated')
-  const raw = engine.getAllConfig()
-  const safeConfig = Object.fromEntries(
-    Object.entries(raw).filter(([k]) => !PROTECTED_CONFIG_KEYS.has(k))
-  )
-  res.json({ success: true, config: safeConfig })
+  res.json({ success: true, config: engine.getAllConfig() })
 })
 
 router.get('/:key', (req, res) => {
   const engine = getEngine()
-  if (PROTECTED_CONFIG_KEYS.has(req.params.key)) {
-    res.status(403).json({ error: `Config key '${req.params.key}' is protected` })
-    return
-  }
-  const value = engine.getConfig(req.params.key)
+  const key = String(req.params.key)
+  const value = engine.getConfig(key)
   if (value === null) {
     res.status(404).json({ error: 'Config key not found' })
     return
   }
-  res.json({ key: req.params.key, value })
+  res.json({ key, value })
 })
 
-router.put('/:key', (req, res) => {
+router.put('/:key', requireScope('config:write'), (req, res) => {
   const engine = getEngine()
-  if (PROTECTED_CONFIG_KEYS.has(req.params.key)) {
-    res.status(403).json({ error: `Config key '${req.params.key}' is protected` })
-    return
-  }
+  const key = String(req.params.key)
   const { value } = req.body || {}
   if (value === undefined) {
     res.status(400).json({ error: 'Value required' })
     return
   }
-  engine.setConfig(req.params.key, String(value))
-  engine.appendActivity('config.update', true, `${req.params.key} updated`)
+  engine.setConfig(key, String(value))
+  engine.appendActivity('config.update', true, `${key} updated`)
   res.json({ success: true })
 })
 

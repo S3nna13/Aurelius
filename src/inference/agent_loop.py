@@ -21,7 +21,7 @@ class AgentConfig:
     max_steps: int = 10
     max_tokens_per_step: int = 64
     temperature: float = 0.7
-    stop_token: str = "<|end|>"
+    stop_token: str = "<|end|>"  # noqa: S105
     reflection_enabled: bool = True
     thought_prefix: str = "Thought:"
     action_prefix: str = "Action:"

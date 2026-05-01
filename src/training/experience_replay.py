@@ -101,7 +101,7 @@ class ReplayBuffer:
             weights = (1.0 / (n * p_i)) ** self.beta
             weights = (weights / weights.max()).tolist()
         else:
-            indices = random.choices(range(n), k=batch_size)
+            indices = random.choices(range(n), k=batch_size)  # noqa: S311
             weights = [1.0] * batch_size
 
         experiences = [self._buffer[i] for i in indices]

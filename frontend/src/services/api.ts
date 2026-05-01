@@ -1,7 +1,9 @@
+import { useApiStore } from '../stores/apiStore'
+
 const DEFAULT_TIMEOUT = 15000
 const DEFAULT_RETRIES = 2
 
-interface ApiOptions {
+export interface ApiOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
   headers?: Record<string, string>
   body?: unknown
@@ -10,33 +12,39 @@ interface ApiOptions {
   retries?: number
 }
 
-interface ApiResponse<T> {
+export interface ApiResponse<T> {
   data: T | null
   error: string | null
   status: number
 }
 
+function getBaseUrl(): string {
+  return useApiStore.getState().baseUrl
+}
+
+function getApiKey(): string {
+  return useApiStore.getState().apiKey
+}
+
 function buildUrl(base: string, path: string, params?: Record<string, string | number | boolean | undefined>): string {
   const url = new URL(path.startsWith('/') ? path : `/${path}`, base.endsWith('/') ? base : `${base}/`)
   if (params) {
-    Object.entries(params).forEach(([k, v]) => {
+    for (const [k, v] of Object.entries(params)) {
       if (v !== undefined) url.searchParams.set(k, String(v))
-    })
+    }
   }
   return url.toString()
 }
 
 async function request<T>(baseUrl: string, path: string, opts: ApiOptions): Promise<ApiResponse<T>> {
   const { method = 'GET', headers = {}, body, params, timeout = DEFAULT_TIMEOUT, retries = DEFAULT_RETRIES } = opts
-
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), timeout)
-
-  const apiKey = localStorage.getItem('aurelius-api-key') || ''
+  const apiKey = getApiKey()
 
   let lastErr: Error | null = null
 
   for (let attempt = 0; attempt <= retries; attempt++) {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), timeout)
     try {
       const res = await fetch(buildUrl(baseUrl, path, params), {
         method,
@@ -53,19 +61,18 @@ async function request<T>(baseUrl: string, path: string, opts: ApiOptions): Prom
 
       const text = await res.text()
       let data: T | null = null
-      try {
-        data = text ? JSON.parse(text) : null
-      } catch {
-        // non-JSON response
-      }
+      try { data = text ? JSON.parse(text) : null } catch { /* non-JSON */ }
 
       if (!res.ok) {
-        const errMsg = (data as { error?: { message?: string } })?.error?.message || `HTTP ${res.status}`
+        const errMsg = (data as { error?: { message?: string } })?.error?.message
+          || (data as { error?: string })?.error
+          || `HTTP ${res.status}`
         return { data: null, error: errMsg, status: res.status }
       }
 
       return { data, error: null, status: res.status }
     } catch (err) {
+      clearTimeout(timer)
       lastErr = err instanceof Error ? err : new Error(String(err))
       if (attempt < retries && (err as Error).name !== 'AbortError') {
         await new Promise((r) => setTimeout(r, Math.min(1000 * 2 ** attempt, 5000)))
@@ -73,13 +80,12 @@ async function request<T>(baseUrl: string, path: string, opts: ApiOptions): Prom
     }
   }
 
-  clearTimeout(timer)
-  const message = (lastErr?.name === 'AbortError') ? 'Request timed out' : (lastErr?.message || 'Unknown error')
+  const message = lastErr?.name === 'AbortError' ? 'Request timed out' : (lastErr?.message || 'Unknown error')
   return { data: null, error: message, status: 0 }
 }
 
-function apiClient(baseUrl?: string) {
-  const base = baseUrl || import.meta.env.VITE_API_BASE_URL || '/api'
+export function apiClient(baseUrl?: string) {
+  const base = baseUrl || getBaseUrl()
 
   return {
     get: <T>(path: string, opts?: Omit<ApiOptions, 'method' | 'body'>) =>
@@ -100,5 +106,4 @@ function apiClient(baseUrl?: string) {
 }
 
 export const api = apiClient()
-export { apiClient }
-export type { ApiOptions, ApiResponse }
+export { request }

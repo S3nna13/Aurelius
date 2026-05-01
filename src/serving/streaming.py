@@ -30,6 +30,7 @@ class StreamingConfig:
     top_p: float = 0.9
     eos_token_id: int = 2
     chunk_delay_ms: float = 0.0
+    decode_fn: Callable[[int], str] | None = None
 
 
 class TokenStreamer:
@@ -46,6 +47,9 @@ class TokenStreamer:
         """
         if logits.dim() != 1:
             raise ValueError(f"Expected 1-D logits, got shape {logits.shape}")
+
+        if self.config.temperature == 0.0:
+            return int(logits.argmax(dim=-1).item())
 
         # Temperature scaling
         if self.config.temperature != 1.0 and self.config.temperature > 0.0:
@@ -110,8 +114,9 @@ class TokenStreamer:
             if cfg.chunk_delay_ms > 0.0:
                 time.sleep(cfg.chunk_delay_ms / 1000.0)
 
+            decoded = self.config.decode_fn(token_id) if self.config.decode_fn else str(token_id)
             yield StreamToken(
-                text=str(token_id),
+                text=decoded,
                 token_id=token_id,
                 is_final=is_final,
                 finish_reason=finish_reason,

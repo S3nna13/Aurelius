@@ -1,0 +1,15 @@
+{
+  "name": "aurelius-session-manager",
+  "version": "0.1.0",
+  "private": true,
+  "napi": {
+    "binaryName": "aurelius-session-manager",
+    "targets": ["aarch64-apple-darwin", "x86_64-apple-darwin"]
+  },
+  "scripts": {
+    "build": "napi build --release --platform"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "^3.0.0"
+  }
+}

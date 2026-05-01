@@ -36,9 +36,6 @@ class ContentGuardrails:
         return len(text) <= self.policy.max_length
 
     def _harm_score(self, text: str) -> float:
-        if not _SUSPICIOUS_SUBSTRINGS:
-            return 0.0
-        # Return 1.0 on any single match so that harm_threshold < 1.0 blocks it.
         return 1.0 if any(s in text for s in _SUSPICIOUS_SUBSTRINGS) else 0.0
 
     def check_input(self, text: str) -> GuardrailResult:

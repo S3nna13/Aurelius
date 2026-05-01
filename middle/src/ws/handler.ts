@@ -1,36 +1,35 @@
 import { WebSocketServer, type WebSocket } from 'ws'
 import type { Server } from 'http'
 import { getEngine } from '../engine.js'
-import { config } from '../config.js'
+import { joinRoom, leaveRoom, broadcastToRoom, broadcastToAll, getRoomList } from './rooms.js'
+import { validateApiKey, type AuthUser } from '../middleware/auth.js'
 
 interface WsMessage {
   type: string
   payload?: Record<string, unknown>
 }
 
-const clients = new Set<WebSocket>()
-
-function broadcast(data: unknown): void {
-  const msg = JSON.stringify(data)
-  for (const ws of clients) {
-    if (ws.readyState === ws.OPEN) {
-      ws.send(msg)
-    }
-  }
+interface AuthenticatedSocket extends WebSocket {
+  authUser?: AuthUser
 }
 
-export function setupWebSocket(server: Server): WebSocketServer {
-  const wss = new WebSocketServer({ server, path: '/ws' })
+const clients = new Set<AuthenticatedSocket>()
+const MAX_WS_MESSAGE_SIZE = 65536
+const WS_COMMANDS_REQUIRING_ADMIN = new Set(['command', 'agent:terminate', 'config:update'])
 
-  wss.on('connection', (ws, req) => {
-    if (config.apiKey) {
-      const urlParams = new URLSearchParams(req.url?.split('?')[1] || '')
-      const wsKey = urlParams.get('api_key') || req.headers['x-api-key'] as string | undefined
-      if (!wsKey || wsKey !== config.apiKey) {
-        ws.close(4001, 'Authentication required')
-        return
-      }
+export function setupWebSocket(server: Server): WebSocketServer {
+  const wss = new WebSocketServer({ server, path: '/ws', maxPayload: MAX_WS_MESSAGE_SIZE })
+
+  wss.on('connection', (ws: AuthenticatedSocket, req) => {
+    const apiKey = req.headers['x-api-key'] || req.headers['authorization']
+    const key = typeof apiKey === 'string'
+      ? apiKey.replace(/^Bearer\s+/i, '').trim()
+      : null
+    if (!key || !validateApiKey(key)) {
+      ws.close(1008, 'Unauthorized')
+      return
     }
+    ws.authUser = validateApiKey(key)
 
     clients.add(ws)
 
@@ -40,13 +39,19 @@ export function setupWebSocket(server: Server): WebSocketServer {
       payload: {
         agents: engine.listAgents(),
         stats: engine.getNotificationStats(),
+        rooms: getRoomList(),
         timestamp: Date.now(),
       },
     }))
 
     ws.on('message', (raw) => {
+      const rawStr = raw.toString()
+      if (rawStr.length > MAX_WS_MESSAGE_SIZE) {
+        ws.send(JSON.stringify({ type: 'error', payload: { message: 'Message too large' } }))
+        return
+      }
       try {
-        const msg = JSON.parse(raw.toString()) as WsMessage
+        const msg = JSON.parse(rawStr) as WsMessage
         handleMessage(ws, msg)
       } catch {
         ws.send(JSON.stringify({ type: 'error', payload: { message: 'Invalid JSON' } }))
@@ -65,12 +70,54 @@ export function setupWebSocket(server: Server): WebSocketServer {
   return wss
 }
 
-function handleMessage(ws: WebSocket, msg: WsMessage): void {
+function handleMessage(ws: AuthenticatedSocket, msg: WsMessage): void {
   const engine = getEngine()
+  const user = ws.authUser
+
+  if (!user) {
+    ws.send(JSON.stringify({ type: 'error', payload: { message: 'Not authenticated' } }))
+    return
+  }
+
+  if (WS_COMMANDS_REQUIRING_ADMIN.has(msg.type) && user.role !== 'admin' && !user.scopes.includes('*')) {
+    ws.send(JSON.stringify({ type: 'error', payload: { message: 'Admin access required' } }))
+    return
+  }
 
   switch (msg.type) {
     case 'ping':
       ws.send(JSON.stringify({ type: 'pong', payload: { timestamp: Date.now() } }))
+      break
+
+    case 'subscribe': {
+      const { room } = msg.payload || {}
+      if (room && typeof room === 'string') {
+        joinRoom(room, ws)
+        ws.send(JSON.stringify({ type: 'subscribed', payload: { room } }))
+      }
+      break
+    }
+
+    case 'unsubscribe': {
+      const { room } = msg.payload || {}
+      if (room && typeof room === 'string') {
+        leaveRoom(room, ws)
+        ws.send(JSON.stringify({ type: 'unsubscribed', payload: { room } }))
+      }
+      break
+    }
+
+    case 'room:message': {
+      const { room, data } = msg.payload || {}
+      if (room && typeof room === 'string') {
+        const count = broadcastToRoom(room, { type: 'room:message', payload: { room, data, timestamp: Date.now() } })
+        ws.send(JSON.stringify({ type: 'room:delivered', payload: { room, count } }))
+      }
+      break
+    }
+
+    case 'get:rooms':
+      ws.send(JSON.stringify({ type: 'rooms', payload: { rooms: getRoomList() } }))
       break
 
     case 'get:agents':
@@ -78,10 +125,7 @@ function handleMessage(ws: WebSocket, msg: WsMessage): void {
       break
 
     case 'get:activity':
-      ws.send(JSON.stringify({
-        type: 'activity',
-        payload: { entries: engine.getActivity(50) },
-      }))
+      ws.send(JSON.stringify({ type: 'activity', payload: { entries: engine.getActivity(50) } }))
       break
 
     case 'get:notifications':
@@ -110,14 +154,8 @@ function handleMessage(ws: WebSocket, msg: WsMessage): void {
       const { command } = msg.payload || {}
       if (command) {
         engine.appendActivity('ws.command', true, String(command))
-        ws.send(JSON.stringify({
-          type: 'command:ack',
-          payload: { command, timestamp: Date.now() },
-        }))
-        broadcast({
-          type: 'activity:new',
-          payload: { command, timestamp: Date.now() },
-        })
+        ws.send(JSON.stringify({ type: 'command:ack', payload: { command, timestamp: Date.now() } }))
+        broadcastToAll({ type: 'activity:new', payload: { command, timestamp: Date.now() } })
       }
       break
     }
@@ -128,9 +166,19 @@ function handleMessage(ws: WebSocket, msg: WsMessage): void {
 }
 
 export function broadcastNotification(notification: unknown): void {
-  broadcast({ type: 'notification', payload: notification })
+  const msg = JSON.stringify({ type: 'notification', payload: notification })
+  for (const ws of clients) {
+    if (ws.readyState === ws.OPEN) {
+      try { ws.send(msg) } catch { /* best effort */ }
+    }
+  }
 }
 
 export function broadcastActivity(activity: unknown): void {
-  broadcast({ type: 'activity:new', payload: activity })
+  const msg = JSON.stringify({ type: 'activity:new', payload: activity })
+  for (const ws of clients) {
+    if (ws.readyState === ws.OPEN) {
+      try { ws.send(msg) } catch { /* best effort */ }
+    }
+  }
 }

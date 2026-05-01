@@ -34,7 +34,8 @@ pub fn count_tokens(text: String, options: Option<TokenCountOptions>) -> TokenCo
 
     let characters = text.chars().count() as u32;
     let words = text.split_whitespace().count() as u32;
-    let sentences = text.split(|c: char| c == '.' || c == '!' || c == '?')
+    let sentences = text
+        .split(['.', '!', '?'])
         .filter(|s| !s.trim().is_empty())
         .count() as u32;
     let lines = text.lines().count() as u32;
@@ -57,7 +58,11 @@ pub fn count_tokens(text: String, options: Option<TokenCountOptions>) -> TokenCo
 }
 
 #[napi]
-pub fn compute_token_budget(text: String, max_tokens: u32, options: Option<TokenCountOptions>) -> TokenBudget {
+pub fn compute_token_budget(
+    text: String,
+    max_tokens: u32,
+    options: Option<TokenCountOptions>,
+) -> TokenBudget {
     let result = count_tokens(text, options);
     let used = result.estimated_tokens;
     let available = max_tokens;
@@ -77,10 +82,14 @@ pub fn compute_token_budget(text: String, max_tokens: u32, options: Option<Token
 }
 
 #[napi]
-pub fn truncate_to_budget(text: String, max_tokens: u32, options: Option<TokenCountOptions>) -> String {
+pub fn truncate_to_budget(
+    text: String,
+    max_tokens: u32,
+    options: Option<TokenCountOptions>,
+) -> String {
     let budget = compute_token_budget(text.clone(), max_tokens, options);
 
-    if budget.remaining >= 0 && budget.fraction_used <= 1.0 {
+    if budget.used <= budget.available && budget.fraction_used <= 1.0 {
         return text;
     }
 

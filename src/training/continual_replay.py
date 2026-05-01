@@ -67,7 +67,7 @@ class RingBufferReplay:
                 self._buffer.append(example)
             else:
                 # Knuth's Algorithm R
-                idx = random.randint(0, self._n_seen - 1)
+                idx = random.randint(0, self._n_seen - 1)  # noqa: S311
                 if idx < self.config.buffer_size:
                     self._buffer[idx] = example
         else:

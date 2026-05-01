@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Literal
 
@@ -10,8 +12,10 @@ class TrainingConfig:
     n_heads: int = 12
     d_model: int = 768
     d_ff: int = 3072
-    n_kv_heads: int | None = None  # None = MHA, int = GQA
+    n_kv_heads: int | None = None
     max_seq_len: int = 1024
+    head_dim: int = 128
+    tie_embeddings: bool = True
 
     # Training
     max_steps: int = 600_000
@@ -43,7 +47,6 @@ class TrainingConfig:
         return self.batch_size * self.gradient_accumulation_steps * self.max_seq_len
 
     def chinchilla_optimal_steps(self, total_tokens: int) -> int:
-        """Chinchilla: optimal steps for given compute budget."""
         return total_tokens // self.effective_tokens_per_step()
 
     def to_dict(self) -> dict:
@@ -52,22 +55,51 @@ class TrainingConfig:
         return dataclasses.asdict(self)
 
     @classmethod
-    def from_dict(cls, d: dict) -> "TrainingConfig":
+    def from_dict(cls, d: dict) -> TrainingConfig:
         import dataclasses
 
         fields = {f.name for f in dataclasses.fields(cls)}
         return cls(**{k: v for k, v in d.items() if k in fields})
 
     @classmethod
-    def gpt2_small(cls) -> "TrainingConfig":
+    def from_yaml(cls, path: str) -> TrainingConfig:
+        import yaml
+
+        with open(path) as f:
+            raw = yaml.safe_load(f)
+
+        model = raw.get("model", {})
+        training = raw.get("training", {})
+        optimizer = raw.get("optimizer", {})
+
+        return cls(
+            vocab_size=model.get("vocab_size", cls.vocab_size),
+            n_layers=model.get("n_layers", cls.n_layers),
+            n_heads=model.get("n_heads", cls.n_heads),
+            d_model=model.get("d_model", cls.d_model),
+            d_ff=model.get("d_ff", cls.d_ff),
+            n_kv_heads=model.get("n_kv_heads", cls.n_kv_heads),
+            max_seq_len=model.get("max_seq_len", cls.max_seq_len),
+            head_dim=model.get("head_dim", cls.head_dim),
+            tie_embeddings=model.get("tie_embeddings", cls.tie_embeddings),
+            max_steps=training.get("total_steps", cls.max_steps),
+            learning_rate=optimizer.get("lr", cls.learning_rate),
+            min_lr=optimizer.get("min_lr", cls.min_lr),
+            weight_decay=optimizer.get("weight_decay", cls.weight_decay),
+            beta1=optimizer.get("beta1", cls.beta1),
+            beta2=optimizer.get("beta2", cls.beta2),
+        )
+
+    @classmethod
+    def gpt2_small(cls) -> TrainingConfig:
         return cls(vocab_size=50257, n_layers=12, n_heads=12, d_model=768)
 
     @classmethod
-    def gpt2_medium(cls) -> "TrainingConfig":
+    def gpt2_medium(cls) -> TrainingConfig:
         return cls(vocab_size=50257, n_layers=24, n_heads=16, d_model=1024)
 
     @classmethod
-    def aurelius_1b(cls) -> "TrainingConfig":
+    def aurelius_1b(cls) -> TrainingConfig:
         return cls(
             vocab_size=128000,
             n_layers=24,

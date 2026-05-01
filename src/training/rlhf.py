@@ -17,7 +17,7 @@ import torch.nn.functional as F
 from torch.optim import AdamW
 
 from src.alignment.gae import compute_gae
-from src.model.value_head import ValueHead  # noqa: F401
+from src.alignment.value_head import ValueHead  # noqa: F401
 
 
 @dataclass

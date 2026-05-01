@@ -28,6 +28,10 @@ export declare class DataEngine {
   clearActivity(): number
   clearNotifications(): number
   clearLogs(): number
+  exportJson(): string
+  importJson(json: string): boolean
+  saveToFile(path: string): boolean
+  loadFromFile(path: string): boolean
   listSkills(): Array<SkillEntry>
   getSkill(id: string): SkillEntry | null
   listWorkflows(): Array<WorkflowEntry>
@@ -85,6 +89,7 @@ export interface ModelInfo {
   parameterCount: number
   state: string
   loadedAt?: string
+  source: string
 }
 
 export interface Notification {
@@ -118,6 +123,7 @@ export interface SkillEntry {
   category: string
   riskScore: number
   allowLevel: string
+  source: string
 }
 
 export interface SystemStats {
@@ -154,6 +160,7 @@ export interface TrainingRunDetail {
   valLosses: Array<number>
   learningRates: Array<number>
   accuracies: Array<number>
+  source: string
 }
 
 export interface TrainingRunSummary {
@@ -168,6 +175,7 @@ export interface TrainingRunSummary {
   currentLr: number
   totalSteps: number
   dataPointCount: number
+  source: string
 }
 
 export interface WorkflowEntry {
@@ -177,4 +185,5 @@ export interface WorkflowEntry {
   lastRun: number
   duration: number
   eventCount: number
+  source: string
 }

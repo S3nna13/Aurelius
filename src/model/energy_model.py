@@ -68,7 +68,7 @@ def _get_hidden_states(model: AureliusTransformer, input_ids: torch.Tensor) -> t
     freqs_cis = model.freqs_cis[:S]
 
     for layer in model.layers:
-        x, _ = layer(x, freqs_cis, None, None)
+        x, _, _ = layer(x, freqs_cis, None, None)
 
     x = model.norm(x)
     return x
@@ -143,7 +143,7 @@ def langevin_step(
     freqs_cis = model.freqs_cis[:S]
     x = embeddings
     for layer in model.layers:
-        x, _ = layer(x, freqs_cis, None, None)
+        x, _, _ = layer(x, freqs_cis, None, None)
     x = model.norm(x)
     energy = energy_head(x).sum()
 

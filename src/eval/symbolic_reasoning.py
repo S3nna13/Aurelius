@@ -60,7 +60,7 @@ def generate_syllogism(rng: random.Random = None) -> LogicProblem:
     Uses random 3-char alphabetic entity names.
     """
     if rng is None:
-        rng = random.Random()
+        rng = random.Random()  # noqa: S311
 
     A, B, C = _unique_names(rng, 3)
 
@@ -87,7 +87,7 @@ def generate_arithmetic(rng: random.Random = None, max_val: int = 20) -> LogicPr
     Answer is the integer result as a string.
     """
     if rng is None:
-        rng = random.Random()
+        rng = random.Random()  # noqa: S311
 
     a = rng.randint(1, max_val)
     b = rng.randint(1, max_val)
@@ -113,7 +113,7 @@ def generate_boolean_logic(rng: random.Random = None) -> LogicProblem:
     Returns answer as "True" or "False".
     """
     if rng is None:
-        rng = random.Random()
+        rng = random.Random()  # noqa: S311
 
     n_ops = rng.randint(3, 5)
     ops = [rng.choice(["AND", "OR"]) for _ in range(n_ops - 1)]
@@ -223,7 +223,7 @@ class SymbolicReasoningBenchmark:
     def __init__(self, n_problems: int = 50, seed: int = 42) -> None:
         self.n_problems = n_problems
         self.seed = seed
-        self._rng = random.Random(seed)
+        self._rng = random.Random(seed)  # noqa: S311
         self.problems: list[LogicProblem] = self._generate_problems()
 
     def _generate_problems(self) -> list[LogicProblem]:

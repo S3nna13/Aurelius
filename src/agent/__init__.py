@@ -809,6 +809,23 @@ __all__ += [
     "AGENT_MODE_REGISTRY",
 ]
 
+# --- unified persona system --------------------------------------------------
+from .personality_router import (  # noqa: E402
+    PERSONALITY_KEYWORDS,
+    PERSONALITY_ROUTER_REGISTRY,
+    PersonalityRouter,
+    PersonalityType,
+    TaskAnalysis,
+)
+
+__all__ += [
+    "PersonalityRouter",
+    "PersonalityType",
+    "TaskAnalysis",
+    "PERSONALITY_KEYWORDS",
+    "PERSONALITY_ROUTER_REGISTRY",
+]
+
 # --- workflow engine (cycle-209) ---------------------------------------------
 from .workflow_engine import (  # noqa: E402
     DEFAULT_WORKFLOW_EXECUTOR,
@@ -899,4 +916,54 @@ __all__ += [
     "TutorialStep",
     "DEFAULT_TUTORIAL_ENGINE",
     "TUTORIAL_ENGINE_REGISTRY",
+]
+
+# --- unified persona aliases (backward-compatible) ---------------------------
+from src.persona import (  # noqa: E402
+    AURELIUS_ARCHITECT_MODE,
+    AURELIUS_ASK_MODE,
+    AURELIUS_CODE_MODE,
+    AURELIUS_DEBUG_MODE,
+    PersonaRouter,
+    PromptComposer,
+    UnifiedPersona,
+    UnifiedPersonaRegistry,
+)
+
+__all__ += [
+    "AURELIUS_CODE_MODE",
+    "AURELIUS_ARCHITECT_MODE",
+    "AURELIUS_ASK_MODE",
+    "AURELIUS_DEBUG_MODE",
+    "UnifiedPersona",
+    "UnifiedPersonaRegistry",
+    "PersonaRouter",
+    "PromptComposer",
+]
+
+# --- agent runtime, memory, and registry surface (additive) ------------------
+from .agent_memory import AgentMemory, MemoryEntry  # noqa: E402
+from .agent_persistence import AgentPersistence  # noqa: E402
+from .agent_runtime import AgentMessage, AgentRuntime, AgentSpec, AgentStatus  # noqa: E402
+from .multi_agent import DebateCoordinator, SupervisorCoordinator, SwarmCoordinator  # noqa: E402
+from .skill_library import Skill, VoyagerSkillLibrary  # noqa: E402
+from .skill_registry import SkillRegistry, SkillSpec  # noqa: E402
+from .tool_registry import ToolRegistry  # noqa: E402
+
+__all__ += [
+    "AgentMessage",
+    "AgentMemory",
+    "AgentPersistence",
+    "AgentRuntime",
+    "AgentSpec",
+    "AgentStatus",
+    "DebateCoordinator",
+    "MemoryEntry",
+    "Skill",
+    "SkillRegistry",
+    "SkillSpec",
+    "SupervisorCoordinator",
+    "SwarmCoordinator",
+    "ToolRegistry",
+    "VoyagerSkillLibrary",
 ]

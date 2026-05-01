@@ -51,7 +51,7 @@ class LoadBalancer:
 
         elif self.strategy == LBStrategy.WEIGHTED_ROUND_ROBIN:
             total = sum(n.weight for n in healthy)
-            r = random.uniform(0, total)
+            r = random.uniform(0, total)  # noqa: S311
             cumulative = 0.0
             for node in healthy:
                 cumulative += node.weight
@@ -60,7 +60,7 @@ class LoadBalancer:
             return healthy[-1]
 
         elif self.strategy == LBStrategy.RANDOM:
-            return random.choice(healthy)
+            return random.choice(healthy)  # noqa: S311
 
         return None
 

@@ -59,7 +59,7 @@ impl UsageStoreInner {
             let mut index = txn.open_table(USER_INDEX_TABLE)?;
             let existing = index.get(user_id)?.map(|g| g.value().to_string());
             let updated = match existing {
-                Some(s) if !s.is_empty() => format!("{},{}" , s, id),
+                Some(s) if !s.is_empty() => format!("{},{}", s, id),
                 _ => id.clone(),
             };
             index.insert(user_id, updated.as_str())?;

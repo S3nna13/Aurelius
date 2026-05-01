@@ -319,7 +319,7 @@ def generate_synthetic_problems(n: int, seed: int = 42) -> list[CodeProblem]:
     Returns:
         List of CodeProblem instances.
     """
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # noqa: S311
     bank = list(_PROBLEMS)
     rng.shuffle(bank)
 

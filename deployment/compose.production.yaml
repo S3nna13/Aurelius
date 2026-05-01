@@ -1,0 +1,122 @@
+version: "3.9"
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  aurelius-api:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile
+    image: ghcr.io/s3nna13/aurelius:${TAG:-latest}
+    ports:
+      - "8080:8080"
+    environment:
+      - AURELIUS_VERSION=${AURELIUS_VERSION:-0.1.0}
+      - AURELIUS_LOG_LEVEL=${AURELIUS_LOG_LEVEL:-info}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz')"]
+      interval: 15s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    restart: unless-stopped
+    logging: *default-logging
+    deploy:
+      resources:
+        limits: { cpus: '4', memory: 16G }
+        reservations: { cpus: '2', memory: 8G }
+
+  middle:
+    build:
+      context: ..
+      dockerfile: middle/Dockerfile
+    image: ghcr.io/s3nna13/aurelius-middle:${TAG:-latest}
+    ports:
+      - "3001:3001"
+    environment:
+      - MIDDLE_HOST=0.0.0.0
+      - MIDDLE_PORT=3001
+      - UPSTREAM_URL=http://aurelius-api:8080
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3000}
+      - MIDDLE_LOG_LEVEL=info
+      - AURELIUS_API_KEY=${AURELIUS_API_KEY:-}
+      - UPLOAD_DIR=/data/uploads
+    volumes:
+      - middle-data:/data
+    depends_on:
+      aurelius-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/healthz', r => process.exit(r.statusCode===200?0:1))"]
+      interval: 15s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    restart: unless-stopped
+    logging: *default-logging
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: deployment/frontend.Dockerfile
+    image: ghcr.io/s3nna13/aurelius-frontend:${TAG:-latest}
+    ports:
+      - "3000:80"
+    environment:
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:3001}
+    depends_on:
+      - middle
+    restart: unless-stopped
+    logging: *default-logging
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    logging: *default-logging
+    profiles:
+      - cache
+
+  gateway:
+    build:
+      context: ../crates/api-gateway
+      dockerfile: Dockerfile
+    image: ghcr.io/s3nna13/aurelius-gateway:${TAG:-latest}
+    ports:
+      - "8081:8080"
+    environment:
+      - GATEWAY_HOST=0.0.0.0
+      - GATEWAY_PORT=8080
+      - UPSTREAM_URL=http://middle:3001
+      - JWT_SECRET=${JWT_SECRET:-}
+      - RATE_LIMIT_RPS=${RATE_LIMIT_RPS:-100}
+      - RATE_LIMIT_BURST=${RATE_LIMIT_BURST:-200}
+    depends_on:
+      middle:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthz"]
+      interval: 15s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    restart: unless-stopped
+    logging: *default-logging
+    profiles:
+      - gateway
+
+volumes:
+  redis-data:
+  middle-data:

@@ -1,112 +1,67 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Cpu, Play, Square, RefreshCw, Loader2, AlertTriangle, Info, Zap } from 'lucide-react'
-import { api } from '../api/AureliusClient'
-import type { ModelInfo } from '../api/types'
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Bot, Download, Trash2, RefreshCw, Cpu, Database, CheckCircle, Globe, Server } from 'lucide-react';
+import { useApi } from '../hooks/useApi';
+import StatsCard from '../components/StatsCard';
+import EmptyState from '../components/EmptyState';
 
-const stateColors: Record<string, string> = {
-  loaded: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-  loading: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
-  unloaded: 'text-[#9e9eb0] bg-[#2d2d44]/20 border-[#2d2d44]/40',
-  error: 'text-rose-400 bg-rose-500/10 border-rose-500/20',
-}
-
-function fmtParams(n: number): string {
-  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-  return `${n}`
-}
+interface ModelInfo { id: string; name?: string; provider: string; loaded: boolean; max_context: number; size?: string; parameters?: string; }
 
 export default function Models() {
-  const [models, setModels] = useState<ModelInfo[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [filter, setFilter] = useState('all');
+  const { data, loading } = useApi<{ models: ModelInfo[] }>('/chat/models', { refreshInterval: 10000 });
+  const models = data?.models || [];
 
-  const fetchModels = useCallback(async () => {
-    try {
-      const res = await api.get('/models') as { models?: ModelInfo[] }
-      setModels(res.models || [])
-      setError(null)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load models')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { fetchModels() }, [fetchModels])
-
-  const toggleModel = async (id: string, currentState: string) => {
-    const newState = currentState === 'loaded' ? 'unloaded' : 'loading'
-    try {
-      await api.post(`/models/${id}/state`, { state: newState })
-      if (newState === 'loading') {
-        setTimeout(async () => {
-          await api.post(`/models/${id}/state`, { state: 'loaded' })
-          fetchModels()
-        }, 1500)
-      }
-      fetchModels()
-    } catch { /* ignore */ }
-  }
-
-  const loadedCount = models.filter((m) => m.state === 'loaded').length
+  const filtered = filter === 'all' ? models : models.filter(m => m.provider === filter);
+  const providers = [...new Set(models.map(m => m.provider))];
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-[#e0e0e0] flex items-center gap-2">
-          <Cpu size={20} className="text-[#4fc3f7]" /> Model Manager
-        </h2>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-[#9e9eb0]">{loadedCount}/{models.length} loaded</span>
-          <button onClick={fetchModels} disabled={loading} className="aurelius-btn-outline flex items-center gap-1.5 text-sm disabled:opacity-50">
-            {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} Refresh
-          </button>
-        </div>
+      <h2 className="text-lg font-bold text-[#e0e0e0] flex items-center gap-2"><Bot size={20} className="text-[#4fc3f7]" />Model Hub</h2>
+
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <StatsCard label="Total Models" value={models.length} icon={Database} color="text-[#4fc3f7]" />
+        <StatsCard label="Aurelius" value={models.filter(m => m.provider === 'aurelius').length} icon={Server} color="text-emerald-400" />
+        <StatsCard label="OpenAI" value={models.filter(m => m.provider === 'openai').length} icon={Globe} color="text-amber-400" />
+        <StatsCard label="Loaded" value={models.filter(m => m.loaded).length} icon={Cpu} color="text-violet-400" />
+        <StatsCard label="Max Context" value={`${Math.max(...models.map(m => m.max_context))}`} icon={CheckCircle} color="text-cyan-400" />
       </div>
 
-      {error && <div className="aurelius-card border-rose-500/30 bg-rose-500/5 text-rose-300 text-sm flex items-center gap-2"><AlertTriangle size={16} />{error}</div>}
+      <div className="flex gap-2">
+        <button onClick={() => setFilter('all')} className={`text-xs px-3 py-1.5 rounded-lg ${filter === 'all' ? 'bg-[#4fc3f7]/10 text-[#4fc3f7] border border-[#4fc3f7]/20' : 'text-[#9e9eb0] hover:text-[#e0e0e0]'}`}>All</button>
+        {providers.map(p => (
+          <button key={p} onClick={() => setFilter(p)} className={`text-xs px-3 py-1.5 rounded-lg capitalize ${filter === p ? 'bg-[#4fc3f7]/10 text-[#4fc3f7] border border-[#4fc3f7]/20' : 'text-[#9e9eb0] hover:text-[#e0e0e0]'}`}>{p}</button>
+        ))}
+      </div>
 
-      {loading && models.length === 0 ? (
-        <div className="aurelius-card text-center py-12 text-[#9e9eb0]"><Loader2 size={32} className="mx-auto mb-3 animate-spin opacity-60" /><p>Loading models...</p></div>
-      ) : models.length === 0 ? (
-        <div className="aurelius-card text-center py-12 text-[#9e9eb0]"><Cpu size={32} className="mx-auto mb-3 opacity-40" /><p>No models found.</p></div>
-      ) : (
-        <div className="grid gap-4">
-          {models.map((m) => (
-            <div key={m.id} className="aurelius-card flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${stateColors[m.state] || stateColors.unloaded}`}>
-                  {m.state === 'loaded' ? <Zap size={18} /> : <Cpu size={18} />}
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-[#e0e0e0]">{m.name}</h3>
-                  <p className="text-xs text-[#9e9eb0]">{m.description}</p>
-                  <div className="flex items-center gap-3 mt-1">
-                    <span className="text-[10px] text-[#9e9eb0]/60">{fmtParams(m.parameterCount)} params</span>
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${stateColors[m.state] || stateColors.unloaded}`}>{m.state}</span>
-                    {m.loadedAt && <span className="text-[10px] text-[#9e9eb0]/60">Loaded: {new Date(m.loadedAt).toLocaleTimeString()}</span>}
-                  </div>
+      {filtered.length === 0 && !loading && <EmptyState icon={Bot} title="No Models" description="Models will appear here when providers are configured." />}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {filtered.map(model => (
+          <motion.div key={model.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="aurelius-card p-4">
+            <div className="flex items-center gap-3 mb-3">
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${model.provider === 'aurelius' ? 'bg-emerald-500/10' : 'bg-amber-500/10'}`}>
+                {model.provider === 'aurelius' ? <Server size={16} className="text-emerald-400" /> : <Globe size={16} className="text-amber-400" />}
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-sm font-medium text-[#e0e0e0] truncate">{model.id}</h3>
+                <div className="flex items-center gap-2 text-[10px] text-[#9e9eb0]">
+                  <span className={`capitalize ${model.provider === 'aurelius' ? 'text-emerald-400' : 'text-amber-400'}`}>{model.provider}</span>
+                  <span>·</span>
+                  <span>{model.max_context.toLocaleString()} ctx</span>
                 </div>
               </div>
-              <button
-                onClick={() => toggleModel(m.id, m.state)}
-                disabled={m.state === 'loading'}
-                className={`aurelius-btn-outline flex items-center gap-1.5 text-sm disabled:opacity-50 ${m.state === 'loaded' ? 'text-rose-400 border-rose-500/20 hover:bg-rose-500/10' : 'text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/10'}`}
-              >
-                {m.state === 'loading' ? <Loader2 size={14} className="animate-spin" /> : m.state === 'loaded' ? <Square size={14} /> : <Play size={14} />}
-                {m.state === 'loaded' ? 'Unload' : m.state === 'loading' ? 'Loading...' : 'Load'}
-              </button>
+              {model.loaded && <CheckCircle size={14} className="text-emerald-400 shrink-0" />}
             </div>
-          ))}
-        </div>
-      )}
-
-      <div className="aurelius-card text-xs text-[#9e9eb0] flex items-start gap-2">
-        <Info size={14} className="shrink-0 mt-0.5" />
-        <p>Model states are simulated. To run actual inference, start the Python model server separately on port 8080 and the gateway will proxy requests.</p>
+            <div className="flex gap-2">
+              <span className={`text-[10px] px-2 py-0.5 rounded-full ${model.loaded ? 'text-emerald-400 bg-emerald-500/10' : 'text-[#9e9eb0] bg-[#0f0f1a]'}`}>
+                {model.loaded ? 'Loaded' : 'Available'}
+              </span>
+              <span className="text-[10px] text-[#9e9eb0] bg-[#0f0f1a] px-2 py-0.5 rounded-full capitalize">{model.provider}</span>
+            </div>
+          </motion.div>
+        ))}
       </div>
     </div>
-  )
+  );
 }

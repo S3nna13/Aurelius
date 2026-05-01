@@ -1,54 +1,18 @@
-"""Quantization utilities for Aurelius."""
+"""Aurelius quantization package.
 
-from __future__ import annotations
+Post-training quantization tools for inference optimization.
+"""
 
-from .awq_quantizer import (
-    QUANTIZATION_REGISTRY,
-    AWQConfig,
-    AWQQuantizer,
-    AWQScaleSearch,
-)
-from .bnb_emulation import (
-    BnBConfig,
-    BnBQuantizer,
-    OutlierDetector,
-)
-from .gptq_calibration import (
-    CalibrationStats,
-    GPTQCalibrator,
-    GPTQConfig,
-)
-from .mixed_precision_planner import (
-    LayerSensitivity,
-    MixedPrecisionPlan,
-    MixedPrecisionPlanner,
-)
-from .quantization_aware_training import (
-    FakeQuantize,
-    QATConfig,
-    QATWrapper,
-)
+from src.quantization import quantize as _quantize
+
+QuantMode = _quantize.QuantMode
+quantize = _quantize.quantize
+load_quantized = _quantize.load_quantized
+estimate_memory = _quantize.estimate_memory
 
 __all__ = [
-    # GPTQ calibration
-    "GPTQConfig",
-    "CalibrationStats",
-    "GPTQCalibrator",
-    # Mixed-precision planning
-    "LayerSensitivity",
-    "MixedPrecisionPlan",
-    "MixedPrecisionPlanner",
-    # AWQ
-    "AWQConfig",
-    "AWQScaleSearch",
-    "AWQQuantizer",
-    "QUANTIZATION_REGISTRY",
-    # BnB emulation
-    "BnBConfig",
-    "OutlierDetector",
-    "BnBQuantizer",
-    # QAT
-    "QATConfig",
-    "FakeQuantize",
-    "QATWrapper",
+    "QuantMode",
+    "quantize",
+    "load_quantized",
+    "estimate_memory",
 ]

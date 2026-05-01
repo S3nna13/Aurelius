@@ -16,7 +16,6 @@ interface ToastContextValue {
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function useToast(): ToastContextValue {
   const ctx = useContext(ToastContext);
   if (!ctx) throw new Error('useToast must be used within ToastProvider');
@@ -39,12 +38,12 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
   const timersRef = useRef<Record<string, number>>({});
   const pausedRef = useRef<Record<string, boolean>>({});
 
-  const remove = (id: string) => {
+  const remove = useCallback((id: string) => {
     window.clearTimeout(timersRef.current[id]);
     delete timersRef.current[id];
     delete pausedRef.current[id];
     setToasts((prev) => prev.filter((t) => t.id !== id));
-  };
+  }, []);
 
   const toast = useCallback((message: string, type: ToastType = 'info') => {
     const id = `toast-${++toastIdCounter}-${Date.now()}`;
@@ -62,7 +61,7 @@ export default function ToastProvider({ children }: { children: ReactNode }) {
     timersRef.current[id] = window.setTimeout(() => {
       remove(id);
     }, TOAST_DURATION);
-  }, []);
+  }, [remove]);
 
   const handleMouseEnter = (id: string) => {
     pausedRef.current[id] = true;

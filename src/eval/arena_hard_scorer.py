@@ -343,7 +343,7 @@ class ArenaHardScorer:
         if n_bootstrap < 1:
             raise ValueError("n_bootstrap must be >= 1")
 
-        rng = random.Random(seed)
+        rng = random.Random(seed)  # noqa: S311
         comps = list(comparisons)
 
         # Point estimate on the full set, for anchor "mean".

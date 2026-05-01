@@ -1,4 +1,4 @@
-"""Aurelius — Decoder-only transformer with GQA, SwiGLU, RoPE, and RMSNorm."""
+"""Aurelius — Decoder-only transformer with GQA/CSA/HCA, SwiGLU, RoPE, and RMSNorm."""
 
 from __future__ import annotations
 
@@ -10,18 +10,76 @@ from torch.utils.checkpoint import checkpoint as ckpt
 from .attention import GroupedQueryAttention, precompute_rope_frequencies, yarn_rope_frequencies
 from .config import AureliusConfig
 from .ffn import SwiGLUFFN
+from .moe import SparseMoELayer
 from .rms_norm import RMSNorm
 
 
-class TransformerBlock(nn.Module):
-    """Single decoder layer: pre-norm attention + pre-norm FFN with residuals."""
+def _build_attention(config: AureliusConfig, layer_idx: int, n_layers: int) -> nn.Module:
+    if config.mla_enabled:
+        from .mla_wrapper import MLACompatibleAttention
 
-    def __init__(self, config: AureliusConfig) -> None:
+        return MLACompatibleAttention(config)
+
+    if not config.hybrid_attention_enabled:
+        return GroupedQueryAttention(config)
+
+    from .csa_attention import CompressedSparseAttention
+    from .hca_attention import HeavilyCompressedAttention
+
+    if layer_idx < 2:
+        return GroupedQueryAttention(config)
+
+    layer_offset = layer_idx - 2
+    if layer_offset % 2 == 0:
+        return CompressedSparseAttention(config)
+    else:
+        return HeavilyCompressedAttention(config)
+
+
+class TransformerBlock(nn.Module):
+    """Single decoder layer: pre-norm attention + pre-norm FFN with residuals.
+
+    Supports standard GQA, CSA, and HCA attention types.
+    Supports standard residuals or mHC-enhanced residual connections.
+    Supports dense FFN or SparseMoE FFN.
+    """
+
+    def __init__(self, config: AureliusConfig, layer_idx: int = 0, n_layers: int = 24) -> None:
         super().__init__()
-        self.attn = GroupedQueryAttention(config)
+        self.config = config
+        self.layer_idx = layer_idx
+
+        self.attn = _build_attention(config, layer_idx, n_layers)
         self.attn_norm = RMSNorm(config.d_model, eps=config.rms_norm_eps)
         self.ffn_norm = RMSNorm(config.d_model, eps=config.rms_norm_eps)
-        self.ffn = SwiGLUFFN(config)
+
+        use_moe = config.moe_enabled and (
+            config.moe_every_n_layers > 0 and layer_idx % config.moe_every_n_layers == 0
+        )
+        if use_moe:
+            self.ffn = SparseMoELayer(
+                config.d_model,
+                config.d_ff,
+                config.moe_num_experts,
+                config.moe_top_k,
+            )
+        else:
+            self.ffn = SwiGLUFFN(config)
+
+        self.use_mhc = config.mhc_enabled
+        if self.use_mhc:
+            from .mhc import ManifoldConstrainedHyperConnection
+
+            self.mhc_attn = ManifoldConstrainedHyperConnection(
+                config.d_model,
+                config.mhc_expansion_factor,
+                config.mhc_sinkhorn_iterations,
+            )
+            self.mhc_ffn = ManifoldConstrainedHyperConnection(
+                config.d_model,
+                config.mhc_expansion_factor,
+                config.mhc_sinkhorn_iterations,
+            )
 
     def forward(
         self,
@@ -29,11 +87,36 @@ class TransformerBlock(nn.Module):
         freqs_cis: torch.Tensor,
         mask: torch.Tensor | None = None,
         past_kv: tuple[torch.Tensor, torch.Tensor] | None = None,
-    ) -> tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
-        attn_out, kv = self.attn(self.attn_norm(x), freqs_cis, mask, past_kv)
-        x = x + attn_out
-        x = x + self.ffn(self.ffn_norm(x))
-        return x, kv
+    ) -> tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor], torch.Tensor]:
+        if self.use_mhc:
+            attn_result = self.mhc_attn(x, self.attn, freqs_cis, mask, past_kv)
+            if isinstance(attn_result, tuple):
+                x, kv = attn_result
+            else:
+                x = attn_result
+                kv = None
+        else:
+            attn_out, kv = self.attn(self.attn_norm(x), freqs_cis, mask, past_kv)
+            x = x + attn_out
+
+        if isinstance(self.ffn, SparseMoELayer):
+            if self.use_mhc:
+                ffn_result = self.mhc_ffn(x, self.ffn)
+                if isinstance(ffn_result, tuple):
+                    x, aux_loss = ffn_result
+                    return x, kv, aux_loss
+                x = ffn_result
+                aux_loss = x.new_zeros(())
+            else:
+                x, aux_loss = self.ffn(self.ffn_norm(x))
+        else:
+            if self.use_mhc:
+                x = self.mhc_ffn(x, self.ffn)
+            else:
+                x = x + self.ffn(self.ffn_norm(x))
+            aux_loss = x.new_zeros(())
+
+        return x, kv, aux_loss
 
 
 class AureliusTransformer(nn.Module):
@@ -52,13 +135,17 @@ class AureliusTransformer(nn.Module):
     def __init__(self, config: AureliusConfig | None = None) -> None:
         super().__init__()
         self.config = config or AureliusConfig()
+        self.last_moe_aux_loss = torch.tensor(0.0)
 
         # Token embedding
         self.embed = nn.Embedding(self.config.vocab_size, self.config.d_model)
 
-        # Transformer blocks
+        # Transformer blocks (with MoE support per layer)
         self.layers = nn.ModuleList(
-            [TransformerBlock(self.config) for _ in range(self.config.n_layers)]
+            [
+                TransformerBlock(self.config, layer_idx=i, n_layers=self.config.n_layers)
+                for i in range(self.config.n_layers)
+            ]
         )
 
         # Final norm
@@ -66,6 +153,18 @@ class AureliusTransformer(nn.Module):
 
         # Output head (tied with embedding)
         self.lm_head = nn.Linear(self.config.d_model, self.config.vocab_size, bias=False)
+
+        # Multi-Token Prediction (MTP)
+        self.mtp: nn.Module | None = None
+        if self.config.mtp_enabled:
+            from .mtp import MTPModule
+
+            self.mtp = MTPModule(
+                d_model=self.config.d_model,
+                vocab_size=self.config.vocab_size,
+                n_predict=self.config.mtp_n_predict,
+                share_params=self.config.mtp_share_params,
+            )
         if self.config.tie_embeddings:
             self.lm_head.weight = self.embed.weight
 
@@ -140,21 +239,23 @@ class AureliusTransformer(nn.Module):
             )
 
         present_key_values: list[tuple[torch.Tensor, torch.Tensor]] = []
+        moe_aux_loss = torch.tensor(0.0, device=x.device)
         for i, layer in enumerate(self.layers):
             past_kv = past_key_values[i] if past_key_values is not None else None
             if self.config.use_gradient_checkpointing and self.training:
-                # checkpoint needs all inputs as tensors; pass past_kv as None (no cache during training ckpt)  # noqa: E501
+
                 def make_ckpt_fn(item):
                     def fn(x, freqs_cis, mask):
-                        out, kv = item(x, freqs_cis, mask, None)  # noqa: E741
-                        return out, kv[0], kv[1]
+                        out, kv, aux = item(x, freqs_cis, mask, None)  # noqa: E741
+                        return out, kv[0], kv[1], aux
 
                     return fn
 
-                x, k, v = ckpt(make_ckpt_fn(layer), x, freqs_cis, mask, use_reentrant=False)
+                x, k, v, aux = ckpt(make_ckpt_fn(layer), x, freqs_cis, mask, use_reentrant=False)
                 kv = (k, v)
             else:
-                x, kv = layer(x, freqs_cis, mask, past_kv)
+                x, kv, aux = layer(x, freqs_cis, mask, past_kv)
+            moe_aux_loss = moe_aux_loss + aux
             present_key_values.append(kv)
 
         x = self.norm(x)
@@ -164,10 +265,19 @@ class AureliusTransformer(nn.Module):
         if labels is not None:
             shift_logits = logits[:, :-1, :].contiguous()
             shift_labels = labels[:, 1:].contiguous()
-            loss = F.cross_entropy(
+            ce_loss = F.cross_entropy(
                 shift_logits.view(-1, self.config.vocab_size),
                 shift_labels.view(-1),
             )
+            loss = ce_loss + 0.01 * moe_aux_loss
+
+            # Multi-Token Prediction auxiliary loss
+            if self.mtp is not None:
+                mtp_loss = self.mtp.compute_loss(x, labels)
+                loss = loss + self.config.mtp_loss_weight * mtp_loss
+
+        # Store aux loss for external monitoring (e.g., trainer logging)
+        self.last_moe_aux_loss = moe_aux_loss.detach()
 
         return loss, logits, present_key_values
 
@@ -179,15 +289,22 @@ class AureliusTransformer(nn.Module):
         temperature: float = 1.0,
         top_p: float = 0.9,
         eos_token_id: int | None = None,
+        reasoning_budget: int | None = None,
+        think_token_id: int = 50400,
     ) -> torch.Tensor:
         """Autoregressive generation with top-p nucleus sampling and KV cache.
+
+        Supports reasoning budget control (Nemotron 3): when reasoning_budget
+        is set and the budget is reached, appends </think> and continues.
 
         Args:
             input_ids: (batch, prompt_len) — prompt token ids.
             max_new_tokens: Maximum tokens to generate.
             temperature: Sampling temperature (1.0 = no scaling).
             top_p: Nucleus sampling threshold.
-            eos_token_id: Stop generation when this token is produced (all sequences).
+            eos_token_id: Stop generation when this token is produced.
+            reasoning_budget: Max reasoning tokens before forced </think>.
+            think_token_id: Token id for </think>.
 
         Returns:
             (batch, prompt_len + generated_len) token ids.
@@ -195,30 +312,32 @@ class AureliusTransformer(nn.Module):
         B, _ = input_ids.shape
         past_key_values = None
         cur_ids = input_ids
+        think_tokens = 0
+        think_closed = False
 
-        for _ in range(max_new_tokens):
+        for step in range(max_new_tokens):
             _, logits, past_key_values = self(cur_ids, past_key_values=past_key_values)
-            next_logits = logits[:, -1, :]  # (B, vocab)
+            next_logits = logits[:, -1, :]
 
-            # Temperature scaling
             if temperature != 1.0:
                 next_logits = next_logits / temperature
 
-            # Top-p nucleus sampling (batch-correct)
-            # Sort ASCENDING so cumsum is left-to-right from smallest probability
             sorted_logits, sorted_indices = torch.sort(next_logits, descending=False)
             cumulative_probs = sorted_logits.softmax(dim=-1).cumsum(dim=-1)
-            # Remove tokens that push cumulative prob above (1 - top_p)
             sorted_mask = cumulative_probs <= (1.0 - top_p)
-            # Always keep at least the top-1 token
             sorted_mask[..., -1:] = False
-            # Scatter mask back to original vocabulary ordering
             mask = sorted_mask.scatter(1, sorted_indices, sorted_mask)
             next_logits = next_logits.masked_fill(mask, float("-inf"))
 
-            next_token = torch.multinomial(next_logits.softmax(dim=-1), num_samples=1)  # (B, 1)
+            next_token = torch.multinomial(next_logits.softmax(dim=-1), num_samples=1)
 
-            cur_ids = next_token  # next step: only the new token (cache handles context)
+            if reasoning_budget is not None and not think_closed:
+                think_tokens += 1
+                if think_tokens >= reasoning_budget:
+                    next_token = torch.full_like(next_token, think_token_id)
+                    think_closed = True
+
+            cur_ids = next_token
             input_ids = torch.cat([input_ids, next_token], dim=1)
 
             if eos_token_id is not None and (next_token == eos_token_id).all():

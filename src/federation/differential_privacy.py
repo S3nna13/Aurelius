@@ -34,7 +34,7 @@ class DifferentialPrivacy:
     ) -> None:
         self.epsilon = epsilon
         self.delta = delta
-        self._rng = random.Random(seed)
+        self._rng = random.Random(seed)  # noqa: S311
         self._budget = PrivacyBudget(epsilon=epsilon, delta=delta)
 
     def clip_gradient(self, gradient: list[float], max_norm: float = 1.0) -> list[float]:

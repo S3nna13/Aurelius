@@ -270,7 +270,7 @@ def _kmeans(
     """
     import random
 
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # noqa: S311
     n = len(points)
     k = min(k, n)
 

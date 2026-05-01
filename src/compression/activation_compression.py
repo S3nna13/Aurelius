@@ -57,7 +57,7 @@ class ActivationCompressor:
         elif method == SparsificationMethod.RANDOM_DROPOUT:
             import random
 
-            rng = random.Random(42)
+            rng = random.Random(42)  # noqa: S311
             return [v if rng.random() > self.default_sparsity else 0.0 for v in activations]
         return list(activations)
 

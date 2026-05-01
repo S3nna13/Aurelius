@@ -57,7 +57,7 @@ def generate_random_graph(cfg: GraphConfig) -> dict[str, list[str]]:
     Each directed edge exists with probability cfg.edge_density.
     Self-loops are excluded.
     """
-    rng = random.Random(cfg.seed)
+    rng = random.Random(cfg.seed)  # noqa: S311
 
     nodes: list[str] = []
     seen: set[str] = set()
@@ -129,7 +129,7 @@ def generate_graph_problem(
 ) -> GraphProblem:
     """Generate a random graph problem (BFS or parents)."""
     if rng is None:
-        rng = random.Random(cfg.seed)
+        rng = random.Random(cfg.seed)  # noqa: S311
 
     graph = generate_random_graph(cfg)
     nodes = list(graph.keys())
@@ -171,7 +171,7 @@ def generate_graph_dataset(
     seed: int = 42,
 ) -> list[GraphProblem]:
     """Generate n_problems with a fixed seed for reproducibility."""
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # noqa: S311
     return [generate_graph_problem(cfg, rng=rng) for _ in range(n_problems)]
 
 
@@ -239,7 +239,7 @@ class GraphReasoningTrainer:
         self.graph_cfg = graph_cfg
         self.trainer_cfg = trainer_cfg
         self.tokenizer_encode = tokenizer_encode
-        self._rng = random.Random()
+        self._rng = random.Random()  # noqa: S311
 
     def generate_batch(self, n: int) -> list[GraphProblem]:
         """Generate n fresh graph problems."""

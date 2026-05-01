@@ -1,0 +1,98 @@
+name: Rust
+
+on:
+  push:
+    paths:
+      - 'crates/**'
+      - 'tools/**'
+      - 'Cargo.lock'
+    branches:
+      - 'main'
+      - 'cycle/*'
+      - 'feat/*'
+  pull_request:
+    paths:
+      - 'crates/**'
+      - 'tools/**'
+    branches:
+      - 'main'
+
+jobs:
+  build:
+    name: Build and lint
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        crate:
+          - crates/data-engine
+          - crates/token-counter
+          - crates/session-manager
+          - crates/search-index
+          - crates/redis-client
+          - crates/text-processor
+          - crates/vector-similarity
+          - crates/prompt-templates
+          - crates/json-validator
+          - crates/uuid-gen
+          - crates/api-gateway
+          - tools/data-cli
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ${{ matrix.crate }}
+
+      - name: Check formatting
+        run: cargo fmt --all --check
+        working-directory: ${{ matrix.crate }}
+
+      - name: Run clippy
+        run: cargo clippy -- -D warnings
+        working-directory: ${{ matrix.crate }}
+
+      - name: Build
+        run: cargo build
+        working-directory: ${{ matrix.crate }}
+
+  napi-crates:
+    name: NAPI build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        crate:
+          - crates/data-engine
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ${{ matrix.crate }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ${{ matrix.crate }}
+
+      - name: Build NAPI crate
+        run: npm run build
+        working-directory: ${{ matrix.crate }}

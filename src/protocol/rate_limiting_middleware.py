@@ -21,7 +21,7 @@ from enum import StrEnum
 
 
 class RateLimitAlgorithm(StrEnum):
-    TOKEN_BUCKET = "token_bucket"
+    TOKEN_BUCKET = "token_bucket"  # noqa: S105
     FIXED_WINDOW = "fixed_window"
     SLIDING_LOG = "sliding_log"
 

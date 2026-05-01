@@ -251,3 +251,32 @@ __all__ += [
     "CONVERSATION_LOGGER_REGISTRY",
     "ConversationLogger",
 ]
+
+# --- unified persona aliases (lazy-loaded to avoid circular imports) ---------
+_LAZY_PERSONA_EXPORTS = {
+    "AURELIUS_GENERAL": ("src.persona", "AURELIUS_GENERAL"),
+    "AURELIUS_CODING": ("src.persona", "AURELIUS_CODING"),
+    "AURELIUS_TEACHER": ("src.persona", "AURELIUS_TEACHER"),
+    "AURELIUS_ANALYST": ("src.persona", "AURELIUS_ANALYST"),
+    "AURELIUS_CREATIVE": ("src.persona", "AURELIUS_CREATIVE"),
+    "AURELIUS_REDTEAM": ("src.persona", "AURELIUS_REDTEAM"),
+    "AURELIUS_BLUETEAM": ("src.persona", "AURELIUS_BLUETEAM"),
+    "AURELIUS_PURPLETEAM": ("src.persona", "AURELIUS_PURPLETEAM"),
+    "AURELIUS_THREATINTEL": ("src.persona", "AURELIUS_THREATINTEL"),
+    "UnifiedPersona": ("src.persona", "UnifiedPersona"),
+    "UnifiedPersonaRegistry": ("src.persona", "UnifiedPersonaRegistry"),
+    "PersonaRouter": ("src.persona", "PersonaRouter"),
+    "PromptComposer": ("src.persona", "PromptComposer"),
+}
+
+__all__ += list(_LAZY_PERSONA_EXPORTS)
+
+
+def __getattr__(name: str):
+    if name not in _LAZY_PERSONA_EXPORTS:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    module_path, attr_name = _LAZY_PERSONA_EXPORTS[name]
+    module = __import__(module_path, fromlist=[attr_name])
+    value = getattr(module, attr_name)
+    globals()[name] = value
+    return value

@@ -64,8 +64,8 @@ class ToolformerConfig:
         Optional RNG seed for reproducible sampling.
     """
 
-    api_token: str = "[API("
-    close_token: str = ")]"
+    api_token: str = "[API("  # noqa: S105
+    close_token: str = ")]"  # noqa: S105
     result_sep: str = " -> "
     utility_threshold: float = 0.1
     max_candidates_per_position: int = 1

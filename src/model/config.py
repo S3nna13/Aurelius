@@ -61,9 +61,56 @@ class AureliusConfig:
     # Training efficiency
     use_gradient_checkpointing: bool = False
 
+    # MoE (Mixture of Experts)
+    moe_enabled: bool = False
+    moe_num_experts: int = 8
+    moe_top_k: int = 2
+    moe_every_n_layers: int = 2
+    moe_capacity_factor: float = 1.25
+    moe_jitter_noise: float = 0.0
+
+    # Multi-Token Prediction (MTP)
+    mtp_enabled: bool = False
+    mtp_n_predict: int = 2
+    mtp_share_params: bool = True
+    mtp_loss_weight: float = 0.3
+
     # Context extension (moved from boolean-per-strategy to a single field)
     context_extension_strategy: str = "none"
     context_target_len: int = 8192
+
+    # Hybrid Attention (CSA/HCA) — DeepSeek-V4 style
+    hybrid_attention_enabled: bool = False
+    attention_compression_rate_csa: int = 4
+    attention_compression_rate_hca: int = 128
+    attention_num_indexer_heads: int = 64
+    attention_indexer_head_dim: int = 128
+    attention_top_k: int = 512
+    attention_num_query_heads_csa: int = 64
+    attention_num_query_heads_hca: int = 64
+    attention_query_compression_dim: int = 1024
+    attention_output_projection_groups: int = 8
+    attention_intermediate_output_dim: int = 1024
+    attention_sliding_window_size: int = 128
+    attention_partial_rope_dim: int = 64
+    attention_num_sink_tokens: int = 4
+
+    # mHC (Manifold-Constrained Hyper-Connections)
+    mhc_enabled: bool = False
+    mhc_expansion_factor: int = 4
+    mhc_sinkhorn_iterations: int = 20
+
+    # MLA (Multi-head Latent Attention)
+    mla_enabled: bool = False
+    mla_kv_lrank: int = 512
+    mla_q_lrank: int = 1536
+    mla_rope_dim: int = 64
+
+    # FP8 training
+    fp8_training_enabled: bool = False
+    fp8_activation_quant_tile: int = 128
+    fp8_weight_quant_block: int = 128
+    fp8_accumulation_promotion_interval: int = 128
 
     # --- Backward-compatible feature-flag aliases -------------------------
     # These delegate to FeatureFlagRegistry. Do NOT add new ones here;
@@ -311,6 +358,226 @@ class AureliusConfig:
     @property
     def model_merging_enabled(self) -> bool:
         return FEATURE_FLAG_REGISTRY.is_enabled("model.merging")
+
+    @classmethod
+    def aurelius_1_3b(cls) -> "AureliusConfig":
+        """Default 1.3B dense config."""
+        return cls()
+
+    @classmethod
+    def aurelius_2_7b(cls) -> "AureliusConfig":
+        """2.7B dense: 32 layers, d_model=2560, GQA 20:5."""
+        return cls(
+            d_model=2560,
+            n_layers=32,
+            n_heads=20,
+            n_kv_heads=5,
+            head_dim=128,
+            d_ff=7168,
+            vocab_size=128000,
+            max_seq_len=8192,
+            rope_theta=500_000.0,
+            rms_norm_eps=1e-6,
+            dropout=0.0,
+            tie_embeddings=True,
+        )
+
+    @classmethod
+    def aurelius_3b(cls) -> "AureliusConfig":
+        """3B dense: 32 layers, d_model=2560, GQA 20:5, wider FFN."""
+        return cls(
+            d_model=2560,
+            n_layers=34,
+            n_heads=20,
+            n_kv_heads=5,
+            head_dim=128,
+            d_ff=8192,
+            vocab_size=128000,
+            max_seq_len=16384,
+            rope_theta=500_000.0,
+            rms_norm_eps=1e-6,
+            dropout=0.1,
+            tie_embeddings=True,
+        )
+
+    @classmethod
+    def aurelius_3b_moe(cls) -> "AureliusConfig":
+        """3B MoE: 32 layers, 8 experts, top-2, every 2 layers."""
+        return cls(
+            d_model=2048,
+            n_layers=32,
+            n_heads=16,
+            n_kv_heads=8,
+            head_dim=128,
+            d_ff=5632,
+            vocab_size=128000,
+            max_seq_len=16384,
+            rope_theta=500_000.0,
+            rms_norm_eps=1e-6,
+            dropout=0.1,
+            tie_embeddings=True,
+            moe_enabled=True,
+            moe_num_experts=8,
+            moe_top_k=2,
+            moe_every_n_layers=2,
+        )
+
+    @classmethod
+    def aurelius_7b(cls) -> "AureliusConfig":
+        """7B dense: 36 layers, d_model=3584, GQA 28:4."""
+        return cls(
+            d_model=3584,
+            n_layers=36,
+            n_heads=28,
+            n_kv_heads=4,
+            head_dim=128,
+            d_ff=10240,
+            vocab_size=128000,
+            max_seq_len=32768,
+            rope_theta=500_000.0,
+            rms_norm_eps=1e-6,
+            dropout=0.1,
+            tie_embeddings=True,
+        )
+
+    @classmethod
+    def aurelius_7b_moe(cls) -> "AureliusConfig":
+        """7B MoE: 32 layers, 16 experts, top-4."""
+        return cls(
+            d_model=2560,
+            n_layers=32,
+            n_heads=20,
+            n_kv_heads=5,
+            head_dim=128,
+            d_ff=7168,
+            vocab_size=128000,
+            max_seq_len=32768,
+            rope_theta=500_000.0,
+            rms_norm_eps=1e-6,
+            dropout=0.1,
+            tie_embeddings=True,
+            moe_enabled=True,
+            moe_num_experts=16,
+            moe_top_k=4,
+            moe_every_n_layers=1,
+        )
+
+    @classmethod
+    def aurelius_3b_original(cls) -> "AureliusConfig":
+        """3.0B dense: 28 layers, d_model=3072, GQA 24:6 (original)."""
+        return cls(
+            d_model=3072,
+            n_layers=28,
+            n_heads=24,
+            n_kv_heads=6,
+            head_dim=128,
+            d_ff=8192,
+            vocab_size=128000,
+            max_seq_len=4096,
+            rope_theta=500_000.0,
+            rms_norm_eps=1e-6,
+            dropout=0.0,
+            tie_embeddings=True,
+        )
+
+    @classmethod
+    def aurelius_moe_5b(cls) -> "AureliusConfig":
+        """5-6B MoE: 24 layers, d_model=2048, 8 experts, top-2."""
+        return cls(
+            d_model=2048,
+            n_layers=24,
+            n_heads=16,
+            n_kv_heads=8,
+            head_dim=128,
+            d_ff=5632,
+            vocab_size=128000,
+            max_seq_len=8192,
+            rope_theta=500_000.0,
+            rms_norm_eps=1e-6,
+            dropout=0.0,
+            tie_embeddings=True,
+            moe_enabled=True,
+            moe_num_experts=8,
+            moe_top_k=2,
+            moe_every_n_layers=2,
+            moe_capacity_factor=1.25,
+        )
+
+    @classmethod
+    def aurelius_flash_284b(cls) -> "AureliusConfig":
+        """284B Flash config: 43 layers, d_model=4096, CSA/HCA hybrid, 256 MoE experts."""
+        return cls(
+            d_model=4096,
+            n_layers=43,
+            n_heads=32,
+            n_kv_heads=8,
+            head_dim=128,
+            d_ff=11264,
+            vocab_size=128000,
+            max_seq_len=1_000_000,
+            rope_theta=500_000.0,
+            rms_norm_eps=1e-6,
+            dropout=0.0,
+            tie_embeddings=True,
+            moe_enabled=True,
+            moe_num_experts=256,
+            moe_top_k=6,
+            moe_every_n_layers=1,
+            moe_capacity_factor=1.25,
+            moe_jitter_noise=0.0,
+            hybrid_attention_enabled=True,
+            attention_compression_rate_csa=4,
+            attention_compression_rate_hca=128,
+            attention_top_k=512,
+            attention_num_query_heads_csa=64,
+            attention_num_query_heads_hca=64,
+            attention_query_compression_dim=1024,
+            attention_output_projection_groups=8,
+            attention_intermediate_output_dim=1024,
+            attention_sliding_window_size=128,
+            attention_partial_rope_dim=64,
+            mhc_enabled=True,
+            mhc_expansion_factor=4,
+            mhc_sinkhorn_iterations=20,
+        )
+
+    @classmethod
+    def aurelius_pro_1_6t(cls) -> "AureliusConfig":
+        """1.6T Pro config: 61 layers, d_model=7168, CSA/HCA hybrid, 384 MoE experts."""
+        return cls(
+            d_model=7168,
+            n_layers=61,
+            n_heads=56,
+            n_kv_heads=8,
+            head_dim=128,
+            d_ff=18432,
+            vocab_size=128000,
+            max_seq_len=1_000_000,
+            rope_theta=500_000.0,
+            rms_norm_eps=1e-6,
+            dropout=0.0,
+            tie_embeddings=True,
+            moe_enabled=True,
+            moe_num_experts=384,
+            moe_top_k=6,
+            moe_every_n_layers=1,
+            moe_capacity_factor=1.25,
+            moe_jitter_noise=0.0,
+            hybrid_attention_enabled=True,
+            attention_compression_rate_csa=4,
+            attention_compression_rate_hca=128,
+            attention_top_k=1024,
+            attention_num_query_heads_csa=128,
+            attention_num_query_heads_hca=128,
+            attention_query_compression_dim=1536,
+            attention_output_projection_groups=16,
+            attention_intermediate_output_dim=1024,
+            attention_sliding_window_size=128,
+            attention_partial_rope_dim=64,
+            mhc_enabled=True,
+            mhc_expansion_factor=4,
+            mhc_sinkhorn_iterations=20,
+        )
 
     def __post_init__(self) -> None:
         assert self.d_model == self.n_heads * self.head_dim, (  # noqa: S101

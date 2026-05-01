@@ -70,22 +70,22 @@ def generate_arithmetic_example(n_steps: int = 3, max_val: int = 100) -> CoTExam
     Returns:
         CoTExample with question, step-by-step scratchpad, and numeric answer.
     """
-    name = random.choice(_NAMES)
-    obj = random.choice(_OBJECTS)
-    current = random.randint(1, max_val)
+    name = random.choice(_NAMES)  # noqa: S311
+    obj = random.choice(_OBJECTS)  # noqa: S311
+    current = random.randint(1, max_val)  # noqa: S311
 
     question_parts = [f"{name} has {current} {obj}."]
     steps: list[str] = []
 
     for _ in range(n_steps):
-        op = random.choice(["add", "sub"])
+        op = random.choice(["add", "sub"])  # noqa: S311
         if op == "add":
-            operand = random.randint(1, max_val)
+            operand = random.randint(1, max_val)  # noqa: S311
             new_val = current + operand
             question_parts.append(f"She gets {operand} more {obj}.")
             steps.append(_make_step_text(current, "add", operand, new_val, obj))
         else:
-            operand = random.randint(1, max(1, current))
+            operand = random.randint(1, max(1, current))  # noqa: S311
             new_val = current - operand
             question_parts.append(f"She gives away {operand} {obj}.")
             steps.append(_make_step_text(current, "sub", operand, new_val, obj))

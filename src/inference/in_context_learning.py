@@ -239,7 +239,7 @@ class ICLEvaluator:
         self.encode = tokenizer_encode
         self.decode = tokenizer_decode
         self.config = config
-        self._rng = random_module.Random(42)
+        self._rng = random_module.Random(42)  # noqa: S311
 
     def select_examples(
         self,

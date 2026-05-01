@@ -8,7 +8,7 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path("/Users/christienantonio/Desktop/Aurelius")
-RUST = ROOT / "tools/jsonl-merge/target/release/jsonl-merge"
+RUST = ROOT / "tools/jsonl_merge/target/release/jsonl-merge"
 DESKTOP = Path.home() / "Desktop/Aurelius_Training_Data.jsonl"
 SYSTEM = "You are Aurelius, a helpful AI assistant."
 

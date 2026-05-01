@@ -358,7 +358,7 @@ class ReasoningBenchmark:
 
     def __init__(self, config: BenchmarkConfig) -> None:
         self.config = config
-        self._rng = random.Random(config.seed)
+        self._rng = random.Random(config.seed)  # noqa: S311
         self.problems: list[Problem] = self.generate_problems()
 
     def generate_problems(self) -> list[Problem]:

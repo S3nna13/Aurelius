@@ -236,7 +236,7 @@ class NoiseAwareTrainer:
         freqs_cis = self.model.freqs_cis[:S]
 
         for layer in self.model.layers:
-            x, _ = layer(x, freqs_cis, None, None)
+            x, _, _ = layer(x, freqs_cis, None, None)
 
         x = self.model.norm(x)
         logits = self.model.lm_head(x)
