@@ -17,7 +17,7 @@
     "ws": "^8.18.0",
     "redis": "^4.7.0",
     "dotenv": "^16.4.5",
-    "uuid": "^11.0.0",
+    "uuid": "^14.0.0",
     "aurelius-data-engine": "file:../crates/data-engine"
   },
   "devDependencies": {
