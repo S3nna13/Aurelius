@@ -6,6 +6,7 @@ Replaces: PersonaRegistry.apply_persona(),
           SystemPromptPriorityEncoder.merge().
 """
 
+# ruff: noqa: E501
 from __future__ import annotations
 
 import re

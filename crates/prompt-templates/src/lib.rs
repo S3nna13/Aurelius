@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use napi::Error;
 use napi_derive::napi;
 use regex::Regex;
 
@@ -109,9 +110,10 @@ impl PromptEngine {
         template_name: String,
         variables: HashMap<String, String>,
     ) -> napi::Result<RenderedPrompt> {
-        let template = self.templates.get(&template_name).ok_or_else(|| {
-            napi::Error::from_reason(format!("Template '{}' not found", template_name))
-        })?;
+        let template = self
+            .templates
+            .get(&template_name)
+            .ok_or_else(|| Error::from_reason(format!("Template '{}' not found", template_name)))?;
 
         self.render_string(template.clone(), variables)
     }
@@ -122,7 +124,6 @@ impl PromptEngine {
         template: String,
         variables: HashMap<String, String>,
     ) -> napi::Result<RenderedPrompt> {
-        let required = extract_variables(&template);
         let mut used = Vec::new();
         let mut missing = Vec::new();
 
@@ -160,18 +161,19 @@ impl PromptEngine {
         let final_text = var_re.replace_all(&rendered, "").to_string();
 
         Ok(RenderedPrompt {
-            text: final_text.clone(),
+            token_estimate: estimate_tokens(&final_text),
+            text: final_text,
             variables_used: used,
             variables_missing: missing,
-            token_estimate: estimate_tokens(&final_text),
         })
     }
 
     #[napi]
     pub fn analyze(&self, template_name: String) -> napi::Result<TemplateInfo> {
-        let template = self.templates.get(&template_name).ok_or_else(|| {
-            napi::Error::from_reason(format!("Template '{}' not found", template_name))
-        })?;
+        let template = self
+            .templates
+            .get(&template_name)
+            .ok_or_else(|| Error::from_reason(format!("Template '{}' not found", template_name)))?;
 
         let variables = extract_variables(template);
         let has_partials = template.contains("{{>");
@@ -215,27 +217,40 @@ impl PromptEngine {
     ) -> RenderedPrompt {
         let mut parts = Vec::new();
 
-        if let Some(ref sys) = system {
-            let rendered = self
-                .render_string(sys.clone(), variables.clone())
-                .unwrap_or(RenderedPrompt {
-                    text: sys.clone(),
+        for msg in &messages {
+            if let Some(err) = validate_role(&msg.role) {
+                return RenderedPrompt {
+                    text: format!("Error: {}", err),
                     variables_used: vec![],
                     variables_missing: vec![],
                     token_estimate: 0,
-                });
+                };
+            }
+        }
+
+        if let Some(sys) = system {
+            let sanitized = sanitize_content(&sys);
+            let rendered =
+                self.render_string(sanitized, variables.clone())
+                    .unwrap_or(RenderedPrompt {
+                        text: sys,
+                        variables_used: vec![],
+                        variables_missing: vec![],
+                        token_estimate: 0,
+                    });
             parts.push(format!("<|im_start|>system\n{}<|im_end|>", rendered.text));
         }
 
         for msg in &messages {
-            let rendered = self
-                .render_string(msg.content.clone(), variables.clone())
-                .unwrap_or(RenderedPrompt {
-                    text: msg.content.clone(),
-                    variables_used: vec![],
-                    variables_missing: vec![],
-                    token_estimate: 0,
-                });
+            let sanitized = sanitize_content(&msg.content);
+            let rendered =
+                self.render_string(sanitized, variables.clone())
+                    .unwrap_or(RenderedPrompt {
+                        text: msg.content.clone(),
+                        variables_used: vec![],
+                        variables_missing: vec![],
+                        token_estimate: 0,
+                    });
             parts.push(format!(
                 "<|im_start|>{}\n{}<|im_end|>",
                 msg.role, rendered.text
@@ -262,17 +277,29 @@ impl PromptEngine {
     ) -> RenderedPrompt {
         let mut parts = Vec::new();
 
-        parts.push("<|begin_of_text|>".to_string());
-
-        if let Some(ref sys) = system {
-            let rendered = self
-                .render_string(sys.clone(), variables.clone())
-                .unwrap_or(RenderedPrompt {
-                    text: sys.clone(),
+        for msg in &messages {
+            if let Some(e) = validate_role(&msg.role) {
+                return RenderedPrompt {
+                    text: format!("Error: {}", e),
                     variables_used: vec![],
                     variables_missing: vec![],
                     token_estimate: 0,
-                });
+                };
+            }
+        }
+
+        parts.push("<|begin_of_text|>".to_string());
+
+        if let Some(sys) = system {
+            let sanitized = sanitize_content(&sys);
+            let rendered =
+                self.render_string(sanitized, variables.clone())
+                    .unwrap_or(RenderedPrompt {
+                        text: sys,
+                        variables_used: vec![],
+                        variables_missing: vec![],
+                        token_estimate: 0,
+                    });
             parts.push(format!(
                 "<|start_header_id|>system<|end_header_id|>\n\n{}<|eot_id|>",
                 rendered.text
@@ -280,14 +307,15 @@ impl PromptEngine {
         }
 
         for msg in &messages {
-            let rendered = self
-                .render_string(msg.content.clone(), variables.clone())
-                .unwrap_or(RenderedPrompt {
-                    text: msg.content.clone(),
-                    variables_used: vec![],
-                    variables_missing: vec![],
-                    token_estimate: 0,
-                });
+            let sanitized = sanitize_content(&msg.content);
+            let rendered =
+                self.render_string(sanitized, variables.clone())
+                    .unwrap_or(RenderedPrompt {
+                        text: msg.content.clone(),
+                        variables_used: vec![],
+                        variables_missing: vec![],
+                        token_estimate: 0,
+                    });
             parts.push(format!(
                 "<|start_header_id|>{}<|end_header_id|>\n\n{}<|eot_id|>",
                 msg.role, rendered.text
@@ -309,6 +337,35 @@ impl PromptEngine {
     pub fn estimate_tokens_batch(&self, texts: Vec<String>) -> Vec<u32> {
         texts.iter().map(|t| estimate_tokens(t)).collect()
     }
+}
+
+const VALID_ROLES: &[&str] = &["system", "user", "assistant", "tool"];
+
+fn validate_role(role: &str) -> Option<String> {
+    if !VALID_ROLES.contains(&role) {
+        return Some(format!(
+            "Invalid role '{}': must be one of {:?}",
+            role, VALID_ROLES
+        ));
+    }
+    if role.contains(char::is_whitespace) || role.contains('<') || role.contains('>') {
+        return Some(format!(
+            "Invalid role '{}': contains forbidden characters",
+            role
+        ));
+    }
+    None
+}
+
+fn sanitize_content(content: &str) -> String {
+    content
+        .replace("<|im_start|>", "")
+        .replace("<|im_end|>", "")
+        .replace("<|eot_id|>", "")
+        .replace("<|begin_of_text|>", "")
+        .replace("<|end_of_text|>", "")
+        .replace("<|start_header_id|>", "")
+        .replace("<|end_header_id|>", "")
 }
 
 #[napi(object)]

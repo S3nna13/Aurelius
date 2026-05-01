@@ -1,3 +1,4 @@
+# ruff: noqa: E501
 from __future__ import annotations
 
 import re
@@ -12,21 +13,13 @@ THREAT_INTEL_FACET = PersonaFacet(
 _CVE_RE = re.compile(r"CVE-\d{4}-\d{4,}", re.IGNORECASE)
 _MITRE_RE = re.compile(r"\bT\d{4}(?:\.\d{3})?\b")
 _ACTOR_RE = re.compile(
-    (
-        r"\b(APT[- ]?\d+|UNC\d+|FIN\d+|TA\d{3,}|Lazarus(?: Group)?|"
-        r"Scattered Spider|Cozy Bear|Fancy Bear|Turla|Equation Group|"
-        r"Conti|LockBit|BlackCat|ALPHV|Cl0p)\b"
-    ),
+    r"\b(APT[- ]?\d+|UNC\d+|FIN\d+|TA\d{3,}|Lazarus(?: Group)?|Scattered Spider|Cozy Bear|Fancy Bear|Turla|Equation Group|Conti|LockBit|BlackCat|ALPHV|Cl0p)\b",
     re.IGNORECASE,
 )
 _HASH_RE = re.compile(r"\b([a-f0-9]{32}|[a-f0-9]{40}|[a-f0-9]{64})\b", re.IGNORECASE)
 _IP_RE = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
 _DOMAIN_RE = re.compile(
-    (
-        r"\b(?:[a-z0-9-]+\[?\.\]?)+"
-        r"(?:com|net|org|io|ru|cn|xyz|top|info|biz|co|uk)\b"
-    ),
-    re.IGNORECASE,
+    r"\b(?:[a-z0-9-]+\[?\.\]?)+(?:com|net|org|io|ru|cn|xyz|top|info|biz|co|uk)\b", re.IGNORECASE
 )
 
 

@@ -10,37 +10,57 @@ use std::sync::Arc;
 
 use axum::{Router, middleware};
 use tokio::signal;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::trace::TraceLayer;
-use tracing_subscriber::EnvFilter;
+use tracing_subscriber::{EnvFilter, filter::LevelFilter};
 
 #[tokio::main]
 async fn main() {
-    let cfg = config::Config::from_env();
-    let log_directive = format!("aurelius_gateway={}", cfg.log_level);
+    let log_level = "aurelius_gateway=".to_owned()
+        + &config::Config::from_env()
+            .log_level
+            .parse::<LevelFilter>()
+            .unwrap_or(LevelFilter::INFO)
+            .to_string()
+            .to_lowercase();
+
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_default_env().add_directive(log_directive.parse().unwrap()))
+        .with_env_filter(EnvFilter::from_default_env().add_directive(log_level.parse().unwrap()))
         .init();
 
+    let cfg = config::Config::from_env();
     let proxy_client = proxy::ProxyClient::new(&cfg.upstream_url);
     let rate_limiter = rate_limit::RateLimiter::new(cfg.rate_limit_rps, cfg.rate_limit_burst);
     let metrics = metrics::Metrics::new();
-
     let auth_service = Arc::new(auth::AuthService::new(
         &cfg.jwt_secret,
         cfg.jwt_expiry_hours,
     ));
-    let auth_state = auth::AuthState::new(auth_service);
+
+    let cors = if cfg.allowed_origins.is_empty() {
+        CorsLayer::new()
+    } else {
+        let origins: Vec<axum::http::HeaderValue> = cfg
+            .allowed_origins
+            .iter()
+            .map(|o| o.parse().expect("Invalid CORS origin"))
+            .collect();
+        CorsLayer::new().allow_origin(AllowOrigin::list(origins))
+    };
 
     let app = Router::new()
         .merge(routes::health::routes())
-        .merge(routes::proxy::routes())
+        .merge(routes::proxy::routes(
+            proxy_client.clone(),
+            rate_limiter.clone(),
+            metrics.clone(),
+        ))
         .layer(middleware::from_fn_with_state(
-            auth_state.clone(),
+            auth_service.clone(),
             auth::auth_middleware,
         ))
-        .layer(CorsLayer::permissive())
+        .layer(cors)
         .layer(RequestBodyLimitLayer::new(10 * 1024 * 1024))
         .layer(TraceLayer::new_for_http())
         .with_state(app_state::AppState {
@@ -56,10 +76,13 @@ async fn main() {
     tracing::info!("Gateway listening on {addr}");
 
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-    axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal())
-        .await
-        .unwrap();
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .with_graceful_shutdown(shutdown_signal())
+    .await
+    .unwrap();
 }
 
 async fn shutdown_signal() {
@@ -85,9 +108,7 @@ async fn shutdown_signal() {
 }
 
 mod app_state {
-    use crate::{
-        config::Config, metrics::Metrics, proxy::ProxyClient, rate_limit::RateLimiter,
-    };
+    use crate::{config::Config, metrics::Metrics, proxy::ProxyClient, rate_limit::RateLimiter};
 
     #[derive(Clone)]
     pub struct AppState {

@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: ghcr.io/s3nna13/aurelius
-  tag: "latest"
+  tag: "v1.0.0" # TODO: pin to digest in production (e.g., @sha256:...)
   pullPolicy: IfNotPresent
 
 nameOverride: ""
@@ -36,7 +36,7 @@ gateway:
   replicaCount: 1
   image:
     repository: ghcr.io/s3nna13/aurelius-gateway
-    tag: "latest"
+    tag: "v1.0.0" # TODO: pin to digest in production
     pullPolicy: IfNotPresent
   service:
     port: 8080
@@ -50,7 +50,7 @@ middle:
   replicaCount: 1
   image:
     repository: ghcr.io/s3nna13/aurelius-middle
-    tag: "latest"
+    tag: "v1.0.0" # TODO: pin to digest in production
     pullPolicy: IfNotPresent
   service:
     port: 3001
@@ -67,7 +67,7 @@ frontend:
   replicaCount: 1
   image:
     repository: ghcr.io/s3nna13/aurelius-frontend
-    tag: "latest"
+    tag: "v1.0.0" # TODO: pin to digest in production
     pullPolicy: IfNotPresent
   service:
     port: 80

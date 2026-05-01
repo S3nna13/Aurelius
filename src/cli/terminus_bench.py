@@ -22,8 +22,7 @@ class TerminalBench:
 
     TASKS: list[TerminalBenchTask] = [
         TerminalBenchTask(
-            "tb-001",
-            "Find all Python files larger than 1MB and list them sorted by size",
+            "tb-001", "Find all Python files larger than 1MB and list them sorted by size"
         ),
         TerminalBenchTask("tb-002", "Count total lines of code in src/ excluding node_modules"),
         TerminalBenchTask("tb-003", "Find all TODO comments in the codebase"),

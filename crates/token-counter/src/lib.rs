@@ -35,7 +35,7 @@ pub fn count_tokens(text: String, options: Option<TokenCountOptions>) -> TokenCo
     let characters = text.chars().count() as u32;
     let words = text.split_whitespace().count() as u32;
     let sentences = text
-        .split(['.', '!', '?'])
+        .split(|c: char| c == '.' || c == '!' || c == '?')
         .filter(|s| !s.trim().is_empty())
         .count() as u32;
     let lines = text.lines().count() as u32;
@@ -89,7 +89,7 @@ pub fn truncate_to_budget(
 ) -> String {
     let budget = compute_token_budget(text.clone(), max_tokens, options);
 
-    if budget.used <= budget.available && budget.fraction_used <= 1.0 {
+    if budget.fraction_used <= 1.0 {
         return text;
     }
 

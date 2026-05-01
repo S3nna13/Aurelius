@@ -7,6 +7,7 @@ a structured-output persona for defensive threat-intel research queries
 Pure stdlib -- only ``re`` and ``dataclasses``.
 """
 
+# ruff: noqa: E501
 from __future__ import annotations
 
 import re

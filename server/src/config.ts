@@ -17,20 +17,16 @@ export interface GatewayConfig {
 }
 
 export function loadConfig(): GatewayConfig {
-  const apiKey = process.env.AURELIUS_API_KEY || ''
-  if (process.env.AURELIUS_AUTH !== 'false' && !apiKey) {
-    throw new Error('AURELIUS_API_KEY environment variable is required when authentication is enabled')
-  }
   return {
     host: process.env.AURELIUS_HOST || '0.0.0.0',
     port: parseInt(process.env.AURELIUS_PORT || '7870', 10),
     pythonUrl: process.env.AURELIUS_PYTHON_URL || 'http://127.0.0.1:8080',
-    authRequired: process.env.AURELIUS_AUTH !== 'false',
+    authRequired: process.env.AURELIUS_AUTH === 'true' || (process.env.NODE_ENV === 'production' && process.env.AURELIUS_DEV_OPEN !== 'true'),
     apiKey: process.env.AURELIUS_API_KEY || '',
     frontendDist: process.env.AURELIUS_FRONTEND_DIST
       || path.resolve(__dirname, '../../frontend/dist'),
-    rateLimitWindowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000', 10),
-    rateLimitMax: parseInt(process.env.RATE_LIMIT_MAX || '200', 10),
+    rateLimitWindowMs: 60_000,
+    rateLimitMax: 200,
   };
 }
 

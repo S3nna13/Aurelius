@@ -1,12 +1,10 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use dashmap::DashMap;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 use redis::AsyncCommands;
 use redis::aio::ConnectionManager;
-use tokio::runtime::Runtime;
 use tokio::sync::Mutex;
 
 #[napi(object)]
@@ -21,9 +19,9 @@ pub struct RedisConfig {
 pub struct RedisInfo {
     pub connected: bool,
     pub latency_ms: f64,
-    pub keys_count: Option<i64>,
+    pub keys_count: Option<f64>,
     pub server_version: Option<String>,
-    pub memory_used: Option<i64>,
+    pub memory_used: Option<f64>,
 }
 
 #[napi(object)]
@@ -34,11 +32,12 @@ pub struct RedisHashEntry {
 
 type RedisPool = Arc<Mutex<Option<ConnectionManager>>>;
 
+const MAX_TTL: i64 = 31536000;
+
 #[napi]
 pub struct RedisClient {
     pool: RedisPool,
     config: RedisConfig,
-    runtime: Arc<Runtime>,
     connected: Arc<std::sync::atomic::AtomicBool>,
 }
 
@@ -46,13 +45,11 @@ pub struct RedisClient {
 impl RedisClient {
     #[napi(constructor)]
     pub fn new(config: RedisConfig) -> Self {
-        let runtime = Arc::new(Runtime::new().unwrap());
         let pool = Arc::new(Mutex::new(None));
 
         RedisClient {
             pool,
             config,
-            runtime,
             connected: Arc::new(std::sync::atomic::AtomicBool::new(false)),
         }
     }
@@ -73,15 +70,6 @@ impl RedisClient {
         *pool = Some(conn);
         self.connected
             .store(true, std::sync::atomic::Ordering::Relaxed);
-        Ok(())
-    }
-
-    async fn get_conn(&self) -> Result<()> {
-        let pool = self.pool.lock().await;
-        if pool.is_none() {
-            drop(pool);
-            self.connect().await?;
-        }
         Ok(())
     }
 
@@ -112,13 +100,21 @@ impl RedisClient {
             .ok_or_else(|| napi::Error::from_reason("Not connected"))?;
 
         if let Some(ttl) = ttl_seconds {
+            if ttl <= 0 || ttl > MAX_TTL {
+                return Err(napi::Error::from_reason(format!(
+                    "TTL must be between 1 and {} seconds",
+                    MAX_TTL
+                )));
+            }
+            let ttl_u64 = u64::try_from(ttl)
+                .map_err(|_| napi::Error::from_reason("TTL conversion failed"))?;
             let _: () = conn
-                .set_ex(&key, &value, ttl as u64)
+                .set_ex(key, value, ttl_u64)
                 .await
                 .map_err(|e| napi::Error::from_reason(format!("Redis set error: {}", e)))?;
         } else {
             let _: () = conn
-                .set(&key, &value)
+                .set(key, value)
                 .await
                 .map_err(|e| napi::Error::from_reason(format!("Redis set error: {}", e)))?;
         }
@@ -186,8 +182,14 @@ impl RedisClient {
             .as_mut()
             .ok_or_else(|| napi::Error::from_reason("Not connected"))?;
 
+        if seconds <= 0 || seconds > MAX_TTL {
+            return Err(napi::Error::from_reason(format!(
+                "TTL must be between 1 and {} seconds",
+                MAX_TTL
+            )));
+        }
         let result: bool = conn
-            .expire(&key, seconds as i64)
+            .expire(key, seconds)
             .await
             .map_err(|e| napi::Error::from_reason(format!("Redis expire error: {}", e)))?;
 
@@ -325,8 +327,13 @@ impl RedisClient {
             .as_mut()
             .ok_or_else(|| napi::Error::from_reason("Not connected"))?;
 
+        let start = isize::try_from(start)
+            .map_err(|_| napi::Error::from_reason("lrange start index out of range"))?;
+        let stop = isize::try_from(stop)
+            .map_err(|_| napi::Error::from_reason("lrange stop index out of range"))?;
+
         let result: Vec<String> = conn
-            .lrange(&key, start as isize, stop as isize)
+            .lrange(key, start, stop)
             .await
             .map_err(|e| napi::Error::from_reason(format!("Redis lrange error: {}", e)))?;
 
@@ -369,12 +376,12 @@ impl RedisClient {
         let latency = start.elapsed().as_secs_f64() * 1000.0;
 
         let info_str: String = redis::cmd("INFO")
-            .query_async(&mut *conn)
+            .query_async(conn)
             .await
             .map_err(|e| napi::Error::from_reason(format!("Redis info error: {}", e)))?;
 
-        let keys: u64 = redis::cmd("DBSIZE")
-            .query_async(&mut *conn)
+        let keys: usize = redis::cmd("DBSIZE")
+            .query_async(conn)
             .await
             .map_err(|e| napi::Error::from_reason(format!("Redis dbsize error: {}", e)))?;
 
@@ -386,14 +393,14 @@ impl RedisClient {
                 server_version = Some(val.trim().to_string());
             }
             if let Some(val) = line.strip_prefix("used_memory:") {
-                memory_used = val.trim().parse::<u64>().ok().map(|m| m as i64);
+                memory_used = val.trim().parse::<f64>().ok();
             }
         }
 
         Ok(RedisInfo {
             connected: ping_result.to_uppercase() == "PONG",
             latency_ms: (latency * 100.0).round() / 100.0,
-            keys_count: Some(keys as i64),
+            keys_count: Some(keys as f64),
             server_version,
             memory_used,
         })

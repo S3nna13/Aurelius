@@ -31,8 +31,8 @@ impl ProxyClient {
         let path = req
             .uri()
             .path_and_query()
-            .map(|pq| pq.as_str().to_owned())
-            .unwrap_or_else(|| req.uri().path().to_owned());
+            .map(|pq| pq.as_str().to_string())
+            .unwrap_or_else(|| req.uri().path().to_string());
 
         let upstream_uri = format!("{}{}", self.upstream_url, path);
 

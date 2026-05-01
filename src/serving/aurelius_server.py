@@ -41,12 +41,11 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import re
+import mimetypes
 import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Any
-from urllib.parse import unquote
 
 from src.agent.command_dispatcher import CommandDispatcher
 from src.agent.nl_command_parser import NLCommandParseError, NLCommandParser
@@ -87,40 +86,6 @@ _MAX_CONTENT_LENGTH = 1_048_576
 
 #: Path to built frontend assets — resolved relative to this file.
 _FRONTEND_DIST = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
-
-_STATIC_CONTENT_TYPES = {
-    ".css": "text/css; charset=utf-8",
-    ".html": "text/html; charset=utf-8",
-    ".ico": "image/x-icon",
-    ".js": "application/javascript; charset=utf-8",
-    ".json": "application/json; charset=utf-8",
-    ".map": "application/json; charset=utf-8",
-    ".png": "image/png",
-    ".svg": "image/svg+xml",
-    ".txt": "text/plain; charset=utf-8",
-}
-_SAFE_ASSET_PART = re.compile(r"^[a-zA-Z0-9._-]{1,128}$")
-
-
-def _resolve_frontend_asset(relative_path: str) -> Path | None:
-    """Return a frontend asset path only if it stays under the dist root."""
-    clean_path = relative_path.split("?", 1)[0].split("#", 1)[0]
-    candidate = Path(unquote(clean_path).lstrip("/"))
-    if candidate.is_absolute() or any(part in {"", ".", ".."} for part in candidate.parts):
-        return None
-    if any(not _SAFE_ASSET_PART.fullmatch(part) for part in candidate.parts):
-        return None
-
-    resolved = (_FRONTEND_DIST / candidate).resolve()
-    try:
-        resolved.relative_to(_FRONTEND_DIST)
-    except ValueError:
-        return None
-    return resolved
-
-
-def _content_type_for(path: Path) -> str:
-    return _STATIC_CONTENT_TYPES.get(path.suffix.lower(), "application/octet-stream")
 
 
 class _JSONMixin:
@@ -164,21 +129,27 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
 
     def _serve_static(self, relative_path: str) -> None:
         """Serve a file from the built frontend dist directory."""
-        file_path = _resolve_frontend_asset(relative_path)
-        if file_path is None:
+        # Security: prevent directory traversal
+        safe_path = relative_path.lstrip("/")
+        if ".." in safe_path:
             self.send_response(403)
             self.end_headers()
             return
 
+        file_path = _FRONTEND_DIST / safe_path
         if not file_path.exists() or file_path.is_dir():
             # Fallback to index.html for SPA routing
-            index_path = (_FRONTEND_DIST / "index.html").resolve()
+            index_path = _FRONTEND_DIST / "index.html"
             if index_path.exists():
                 file_path = index_path
             else:
                 self.send_response(404)
                 self.end_headers()
                 return
+
+        content_type, _ = mimetypes.guess_type(str(file_path))
+        if content_type is None:
+            content_type = "application/octet-stream"
 
         try:
             data = file_path.read_bytes()
@@ -188,11 +159,10 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
             return
 
         self.send_response(200)
-        # Use a fixed MIME map; never echo guessed header values from a user path.
-        self.send_header("Content-Type", _content_type_for(file_path))
+        self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(data)))
         # Cache assets with hash in filename (Vite pattern)
-        if "assets/" in relative_path:
+        if "assets/" in safe_path:
             self.send_header("Cache-Control", "public, max-age=31536000, immutable")
         self.end_headers()
         self.wfile.write(data)
@@ -216,11 +186,7 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
     def _require_auth(self) -> bool:
         if not self._check_auth():
             self._send_json(
-                401,
-                {
-                    "error": "Unauthorized",
-                    "message": "Valid API key or session required",
-                },
+                401, {"error": "Unauthorized", "message": "Valid API key or session required"}
             )
             return False
         return True

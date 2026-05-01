@@ -21,6 +21,8 @@ services:
       resources:
         limits: { cpus: '4', memory: 16G }
         reservations: { cpus: '2', memory: 8G }
+    networks:
+      - internal
 
   aurelius-gateway:
     build:
@@ -47,6 +49,8 @@ services:
     restart: unless-stopped
     profiles:
       - gateway
+    networks:
+      - internal
 
   middle:
     build:
@@ -74,6 +78,8 @@ services:
       start_period: 10s
       retries: 3
     restart: unless-stopped
+    networks:
+      - internal
 
   frontend:
     build:
@@ -86,11 +92,11 @@ services:
     depends_on:
       - middle
     restart: unless-stopped
+    networks:
+      - internal
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -99,8 +105,14 @@ services:
     restart: unless-stopped
     volumes:
       - redis-data:/data
+    networks:
+      - internal
     profiles:
       - cache
+
+networks:
+  internal:
+    driver: bridge
 
 volumes:
   redis-data:

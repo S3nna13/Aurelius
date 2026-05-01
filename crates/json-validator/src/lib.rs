@@ -1,7 +1,5 @@
-use std::collections::HashMap;
-
 use napi_derive::napi;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 #[napi(object)]
@@ -33,19 +31,53 @@ pub struct JsonStats {
 }
 
 fn get_depth(val: &Value) -> u32 {
-    match val {
-        Value::Object(map) => 1 + map.values().map(get_depth).max().unwrap_or(0),
-        Value::Array(arr) => 1 + arr.iter().map(get_depth).max().unwrap_or(0),
-        _ => 1,
+    let mut max_depth = 1u32;
+    let mut stack = vec![(val, 1u32)];
+    while let Some((current, depth)) = stack.pop() {
+        if depth > max_depth {
+            max_depth = depth;
+        }
+        if max_depth > 1000 {
+            break;
+        }
+        match current {
+            Value::Object(map) => {
+                for child in map.values() {
+                    stack.push((child, depth + 1));
+                }
+            }
+            Value::Array(arr) => {
+                for child in arr {
+                    stack.push((child, depth + 1));
+                }
+            }
+            _ => {}
+        }
     }
+    max_depth
 }
 
 fn count_fields(val: &Value) -> u32 {
-    match val {
-        Value::Object(map) => map.len() as u32 + map.values().map(count_fields).sum::<u32>(),
-        Value::Array(arr) => arr.len() as u32 + arr.iter().map(count_fields).sum::<u32>(),
-        _ => 0,
+    let mut count = 0u32;
+    let mut stack = vec![val];
+    while let Some(current) = stack.pop() {
+        match current {
+            Value::Object(map) => {
+                count = count.saturating_add(map.len() as u32);
+                for child in map.values() {
+                    stack.push(child);
+                }
+            }
+            Value::Array(arr) => {
+                count = count.saturating_add(arr.len() as u32);
+                for child in arr {
+                    stack.push(child);
+                }
+            }
+            _ => {}
+        }
     }
+    count
 }
 
 fn get_type_name(val: &Value) -> String {
@@ -185,7 +217,7 @@ impl JsonValidator {
     }
 
     #[napi]
-    pub fn validate_schema(&self, json_str: String, schema_json: String) -> ValidationResult {
+    pub fn validate_schema(&self, json_str: String, schema: SchemaDefinition) -> ValidationResult {
         let mut errors = Vec::new();
         let mut warnings = Vec::new();
 
@@ -202,12 +234,12 @@ impl JsonValidator {
             }
         };
 
-        let schema: SchemaDefinition = match serde_json::from_str(&schema_json) {
-            Ok(s) => s,
-            Err(e) => {
+        let schema = match schema.into_internal() {
+            Ok(schema) => schema,
+            Err(err) => {
                 return ValidationResult {
                     valid: false,
-                    errors: vec![format!("Invalid schema: {}", e)],
+                    errors: vec![format!("Invalid schema: {}", err)],
                     warnings: vec![],
                     field_count: count_fields(&value),
                     depth: get_depth(&value),
@@ -229,7 +261,7 @@ impl JsonValidator {
     fn validate_against_schema(
         &self,
         value: &Value,
-        schema: &SchemaDefinition,
+        schema: &SchemaDefinitionNode,
         errors: &mut Vec<String>,
         warnings: &mut Vec<String>,
         path: &str,
@@ -237,7 +269,7 @@ impl JsonValidator {
         let actual_type = get_type_name(value);
 
         // Check null
-        if value.is_null() && schema.nullable != Some(true) {
+        if value.is_null() && !schema.nullable.unwrap_or(false) {
             errors.push(format!("{}: expected {}, got null", path, schema.type_name));
             return;
         }
@@ -287,11 +319,12 @@ impl JsonValidator {
 
             for (key, child) in map {
                 let child_path = format!("{}.{}", path, key);
+                // Check nested schemas
                 if let Some(nested) = &schema.properties {
-                    if let Some(field_schema) = nested.get(key.as_str()) {
+                    if let Some(field_schema) = nested.iter().find(|prop| prop.name == *key) {
                         self.validate_against_schema(
                             child,
-                            field_schema,
+                            &field_schema.schema,
                             errors,
                             warnings,
                             &child_path,
@@ -346,12 +379,15 @@ impl JsonValidator {
             if let Some(pattern) = &schema.pattern {
                 match regex::Regex::new(pattern) {
                     Ok(re) => {
-                        if !re.is_match(s.as_str()) {
+                        if !re.is_match(s) {
                             errors.push(format!("{}: does not match pattern '{}'", path, pattern));
                         }
                     }
-                    Err(_) => {
-                        errors.push(format!("{}: invalid regex pattern '{}'", path, pattern));
+                    Err(e) => {
+                        errors.push(format!(
+                            "{}: invalid regex pattern '{}': {}",
+                            path, pattern, e
+                        ));
                     }
                 }
             }
@@ -392,7 +428,7 @@ impl JsonValidator {
         );
 
         JsonStats {
-            size_bytes: json_str.len() as u32,
+            size_bytes: u32::try_from(json_str.len()).unwrap_or(u32::MAX),
             field_count: count_fields(&value),
             depth: get_depth(&value),
             max_array_length: max_arr_len,
@@ -411,6 +447,9 @@ impl JsonValidator {
         has_nested: &mut bool,
         depth: u32,
     ) {
+        if depth > self.max_depth {
+            return;
+        }
         types.insert(get_type_name(val));
 
         match val {
@@ -438,7 +477,6 @@ impl JsonValidator {
         let value: Value = serde_json::from_str(&json_str).unwrap_or(Value::Null);
         let actual = get_type_name(&value);
         let is_valid = expected_type == "any" || actual == expected_type;
-
         let message = if is_valid {
             "Type check passed".to_string()
         } else {
@@ -454,33 +492,63 @@ impl JsonValidator {
     }
 }
 
-#[derive(Deserialize)]
-struct SchemaDefinition {
-    #[serde(rename = "typeName")]
+#[napi(object)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SchemaDefinition {
+    pub type_name: String,
+    pub nullable: Option<bool>,
+    pub required_fields: Option<Vec<String>>,
+    pub properties: Option<Vec<SchemaProperty>>,
+    pub items_schema: Option<Value>,
+    pub min_fields: Option<u32>,
+    pub max_fields: Option<u32>,
+    pub min_items: Option<u32>,
+    pub max_items: Option<u32>,
+    pub min_length: Option<u32>,
+    pub max_length: Option<u32>,
+    pub pattern: Option<String>,
+    pub minimum: Option<f64>,
+    pub maximum: Option<f64>,
+}
+
+#[napi(object)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SchemaProperty {
+    pub name: String,
+    pub schema: Value,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SchemaDefinitionNode {
     type_name: String,
     nullable: Option<bool>,
-    #[serde(default)]
     required_fields: Option<Vec<String>>,
-    #[serde(default)]
-    properties: Option<HashMap<String, SchemaDefinition>>,
-    #[serde(default)]
-    items_schema: Option<Box<SchemaDefinition>>,
-    #[serde(default)]
+    properties: Option<Vec<SchemaPropertyNode>>,
+    items_schema: Option<Box<SchemaDefinitionNode>>,
     min_fields: Option<u32>,
-    #[serde(default)]
     max_fields: Option<u32>,
-    #[serde(default)]
     min_items: Option<u32>,
-    #[serde(default)]
     max_items: Option<u32>,
-    #[serde(default)]
     min_length: Option<u32>,
-    #[serde(default)]
     max_length: Option<u32>,
-    #[serde(default)]
     pattern: Option<String>,
-    #[serde(default)]
     minimum: Option<f64>,
-    #[serde(default)]
     maximum: Option<f64>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SchemaPropertyNode {
+    name: String,
+    schema: SchemaDefinitionNode,
+}
+
+impl SchemaDefinition {
+    fn into_internal(self) -> Result<SchemaDefinitionNode, String> {
+        let value = serde_json::to_value(self).map_err(|e| e.to_string())?;
+        serde_json::from_value(value).map_err(|e| e.to_string())
+    }
 }
