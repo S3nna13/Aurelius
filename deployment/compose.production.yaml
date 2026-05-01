@@ -89,7 +89,7 @@ services:
     profiles:
       - cache
 
-  gateway:
+  aurelius-gateway:
     build:
       context: ../crates/api-gateway
       dockerfile: Dockerfile

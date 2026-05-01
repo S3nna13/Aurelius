@@ -12,10 +12,11 @@ dependencies = [
     "rich>=13.0.0",
     "numpy>=1.26.0",
     "lxml>=6.1.0",
-    "langchain-core>=0.3.84",  # CVE-2026-40087
-    "langsmith>=0.7.31",       # GHSA-rr7j-v2q5-chgv
-    "pip>=26.1",               # CVE-2026-3219
+    "langchain-core>=0.3.84",
+    "langsmith>=0.7.31",
 ]
+# pip>=26.1 required at environment level for CVE-2026-3219
+# langchain-core pin for CVE-2026-40087, langsmith pin for GHSA-rr7j-v2q5-chgv
 
 [project.optional-dependencies]
 full = [
@@ -91,6 +92,7 @@ per-file-ignores = {"tests/**" = ["S101", "S108"], "**/__init__.py" = ["E402"], 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+addopts = ["--tb=short", "-q"]
 markers = [
     "slow: marks tests as slow (deselect with '-m not slow')",
 ]

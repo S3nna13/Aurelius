@@ -76,13 +76,37 @@ from .progressive_search import (  # noqa: F401
 
 MEMORY_REGISTRY["progressive_search"] = DEFAULT_PROGRESSIVE_SEARCHER
 
+from .manager import MemoryManager, MemoryQueryResult  # noqa: E402
+from .unified_orchestrator import (  # noqa: E402
+    InferenceDecision,
+    InferenceResult,
+    InferenceTier,
+    UnifiedInferenceOrchestrator,
+)
+from .composite import (  # noqa: E402
+    ArchitectureDecomposer,
+    CompositeInferenceEngine,
+    CompositeResult,
+    SubTask,
+)
+
 __all__ += [
-    "LayeredMemory",
-    "LayeredMemoryEntry",
-    "MemoryLayer",
-    "LayeredMemoryError",
-    "DEFAULT_LAYERED_MEMORY",
-    "LAYERED_MEMORY_REGISTRY",
+    "MemoryManager",
+    "MemoryQueryResult",
+]
+
+__all__ += [
+    "UnifiedInferenceOrchestrator",
+    "InferenceDecision",
+    "InferenceResult",
+    "InferenceTier",
+    "CompositeInferenceEngine",
+    "ArchitectureDecomposer",
+    "CompositeResult",
+    "SubTask",
+]
+
+__all__ += [
     "ProgressiveSearcher",
     "IndexEntry",
     "SearchResult",

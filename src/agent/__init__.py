@@ -950,6 +950,34 @@ from .skill_library import Skill, VoyagerSkillLibrary  # noqa: E402
 from .skill_registry import SkillRegistry, SkillSpec  # noqa: E402
 from .tool_registry import ToolRegistry  # noqa: E402
 
+from .neural_brain import BrainContext, BrainState, NeuralBrain  # noqa: E402
+from .self_upgrade import (
+    MetricSnapshot,
+    SelfUpgradeSystem,
+    UpgradeProposal,
+)  # noqa: E402
+from .specialist_agents import (  # noqa: E402
+    ApeOrchestrator,
+    BaseSpecialist,
+    CodeSpecialist,
+    DataSpecialist,
+    DeploymentEngineer,
+    EvaluationSpecialist,
+    InfrastructureEngineer,
+    MemoryEngineer,
+    ModelArchitect,
+    QualityReviewer,
+    ResearchSpecialist,
+    SafetyEngineer,
+    ToolEngineer,
+    TrainingEngineer,
+)
+from .agent_registry import AGENT_REGISTRY, AgentType  # noqa: E402
+from .plugin_system import PluginManager  # noqa: E402
+from .skills_registry import SKILLS_REGISTRY, Skill  # noqa: E402
+from .auto_dev import AutoDevAgent, DevGuardrail, DevOperation, DevPlan, DevSandbox  # noqa: E402
+from .tool_sandbox import ToolSandbox  # noqa: E402
+
 __all__ += [
     "AgentMessage",
     "AgentMemory",
@@ -966,4 +994,36 @@ __all__ += [
     "SwarmCoordinator",
     "ToolRegistry",
     "VoyagerSkillLibrary",
+    # additive agent patterns
+    "NeuralBrain",
+    "BrainContext",
+    "BrainState",
+    "SelfUpgradeSystem",
+    "UpgradeProposal",
+    "MetricSnapshot",
+    "BaseSpecialist",
+    "ApeOrchestrator",
+    "ResearchSpecialist",
+    "CodeSpecialist",
+    "DataSpecialist",
+    "ModelArchitect",
+    "TrainingEngineer",
+    "EvaluationSpecialist",
+    "SafetyEngineer",
+    "InfrastructureEngineer",
+    "MemoryEngineer",
+    "ToolEngineer",
+    "QualityReviewer",
+    "DeploymentEngineer",
+    "AGENT_REGISTRY",
+    "AgentType",
+    "PluginManager",
+    "SKILLS_REGISTRY",
+    "Skill",
+    "AutoDevAgent",
+    "DevSandbox",
+    "DevPlan",
+    "DevOperation",
+    "DevGuardrail",
+    "ToolSandbox",
 ]
