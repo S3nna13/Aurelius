@@ -14,7 +14,7 @@
     "express": "^5.1.0",
     "ws": "^8.18.2",
     "cors": "^2.8.5",
-    "pino": "^9.6.0",
+    "pino": "^10.3.1",
     "pino-http": "^10.4.0",
     "express-rate-limit": "^7.5.0",
     "prom-client": "^15.1.3",
