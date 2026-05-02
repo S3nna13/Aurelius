@@ -1,7 +1,7 @@
 # Multi-stage build: Rust engine → Node.js gateway
 
 # Stage 1: Build Rust data engine
-FROM rust:1.85-slim@sha256:9f841bbe9e7d8e37ceb96ed907265a3a0df7f44e3737d0b100e7907a679acb36 AS rust-builder
+FROM rust:1.88-slim@sha256:38bc5a86d998772d4aec2348656ed21438d20fcdce2795b56ca434cf21430d89 AS rust-builder
 WORKDIR /engine
 RUN rustup target add aarch64-unknown-linux-gnu
 COPY crates/data-engine/Cargo.toml crates/data-engine/Cargo.lock* ./

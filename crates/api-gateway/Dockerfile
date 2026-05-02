@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM rust:1.85-alpine@sha256:4333721398de61f53ccbe53b0b855bcc4bb49e55828e8f652d7a8ac33dd0c118 AS builder
+FROM rust:1.88-alpine@sha256:9dfaae478ecd298b6b5a039e1f2cc4fc040fc818a2de9aa78fa714dea036574d AS builder
 RUN apk add --no-cache musl-dev pkgconfig openssl-dev
 WORKDIR /app
 

@@ -44,7 +44,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@b3b06ba2ba8d33e8fa1d0c457d8f63657e1b2c5e # stable
         with:
-          toolchain: "1.85"
+          toolchain: "1.88"
           components: clippy, rustfmt
 
       - name: Cache cargo
@@ -80,7 +80,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@b3b06ba2ba8d33e8fa1d0c457d8f63657e1b2c5e # stable
         with:
-          toolchain: "1.85"
+          toolchain: "1.88"
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@9d47c0584c1a4c68c8351e0771a1cf8a7bdcf3c6 # v2
@@ -99,3 +99,21 @@ jobs:
       - name: Build NAPI crate
         run: npm run build
         working-directory: ${{ matrix.crate }}
+
+  audit:
+    name: Security audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@b3b06ba2ba8d33e8fa1d0c457d8f63657e1b2c5e # stable
+        with:
+          toolchain: "1.88"
+
+      - name: Install cargo-audit
+        uses: rustsec/audit-check@043c4e1b683d6b1e6d3b1d27e4e4e8a13e2363e1 # v2
+
+      - name: Run cargo audit
+        run: cargo audit
