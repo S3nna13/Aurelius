@@ -28,10 +28,7 @@ runs/
 
 # macOS
 .DS_Store
-*\ 2.py
-*\ 3.py
-*\ 4.py
-*\ 5.py
+*\ [2-9].*
 
 # IDE
 .idea/
