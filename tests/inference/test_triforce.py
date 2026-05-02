@@ -6,7 +6,7 @@ Covers KVBlockStore, TriForceDraftCache, TriForceVerifier, TriForceDecoder (14 t
 from __future__ import annotations
 
 import torch
-from aurelius.inference.triforce import (
+from src.inference.triforce import (
     KVBlockStore,
     TriForceDecoder,
     TriForceDraftCache,

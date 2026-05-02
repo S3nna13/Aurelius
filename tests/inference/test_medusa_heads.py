@@ -1,7 +1,7 @@
 """Tests for src/inference/medusa_heads.py"""
 
 import torch
-from aurelius.inference.medusa_heads import (
+from src.inference.medusa_heads import (
     MedusaDecoder,
     MedusaHead,
     MedusaHeads,

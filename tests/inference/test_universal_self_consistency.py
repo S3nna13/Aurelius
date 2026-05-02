@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 import torch
-from aurelius.inference.universal_self_consistency import (
+from src.inference.universal_self_consistency import (
     SelfConsistencyDecoder,
     SelfConsistencyVoter,
     TemperatureSampler,

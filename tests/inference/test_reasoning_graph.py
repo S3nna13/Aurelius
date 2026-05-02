@@ -7,7 +7,7 @@ and GraphReasoner from ``src/inference/reasoning_graph.py``.
 from __future__ import annotations
 
 import torch
-from aurelius.inference.reasoning_graph import (
+from src.inference.reasoning_graph import (
     AnswerAggregator,
     GraphReasoner,
     NodeSolver,

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import torch
 import torch.nn.functional as F
-from aurelius.inference.speculative_decoding import (
+from src.inference.speculative_decoding import (
     DraftModel,
     SpeculativeConfig,
     SpeculativeDecoder,
