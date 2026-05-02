@@ -18,10 +18,10 @@
     "build:middle": "npm run build -w middle",
     "build:server": "npm run build -w server",
     "build:engine": "npm run build -w aurelius-data-engine",
-    "test": "npm run test -ws --if-present",
+    "test": "npm run test -w frontend -w middle",
     "test:frontend": "npm run test -w frontend",
     "test:middle": "npm run test -w middle",
-    "lint": "npm run lint -ws --if-present",
+    "lint": "npm run lint -w frontend -w middle",
     "clean": "rm -rf node_modules frontend/node_modules middle/node_modules server/node_modules"
   }
 }
