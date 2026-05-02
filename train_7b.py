@@ -359,7 +359,9 @@ class AureliusTrainer:
 
     def load_checkpoint(self, path):
         checkpoint_path = os.path.join(path, 'checkpoint.pt')
-        checkpoint = torch.load(checkpoint_path, map_location=self.device, weights_only=False)
+        if not os.path.isfile(checkpoint_path):
+            raise FileNotFoundError(f"Checkpoint file not found: {checkpoint_path}")
+        checkpoint = torch.load(checkpoint_path, map_location=self.device, weights_only=True)
         self.model.load_state_dict(checkpoint['model'])
         self.optimizer.load_state_dict(checkpoint['optimizer'])
         self.scheduler.load_state_dict(checkpoint['scheduler'])
@@ -463,7 +465,10 @@ def main():
     trainer = AureliusTrainer(model, full_config)
 
     if args.resume:
-        trainer.load_checkpoint(args.resume)
+        resume_dir = os.path.realpath(os.path.abspath(args.resume))
+        if not os.path.isdir(resume_dir):
+            raise ValueError(f"Invalid resume path (must be an existing directory): {args.resume}")
+        trainer.load_checkpoint(resume_dir)
 
     dataset = SyntheticDataset(
         vocab_size=model_config.get('vocab_size', 50257),
