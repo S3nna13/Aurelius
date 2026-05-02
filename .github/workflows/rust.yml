@@ -94,11 +94,15 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-        working-directory: ${{ matrix.crate }}
+
+      - name: Restore cached Rust build artifacts
+        uses: Swatinem/rust-cache@9d47c0584c1a4c68c8351e0771a1cf8a7bdcf3c6 # v2
+        with:
+          workspaces: ${{ matrix.crate }}
 
       - name: Build NAPI crate
-        run: npm run build
-        working-directory: ${{ matrix.crate }}
+        run: npm run build -w ${{ matrix.crate }}
+        working-directory: .
 
   audit:
     name: Security audit

@@ -56,20 +56,17 @@ aurelius.egg-info/
 *~
 
 # Frontend
-frontend/node_modules/
 frontend/dist/
 frontend/.env
 frontend/.env.local
 
 # Middle layer
-middle/node_modules/
 middle/dist/
 
 # Server layer
-server/node_modules/
 
-# Rust — blanket for all crates + tools
-**/target/
+# Node.js — workspace hoists to root
+node_modules/
 **/node_modules/
 *.node
 

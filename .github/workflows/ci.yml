@@ -114,9 +114,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    defaults:
-      run:
-        working-directory: frontend
     steps:
       - name: Checkout repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -126,28 +123,25 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
         run: npm ci
 
       - name: Run type check
-        run: npx tsc -b --noEmit
+        run: cd frontend && npx tsc -b --noEmit
 
       - name: Run lint
-        run: npm run lint
+        run: npm run lint -w frontend
 
       - name: Run tests
-        run: npm test
+        run: npm run test -w frontend
 
   middle:
     name: Middle layer lint and test
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    defaults:
-      run:
-        working-directory: middle
     steps:
       - name: Checkout repository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -157,13 +151,13 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: middle/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
         run: npm ci
 
       - name: Run type check
-        run: npx tsc --noEmit
+        run: cd middle && npx tsc --noEmit
 
       - name: Run lint
-        run: npm run lint
+        run: npm run lint -w middle

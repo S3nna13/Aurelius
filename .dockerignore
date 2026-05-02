@@ -44,12 +44,11 @@ wandb/
 # Docs (keep README, SECURITY, etc.)
 docs/plans/
 
-# Frontend (separate build)
-frontend/
+# Node (workspace hoisted to root)
+node_modules/
 
-# Rust (build separately)
-crates/
-tools/
+# Rust build artifacts
+**/target/
 
 # Alembic
 alembic/
@@ -59,12 +58,5 @@ data/
 training_data/
 results/
 
-# Configs
-configs/
-
 # GitHub
 .github/
-
-# Training scripts
-train_*.py
-generate_jsonl.py

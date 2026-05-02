@@ -188,10 +188,7 @@ bootstrap-fast: ## Quick setup (skip Rust builds)
 
 setup-dev: ## Install all development dependencies
 	pip install -e ".[dev,serve,train,db]"
-	cd frontend && npm install
-	cd middle && npm install
-	cd crates/data-engine && npm install
-	cd crates/token-counter && npm install
+	npm install
 	pre-commit install
 
 setup-pre-commit: ## Install pre-commit hooks

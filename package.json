@@ -1,0 +1,27 @@
+{
+  "name": "aurelius",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "frontend",
+    "middle",
+    "server",
+    "crates/*"
+  ],
+  "scripts": {
+    "dev:frontend": "npm run dev -w frontend",
+    "dev:middle": "npm run dev -w middle",
+    "dev:server": "npm run dev -w server",
+    "build": "npm run build -w frontend -w middle -w server",
+    "build:frontend": "npm run build -w frontend",
+    "build:middle": "npm run build -w middle",
+    "build:server": "npm run build -w server",
+    "build:engine": "npm run build -w aurelius-data-engine",
+    "test": "npm run test -ws --if-present",
+    "test:frontend": "npm run test -w frontend",
+    "test:middle": "npm run test -w middle",
+    "lint": "npm run lint -ws --if-present",
+    "clean": "rm -rf node_modules frontend/node_modules middle/node_modules server/node_modules"
+  }
+}
