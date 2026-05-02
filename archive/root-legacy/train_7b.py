@@ -359,7 +359,15 @@ class AureliusTrainer:
 
     def load_checkpoint(self, path):
         checkpoint_path = os.path.join(path, 'checkpoint.pt')
-        checkpoint = torch.load(checkpoint_path, map_location=self.device, weights_only=False)
+        if os.path.basename(checkpoint_path) != 'checkpoint.pt':
+            raise ValueError("Invalid checkpoint filename.")
+        checkpoint = torch.load(checkpoint_path, map_location=self.device, weights_only=True)
+        if not isinstance(checkpoint, dict):
+            raise ValueError("Invalid checkpoint format: expected a dict.")
+        required_keys = ['model', 'optimizer', 'scheduler', 'scaler', 'prm_model', 'global_step']
+        missing = [k for k in required_keys if k not in checkpoint]
+        if missing:
+            raise ValueError(f"Checkpoint missing required keys: {missing}")
         self.model.load_state_dict(checkpoint['model'])
         self.optimizer.load_state_dict(checkpoint['optimizer'])
         self.scheduler.load_state_dict(checkpoint['scheduler'])
