@@ -165,7 +165,6 @@ export default function Notifications() {
   const deselectAll = () => setSelectedIds(new Set());
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentPage(1);
   }, [activeTab]);
 

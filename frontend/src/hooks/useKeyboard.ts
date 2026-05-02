@@ -37,6 +37,7 @@ export function useKeyboard(bindings: KeyBinding[], deps: unknown[] = []): void 
 
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bindings, ...deps])
 }
 
