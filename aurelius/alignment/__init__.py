@@ -1,4 +1,2 @@
-"""Aurelius alignment package — safety, preferences, RLHF, DPO, and constitutional AI."""
-from __future__ import annotations
-
-__all__ = []
+"""Compatibility shim — imports from src.alignment."""
+from src.alignment import *  # noqa: F401,F403
