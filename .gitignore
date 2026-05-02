@@ -71,13 +71,13 @@ middle/dist/
 # Server layer
 server/node_modules/
 
-# Rust crates
-crates/data-engine/node_modules/
-crates/data-engine/target/
-crates/data-engine/*.node
-crates/token-counter/node_modules/
-crates/token-counter/target/
-crates/token-counter/*.node
+# Rust — blanket for all crates + tools
+**/target/
+**/node_modules/
+*.node
+
+# Python type/lint caches
+.mypy_cache/
 
 # Alembic
 alembic/versions/*.pyc
@@ -103,8 +103,16 @@ training_data/
 *.parquet
 
 # Rust crates (usage-store)
-crates/usage-store/target/
-crates/usage-store/*.node
 crates/usage-store/Cargo.lock
 
-# Tools workspace member
+# Rust memory (standalone PyO3)
+rust_memory/target/
+
+# Root target (workspace)
+/target/
+
+# Nested git repos
+tools/jsonl-merge/
+
+# Agent loop artifacts
+.serena/

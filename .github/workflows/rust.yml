@@ -44,6 +44,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@b3b06ba2ba8d33e8fa1d0c457d8f63657e1b2c5e # stable
         with:
+          toolchain: "1.85"
           components: clippy, rustfmt
 
       - name: Cache cargo
@@ -77,7 +78,9 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@b3b06ba2ba8d33e8fa1d1c457d8f63657e1b2c5e # stable
+        uses: dtolnay/rust-toolchain@b3b06ba2ba8d33e8fa1d0c457d8f63657e1b2c5e # stable
+        with:
+          toolchain: "1.85"
 
       - name: Cache cargo
         uses: Swatinem/rust-cache@9d47c0584c1a4c68c8351e0771a1cf8a7bdcf3c6 # v2

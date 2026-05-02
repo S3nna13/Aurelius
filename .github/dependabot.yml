@@ -38,31 +38,7 @@ updates:
           - "@types/react*"
 
   - package-ecosystem: "cargo"
-    directory: "/crates/usage-store"
-    schedule:
-      interval: "monthly"
-    labels:
-      - "dependencies"
-      - "rust"
-
-  - package-ecosystem: "cargo"
-    directory: "/crates/api-gateway"
-    schedule:
-      interval: "monthly"
-    labels:
-      - "dependencies"
-      - "rust"
-
-  - package-ecosystem: "cargo"
-    directory: "/tools/data-cli"
-    schedule:
-      interval: "monthly"
-    labels:
-      - "dependencies"
-      - "rust"
-
-  - package-ecosystem: "cargo"
-    directory: "/tools/jsonl_merge"
+    directory: "/"
     schedule:
       interval: "monthly"
     labels:
