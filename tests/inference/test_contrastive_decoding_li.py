@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import torch
-from aurelius.inference.contrastive_decoding_li import (
+from src.inference.contrastive_decoding_li import (
     CDScorer,
     CDSearcher,
     ContrastiveDecoder,

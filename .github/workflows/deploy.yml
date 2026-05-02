@@ -1,66 +1,17 @@
 name: Aurelius Deploy
 
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
 
 jobs:
-  frontend:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run test -- --run
-      - run: npm run build
-      - uses: actions/upload-artifact@v4
-        with:
-          name: frontend-build
-          path: frontend/dist
-
-  middle:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: middle
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: middle/package-lock.json
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run build
-
-  python:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-          cache: 'pip'
-      - run: pip install -e ".[dev]"
-      - run: make test
-
   docker:
-    needs: [frontend, middle, python]
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - run: |
-          docker compose -f deployment/docker-compose.yml build
+          docker compose -f deployment/compose.yaml build
           echo "Build complete — ready for registry push"

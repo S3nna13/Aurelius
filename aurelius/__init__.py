@@ -21,7 +21,6 @@ if "src.model.transformer" in sys.modules:
 _alias_subpackage("aurelius.data", "src.data")
 _alias_subpackage("aurelius.eval", "src.eval")
 _alias_subpackage("aurelius.evaluation", "src.evaluation")
-_alias_subpackage("aurelius.inference", "src.inference")
 
 _src_training = import_module("src.training")
 sys.modules.setdefault("aurelius.training", _src_training)

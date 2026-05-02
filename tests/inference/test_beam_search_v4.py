@@ -8,7 +8,7 @@ from __future__ import annotations
 import math
 
 import torch
-from aurelius.inference.beam_search_v4 import (
+from src.inference.beam_search_v4 import (
     Beam,
     BeamSearch,
     BeamSearchConfig,

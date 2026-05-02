@@ -346,8 +346,29 @@ __all__ = [
     "TaskThreadSpec",
     "Workstream",
     "SessionRecord",
+    # additive model patterns
+    "MoEConfig", "MoDConfig", "ReMoDEConfig", "HLMConfig",
+    "SparseMoELayer", "BalancedMoEFFN", "SoftMoELayer", "ExpertChoiceLayer",
+    "MoDRouter", "MoDLayer", "CapacityTracker",
+    "ReMoDELayer", "ReMoDEBlock",
+    "HLMRouter", "HLMProfile", "get_hlm_config",
+    "DiffusionLLM", "DiffusionLLMConfig", "SemanticTokenizer", "DiscreteDiffusion", "DiffusionDecoder",
+    "architectures",
+    "mod",
 ]
 
+
+from .remode import ReMoDEBlock, ReMoDELayer  # noqa: E402
+from .hlm import HLMProfile, HLMRouter, get_hlm_config  # noqa: E402
+from .diffusion_llm import DiffusionDecoder, DiffusionLLM, DiffusionLLMConfig, DiscreteDiffusion, SemanticTokenizer  # noqa: E402
+from . import architectures  # noqa: E402
+from .moe import (  # noqa: E402
+    BalancedMoEFFN,
+    ExpertChoiceLayer,
+    SoftMoELayer,
+)
+from .config import HLMConfig, MoDConfig, MoEConfig, ReMoDEConfig  # noqa: E402
+from . import mod  # noqa: E402
 
 _LAZY_EXPORTS = {
     "SessionRecord": ("src.agent.session_manager", "SessionRecord"),

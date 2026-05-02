@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import pytest
 import torch
-from aurelius.inference.diffusion_lm_inference import (
+from src.inference.diffusion_lm_inference import (
     ContinuousTimeDiffusionSampler,
     DiffusionLMQualityMetrics,
     MaskNoiseSchedule,
