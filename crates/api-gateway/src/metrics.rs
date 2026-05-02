@@ -46,7 +46,7 @@ impl Metrics {
             .inner
             .latencies
             .entry("all".to_string())
-            .or_default();
+            .or_insert_with(Vec::new);
         latencies.push(latency_ms);
         if latencies.len() > 1000 {
             latencies.remove(0);

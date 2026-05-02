@@ -4,6 +4,7 @@ Lightning blue (#00BFFF) themed. Dragon mascot. Real-time streaming.
 Inspired by Claude Code, OPENDEV, Terminal-Bench, NL2SH, YAMLE.
 """
 
+# ruff: noqa: E501
 from __future__ import annotations
 
 import os
@@ -38,6 +39,7 @@ from .dragon_mascot import DRAGON_ART, WELCOME_HEADER
 LIGHTNING_BLUE = "#00BFFF"
 DRAGON_GREEN = "#00FF88"
 TERMINAL_BG = "#0a0a1a"
+LIGHTNING_DIM = "#006688"
 LIGHTNING_BLUE_DIM = "#006688"
 ACCENT_PURPLE = "#8855FF"
 

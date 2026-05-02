@@ -21,7 +21,7 @@ export function loadConfig(): GatewayConfig {
     host: process.env.AURELIUS_HOST || '0.0.0.0',
     port: parseInt(process.env.AURELIUS_PORT || '7870', 10),
     pythonUrl: process.env.AURELIUS_PYTHON_URL || 'http://127.0.0.1:8080',
-    authRequired: process.env.AURELIUS_AUTH === 'true',
+    authRequired: process.env.AURELIUS_AUTH === 'true' || (process.env.NODE_ENV === 'production' && process.env.AURELIUS_DEV_OPEN !== 'true'),
     apiKey: process.env.AURELIUS_API_KEY || '',
     frontendDist: process.env.AURELIUS_FRONTEND_DIST
       || path.resolve(__dirname, '../../frontend/dist'),

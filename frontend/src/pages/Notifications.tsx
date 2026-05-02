@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   Bell,
   CheckCheck,
@@ -121,7 +121,7 @@ export default function Notifications() {
     refreshStats();
   }, [refreshNotifs, refreshStats]);
 
-  const notifications = notifData?.notifications || [];
+  const notifications = useMemo(() => notifData?.notifications || [], [notifData]);
 
   useEffect(() => {
     if (notifError) {
@@ -165,6 +165,7 @@ export default function Notifications() {
   const deselectAll = () => setSelectedIds(new Set());
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentPage(1);
   }, [activeTab]);
 

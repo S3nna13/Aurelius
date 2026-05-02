@@ -1,0 +1,14 @@
+/Users/christienantonio/aurelius/rust_memory/target/debug/deps/pyo3_build_config-12ffc696d17f5b32.d: /Users/christienantonio/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.21.2/src/lib.rs /Users/christienantonio/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.21.2/src/errors.rs /Users/christienantonio/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.21.2/src/impl_.rs /Users/christienantonio/aurelius/rust_memory/target/debug/build/pyo3-build-config-8f98efbdcad12d77/out/pyo3-build-config-file.txt /Users/christienantonio/aurelius/rust_memory/target/debug/build/pyo3-build-config-8f98efbdcad12d77/out/pyo3-build-config.txt
+
+/Users/christienantonio/aurelius/rust_memory/target/debug/deps/libpyo3_build_config-12ffc696d17f5b32.rlib: /Users/christienantonio/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.21.2/src/lib.rs /Users/christienantonio/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.21.2/src/errors.rs /Users/christienantonio/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.21.2/src/impl_.rs /Users/christienantonio/aurelius/rust_memory/target/debug/build/pyo3-build-config-8f98efbdcad12d77/out/pyo3-build-config-file.txt /Users/christienantonio/aurelius/rust_memory/target/debug/build/pyo3-build-config-8f98efbdcad12d77/out/pyo3-build-config.txt
+
+/Users/christienantonio/aurelius/rust_memory/target/debug/deps/libpyo3_build_config-12ffc696d17f5b32.rmeta: /Users/christienantonio/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.21.2/src/lib.rs /Users/christienantonio/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.21.2/src/errors.rs /Users/christienantonio/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.21.2/src/impl_.rs /Users/christienantonio/aurelius/rust_memory/target/debug/build/pyo3-build-config-8f98efbdcad12d77/out/pyo3-build-config-file.txt /Users/christienantonio/aurelius/rust_memory/target/debug/build/pyo3-build-config-8f98efbdcad12d77/out/pyo3-build-config.txt
+
+/Users/christienantonio/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.21.2/src/lib.rs:
+/Users/christienantonio/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.21.2/src/errors.rs:
+/Users/christienantonio/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.21.2/src/impl_.rs:
+/Users/christienantonio/aurelius/rust_memory/target/debug/build/pyo3-build-config-8f98efbdcad12d77/out/pyo3-build-config-file.txt:
+/Users/christienantonio/aurelius/rust_memory/target/debug/build/pyo3-build-config-8f98efbdcad12d77/out/pyo3-build-config.txt:
+
+# env-dep:CARGO_PKG_VERSION=0.21.2
+# env-dep:OUT_DIR=/Users/christienantonio/aurelius/rust_memory/target/debug/build/pyo3-build-config-8f98efbdcad12d77/out

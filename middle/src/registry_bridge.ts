@@ -30,7 +30,7 @@ export interface RegistrySnapshot {
   skill_categories: string[];
 }
 
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
 let cachedSnapshot: RegistrySnapshot | null = null;
 let pendingSnapshot: Promise<RegistrySnapshot> | null = null;

@@ -7,13 +7,12 @@ edition = "2024"
 crate-type = ["cdylib"]
 
 [dependencies]
-napi = { version = "3", features = ["napi9", "serde-json", "async"] }
+napi = { version = "3", features = ["napi9", "serde-json", "tokio_rt"] }
 napi-derive = "3"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-tokio = { version = "1", features = ["rt-multi-thread", "sync"] }
+tokio = { version = "1", features = ["rt-multi-thread", "sync", "time"] }
 redis = { version = "0.28", features = ["tokio-comp", "connection-manager"] }
-dashmap = "6"
 
 [build-dependencies]
 napi-build = "2"

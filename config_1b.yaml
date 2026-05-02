@@ -1,0 +1,46 @@
+aurelius_1b:
+  d_model: 1536
+  n_heads: 16
+  d_ff: 6144
+  n_layers: 24
+  vocab_size: 50257
+  max_seq_len: 4096
+  d_mem: 512
+  episodic_slots: 1024
+  lts_capacity: 2048
+  consolidation_freq: 128
+  graph_threshold: 0.65
+  dropout: 0.0
+
+training:
+  batch_size: 8
+  micro_batch_size: 2
+  learning_rate: 2e-4
+  min_lr: 1e-5
+  weight_decay: 0.1
+  beta1: 0.9
+  beta2: 0.95
+  warmup_steps: 2000
+  total_steps: 300000
+  grad_clip: 1.0
+  optimizer: "adamw"
+  scheduler: "cosine"
+  memory_loss_weight: 0.1
+  consolidation_loss_weight: 0.05
+  gradient_checkpointing: true
+  mixed_precision: bf16
+  cpu_offload: true
+
+data:
+  pretrain_corpus: 200B_tokens
+  memory_curriculum: 10B_tokens
+  eval_interval: 500
+  save_interval: 5000
+
+infrastructure:
+  n_gpus: 8
+  gpu_type: "H100_80GB"
+  distributed_strategy: "fsdp"
+  cpu_offload_params: true
+  activation_memory_budget_mb: 65536
+  kv_cache_quant_bits: 8

@@ -17,7 +17,7 @@ function isEnabled(): boolean {
 
 export default function SessionLock({ timeoutMinutes = 5 }: SessionLockProps) {
   const [locked, setLocked] = useState(false);
-  const [lastActivity, setLastActivity] = useState(Date.now());
+  const [lastActivity, setLastActivity] = useState(() => Date.now());
   const [enabled, setEnabled] = useState(isEnabled);
 
   const resetActivity = useCallback(() => {

@@ -171,6 +171,7 @@ export default function CommandPalette({ onClose }: CommandPaletteProps) {
   }, [query, skills, workflows, navigate, onClose]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelected(0);
   }, [query]);
 

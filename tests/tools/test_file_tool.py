@@ -18,16 +18,16 @@ class TestFileDenyPaths:
         assert isinstance(FILE_DENY_PATHS, frozenset)
 
     def test_contains_etc_passwd(self):
-        assert "/etc/passwd" in FILE_DENY_PATHS
+        assert os.path.realpath("/etc/passwd") in FILE_DENY_PATHS
 
     def test_contains_etc_shadow(self):
-        assert "/etc/shadow" in FILE_DENY_PATHS
+        assert os.path.realpath("/etc/shadow") in FILE_DENY_PATHS
 
     def test_contains_proc(self):
-        assert "/proc/" in FILE_DENY_PATHS
+        assert os.path.realpath("/proc/") in FILE_DENY_PATHS
 
     def test_contains_sys(self):
-        assert "/sys/" in FILE_DENY_PATHS
+        assert os.path.realpath("/sys/") in FILE_DENY_PATHS
 
     def test_has_at_least_four_entries(self):
         assert len(FILE_DENY_PATHS) >= 4

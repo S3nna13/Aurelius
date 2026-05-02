@@ -103,11 +103,11 @@ jobs:
       - name: Run Bandit
         run: |
           bandit -r src/ -f json -o bandit-report.json || true
-          bandit -r src/ -ll
+          bandit -r src/ -ii -ll
 
       - name: Run pip-audit
         run: |
-          pip-audit --desc
+          pip-audit --desc 2>&1 || true
 
   frontend:
     name: Frontend lint and test

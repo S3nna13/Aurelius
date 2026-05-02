@@ -5,6 +5,11 @@ use chrono::{DateTime, Utc};
 use napi_derive::napi;
 use uuid::Uuid;
 
+const MAX_SESSIONS: usize = 100_000;
+const MAX_TTL_SECONDS: i64 = 86400;
+const MAX_METADATA_SIZE: usize = 4096;
+const MAX_SESSIONS_PER_USER: u32 = 100;
+
 #[derive(Clone)]
 #[napi(object)]
 pub struct Session {
@@ -65,9 +70,24 @@ impl SessionManager {
     }
 
     #[napi]
-    pub fn create_session(&self, options: SessionCreateOptions) -> Session {
-        let now = Utc::now();
+    pub fn create_session(&self, options: SessionCreateOptions) -> napi::Result<Session> {
         let ttl = options.ttl_seconds.unwrap_or(self.default_ttl_seconds);
+        if ttl <= 0 || ttl > MAX_TTL_SECONDS {
+            return Err(napi::Error::from_reason(format!(
+                "TTL must be between 1 and {} seconds",
+                MAX_TTL_SECONDS
+            )));
+        }
+
+        let metadata_size = options.metadata.as_ref().map(|m| m.len()).unwrap_or(0);
+        if metadata_size > MAX_METADATA_SIZE {
+            return Err(napi::Error::from_reason(format!(
+                "Metadata size {} exceeds maximum of {} bytes",
+                metadata_size, MAX_METADATA_SIZE
+            )));
+        }
+
+        let now = Utc::now();
         let expires_at = now + chrono::Duration::seconds(ttl);
 
         let session = Session {
@@ -89,9 +109,28 @@ impl SessionManager {
 
         let mut sessions = self.sessions.lock().unwrap();
         self.cleanup_expired(&mut sessions);
+
+        let user_count = sessions
+            .values()
+            .filter(|e| e.session.user_id == session.user_id)
+            .count();
+        if user_count >= MAX_SESSIONS_PER_USER as usize {
+            return Err(napi::Error::from_reason(format!(
+                "User '{}' already has {} sessions (max {})",
+                session.user_id, user_count, MAX_SESSIONS_PER_USER
+            )));
+        }
+
+        if sessions.len() >= MAX_SESSIONS {
+            return Err(napi::Error::from_reason(format!(
+                "Maximum sessions ({}) reached",
+                MAX_SESSIONS
+            )));
+        }
+
         sessions.insert(session.id.clone(), entry);
 
-        session
+        Ok(session)
     }
 
     #[napi]

@@ -4,6 +4,7 @@ Routes tasks based on intent classification. All powered by Aurelius.
 No external models. Modes: coding, research, security, debug, architect.
 """
 
+# ruff: noqa: E501
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -25,8 +26,7 @@ BUILTIN_MODES: dict[str, AgentMode] = {
         "coding",
         "Coding Agent",
         "Write, edit, and refactor code across the repository",
-        "You are Aurelius, an expert software engineer. Write clean, tested, "
-        "production-quality code.",
+        "You are Aurelius, an expert software engineer. Write clean, tested, production-quality code.",
         [
             "read_file",
             "write_file",
@@ -42,8 +42,7 @@ BUILTIN_MODES: dict[str, AgentMode] = {
         "research",
         "Research Agent",
         "Deep analysis of codebases, architectures, and documentation",
-        "You are Aurelius, a senior architect. Analyze systems deeply and "
-        "provide comprehensive insights.",
+        "You are Aurelius, a senior architect. Analyze systems deeply and provide comprehensive insights.",
         ["read_file", "search_code", "grep", "list_directory", "git_log"],
         0.5,
     ),
@@ -51,8 +50,7 @@ BUILTIN_MODES: dict[str, AgentMode] = {
         "security",
         "Security Agent",
         "Security audit, vulnerability detection, and threat modeling",
-        "You are Aurelius, a security expert. Audit code for vulnerabilities "
-        "following OWASP and CWE guidelines.",
+        "You are Aurelius, a security expert. Audit code for vulnerabilities following OWASP and CWE guidelines.",
         ["read_file", "search_code", "run_tests", "check_dependencies"],
         0.3,
     ),
@@ -68,8 +66,7 @@ BUILTIN_MODES: dict[str, AgentMode] = {
         "architect",
         "Architect Agent",
         "Design system architecture and plan large-scale changes",
-        "You are Aurelius, a system architect. Design clean, scalable "
-        "architectures with clear boundaries.",
+        "You are Aurelius, a system architect. Design clean, scalable architectures with clear boundaries.",
         ["read_file", "list_directory", "search_code", "analyze_dependencies"],
         0.6,
     ),

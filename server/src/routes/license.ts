@@ -1,5 +1,9 @@
 import type { Request, Response } from 'express';
+import crypto from 'crypto';
 import { getEngine } from '../config.js';
+
+// Basic license key format: AURELIUS- followed by hex characters (32+ total length after prefix)
+const LICENSE_KEY_RE = /^AURELIUS-(?:[A-Fa-f0-9]{4,}){4,}$/;
 
 export function validateLicense(_req: Request, res: Response): void {
   const engine = getEngine();
@@ -15,15 +19,18 @@ export function activateLicense(req: Request, res: Response): void {
     res.status(400).json({ error: 'license_key required' });
     return;
   }
-  if (license_key.startsWith('AURELIUS-') && license_key.length >= 32) {
-    const engine = getEngine();
-    engine.setConfig('license_key', license_key);
-    engine.setConfig('license_activated', 'true');
-    engine.setConfig('license_tier', tier || 'pro');
-    engine.setConfig('require_auth', 'true');
-    engine.setConfig('api_key', license_key.slice(-16));
-    res.json({ success: true, tier: tier || 'pro' });
-  } else {
-    res.status(403).json({ error: 'Invalid license key' });
+  // Harden format check beyond just startsWith + length
+  if (!LICENSE_KEY_RE.test(license_key)) {
+    res.status(403).json({ error: 'Invalid license key format' });
+    return;
   }
+  const engine = getEngine();
+  engine.setConfig('license_key', license_key);
+  engine.setConfig('license_activated', 'true');
+  engine.setConfig('license_tier', tier || 'pro');
+  engine.setConfig('require_auth', 'true');
+  // Derive API key using HMAC rather than raw slice
+  const hmac = crypto.createHmac('sha256', license_key).update('aurelius-api-key').digest('hex');
+  engine.setConfig('api_key', hmac.slice(0, 32));
+  res.json({ success: true, tier: tier || 'pro' });
 }

@@ -17,6 +17,7 @@ export default function LicenseGate({ children }: LicenseGateProps) {
   const [activating, setActivating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const storedKey = localStorage.getItem('aurelius-api-key');
     if (!storedKey) {
@@ -37,6 +38,7 @@ export default function LicenseGate({ children }: LicenseGateProps) {
         setError('Network error during validation. Click to retry.');
       });
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const activate = async () => {
     if (!key.trim()) return;

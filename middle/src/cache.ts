@@ -10,7 +10,8 @@ export async function getCache(): Promise<RedisClientType | null> {
     _client.on('error', (err) => console.warn('[cache] redis error:', err.message))
     await _client.connect()
     return _client
-  } catch {
+  } catch (err) {
+    console.warn('[cache] connection failed:', err instanceof Error ? err.message : err)
     return null
   }
 }
@@ -21,7 +22,8 @@ export async function cacheGet<T>(key: string): Promise<T | null> {
   try {
     const raw = await client.get(key)
     return raw ? JSON.parse(raw) as T : null
-  } catch {
+  } catch (err) {
+    console.warn('[cache] get failed:', err instanceof Error ? err.message : err)
     return null
   }
 }
@@ -31,8 +33,8 @@ export async function cacheSet(key: string, value: unknown, ttl = 60): Promise<v
   if (!client) return
   try {
     await client.setEx(key, ttl, JSON.stringify(value))
-  } catch {
-    // ignore
+  } catch (err) {
+    console.warn('[cache] set failed:', err instanceof Error ? err.message : err)
   }
 }
 
@@ -41,8 +43,8 @@ export async function cacheDel(key: string): Promise<void> {
   if (!client) return
   try {
     await client.del(key)
-  } catch {
-    // ignore
+  } catch (err) {
+    console.warn('[cache] del failed:', err instanceof Error ? err.message : err)
   }
 }
 
@@ -51,7 +53,8 @@ export async function cacheIncr(key: string): Promise<number> {
   if (!client) return 0
   try {
     return await client.incr(key)
-  } catch {
+  } catch (err) {
+    console.warn('[cache] incr failed:', err instanceof Error ? err.message : err)
     return 0
   }
 }
@@ -61,7 +64,7 @@ export async function cacheExpire(key: string, ttl: number): Promise<void> {
   if (!client) return
   try {
     await client.expire(key, ttl)
-  } catch {
-    // ignore
+  } catch (err) {
+    console.warn('[cache] expire failed:', err instanceof Error ? err.message : err)
   }
 }

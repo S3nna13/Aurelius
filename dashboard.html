@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aurelius AI — Project Dashboard</title>
+<style>
+  :root {
+    --accent: #6C63FF;
+    --accent-dim: #4a42cc;
+    --accent-glow: rgba(108, 99, 255, 0.25);
+    --bg: #0b0b1a;
+    --bg-card: #111128;
+    --bg-card-hover: #191940;
+    --bg-elevated: #16163a;
+    --border: #1e1e4a;
+    --border-bright: #2a2a6a;
+    --text: #e0e0f0;
+    --text-dim: #8888aa;
+    --text-bright: #ffffff;
+    --green: #34d399;
+    --green-bg: rgba(52, 211, 153, 0.12);
+    --red: #f87171;
+    --amber: #fbbf24;
+    --blue: #60a5fa;
+    --pink: #f472b6;
+    --cyan: #22d3ee;
+    --orange: #fb923c;
+    --type-system: #60a5fa;
+    --type-memory: #34d399;
+    --type-attention: #f472b6;
+    --type-agent: #fbbf24;
+    --type-inference: #22d3ee;
+    --type-training: #fb923c;
+    --type-orchestration: #a78bfa;
+    --type-systems: #f87171;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 3px; }
+
+  .container { max-width: 1320px; margin: 0 auto; padding: 24px 20px; }
+
+  /* header */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 0 32px; border-bottom: 1px solid var(--border); margin-bottom: 32px;
+  }
+  .header-left { display: flex; align-items: center; gap: 16px; }
+  .logo {
+    width: 44px; height: 44px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent), #8b5cf6);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 20px; color: #fff; flex-shrink: 0;
+    box-shadow: 0 0 24px var(--accent-glow);
+  }
+  .header h1 { font-size: 26px; font-weight: 700; color: var(--text-bright); }
+  .header .subtitle { font-size: 13px; color: var(--text-dim); margin-top: 2px; }
+  .header-badge {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    padding: 8px 18px; border-radius: 100px; font-size: 13px;
+  }
+  .header-badge .dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--green);
+    animation: pulse-dot 2s infinite;
+  }
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .header-badge span { color: var(--text-dim); }
+  .header-badge strong { color: var(--text-bright); font-weight: 600; }
+
+  /* section titles */
+  .section-title {
+    font-size: 18px; font-weight: 700; color: var(--text-bright);
+    margin-bottom: 20px; display: flex; align-items: center; gap: 10px;
+  }
+  .section-title .rule { flex: 1; height: 1px; background: var(--border); }
+
+  /* grid */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 32px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-bottom: 32px; }
+  @media (max-width: 900px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } }
+  @media (min-width: 901px) and (max-width: 1200px) { .grid-4 { grid-template-columns: 1fr 1fr; } }
+
+  /* cards */
+  .card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 24px;
+    transition: border-color .2s, box-shadow .2s, background .2s;
+  }
+  .card:hover { border-color: var(--border-bright); box-shadow: 0 4px 24px rgba(0,0,0,.3); }
+  .card-title { font-size: 14px; font-weight: 600; color: var(--text-dim); margin-bottom: 8px; text-transform: uppercase; letter-spacing: .05em; }
+
+  /* DAIES timeline */
+  .timeline { display: flex; gap: 0; position: relative; padding: 32px 0 20px; }
+  .timeline::before {
+    content: ''; position: absolute; top: 52px; left: 40px; right: 40px;
+    height: 3px; background: var(--border); z-index: 0;
+  }
+  .timeline-step {
+    flex: 1; text-align: center; position: relative; z-index: 1;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .timeline-dot {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--bg-card); border: 3px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 13px; color: var(--text-dim);
+    margin-bottom: 12px; transition: all .3s;
+    position: relative;
+  }
+  .timeline-step.active .timeline-dot {
+    background: var(--accent); border-color: var(--accent); color: #fff;
+    box-shadow: 0 0 20px var(--accent-glow);
+  }
+  .timeline-step.completed .timeline-dot {
+    background: var(--green); border-color: var(--green); color: #0b0b1a;
+  }
+  .timeline-step.completed .timeline-dot::after {
+    content: '✓'; font-size: 16px;
+  }
+  .timeline-step.completed .timeline-dot span { display: none; }
+  .timeline-label { font-size: 13px; font-weight: 600; color: var(--text-bright); }
+  .timeline-sub { font-size: 11px; color: var(--text-dim); margin-top: 4px; max-width: 180px; line-height: 1.4; }
+  .timeline-meta { font-size: 10px; color: var(--accent); font-weight: 600; margin-top: 6px; }
+
+  /* stats */
+  .stat-value {
+    font-size: 32px; font-weight: 800; color: var(--text-bright);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.02em;
+  }
+  .stat-label { font-size: 12px; color: var(--text-dim); margin-top: 4px; text-transform: uppercase; letter-spacing: .06em; }
+  .stat-icon { font-size: 28px; margin-bottom: 4px; }
+
+  /* capabilities grid */
+  .cap-filter {
+    display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;
+    align-items: center;
+  }
+  .cap-filter input {
+    flex: 1; min-width: 180px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 14px;
+    color: var(--text); font-size: 13px; outline: none;
+    transition: border-color .2s;
+  }
+  .cap-filter input:focus { border-color: var(--accent); }
+  .cap-filter input::placeholder { color: var(--text-dim); }
+  .cap-tag {
+    padding: 6px 14px; border-radius: 100px; font-size: 11px; font-weight: 600;
+    border: 1px solid var(--border); background: var(--bg-card);
+    color: var(--text-dim); cursor: pointer; transition: all .2s;
+    text-transform: uppercase; letter-spacing: .04em;
+  }
+  .cap-tag:hover { border-color: var(--border-bright); color: var(--text-bright); }
+  .cap-tag.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .cap-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px; max-height: 600px; overflow-y: auto; padding-right: 4px;
+  }
+  .cap-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px;
+    transition: all .2s; cursor: default;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .cap-card:hover {
+    border-color: var(--border-bright);
+    background: var(--bg-card-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(0,0,0,.2);
+  }
+  .cap-card.hidden { display: none; }
+  .cap-card-top { display: flex; align-items: center; justify-content: space-between; }
+  .cap-num {
+    font-size: 11px; font-weight: 700; color: var(--text-dim);
+    background: var(--bg); padding: 2px 8px; border-radius: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+  .cap-type {
+    font-size: 9px; font-weight: 700; text-transform: uppercase;
+    padding: 2px 8px; border-radius: 100px; letter-spacing: .04em;
+    border: 1px solid;
+  }
+  .cap-name { font-size: 14px; font-weight: 600; color: var(--text-bright); }
+  .cap-file { font-size: 11px; color: var(--text-dim); font-family: 'SF Mono', 'Fira Code', monospace; }
+
+  /* architecture diagram */
+  .arch { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 16px 0; }
+  .arch-row { display: flex; align-items: center; gap: 0; }
+  .arch-box {
+    background: var(--bg-card); border: 2px solid var(--border-bright);
+    border-radius: 10px; padding: 12px 20px;
+    font-size: 13px; font-weight: 700; color: var(--text-bright);
+    text-align: center; min-width: 90px;
+    transition: all .3s;
+  }
+  .arch-box:hover {
+    border-color: var(--accent); box-shadow: 0 0 20px var(--accent-glow);
+    transform: scale(1.05);
+  }
+  .arch-box.special {
+    border-color: var(--accent); background: linear-gradient(135deg, rgba(108,99,255,0.15), transparent);
+  }
+  .arch-arrow {
+    font-size: 18px; color: var(--text-dim); padding: 0 8px;
+    font-weight: 300;
+  }
+  .arch-sub { font-size: 10px; color: var(--text-dim); margin-top: 4px; font-weight: 400; }
+  .arch-connector {
+    display: flex; align-items: center; gap: 24px; margin: 4px 0;
+    font-size: 11px; color: var(--text-dim);
+  }
+  .arch-connector .line { flex: 1; height: 1px; background: var(--border); }
+  .arch-memory-section {
+    display: flex; align-items: center; gap: 16px;
+    background: var(--bg-card); border: 2px solid var(--border);
+    border-radius: 12px; padding: 14px 24px;
+    margin-top: 8px;
+  }
+  .arch-memory-section .mem-label { font-size: 12px; font-weight: 600; color: var(--text-bright); }
+  .arch-memory-section .mem-sub { font-size: 10px; color: var(--text-dim); }
+  .arch-bridge {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+  }
+  .arch-bridge .bridge-box {
+    background: var(--bg-elevated); border: 1px solid var(--accent);
+    border-radius: 6px; padding: 6px 14px;
+    font-size: 10px; font-weight: 600; color: var(--accent);
+  }
+  .arch-bridge .bridge-line { width: 1px; height: 16px; background: var(--border-bright); }
+
+  /* security */
+  .security-list { display: flex; flex-direction: column; gap: 8px; }
+  .security-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 14px; border-radius: 8px;
+    background: var(--bg-elevated); border: 1px solid var(--border);
+  }
+  .security-item .check { color: var(--green); font-size: 18px; font-weight: 700; flex-shrink: 0; }
+  .security-item .sev {
+    font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px;
+    text-transform: uppercase; flex-shrink: 0;
+  }
+  .security-item .sev.high { background: rgba(248,113,113,0.15); color: var(--red); }
+  .security-item .sev.med { background: rgba(251,191,36,0.15); color: var(--amber); }
+  .security-item .sev.low { background: rgba(96,165,250,0.15); color: var(--blue); }
+  .security-item .sev.info { background: rgba(162,139,250,0.12); color: var(--text-dim); }
+  .security-item .desc { font-size: 13px; color: var(--text); }
+  .security-item .file { font-size: 10px; color: var(--text-dim); font-family: monospace; }
+
+  /* scale chart */
+  .scale-chart { display: flex; flex-direction: column; gap: 12px; }
+  .scale-row { display: flex; align-items: center; gap: 12px; }
+  .scale-label {
+    width: 56px; font-size: 12px; font-weight: 600; color: var(--text-dim);
+    flex-shrink: 0; text-align: right;
+  }
+  .scale-bar-wrapper { flex: 1; height: 32px; background: var(--bg-elevated); border-radius: 6px; overflow: hidden; position: relative; }
+  .scale-bar {
+    height: 100%; border-radius: 6px; transition: width 1.2s cubic-bezier(.22,1,.36,1);
+    display: flex; align-items: center; justify-content: flex-end;
+    padding-right: 12px; font-size: 11px; font-weight: 700; color: #fff;
+    min-width: 0;
+  }
+  .scale-bar.bar-base { background: linear-gradient(90deg, #4a42cc, #6C63FF); }
+  .scale-bar.bar-1b { background: linear-gradient(90deg, #6C63FF, #8b5cf6); }
+  .scale-bar.bar-3b { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+  .scale-bar.bar-7b { background: linear-gradient(90deg, #a78bfa, #c4b5fd); opacity: 0.5; }
+  .scale-count {
+    font-size: 11px; font-weight: 600; color: var(--text-dim);
+    width: 60px; flex-shrink: 0;
+  }
+
+  /* section spacing */
+  .mb-32 { margin-bottom: 32px; }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- header -->
+  <header class="header">
+    <div class="header-left">
+      <div class="logo">A</div>
+      <div>
+        <h1>Aurelius AI</h1>
+        <div class="subtitle">Augmented Memory &amp; Agentic Language Model</div>
+      </div>
+    </div>
+    <div class="header-badge">
+      <div class="dot"></div>
+      <span>Status</span>
+      <strong>DAIES v4</strong>
+    </div>
+  </header>
+
+  <!-- stats -->
+  <div class="grid-4 mb-32" id="stats-section">
+    <div class="card"><div class="stat-icon">&#x1F4C1;</div><div class="stat-value" data-target="38">0</div><div class="stat-label">Python + Rust Files</div></div>
+    <div class="card"><div class="stat-icon">&#x1F4D6;</div><div class="stat-value" data-target="5900">0</div><div class="stat-label">Python Lines of Code</div></div>
+    <div class="card"><div class="stat-icon">&#x2699;&#xFE0F;</div><div class="stat-value" data-target="388">0</div><div class="stat-label">Rust Lines of Code</div></div>
+    <div class="card"><div class="stat-icon">&#x1F9EA;</div><div class="stat-value" data-target="110">0</div><div class="stat-label">Unit Tests</div></div>
+    <div class="card"><div class="stat-icon">&#x1F4E6;</div><div class="stat-value" data-target="27">0</div><div class="stat-label">Python Modules</div></div>
+    <div class="card"><div class="stat-icon">&#x1F52C;</div><div class="stat-value" data-target="55">0</div><div class="stat-label">Capabilities</div></div>
+  </div>
+
+  <!-- DAIES -->
+  <div class="section-title mb-32" style="margin-bottom:8px">DAIES Progression <span class="rule"></span></div>
+  <div class="card mb-32">
+    <div class="timeline" id="timeline">
+      <div class="timeline-step completed">
+        <div class="timeline-dot"><span>I1</span></div>
+        <div class="timeline-label">Iteration 1</div>
+        <div class="timeline-sub">150M params · Base AMC</div>
+        <div class="timeline-meta">Foundation Model</div>
+      </div>
+      <div class="timeline-step completed">
+        <div class="timeline-dot"><span>I2</span></div>
+        <div class="timeline-label">Iteration 2</div>
+        <div class="timeline-sub">1.2B params · Memory Opt + Rust</div>
+        <div class="timeline-meta">Scaled &amp; Hardened</div>
+      </div>
+      <div class="timeline-step completed">
+        <div class="timeline-dot"><span>I3</span></div>
+        <div class="timeline-label">Iteration 3</div>
+        <div class="timeline-sub">3.3B params · Agents + Skills</div>
+        <div class="timeline-meta">Agent Integration</div>
+      </div>
+      <div class="timeline-step active">
+        <div class="timeline-dot"><span>I4</span></div>
+        <div class="timeline-label">Iteration 4</div>
+        <div class="timeline-sub">3.3B Final · 8 extra features</div>
+        <div class="timeline-meta">Production Ready</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- architecture -->
+  <div class="section-title mb-32" style="margin-bottom:8px">Architecture — Agent Loop <span class="rule"></span></div>
+  <div class="card mb-32">
+    <div class="arch">
+      <div class="arch-row">
+        <div class="arch-box">OBSERVE</div>
+        <div class="arch-arrow">&rarr;</div>
+        <div class="arch-box">THINK</div>
+        <div class="arch-arrow">&rarr;</div>
+        <div class="arch-box">ACT</div>
+        <div class="arch-arrow">&rarr;</div>
+        <div class="arch-box">REFLECT</div>
+        <div class="arch-arrow">&rarr;</div>
+        <div class="arch-box">LEARN</div>
+      </div>
+      <div class="arch-connector">
+        <span class="line"></span>
+        <span>AgentLoopController — full cycle</span>
+        <span class="line"></span>
+      </div>
+      <div class="arch-row">
+        <div class="arch-box special" style="min-width:120px">
+          AMC Memory
+          <div class="arch-sub">AurelianMemoryCore</div>
+        </div>
+        <div class="arch-arrow">&harr;</div>
+        <div class="arch-bridge">
+          <div class="bridge-box">AgentMemoryBridge</div>
+          <div class="bridge-line"></div>
+          <div class="bridge-box" style="border-color:var(--green);color:var(--green)">ToolCrossAttention</div>
+          <div class="bridge-line"></div>
+          <div class="bridge-box" style="border-color:var(--amber);color:var(--amber)">SkillLibrary</div>
+        </div>
+        <div class="arch-arrow">&harr;</div>
+        <div class="arch-box special" style="min-width:120px;border-color:var(--green);background:linear-gradient(135deg,rgba(52,211,153,0.12),transparent)">
+          Agent State
+          <div class="arch-sub">ToolFormerAdapter + Planner</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- security + scale chart -->
+  <div class="grid-2 mb-32">
+    <div class="card">
+      <div class="card-title">Security Status</div>
+      <div class="security-list">
+        <div class="security-item">
+          <div class="check">&#x2713;</div>
+          <div class="sev high">high</div>
+          <div class="desc">3 High findings fixed</div>
+          <div class="file">HierarchicalKVCache, CpuOffloadManager, UnifiedMemoryManager</div>
+        </div>
+        <div class="security-item">
+          <div class="check" style="color:var(--amber)">&#x2014;</div>
+          <div class="sev med">med</div>
+          <div class="desc">5 Medium findings — mitigations in progress</div>
+          <div class="file">CheckpointHeader, DifferentialCheckpointer, alloc_blocks, FP8LTSMemory, AdaptivePrecision</div>
+        </div>
+        <div class="security-item">
+          <div class="check" style="color:var(--blue)">&#x2713;</div>
+          <div class="sev low">low</div>
+          <div class="desc">7 Low findings — acknowledged</div>
+          <div class="file">Transmute, tier_bias, running flag, LZ4 decompress, etc.</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Scale Tier Chart</div>
+      <div class="scale-chart">
+        <div class="scale-row">
+          <div class="scale-label">Base</div>
+          <div class="scale-bar-wrapper"><div class="scale-bar bar-base" style="width:5%">150M</div></div>
+          <div class="scale-count">150M params</div>
+        </div>
+        <div class="scale-row">
+          <div class="scale-label">1B</div>
+          <div class="scale-bar-wrapper"><div class="scale-bar bar-1b" style="width:15%">1.2B</div></div>
+          <div class="scale-count">1.2B params</div>
+        </div>
+        <div class="scale-row">
+          <div class="scale-label">3B</div>
+          <div class="scale-bar-wrapper"><div class="scale-bar bar-3b" style="width:38%">3.3B</div></div>
+          <div class="scale-count">3.3B params</div>
+        </div>
+        <div class="scale-row">
+          <div class="scale-label" style="color:var(--text-dim)">7B</div>
+          <div class="scale-bar-wrapper"><div class="scale-bar bar-7b" style="width:0%">Future</div></div>
+          <div class="scale-count" style="color:var(--text-dim)">(planned)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- capabilities -->
+  <div class="section-title mb-32" style="margin-bottom:12px">55 Capabilities <span class="rule"></span></div>
+  <div class="card mb-32">
+    <div class="cap-filter">
+      <input type="text" id="capSearch" placeholder="Search capabilities by name, type, or file..." autocomplete="off">
+      <span class="cap-tag active" data-type="all">All</span>
+      <span class="cap-tag" data-type="System">System</span>
+      <span class="cap-tag" data-type="Memory Opt">Memory Opt</span>
+      <span class="cap-tag" data-type="Attention">Attention</span>
+      <span class="cap-tag" data-type="Agent">Agent</span>
+      <span class="cap-tag" data-type="Inference">Inference</span>
+      <span class="cap-tag" data-type="Training">Training</span>
+      <span class="cap-tag" data-type="Orchestration">Orchestration</span>
+      <span class="cap-tag" data-type="Systems">Systems</span>
+    </div>
+    <div class="cap-grid" id="capGrid"></div>
+  </div>
+
+</div>
+
+<script>
+(function() {
+  const caps = [
+    // System (8)
+    {n:1,name:'AureliusModel',type:'System',file:'aurelius_model.py'},
+    {n:2,name:'AureliusModel1B',type:'System',file:'aurelius_model_1b.py'},
+    {n:3,name:'AureliusModel3B',type:'System',file:'aurelius_model_3b.py'},
+    {n:4,name:'RMSNorm',type:'System',file:'aurelius_model.py'},
+    {n:5,name:'RotaryEmbedding',type:'System',file:'aurelius_model.py'},
+    {n:6,name:'ConfigLoader',type:'System',file:'config.yaml'},
+    {n:7,name:'RustBridge',type:'System',file:'rust_bridge.py'},
+    {n:8,name:'AgentAureliusModel',type:'System',file:'agent_train.py'},
+    // Memory Opt (9)
+    {n:9,name:'AurelianMemoryCore',type:'Memory Opt',file:'memory_core.py'},
+    {n:10,name:'SurpriseGate',type:'Memory Opt',file:'memory_core.py'},
+    {n:11,name:'BiGRUSlotEncoder',type:'Memory Opt',file:'memory_core.py'},
+    {n:12,name:'LTSMemory',type:'Memory Opt',file:'memory_core.py'},
+    {n:13,name:'GraphConsolidator',type:'Memory Opt',file:'memory_core.py'},
+    {n:14,name:'PagedLTSMemory',type:'Memory Opt',file:'async_memory.py'},
+    {n:15,name:'AdaptivePrecisionManager',type:'Memory Opt',file:'adaptive_precision.py'},
+    {n:16,name:'FP8LTSMemory',type:'Memory Opt',file:'adaptive_precision.py'},
+    {n:17,name:'CosineDeduplicator',type:'Memory Opt',file:'deduplication.py'},
+    // Attention (6)
+    {n:18,name:'MultiHeadAttention',type:'Attention',file:'aurelius_model.py'},
+    {n:19,name:'MultiScaleAttention',type:'Attention',file:'hierarchical_kv_cache.py'},
+    {n:20,name:'HierarchicalKVCache',type:'Attention',file:'hierarchical_kv_cache.py'},
+    {n:21,name:'ImportanceScorer',type:'Attention',file:'hierarchical_kv_cache.py'},
+    {n:22,name:'LearnedEvictionPolicy',type:'Attention',file:'hierarchical_kv_cache.py'},
+    {n:23,name:'ToolCrossAttention',type:'Attention',file:'agent_core.py'},
+    // Agent (11)
+    {n:24,name:'AgentLoopController',type:'Agent',file:'agent_loop.py'},
+    {n:25,name:'AgentMemoryBridge',type:'Agent',file:'agent_loop.py'},
+    {n:26,name:'ToolFormerAdapter',type:'Agent',file:'agent_core.py'},
+    {n:27,name:'ToolEmbedding',type:'Agent',file:'agent_core.py'},
+    {n:28,name:'ToolCallHead',type:'Agent',file:'agent_core.py'},
+    {n:29,name:'ToolResultIntegrator',type:'Agent',file:'agent_core.py'},
+    {n:30,name:'PlanningModule',type:'Agent',file:'agent_core.py'},
+    {n:31,name:'MCTSNode',type:'Agent',file:'agent_core.py'},
+    {n:32,name:'ValueHead',type:'Agent',file:'agent_core.py'},
+    {n:33,name:'CriticHead',type:'Agent',file:'agent_core.py'},
+    {n:34,name:'ExperienceReplayBuffer',type:'Agent',file:'agent_loop.py'},
+    // Skills (7) — under Agent category
+    {n:35,name:'SkillEmbedding',type:'Agent',file:'skills.py'},
+    {n:36,name:'SkillRetriever',type:'Agent',file:'skills.py'},
+    {n:37,name:'SkillController',type:'Agent',file:'skills.py'},
+    {n:38,name:'SkillExecutionAdapter',type:'Agent',file:'skills.py'},
+    {n:39,name:'SkillAcquisition',type:'Agent',file:'skills.py'},
+    {n:40,name:'SkillRegistry',type:'Agent',file:'skills.py'},
+    {n:41,name:'SkillLibrary',type:'Agent',file:'skills.py'},
+    // Inference (6)
+    {n:42,name:'SpeculativeDecoder',type:'Inference',file:'speculative_decoding.py'},
+    {n:43,name:'MemoryAwareDraftModel',type:'Inference',file:'speculative_decoding.py'},
+    {n:44,name:'MobileQuantizer',type:'Inference',file:'mobile_inference.py'},
+    {n:45,name:'PrunedHead',type:'Inference',file:'mobile_inference.py'},
+    {n:46,name:'MobileMemoryManager',type:'Inference',file:'mobile_inference.py'},
+    {n:47,name:'InferenceOptimizer',type:'Inference',file:'mobile_inference.py'},
+    // Training (5)
+    {n:48,name:'MemoryAuxLoss',type:'Training',file:'train.py'},
+    {n:49,name:'PagedAdamW',type:'Training',file:'paged_optimizer.py'},
+    {n:50,name:'FP8DistributedTrainer',type:'Training',file:'fp8_allreduce.py'},
+    {n:51,name:'PPOTrainer',type:'Training',file:'rlhf_lora.py'},
+    {n:52,name:'LoraLayer',type:'Training',file:'rlhf_lora.py'},
+    // Orchestration (2)
+    {n:53,name:'UnifiedMemoryManager',type:'Orchestration',file:'unified_manager.py'},
+    {n:54,name:'AgentContextManager',type:'Orchestration',file:'agent_loop.py'},
+    // Systems (1)
+    {n:55,name:'MemoryPageTable',type:'Systems',file:'rust_memory/lib.rs'},
+  ];
+
+  const typeColors = {
+    'System': '#60a5fa',
+    'Memory Opt': '#34d399',
+    'Attention': '#f472b6',
+    'Agent': '#fbbf24',
+    'Inference': '#22d3ee',
+    'Training': '#fb923c',
+    'Orchestration': '#a78bfa',
+    'Systems': '#f87171',
+  };
+
+  const grid = document.getElementById('capGrid');
+  const search = document.getElementById('capSearch');
+  const tags = document.querySelectorAll('.cap-tag');
+  let activeType = 'all';
+  let searchTerm = '';
+
+  function render() {
+    const term = searchTerm.toLowerCase();
+    grid.innerHTML = caps.map(c => {
+      const match = (activeType === 'all' || c.type === activeType) &&
+        (c.name.toLowerCase().includes(term) ||
+         c.type.toLowerCase().includes(term) ||
+         c.file.toLowerCase().includes(term) ||
+         c.n.toString().includes(term));
+      const color = typeColors[c.type] || '#888';
+      return `<div class="cap-card${match ? '' : ' hidden'}">
+        <div class="cap-card-top">
+          <span class="cap-num">#${String(c.n).padStart(2,'0')}</span>
+          <span class="cap-type" style="border-color:${color};color:${color}">${c.type}</span>
+        </div>
+        <div class="cap-name">${c.name}</div>
+        <div class="cap-file">${c.file}</div>
+      </div>`;
+    }).join('');
+  }
+
+  search.addEventListener('input', () => { searchTerm = search.value; render(); });
+
+  tags.forEach(t => {
+    t.addEventListener('click', () => {
+      tags.forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      activeType = t.dataset.type;
+      render();
+    });
+  });
+
+  render();
+
+  // animated counters
+  const counters = document.querySelectorAll('.stat-value[data-target]');
+  function animateCounters() {
+    counters.forEach(el => {
+      const target = parseInt(el.dataset.target);
+      const duration = 1500;
+      const start = performance.now();
+      function tick(now) {
+        const p = Math.min((now - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - p, 3);
+        el.textContent = Math.round(eased * target) + (target >= 1000 ? '+' : '');
+        if (p < 1) requestAnimationFrame(tick);
+        else el.textContent = target + (target >= 1000 ? '+' : '');
+      }
+      requestAnimationFrame(tick);
+    });
+  }
+
+  // trigger counters on load
+  if (document.readyState === 'complete') animateCounters();
+  else window.addEventListener('load', animateCounters);
+
+  // animate scale bars on load
+  setTimeout(() => {
+    document.querySelector('.bar-7b').style.width = '60%';
+    document.querySelector('.bar-7b').textContent = '7B';
+  }, 400);
+
+})();
+</script>
+</body>
+</html>
