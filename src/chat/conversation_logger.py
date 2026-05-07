@@ -92,7 +92,10 @@ class ConversationLogger:
             for line in fh:
                 line = line.strip()
                 if line:
-                    turns.append(json.loads(line))
+                    try:
+                        turns.append(json.loads(line))
+                    except json.JSONDecodeError:
+                        continue
         return turns
 
     def list_sessions(self) -> list[str]:

@@ -53,12 +53,14 @@ class ContinuousBatcher:
         eos_token_id: int = 2,
         max_batch_size: int = 8,
         max_seq_len: int = 512,
+        pad_token_id: int = 0,
     ) -> None:
         self.model = model
         self.tokenizer_encode = tokenizer_encode
         self.eos_token_id = eos_token_id
         self.max_batch_size = max_batch_size
         self.max_seq_len = max_seq_len
+        self.pad_token_id = pad_token_id
 
         self.waiting_queue: deque[Request] = deque()
         self.active_requests: list[Request] = []
@@ -100,7 +102,7 @@ class ContinuousBatcher:
         padded = []
         for seq in sequences:
             pad_len = max_len - len(seq)
-            padded.append(seq + [0] * pad_len)
+            padded.append(seq + [self.pad_token_id] * pad_len)
 
         input_ids = torch.tensor(padded, dtype=torch.long)
 
@@ -152,8 +154,10 @@ class ContinuousBatcher:
         for req in requests:
             self.add_request(req)
 
+        all_step_results: list[list[Request]] = []
         while self.waiting_queue or self.active_requests:
-            self.step()
+            step_result = self.step()
+            all_step_results.append(step_result)
 
         return list(self.completed)
 

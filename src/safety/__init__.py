@@ -128,6 +128,10 @@ from src.safety.refusal_classifier import (
     RefusalClassifier,
     RefusalScore,
 )
+from src.safety.safety_token_regularization import (
+    DEFAULT_SAFETY_TEMPLATES,
+    SafetyTokenRegularizer,
+)
 from src.safety.reward_hack_detector import (
     PATTERN_DETECTORS as REWARD_HACK_PATTERN_DETECTORS,
 )
@@ -180,10 +184,6 @@ HARM_CLASSIFIER_REGISTRY["harm_taxonomy"] = HarmTaxonomyClassifier
 HARM_CLASSIFIER_REGISTRY["refusal"] = RefusalClassifier
 HARM_CLASSIFIER_REGISTRY["constitutional"] = ConstitutionalPrinciplesScorer
 
-_module = sys.modules[__name__]
-sys.modules["src.safety"] = _module
-sys.modules["safety"] = _module
-
 __all__ = [
     "SAFETY_FILTER_REGISTRY",
     "HARM_CLASSIFIER_REGISTRY",
@@ -205,6 +205,8 @@ __all__ = [
     "REFUSAL_PHRASES",
     "RefusalClassifier",
     "RefusalScore",
+    "DEFAULT_SAFETY_TEMPLATES",
+    "SafetyTokenRegularizer",
     "DEFAULT_PRINCIPLES",
     "ConstitutionalPrinciplesScorer",
     "ConstitutionalReport",

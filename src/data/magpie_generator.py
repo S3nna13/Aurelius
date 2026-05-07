@@ -91,28 +91,32 @@ class MagpieGenerator:
 
         ``generate_fn`` is invoked as
         ``generate_fn(prompt=..., max_tokens=..., temperature=...) -> str``.
+        Examples are generated in batches of ``config.batch_size``.
         """
         if n < 0:
             raise ValueError("n must be non-negative")
 
         examples: list[MagpieExample] = []
-        for _ in range(n):
-            raw = generate_fn(
-                prompt=template.prefix,
-                max_tokens=self.config.max_new_tokens,
-                temperature=self.config.temperature,
-            )
-            instruction, response = _split_text(raw or "")
-            if not instruction or not response:
-                continue
-            examples.append(
-                MagpieExample(
-                    instruction=instruction,
-                    response=response,
-                    domain=template.domain,
-                    template_prefix=template.prefix,
+        batch_size = self.config.batch_size
+        for start in range(0, n, batch_size):
+            end = min(start + batch_size, n)
+            for _ in range(start, end):
+                raw = generate_fn(
+                    prompt=template.prefix,
+                    max_tokens=self.config.max_new_tokens,
+                    temperature=self.config.temperature,
                 )
-            )
+                instruction, response = _split_text(raw or "")
+                if not instruction or not response:
+                    continue
+                examples.append(
+                    MagpieExample(
+                        instruction=instruction,
+                        response=response,
+                        domain=template.domain,
+                        template_prefix=template.prefix,
+                    )
+                )
         return examples
 
     def export_jsonl(self, examples: list[MagpieExample], path: str) -> int:
@@ -138,7 +142,10 @@ class MagpieGenerator:
                 line = line.strip()
                 if not line:
                     continue
-                record = json.loads(line)
+                try:
+                    record = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
                 examples.append(
                     MagpieExample(
                         instruction=record.get("instruction", ""),

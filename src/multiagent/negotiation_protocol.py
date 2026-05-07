@@ -89,9 +89,10 @@ class NegotiationProtocol:
         if len(session.offers) == 0:
             return None
         if len(session.offers) % n != 0:
-            # Current round incomplete.
-            if self.current_round(session) >= session.max_rounds:
-                session.state = NegotiationState.FAILED
+            return None
+
+        if self.current_round(session) > session.max_rounds:
+            session.state = NegotiationState.FAILED
             return None
 
         last_round = self.current_round(session) - 1

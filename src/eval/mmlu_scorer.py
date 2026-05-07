@@ -288,8 +288,9 @@ class MMLUScorer:
             if few_shot_pool is None:
                 shots = CANONICAL_EXEMPLARS[: self.n_shots]
             else:
-                # Use all available if pool shorter than n_shots.
-                shots = list(few_shot_pool)[: self.n_shots]
+                shots = [ex for ex in few_shot_pool if ex.subject == p.subject][: self.n_shots]
+                if len(shots) < self.n_shots:
+                    shots += CANONICAL_EXEMPLARS[: self.n_shots - len(shots)]
         else:
             shots = None
 

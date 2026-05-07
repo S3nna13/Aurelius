@@ -228,6 +228,5 @@ class QualityFilter:
 # Registry registration
 # ---------------------------------------------------------------------------
 
-from src.data import DATA_REGISTRY  # noqa: E402  (import after class definition)
-
+DATA_REGISTRY: dict[str, object] = {}
 DATA_REGISTRY["quality_filter"] = QualityFilter

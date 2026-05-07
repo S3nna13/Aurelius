@@ -6,6 +6,7 @@ SLSA supply-chain attestation spec, Apache-2.0.
 
 from __future__ import annotations
 
+import ipaddress
 import os
 import shutil
 import socket
@@ -39,6 +40,14 @@ class HealthProbe:
             raise ValueError(f"URL scheme must be http or https, got: {parsed.scheme}")
         if not parsed.netloc:
             raise ValueError("URL must contain a valid host.")
+
+        hostname = parsed.hostname
+        try:
+            ip = ipaddress.ip_address(hostname)
+        except ValueError:
+            ip = ipaddress.ip_address(socket.gethostbyname(hostname))
+        if ip.is_private or ip.is_loopback or ip.is_reserved or ip.is_link_local:
+            raise ValueError(f"URL host resolves to private/reserved IP: {ip}")
 
     @classmethod
     def check_http(cls, url: str, timeout: float = 5.0) -> dict[str, Any]:

@@ -88,7 +88,7 @@ def cohens_d(scores_a: list[float], scores_b: list[float]) -> float:
     mean_b = sum(scores_b) / n_b
     var_a = sum((x - mean_a) ** 2 for x in scores_a) / (n_a - 1) if n_a > 1 else 0.0
     var_b = sum((x - mean_b) ** 2 for x in scores_b) / (n_b - 1) if n_b > 1 else 0.0
-    pooled_std = math.sqrt((var_a + var_b) / 2)
+    pooled_std = math.sqrt(((n_a - 1) * var_a + (n_b - 1) * var_b) / (n_a + n_b - 2)) if n_a + n_b > 2 else math.sqrt((var_a + var_b) / 2)
     if pooled_std == 0.0:
         # Both distributions are constant; if means differ, effect is infinite
         if mean_a == mean_b:
@@ -110,8 +110,9 @@ def bootstrap_confidence_interval(
     Return (alpha/2, 1-alpha/2) percentiles.
     """
     rng = random.Random(seed)  # noqa: S311
-    n = len(scores_a)
-    diffs = [a - b for a, b in zip(scores_a, scores_b)]
+    n = len(diffs)
+    if n == 0:
+        return (0.0, 0.0)
     boot_means: list[float] = []
     for _ in range(n_bootstrap):
         sample = [rng.choice(diffs) for _ in range(n)]
@@ -314,7 +315,8 @@ def mcnemar_test(
         )
 
     chi2 = (abs(b - c) - 1) ** 2 / total
-    p_value = math.exp(-chi2 / 2)
+    p_value = math.exp(-chi2 / 2) if chi2 > 0 else 1.0
+    p_value = max(0.0, min(1.0, p_value))
     effect = (b - c) / n if n > 0 else 0.0
 
     return TestResult(
@@ -392,7 +394,7 @@ def permutation_test(
         perm_a = shuffled[:n_a]
         perm_b = shuffled[n_a:]
         diff = sum(perm_a) / n_a - sum(perm_b) / n_b
-        if diff >= abs(observed_stat):
+        if abs(diff) >= abs(observed_stat):
             count_ge += 1
 
     p_value = count_ge / n_permutations

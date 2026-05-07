@@ -27,7 +27,12 @@ from typing import Any
 
 from .dragon_mascot import AURELIUS_BANNER, DRAGON_ART
 
-__version__ = "1.0.0"
+try:
+    from importlib.metadata import version as _pkg_version
+
+    __version__ = _pkg_version("aurelius")
+except Exception:
+    __version__ = "0.0.0"
 
 LIGHTNING_BLUE = "#00BFFF"
 DRAGON_GREEN = "#00FF88"
@@ -984,18 +989,10 @@ def main(argv: list[str] | None = None) -> int:
         return health_check(args)
 
     elif args.command == "agent":
-        from src.aurelius.cli import main as agent_cli
-
-        sub_args = [args.subcommand]
-        if args.task:
-            sub_args.extend([args.task])
-        if args.json:
-            sub_args.append("--json")
-        if args.limit:
-            sub_args.extend(["--limit", str(args.limit)])
-        if args.workers:
-            sub_args.extend(["--workers", str(args.workers)])
-        return agent_cli(sub_args)
+        raise NotImplementedError(
+            "Agent CLI subcommand is not yet implemented. "
+            "Use 'aurelius agent' directly or the API server."
+        )
 
     return 0
 

@@ -168,6 +168,48 @@ print(response.choices[0].message.content)
 
 ---
 
+## Security Audit — May 2026
+
+A full-stack security, correctness, and CI/CD audit was performed against this codebase. **11 critical** and **8 high-severity** findings were remediated.
+
+### Critical Remediations
+
+| ID | File | Issue | Fix |
+|----|------|-------|-----|
+| C1 | `.github/workflows/deploy.yml` | Registry credentials logged in CI shell | Moved secrets to `env:` block; scripts use `$ENV_VAR` references |
+| C2 | `.github/workflows/deploy.yml` | `GITHUB_TOKEN` had `write-all` permissions | Scoped to `contents: read / packages: write` |
+| C3 | `aurelius/plugin_system.py` | `from src.agent.plugin_system import *` star-import | Replaced with explicit named imports + `__all__` |
+| C4 | `aurelius/skills_registry.py` | `from src.agent.skills_registry import *` star-import | Replaced with explicit named imports + `__all__` |
+| C5 | `src/backends/credential_manager.py` | Credential stuck in `REFRESHING` state on error | Removed premature status mutation; wrapped `NotImplementedError` |
+| C6 | `src/agent/react_loop.py` | Lambda passed to `ProcessPoolExecutor` — not picklable, silent crash | Switched to `ThreadPoolExecutor` with direct function reference |
+| C7 | `src/agent/tool_registry_dispatcher.py` | `_wall_start` race condition (TOCTOU) | Moved assignment inside `_budget_lock` |
+| C8 | `src/alignment/ppo_trainer.py` | `prompt_ids` `NameError` made PPO trainer non-functional | Threaded `prompt_ids` through rollout dict |
+| C9 | `src/alignment/ppo_trainer.py` | Off-by-one in logit gather skipped first token's log-prob | Fixed causal slice: `logits[:, prompt_len-1 : prompt_len-1+T, :]` |
+| C10 | `src/alignment/constitutional_ai.py` | KL divergence arguments swapped — alignment signal silenced | Corrected to `F.kl_div(log_policy, ref_probs.detach().exp())` |
+| C11 | `src/agent/plugin_sandbox.py` | Sandbox fail-open: exception triggered unsandboxed plugin execution | Fail-closed: exception returns `SandboxResult(success=False)` |
+
+### High-Severity Remediations
+
+| ID | File | Issue | Fix |
+|----|------|-------|-----|
+| H1 | `src/backends/circuit_breaker.py` | Dead code after `return True` in `allow_request()` | Removed 9 unreachable lines |
+| H2 | `src/backends/circuit_breaker.py` | `reset()` mutated shared state without lock | Added `with self._lock:` |
+| H3 | `src/backends/async_rate_limiter.py` | `reset()` / `get_remaining()` bypassed asyncio lock | Made both methods `async` with `async with self._lock:` |
+| H4 | `src/alignment/rlvr.py` | NaN risk from zero-std reward normalization | `std.clamp(min=1e-8)` guard |
+| H5 | `src/backends/http_backend.py` | SSRF TOCTOU — URL validated after `Request()` construction | Moved `_validate_backend_url()` before object construction |
+| H6 | `src/alignment/rlvr.py` + `grpo.py` | Negative KL possible with mismatched distributions | `.clamp(min=0.0)` on all KL penalty terms |
+| H7 | `src/alignment/dapo.py` | Asymmetric PPO clip applied uniformly — broke DAPO invariant | `torch.where(advantages >= 0, ...)` for correct asymmetric clipping |
+| H8 | `.github/workflows/ci.yml` | `continue-on-error: true` on Bandit/pip-audit made security gates cosmetic | Removed; CI now fails on security findings |
+
+### CI/CD Hardening
+
+- **`ruff-autofix.yml`**: Auto-fix workflow excluded from `main` branch (was force-pushing directly); Ruff version pinned to `0.9.0`
+- **`pyproject.toml`**: Upper-bounded `torch`, `flash-attn`, `deepspeed` to prevent silent major-version breakage
+- **`configs/config.yaml`**: MCP audit log path set (was `null`)
+- **`.env.example`**: Auth and rate limiting enabled by default
+
+---
+
 ## DAIES Scaling Plan (1.3B → 32B+)
 
 Aurelius follows the **DAIES** (Doubling AI Efficiency Simultaneously) scaling philosophy: doubling parameters while optimizing memory, compute, and data efficiency at each step.

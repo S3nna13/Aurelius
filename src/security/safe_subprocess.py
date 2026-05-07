@@ -28,6 +28,7 @@ import tempfile
 import time
 from collections.abc import Iterable
 from dataclasses import dataclass
+from pathlib import PurePath
 
 __all__ = [
     "SafeRunResult",
@@ -93,12 +94,28 @@ def _build_env(
 
 
 def _cap(data: str) -> str:
-    if len(data.encode("utf-8", errors="replace")) <= STREAM_CAP_BYTES:
-        return data
-    # Fast byte-level truncation; re-decode to keep a valid str.
     encoded = data.encode("utf-8", errors="replace")
+    if len(encoded) <= STREAM_CAP_BYTES:
+        return data
     truncated = encoded[:STREAM_CAP_BYTES]
     return truncated.decode("utf-8", errors="replace") + "\n...[truncated]..."
+
+
+_BLOCKED_ENV_KEYS = frozenset({
+    "LD_PRELOAD",
+    "LD_LIBRARY_PATH",
+    "DYLD_INSERT_LIBRARIES",
+    "DYLD_LIBRARY_PATH",
+    "DYLD_FRAMEWORK_PATH",
+    "PYTHONPATH",
+    "PYTHONHOME",
+    "PATH",
+    "HOME",
+    "SHELL",
+    "TMPDIR",
+    "LD_AUDIT",
+    "LD_PROFILE",
+})
 
 
 def run_safe(
@@ -109,7 +126,6 @@ def run_safe(
     env_allowlist: Iterable[str] | None = None,
     cwd: str | None = None,
     env_override: dict[str, str] | None = None,
-    preexec_fn: object | None = None,
     stdin_text: str | None = None,
 ) -> SafeRunResult:
     """Execute ``argv`` under strict allowlist + timeout + env rules.
@@ -137,14 +153,21 @@ def run_safe(
         raise ValueError(f"timeout must be > 0, got {timeout!r}")
     argv_list = list(argv)
     _validate_argv(argv_list, allowed_executables)
+    for arg in argv_list[1:]:
+        if "/" in arg or "\\" in arg:
+            try:
+                resolved = PurePath(arg).resolve()
+                if ".." in PurePath(arg).parts:
+                    raise UnsafeSubprocessError(f"argv contains path traversal: {arg!r}")
+            except (ValueError, OSError):
+                pass
     if env_override is not None:
+        blocked = set(env_override.keys()) & _BLOCKED_ENV_KEYS
+        if blocked:
+            raise UnsafeSubprocessError(f"env_override contains blocked keys: {sorted(blocked)}")
         env = dict(env_override)
     else:
         env = _build_env(env_allowlist, cwd)
-
-    extra: dict[str, object] = {}
-    if preexec_fn is not None and os.name == "posix":
-        extra["preexec_fn"] = preexec_fn  # type: ignore[assignment]
 
     t0 = time.perf_counter()
     killed = False
@@ -162,7 +185,6 @@ def run_safe(
             timeout=float(timeout),
             check=False,
             input=stdin_text,
-            **extra,  # type: ignore[arg-type]
         )
         returncode = proc.returncode
         stdout = proc.stdout or ""

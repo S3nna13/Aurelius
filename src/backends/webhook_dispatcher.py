@@ -3,9 +3,12 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import hmac
+import json
 import time
 from dataclasses import dataclass
 from enum import StrEnum
+from urllib.request import Request, urlopen
+from urllib.error import URLError
 
 
 class CircuitState(StrEnum):
@@ -108,12 +111,18 @@ class WebhookDispatcher:
         for attempt in range(1, endpoint.max_retries + 1):
             attempts = attempt
             try:
-                await asyncio.sleep(0)
+                raw_body = json.dumps(payload, default=str).encode("utf-8")
+                headers = {"Content-Type": "application/json"}
+                if endpoint.secret_header:
+                    headers["X-Webhook-Signature"] = self._sign_payload(raw_body, endpoint.secret_header)
+                req = Request(url, data=raw_body, headers=headers, method="POST")
+                resp = urlopen(req, timeout=10)
                 breaker.record_success()
-                return DispatchResult(url=url, success=True, status_code=200, attempts=attempts)
-            except Exception as exc:
+                return DispatchResult(url=url, success=True, status_code=resp.status, attempts=attempts)
+            except (URLError, OSError, Exception) as exc:
                 last_error = str(exc)
                 breaker.record_failure()
+            await asyncio.sleep(0)
 
         return DispatchResult(
             url=url, success=False, status_code=None, attempts=attempts, error=last_error

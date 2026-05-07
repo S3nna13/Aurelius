@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import copy
+import threading
 import time
 import traceback
 from collections.abc import Callable
@@ -225,8 +226,9 @@ class ToolRegistryDispatcher:
         self._wall_start: float | None = None
         self._rate_buckets: dict[str, _TokenBucket] = {}
         self._audit: list[_AuditEntry] = []
-        self._executor = concurrent.futures.ThreadPoolExecutor(
-            max_workers=4, thread_name_prefix="tool-dispatch"
+        self._budget_lock = threading.Lock()
+        self._executor = concurrent.futures.ProcessPoolExecutor(
+            max_workers=4
         )
 
     # -- registration -------------------------------------------------------
@@ -283,45 +285,13 @@ class ToolRegistryDispatcher:
 
     def dispatch(self, name: str, arguments: dict) -> ToolInvocationResult:
         start = self._clock()
-        if self._wall_start is None:
-            self._wall_start = start
+        with self._budget_lock:
+            if self._wall_start is None:
+                self._wall_start = start
 
         spec = self._specs.get(name)
         if spec is None:
             return self._finish(name, arguments, None, "unknown_tool", start, truncated=False)
-
-        # Budget: total calls.
-        if self._call_count >= self._budget.total_calls:
-            return self._finish(
-                name,
-                arguments,
-                spec,
-                "budget:total_calls_exhausted",
-                start,
-                truncated=False,
-            )
-        # Budget: wall seconds.
-        if (start - self._wall_start) >= self._budget.total_wall_seconds:
-            return self._finish(
-                name,
-                arguments,
-                spec,
-                "budget:wall_seconds_exhausted",
-                start,
-                truncated=False,
-            )
-        # Budget: per-tool cap.
-        per_tool = self._budget.per_tool_calls or {}
-        cap = per_tool.get(name)
-        if cap is not None and self._per_tool_count.get(name, 0) >= cap:
-            return self._finish(
-                name,
-                arguments,
-                spec,
-                "budget:per_tool_exhausted",
-                start,
-                truncated=False,
-            )
 
         # Argument validation.
         if not isinstance(arguments, dict):
@@ -342,9 +312,39 @@ class ToolRegistryDispatcher:
         if bucket is not None and not bucket.try_consume():
             return self._finish(name, arguments, spec, "rate_limited", start, truncated=False)
 
-        # Count this call against the budget regardless of outcome.
-        self._call_count += 1
-        self._per_tool_count[name] = self._per_tool_count.get(name, 0) + 1
+        # Budget check + increment under lock to prevent race conditions.
+        with self._budget_lock:
+            if self._call_count >= self._budget.total_calls:
+                return self._finish(
+                    name,
+                    arguments,
+                    spec,
+                    "budget:total_calls_exhausted",
+                    start,
+                    truncated=False,
+                )
+            if (start - self._wall_start) >= self._budget.total_wall_seconds:
+                return self._finish(
+                    name,
+                    arguments,
+                    spec,
+                    "budget:wall_seconds_exhausted",
+                    start,
+                    truncated=False,
+                )
+            per_tool = self._budget.per_tool_calls or {}
+            cap = per_tool.get(name)
+            if cap is not None and self._per_tool_count.get(name, 0) >= cap:
+                return self._finish(
+                    name,
+                    arguments,
+                    spec,
+                    "budget:per_tool_exhausted",
+                    start,
+                    truncated=False,
+                )
+            self._call_count += 1
+            self._per_tool_count[name] = self._per_tool_count.get(name, 0) + 1
 
         # Invoke under timeout.
         future = self._executor.submit(self._call_tool, spec, arguments)
@@ -357,6 +357,15 @@ class ToolRegistryDispatcher:
                 arguments,
                 spec,
                 f"timeout:exceeded_{spec.per_call_timeout}s",
+                start,
+                truncated=False,
+            )
+        except (SystemExit, KeyboardInterrupt) as exc:
+            return self._finish(
+                name,
+                arguments,
+                spec,
+                f"executor_error:process_terminated_by_{type(exc).__name__}:{exc}",
                 start,
                 truncated=False,
             )
@@ -393,6 +402,8 @@ class ToolRegistryDispatcher:
             tb = traceback.format_exception_only(type(exc), exc)
             msg = "".join(tb).strip().splitlines()[-1] if tb else str(exc)
             return _ToolFailure(f"tool_raised:{msg}")
+        except BaseException as exc:
+            return _ToolFailure(f"tool_fatal:{type(exc).__name__}:{exc}")
 
     def _finish(
         self,

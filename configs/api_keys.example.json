@@ -1,0 +1,10 @@
+{
+  "keys": [
+    {
+      "key": "sk-example-key-replace-with-your-key",
+      "name": "example-key",
+      "enabled": true,
+      "rate_limit": 60
+    }
+  ]
+}

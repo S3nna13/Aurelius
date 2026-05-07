@@ -93,7 +93,9 @@ class OllamaAdapter:
         try:
             with urllib.request.urlopen(req, timeout=cfg.timeout_s) as resp:  # nosec B310 - scheme validated by _validate_ollama_url  # noqa: S310
                 return resp.status == 200
-        except Exception:
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).debug("Ollama health check failed: %s", exc)
             return False
 
 

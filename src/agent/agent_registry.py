@@ -282,3 +282,9 @@ AGENT_REGISTRY: dict[str, AgentType] = {
         MEMORY_AGENT_TYPE,
     ]
 }
+
+ALL_AGENTS: list[AgentType] = list(AGENT_REGISTRY.values())
+
+AGENTS_BY_CATEGORY: dict[str, list[AgentType]] = {}
+for _agent in ALL_AGENTS:
+    AGENTS_BY_CATEGORY.setdefault(_agent.category, []).append(_agent)

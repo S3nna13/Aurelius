@@ -249,9 +249,10 @@ class SwarmScaler:
         # steal from workers i+1, i+2, ...
 
         # Rebuild a flat residual list (already priority-sorted).
-        residual: list[WorkItem] = []
+        residual: dict[int, WorkItem] = {}
         for wid in range(effective):
-            residual.extend(worker_queues[wid])
+            for item in worker_queues[wid]:
+                residual[item.task_id] = item
 
         # Now execute worker by worker, removing from residual as we go.
         batch_completed: list[WorkItem] = []
@@ -266,7 +267,7 @@ class SwarmScaler:
             ws = stats_map[wid]
 
             # Items originally assigned to this worker (that are still in residual).
-            my_items = [item for item in residual if item.task_id in original_ids[wid]]
+            my_items = [residual[tid] for tid in original_ids[wid] if tid in residual]
 
             # Execute own items.
             for item in my_items:
@@ -277,13 +278,14 @@ class SwarmScaler:
                 ws.tasks_completed += 1
                 batch_completed.append(item)
                 # Remove from residual.
-                residual = [r for r in residual if r.task_id != item.task_id]
+                del residual[item.task_id]
 
             # Work-stealing: grab items from residual that belong to later workers.
             if cfg.enable_work_stealing:
                 stolen = 0
                 while residual and stolen < cfg.work_steal_batch:
-                    item = residual.pop(0)
+                    task_id = next(iter(residual))
+                    item = residual.pop(task_id)
                     item.worker_id = wid
                     item.started_at = time.monotonic()
                     item.result = worker_fn(item.payload)
@@ -295,7 +297,7 @@ class SwarmScaler:
 
         # Any items remaining in residual that were not processed (shouldn't
         # happen in normal flow, but handle gracefully).
-        for item in residual:
+        for item in residual.values():
             item.worker_id = 0
             item.started_at = time.monotonic()
             item.result = worker_fn(item.payload)

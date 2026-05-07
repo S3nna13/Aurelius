@@ -187,7 +187,8 @@ class PPOTrainer:
         if norm_module is not None:
 
             def hook_fn(module, input, output):
-                self._hidden_states.append(output.detach())
+                # No detach — allow gradients to flow through value head during training.
+                self._hidden_states.append(output)
 
             self._hook_handle = norm_module.register_forward_hook(hook_fn)
 
@@ -277,6 +278,7 @@ class PPOTrainer:
             "log_probs": log_probs,
             "values": values,
             "rewards": rewards,
+            "prompt_ids": prompt_ids,
         }
 
     def ppo_update(self, rollout: dict) -> dict:
@@ -289,6 +291,7 @@ class PPOTrainer:
         old_log_probs = rollout["log_probs"].detach()  # (B, T)
         old_values = rollout["values"].detach()  # (B, T)
         rewards = rollout["rewards"]  # (B,)
+        prompt_ids = rollout.get("prompt_ids")  # (B, P) or None
 
         B, T = tokens.shape
 
@@ -324,14 +327,17 @@ class PPOTrainer:
             # Forward pass: run policy over generated tokens to get current log probs + values
             self._hidden_states.clear()
             self._register_hidden_hook()
-            _, logits, _ = self.policy(tokens)
+            input_ids = torch.cat([prompt_ids, tokens], dim=1) if prompt_ids is not None else tokens
+            _, logits, _ = self.policy(input_ids)
             hidden = self._hidden_states[-1] if self._hidden_states else logits
 
-            # logits: (B, T, vocab_size)
-            log_probs_all = F.log_softmax(logits, dim=-1)  # (B, T, vocab_size)
-
-            # Gather log probs for the sampled tokens
-            curr_log_probs = log_probs_all.gather(2, tokens.unsqueeze(-1)).squeeze(-1)  # (B, T)
+            # logits[b, i, :] predicts position i+1, so shift left by 1 before gathering.
+            # When prompt is prepended, token positions start at prompt_len in the sequence.
+            prompt_len = prompt_ids.shape[1] if prompt_ids is not None else 0
+            # logits[:, :-1, :] aligns predictions with their targets; slice token positions.
+            log_probs_shifted = F.log_softmax(logits[:, :-1, :], dim=-1)  # (B, seq-1, V)
+            log_probs_for_tokens = log_probs_shifted[:, prompt_len - 1 : prompt_len - 1 + T, :]  # (B, T, V)
+            curr_log_probs = log_probs_for_tokens.gather(2, tokens.unsqueeze(-1)).squeeze(-1)  # (B, T)
 
             # Value head over all hidden states
             curr_values = self.value_head(hidden)  # (B, T)

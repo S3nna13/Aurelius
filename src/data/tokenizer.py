@@ -347,7 +347,7 @@ def stream_hf_dataset(
     count = 0
     for sample in ds:
         text = sample.get(text_field)
-        if text:
+        if text is not None:
             yield text
             count += 1
             if max_samples is not None and count >= max_samples:

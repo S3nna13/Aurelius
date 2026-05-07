@@ -40,21 +40,19 @@ class APIKey:
 @dataclass
 class APIKeyManager:
     _keys: dict[str, APIKey] = field(default_factory=dict, repr=False)
+    _master_key: bytes = field(default_factory=lambda: secrets.token_bytes(32), repr=False)
 
     def generate(self, name: str, prefix: str = "ak_") -> tuple[str, APIKey]:
         raw = prefix + secrets.token_hex(24)
-        salt = secrets.token_bytes(16)
-        key_hash = _hash_key(raw, salt)
-        key = APIKey(key_hash=key_hash, salt=salt.hex(), name=name, prefix=prefix)
+        key_hash = hmac.new(self._master_key, raw.encode("utf-8"), hashlib.sha256).hexdigest()
+        key_prefix = raw[:8]
+        key = APIKey(key_hash=key_hash, salt="", name=name, prefix=key_prefix)
         self._keys[key_hash] = key
         return raw, key
 
     def _find_key(self, raw_key: str) -> APIKey | None:
-        for key in self._keys.values():
-            derived = _hash_key(raw_key, bytes.fromhex(key.salt))
-            if hmac.compare_digest(derived, key.key_hash):
-                return key
-        return None
+        key_hash = hmac.new(self._master_key, raw_key.encode("utf-8"), hashlib.sha256).hexdigest()
+        return self._keys.get(key_hash)
 
     def validate(self, raw_key: str) -> APIKey | None:
         key = self._find_key(raw_key)

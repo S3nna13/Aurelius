@@ -1,6 +1,28 @@
 """src.cli — Aurelius CLI entry points."""
 
-# Additive exports for the benchmark runner (safe, lazy).
+import logging
+
+__all__ = [
+    "BenchmarkRun",
+    "CompressionConfig",
+    "CompressionResult",
+    "DEBUG_COMMANDS",
+    "DebugCommands",
+    "DebugSnapshot",
+    "DEFAULT_COMPRESSOR",
+    "LogLevel",
+    "OUTPUT_COMPRESSOR_REGISTRY",
+    "OutputCompressor",
+    "PLUGIN_COMMANDS",
+    "PluginCommandResult",
+    "PluginCommands",
+    "format_report",
+    "main",
+    "run_benchmark",
+]
+
+_logger = logging.getLogger(__name__)
+
 try:
     from .benchmark_runner import (
         BenchmarkRun as BenchmarkRun,
@@ -14,8 +36,8 @@ try:
     from .benchmark_runner import (
         run_benchmark as run_benchmark,
     )
-except Exception:  # pragma: no cover - keep package importable on partial setups  # noqa: S110
-    pass
+except ImportError:
+    _logger.warning("benchmark_runner not available")
 
 try:
     from .plugin_commands import (
@@ -27,8 +49,8 @@ try:
     from .plugin_commands import (
         PluginCommands as PluginCommands,
     )
-except Exception:  # pragma: no cover  # noqa: S110
-    pass
+except ImportError:
+    _logger.warning("plugin_commands not available")
 
 try:
     from .debug_commands import (
@@ -43,8 +65,8 @@ try:
     from .debug_commands import (
         LogLevel as LogLevel,
     )
-except Exception:  # pragma: no cover  # noqa: S110
-    pass
+except ImportError:
+    _logger.warning("debug_commands not available")
 
 try:
     from .output_compressor import (
@@ -62,5 +84,5 @@ try:
     from .output_compressor import (
         OutputCompressor as OutputCompressor,
     )
-except Exception:  # pragma: no cover  # noqa: S110
-    pass
+except ImportError:
+    _logger.warning("output_compressor not available")

@@ -107,7 +107,9 @@ def apply_rope(
     Returns:
         Tensor of the same shape as x with RoPE applied.
     """
-    # Reshape to pairs of consecutive dims -> view as complex
+    assert x.shape[-1] % 2 == 0, (  # noqa: S101
+        f"head_dim must be even for view_as_complex, got {x.shape[-1]}"
+    )
     x_complex = torch.view_as_complex(x.float().reshape(*x.shape[:-1], -1, 2))
     # Broadcast freqs over batch and heads: (1, seq_len, 1, head_dim//2)
     freqs = freqs_cis.unsqueeze(0).unsqueeze(2)

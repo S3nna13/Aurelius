@@ -26,6 +26,7 @@ Design notes
 
 from __future__ import annotations
 
+import copy
 import time
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable
@@ -350,7 +351,7 @@ class SOCPipeline:
             source=raw["source"],
             severity=raw["severity"],
             timestamp=raw["timestamp"],
-            raw_payload=dict(raw.get("payload", {})),
+            raw_payload=copy.deepcopy(raw.get("payload", {})),
             enrichments={},
             decisions=[],
             route=None,
@@ -370,7 +371,7 @@ class SOCPipeline:
                     "stage": stage.name,
                     "error": repr(exc),
                 }
-                # Record latency then break out; subsequent stages skipped.
+                event.route = "dead_letter"
                 self._record_metric(stage.name, time.perf_counter() - start)
                 break
             self._record_metric(stage.name, time.perf_counter() - start)

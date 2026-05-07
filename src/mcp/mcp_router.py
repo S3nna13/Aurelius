@@ -10,6 +10,10 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from src.mcp.mcp_gateway import MCPGateway
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -54,14 +58,36 @@ def _is_parameterized(path: str) -> bool:
     return "{" in path
 
 
-class MCPRouter:
-    """Routes MCP requests to registered handler callables."""
+def _extract_tool_name(path: str, payload: dict, path_params: dict) -> str:
+    """Best-effort extraction of the tool name from route context."""
+    # 1. Explicit payload keys used by MCP conventions
+    for key in ("tool", "tool_name", "name"):
+        if key in payload:
+            return str(payload[key])
+    # 2. Path parameter named 'tool_name'
+    if "tool_name" in path_params:
+        return str(path_params["tool_name"])
+    # 3. Path parameter named 'tool'
+    if "tool" in path_params:
+        return str(path_params["tool"])
+    # 4. Fall back to the route path itself
+    return path
 
-    def __init__(self) -> None:
+
+class MCPRouter:
+    """Routes MCP requests to registered handler callables.
+
+    When a :class:`~src.mcp.mcp_gateway.MCPGateway` is attached, every
+    dispatch is transparently proxied through the gateway's security
+    layers.
+    """
+
+    def __init__(self, gateway: MCPGateway | None = None) -> None:
         # list of (RoutePattern, handler, compiled_regex, param_names)
         self._routes: list[
             tuple[RoutePattern, Callable[[dict], dict], re.Pattern[str], list[str]]
         ] = []
+        self._gateway: MCPGateway | None = gateway
 
     def add_route(self, pattern: RoutePattern, handler: Callable[[dict], dict]) -> None:
         """Register *handler* for the given *pattern*."""
@@ -94,9 +120,20 @@ class MCPRouter:
                     return RouteMatch(pattern=pat, path_params=params)
         return None
 
-    def dispatch(self, path: str, method: str, payload: dict) -> dict:
+    def dispatch(
+        self,
+        path: str,
+        method: str,
+        payload: dict,
+        caller_id: str = "",
+        caller_role: str = "default",
+    ) -> dict:
         """Find the handler for *path*/*method*, inject path_params into *payload*,
         and call handler(payload).  Raises KeyError if no route matches.
+
+        When a gateway is configured and enabled, the call is proxied through
+        the gateway's security checks (allowlist, rate limits, egress filter,
+        etc.) before the handler is invoked.
         """
         route_match = self.match(path, method)
         if route_match is None:
@@ -111,7 +148,23 @@ class MCPRouter:
 
         assert handler is not None  # invariant: match() found it from self._routes  # noqa: S101
 
-        merged_payload = {**payload, **route_match.path_params}
+        merged_payload = {**payload}
+        for k, v in route_match.path_params.items():
+            if k not in ("method", "tool_name", "name", "tool"):
+                merged_payload[k] = v
+
+        if self._gateway is not None and getattr(
+            getattr(self._gateway, "config", None), "enabled", False
+        ):
+            tool_name = _extract_tool_name(path, payload, route_match.path_params)
+            return self._gateway.intercept(
+                handler=handler,
+                tool_name=tool_name,
+                caller_id=caller_id or "anonymous",
+                caller_role=caller_role,
+                params=merged_payload,
+            )
+
         return handler(merged_payload)
 
     def list_routes(self) -> list[str]:

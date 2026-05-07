@@ -85,7 +85,8 @@ class PromptInjectionDetector:
 
         # Base64 payload detection
         for candidate in _B64_CANDIDATE.findall(text):
-            # Pad to multiple of 4
+            if len(candidate) > 10240:
+                continue
             padded = candidate + "=" * (-len(candidate) % 4)
             try:
                 decoded_bytes = base64.b64decode(padded)
@@ -96,8 +97,17 @@ class PromptInjectionDetector:
             except (binascii.Error, ValueError):
                 pass
 
-        # Score: fraction of possible signals triggered
-        score = len(signals) / len(InjectionSignal)
+        # Score: weighted by signal severity and count
+        signal_weights = {
+            InjectionSignal.ROLE_OVERRIDE: 1.0,
+            InjectionSignal.INSTRUCTION_IGNORE: 1.5,
+            InjectionSignal.SYSTEM_LEAK: 2.0,
+            InjectionSignal.DELIM_INJECT: 1.0,
+            InjectionSignal.BASE64_PAYLOAD: 2.5,
+        }
+        total_weight = sum(signal_weights.get(s, 1.0) for s in signals)
+        max_possible = sum(signal_weights.values())
+        score = total_weight / max_possible if max_possible > 0 else 0.0
         blocked = score >= 0.3
 
         return InjectionResult(

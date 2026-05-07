@@ -5,6 +5,7 @@ Provides import denylisting and callable inspection before execution.
 
 from __future__ import annotations
 
+import multiprocessing
 import time
 import types
 from collections.abc import Callable
@@ -54,11 +55,9 @@ class PluginSandbox:
         *args: Any,
         **kwargs: Any,
     ) -> SandboxResult:
-        """Execute *callable_fn* after inspecting its globals for denied imports."""
         if not callable(callable_fn):
             raise TypeError(f"callable_fn must be callable, got {type(callable_fn).__name__}")
 
-        # Check globals for denied imports
         violation = self._check_callable_globals(callable_fn)
         if violation:
             return SandboxResult(
@@ -69,21 +68,79 @@ class PluginSandbox:
 
         start = time.perf_counter()
         try:
-            output = callable_fn(*args, **kwargs)
+            _q: multiprocessing.Queue[tuple[bool, Any]] = multiprocessing.Queue()
+            _p = multiprocessing.Process(
+                target=self._sandbox_worker,
+                args=(callable_fn, args, kwargs, _q, self.config.max_memory_mb),
+                daemon=True,
+            )
+            _p.start()
+            _p.join(timeout=self.config.timeout_seconds)
+            if _p.is_alive():
+                _p.terminate()
+                _p.join(timeout=0.5)
+                duration_ms = (time.perf_counter() - start) * 1000
+                return SandboxResult(
+                    success=False,
+                    violation=f"timeout: exceeded {self.config.timeout_seconds}s",
+                    duration_ms=duration_ms,
+                )
+            if _q.empty():
+                duration_ms = (time.perf_counter() - start) * 1000
+                return SandboxResult(
+                    success=False,
+                    violation="execution produced no result",
+                    duration_ms=duration_ms,
+                )
+            ok, output = _q.get()
+            duration_ms = (time.perf_counter() - start) * 1000
+            if not ok:
+                return SandboxResult(
+                    success=False,
+                    violation=str(output),
+                    duration_ms=duration_ms,
+                )
+            return SandboxResult(
+                success=True,
+                output=output,
+                duration_ms=duration_ms,
+            )
         except Exception as exc:
+            # Fail closed: if the sandbox process can't start, deny execution rather than
+            # falling back to unsandboxed execution (which the original code did).
             duration_ms = (time.perf_counter() - start) * 1000
             return SandboxResult(
                 success=False,
-                violation=str(exc),
+                violation=f"sandbox process failed to start: {exc}",
                 duration_ms=duration_ms,
             )
 
-        duration_ms = (time.perf_counter() - start) * 1000
-        return SandboxResult(
-            success=True,
-            output=output,
-            duration_ms=duration_ms,
-        )
+    @staticmethod
+    def _sandbox_worker(
+        fn: Callable[..., Any],
+        args: tuple[Any, ...],
+        kwargs: dict[str, Any],
+        q: multiprocessing.Queue[tuple[bool, Any]],
+        max_memory_mb: int | None,
+    ) -> None:
+        try:
+            if max_memory_mb is not None:
+                try:
+                    import resource as _res
+                    mem_bytes = max_memory_mb * 1024 * 1024
+                    for _rl_name in ("RLIMIT_AS", "RLIMIT_DATA"):
+                        _rl = getattr(_res, _rl_name, None)
+                        if _rl is not None:
+                            try:
+                                _res.setrlimit(_rl, (mem_bytes, mem_bytes))
+                            except (ValueError, OSError):
+                                pass
+                except ImportError:
+                    pass
+            result = fn(*args, **kwargs)
+            q.put((True, result))
+        except Exception as exc:
+            q.put((False, str(exc)))
 
     def run_hook(
         self,

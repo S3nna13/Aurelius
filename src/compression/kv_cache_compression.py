@@ -68,17 +68,17 @@ class KVCacheCompressor:
         elif self.policy == EvictionPolicy.H2O:
             total = len(self._cache)
             top_half_count = max(1, total // 2)
-            # Sort by attention score descending; heavy hitters are top half
             indexed = sorted(
                 enumerate(self._cache), key=lambda x: x[1].attention_score, reverse=True
             )
             keep_by_score = set(idx for idx, _ in indexed[:top_half_count])
-            # Newest 50%: last half by position
             newest_start = total - top_half_count
             keep_by_recency = set(range(newest_start, total))
             keep_indices = keep_by_score | keep_by_recency
             evict_indices_list = [i for i in range(total) if i not in keep_indices]
-            # Only evict up to n
+            if not evict_indices_list:
+                fallback_count = min(n, total - max(1, total // 4))
+                evict_indices_list = [idx for idx, _ in indexed[-(fallback_count or n):]]
             evict_indices = set(evict_indices_list[:n])
             evicted = [self._cache[i] for i in sorted(evict_indices)]
             self._cache = [e for i, e in enumerate(self._cache) if i not in evict_indices]
@@ -90,14 +90,15 @@ class KVCacheCompressor:
         return evicted
 
     def compress_int8(self, values: list[float]) -> tuple[list[int], float, float]:
+        import math
         if not values:
             return [], 1e-8, 0.0
+        values = [0.0 if not math.isfinite(v) else v for v in values]
         min_val = min(values)
         max_val = max(values)
         scale = (max_val - min_val) / 255.0 if (max_val - min_val) > 0 else 1e-8
         zero = min_val
         quants = [int(round((v - zero) / scale)) for v in values]
-        # Clamp to [0, 255]
         quants = [max(0, min(255, q)) for q in quants]
         return quants, scale, zero
 

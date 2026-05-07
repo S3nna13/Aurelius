@@ -1,7 +1,5 @@
 """Aurelius 1.3B transformer model."""
 
-import sys
-
 from .aqlm_quant import AQLMCodebook, AQLMConfig, AQLMLinear
 from .attention import GroupedQueryAttention, apply_rope, precompute_rope_frequencies
 from .checkpoint_migration import (
@@ -178,10 +176,6 @@ MODEL_COMPONENT_REGISTRY["matryoshka_embedding"] = MatryoshkaEmbedding
 MODEL_COMPONENT_REGISTRY["csa_attention"] = CompressedSparseAttention
 MODEL_COMPONENT_REGISTRY["hca_attention"] = HeavilyCompressedAttention
 MODEL_COMPONENT_REGISTRY["mhc"] = ManifoldConstrainedHyperConnection
-
-_module = sys.modules[__name__]
-sys.modules.setdefault("src.model", _module)
-sys.modules.setdefault("model", _module)
 
 from src.backends import (  # noqa: E402
     BACKEND_REGISTRY,
@@ -366,9 +360,15 @@ from .moe import (  # noqa: E402
     BalancedMoEFFN,
     ExpertChoiceLayer,
     SoftMoELayer,
+    SparseMoELayer,
 )
 from .config import HLMConfig, MoDConfig, MoEConfig, ReMoDEConfig  # noqa: E402
 from . import mod  # noqa: E402
+
+try:
+    from .mod import MoDRouter, MoDLayer, CapacityTracker  # noqa: E402
+except ImportError:
+    pass
 
 _LAZY_EXPORTS = {
     "SessionRecord": ("src.agent.session_manager", "SessionRecord"),

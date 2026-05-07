@@ -6,6 +6,7 @@ Clean-room adapter that speaks to a TGI server over HTTP using only stdlib.
 from __future__ import annotations
 
 import json
+import logging
 import urllib.error
 import urllib.request
 from collections.abc import Iterator
@@ -89,7 +90,8 @@ class TGIBackendAdapter:
         try:
             with urllib.request.urlopen(req, timeout=self._timeout_s) as resp:  # noqa: S310  # nosec
                 return resp.status == 200
-        except Exception:
+        except Exception as exc:
+            logging.getLogger(__name__).debug("TGI health check failed: %s", exc)
             return False
 
     def generate(

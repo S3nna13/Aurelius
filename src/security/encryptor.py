@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 
 
@@ -25,8 +26,13 @@ class SimpleEncryptor:
 
     def __post_init__(self) -> None:
         if self.key is None:
-            Fernet = _get_fernet()
-            self.key = Fernet.generate_key()
+            key = os.environ.get("AURELIUS_ENCRYPTION_KEY")
+            if not key:
+                raise RuntimeError(
+                    "AURELIUS_ENCRYPTION_KEY environment variable must be set. "
+                    "Generate one with: python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'"
+                )
+            self.key = key.encode() if isinstance(key, str) else key
 
     def encrypt(self, plaintext: str) -> str:
         Fernet = _get_fernet()

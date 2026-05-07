@@ -274,7 +274,7 @@ def score_principle_compliance(
     target = token_ids[:, 1:]
     token_lp = log_probs.gather(2, target.unsqueeze(-1)).squeeze(-1)
     scale = 1.0 - principle_idx / max(n_principles, 1) * 0.1
-    return token_lp.mean() * scale
+    return token_lp.mean(dim=-1).mean() * scale
 
 
 def compute_critique_loss(
@@ -300,9 +300,11 @@ def compute_critique_loss(
 
     policy_log_probs = F.log_softmax(policy_logits, dim=-1)
     ref_log_probs = F.log_softmax(ref_logits, dim=-1)
+    # F.kl_div(input, target): input must be log-probs (policy), target must be probs (ref).
+    # Previous order was swapped — gradients flowed through frozen ref, not policy.
     kl_loss = F.kl_div(
-        ref_log_probs,
-        policy_log_probs.detach().exp(),
+        policy_log_probs,
+        ref_log_probs.detach().exp(),
         reduction="batchmean",
         log_target=False,
     ).clamp(min=0.0)
@@ -376,7 +378,18 @@ class ConstitutionalAITrainer:
         for i in range(n_principles):
             score = score_principle_compliance(logits, response_ids, i, n_principles)
             scores[:, i] = score
-        revised_ids = response_ids.clone()
+
+        min_score_idx = scores.argmin(dim=-1)
+        principle = self.principles[min_score_idx[0].item() % len(self.principles)]
+        revision_prompt = principle.revision_prompt
+
+        with torch.no_grad():
+            revision_ids = self.policy.generate(
+                response_ids,
+                max_new_tokens=self.config.max_seq_len,
+            )
+        revised_ids = revision_ids
+
         self.policy.train()
         return revised_ids, scores
 

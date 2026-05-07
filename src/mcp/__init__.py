@@ -34,6 +34,11 @@ __all__ = [
     "MCP_CLIENT_REGISTRY",
     "MCP_TOOL_SCHEMA_REGISTRY",
     "MCP_REGISTRY",
+    # mcp_gateway
+    "MCPGateway",
+    "MCPGatewayConfig",
+    "SecurityException",
+    "MCP_GATEWAY_REGISTRY",
     # tool_result_formatter
     "ToolResultFormatter",
     "ResultFormat",
@@ -163,6 +168,26 @@ def __getattr__(name: str):
 
         globals()["MCP_REGISTRY"] = MCP_REGISTRY
         return MCP_REGISTRY
+    if name == "MCPGateway":
+        from .mcp_gateway import MCPGateway  # noqa: PLC0415
+
+        globals()["MCPGateway"] = MCPGateway
+        return MCPGateway
+    if name == "MCPGatewayConfig":
+        from .mcp_gateway import MCPGatewayConfig  # noqa: PLC0415
+
+        globals()["MCPGatewayConfig"] = MCPGatewayConfig
+        return MCPGatewayConfig
+    if name == "SecurityException":
+        from .mcp_gateway import SecurityException  # noqa: PLC0415
+
+        globals()["SecurityException"] = SecurityException
+        return SecurityException
+    if name == "MCP_GATEWAY_REGISTRY":
+        from .mcp_gateway import MCP_GATEWAY_REGISTRY  # noqa: PLC0415
+
+        globals()["MCP_GATEWAY_REGISTRY"] = MCP_GATEWAY_REGISTRY
+        return MCP_GATEWAY_REGISTRY
     if name == "ToolResultFormatter":
         from .tool_result_formatter import ToolResultFormatter  # noqa: PLC0415
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 import time
 from dataclasses import dataclass
 from enum import StrEnum
@@ -30,40 +31,53 @@ class CredentialManager:
 
     def __init__(self) -> None:
         self._store: dict[str, Credential] = {}
+        self._lock = threading.Lock()
 
     def register(self, cred: Credential) -> None:
-        self._store[cred.provider] = cred
+        with self._lock:
+            self._store[cred.provider] = cred
 
     def get(self, provider: str) -> Credential:
-        if provider not in self._store:
-            raise ProviderAuthError(f"no credential registered for provider: {provider}")
-        return self._store[provider]
+        with self._lock:
+            if provider not in self._store:
+                raise ProviderAuthError(f"no credential registered for provider: {provider}")
+            return self._store[provider]
 
     def is_expired(self, provider: str) -> bool:
         cred = self.get(provider)
         return cred.expires_at > 0 and time.time() > cred.expires_at
 
     def refresh(self, provider: str) -> Credential:
-        cred = self.get(provider)
-        cred.status = CredentialStatus.REFRESHING
-        new_token = f"refreshed_{provider}_{int(time.time())}"
-        cred.token = new_token
-        cred.expires_at = time.time() + 3600
-        cred.status = CredentialStatus.VALID
-        return cred
+        # Do not mutate status before raising — caller would be left in REFRESHING forever.
+        raise NotImplementedError(
+            f"OAuth refresh not implemented for provider: {provider}"
+        )
 
     def get_or_refresh(self, provider: str) -> Credential:
         if self.is_expired(provider):
-            return self.refresh(provider)
+            try:
+                return self.refresh(provider)
+            except NotImplementedError:
+                raise ProviderAuthError(
+                    f"credential for provider '{provider}' is expired and refresh is not implemented"
+                )
         return self.get(provider)
 
     def list_providers(self) -> list[str]:
-        return list(self._store.keys())
+        with self._lock:
+            return list(self._store.keys())
 
     def revoke(self, provider: str) -> None:
-        if provider not in self._store:
-            raise ProviderAuthError(f"no credential registered for provider: {provider}")
-        del self._store[provider]
+        with self._lock:
+            if provider not in self._store:
+                raise ProviderAuthError(f"no credential registered for provider: {provider}")
+            cred = self._store[provider]
+            token_bytes = bytearray(cred.token.encode("utf-8"))
+            for i in range(len(token_bytes)):
+                token_bytes[i] = 0
+            cred.token = ""
+            cred.refresh_token = ""
+            del self._store[provider]
 
 
 CREDENTIAL_MANAGER = CredentialManager()

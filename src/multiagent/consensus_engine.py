@@ -38,7 +38,10 @@ class ConsensusEngine:
         if method in (ConsensusMethod.MAJORITY_VOTE, ConsensusMethod.PLURALITY):
             counts = Counter(responses)
             winner, count = counts.most_common(1)[0]
-            return ConsensusResult(winner=winner, agreement=count / n, method=method.value)
+            agreement = count / n
+            if method == ConsensusMethod.MAJORITY_VOTE and count <= n / 2:
+                return ConsensusResult(winner="", agreement=agreement, method=method.value)
+            return ConsensusResult(winner=winner, agreement=agreement, method=method.value)
 
         if method == ConsensusMethod.CONFIDENCE_WEIGHTED:
             tally: dict[str, float] = {}

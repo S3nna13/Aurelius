@@ -262,9 +262,10 @@ def tokenize_for_sft(text: str, tokenizer, max_len: int) -> dict[str, torch.Tens
         prompt_tokens = tokenizer.encode(prompt_text)
         prompt_len = min(len(prompt_tokens), max_len)
 
-    # Build labels: -100 for prompt, copy input_ids for response
+    # Build labels: -100 for prompt and padding, copy input_ids for response
     labels = input_ids.clone()
     labels[:prompt_len] = -100
+    labels[input_ids == tokenizer.pad_token_id] = -100
 
     return {"input_ids": input_ids, "labels": labels}
 
@@ -412,39 +413,46 @@ class NativeSFTRunner:
         warmup_steps = max(1, int(total_steps * self.cfg.warmup_ratio))
 
         global_step = 0
+        accum_steps = self.cfg.gradient_accumulation_steps
         for epoch in range(self.cfg.num_epochs):
             self.model.train()
             epoch_loss = 0.0
+            accum_loss = 0.0
 
-            for batch_input_ids, batch_labels in loader:
+            for batch_idx, (batch_input_ids, batch_labels) in enumerate(loader):
                 loss, _, _ = self.model(
                     input_ids=batch_input_ids,
                     labels=batch_labels,
                 )
 
+                loss = loss / accum_steps
                 loss.backward()
-                torch.nn.utils.clip_grad_norm_(trainable_params, max_norm=1.0)
-                optimizer.step()
-                optimizer.zero_grad()
+                accum_loss += loss.item()
 
-                lr = _cosine_warmup(
-                    optimizer,
-                    step=global_step,
-                    total_steps=total_steps,
-                    warmup_steps=warmup_steps,
-                )
+                if (batch_idx + 1) % accum_steps == 0:
+                    torch.nn.utils.clip_grad_norm_(trainable_params, max_norm=1.0)
+                    optimizer.step()
+                    optimizer.zero_grad()
 
-                epoch_loss += loss.item()
-                global_step += 1
-
-                if global_step % self.cfg.logging_steps == 0:
-                    logger.info(
-                        "epoch=%d step=%d loss=%.4f lr=%.2e",
-                        epoch + 1,
-                        global_step,
-                        loss.item(),
-                        lr,
+                    lr = _cosine_warmup(
+                        optimizer,
+                        step=global_step,
+                        total_steps=total_steps,
+                        warmup_steps=warmup_steps,
                     )
+
+                    epoch_loss += accum_loss
+                    global_step += 1
+                    accum_loss = 0.0
+
+                    if global_step % self.cfg.logging_steps == 0:
+                        logger.info(
+                            "epoch=%d step=%d loss=%.4f lr=%.2e",
+                            epoch + 1,
+                            global_step,
+                            loss.item() * accum_steps,
+                            lr,
+                        )
 
             avg_loss = epoch_loss / max(steps_per_epoch, 1)
             logger.info("Epoch %d complete. avg_loss=%.4f", epoch + 1, avg_loss)

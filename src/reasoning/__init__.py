@@ -1,4 +1,4 @@
-"""Aurelius reasoning surface: chain-of-thought, tree-of-thought, scratchpad, MCTS."""
+"""Aurelius reasoning surface: chain-of-thought, tree-of-thought, scratchpad, MCTS, ToolGT."""
 
 __all__ = [
     "ChainOfThought",
@@ -25,6 +25,13 @@ __all__ = [
     "BeamHypothesis",
     "BeamSearchReasoner",
     "BEAM_SEARCH_REASONER",
+    # ToolGT — guided-structured templates for function calling
+    "ToolGTReasoner",
+    "TOOLGT_REASONER",
+    "TOOLGT_REGISTRY",
+    "ToolGTTemplate",
+    "ToolGTSchema",
+    "TemplateSlot",
 ]
 from .chain_of_thought import COT_REGISTRY, ChainOfThought
 from .mcts_reasoner import MCTS_REASONER, MCTSNode, MCTSReasoner
@@ -38,12 +45,22 @@ from .reasoning_chain_manager import (
 from .scratchpad import SCRATCHPAD, Scratchpad
 from .tot_planner import TOT_PLANNER, ThoughtNode, ToTPlanner
 
+from .toolgt_reasoner import (  # noqa: F401
+    TOOLGT_REASONER,
+    TOOLGT_REGISTRY,
+    TemplateSlot,
+    ToolGTReasoner,
+    ToolGTSchema,
+    ToolGTTemplate,
+)
+
 REASONING_REGISTRY: dict[str, object] = {
     "cot": COT_REGISTRY,
     "tot": TOT_PLANNER,
     "scratchpad": SCRATCHPAD,
     "mcts": MCTS_REASONER,
     "chain_manager": DEFAULT_CHAIN_MANAGER,
+    "toolgt": TOOLGT_REASONER,
 }
 
 # --- Cycle-146 step verification + beam search (Lightman et al. 2305.20050) --

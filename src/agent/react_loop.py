@@ -341,20 +341,20 @@ class ReActLoop:
                     )
                     return step
 
-        # Execute with wall-clock timeout.
+        # Execute with wall-clock timeout using threads (avoids serialization issues with closures).
         try:
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                future = pool.submit(lambda: fn(**kwargs))
+                future = pool.submit(fn, **kwargs)
                 try:
                     result = future.result(timeout=self._tool_timeout)
                 except concurrent.futures.TimeoutError:
-                    # The worker thread cannot be killed, but the loop
-                    # moves on; the daemon-ish cleanup at executor exit
-                    # lets the thread finish in the background.
                     future.cancel()
                     step.error = f"tool_error: timeout after {self._tool_timeout:.3f}s"
                     return step
-        except Exception as exc:  # noqa: BLE001 - tool code is untrusted
+        except (SystemExit, KeyboardInterrupt) as exc:
+            step.error = f"tool_error: process terminated by {type(exc).__name__}: {exc}"
+            return step
+        except Exception as exc:
             step.error = f"tool_error: {type(exc).__name__}: {exc}"
             return step
 

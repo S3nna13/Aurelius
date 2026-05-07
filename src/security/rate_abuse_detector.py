@@ -103,21 +103,19 @@ class RateAbuseDetector:
 
             # --- SUSTAINED detection (total window) ---
             if sorted_ts:
-                total_window = sorted_ts[-1] - sorted_ts[0]
-                check_window = max(total_window, self.sustained_window_s)
-                self._count_in_window(sorted_ts, check_window)
+                window_count = self._count_in_window(sorted_ts, self.sustained_window_s)
                 key = (client_id, AbusePattern.SUSTAINED)
-                if len(sorted_ts) > self.sustained_threshold and key not in seen:
+                if window_count > self.sustained_threshold and key not in seen:
                     seen.add(key)
                     alerts.append(
                         AbuseAlert(
                             client_id=client_id,
                             pattern=AbusePattern.SUSTAINED,
                             severity="medium",
-                            request_count=len(sorted_ts),
+                            request_count=window_count,
                             window_s=self.sustained_window_s,
                             detail=(
-                                f"{len(sorted_ts)} requests over {self.sustained_window_s}s "
+                                f"{window_count} requests over {self.sustained_window_s}s "
                                 f"(threshold {self.sustained_threshold})"
                             ),
                         )

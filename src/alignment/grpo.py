@@ -183,12 +183,17 @@ class GRPOTrainer:
         # --- Compute group-relative advantages ---------------------------------
         advantages = group_relative_advantages(rewards)
 
-        # --- Collect old log probs (detached, under rollout policy) ------------
+        # --- Collect old log probs (detached, under reference policy) ------------
         old_log_probs_list = []
         with torch.no_grad():
-            for c in completions:
-                lp = compute_sequence_log_probs(self.model, c, response_start=prompt_ids.shape[1])
-                old_log_probs_list.append(lp.detach())
+            if self.ref_model is not None:
+                for c in completions:
+                    lp = compute_sequence_log_probs(self.ref_model, c, response_start=prompt_ids.shape[1])
+                    old_log_probs_list.append(lp.detach())
+            else:
+                for c in completions:
+                    lp = compute_sequence_log_probs(self.model, c, response_start=prompt_ids.shape[1])
+                    old_log_probs_list.append(lp.detach())
         old_log_probs = torch.stack(old_log_probs_list)
 
         # --- Recompute log probs under current (training) policy ---------------
@@ -202,10 +207,17 @@ class GRPOTrainer:
         # --- Policy gradient loss ----------------------------------------------
         loss = grpo_policy_loss(new_log_probs, old_log_probs, advantages, cfg.clip_ratio)
 
-        # --- Optional KL regularization ----------------------------------------
-        if cfg.kl_coef > 0:
-            kl_penalty = (new_log_probs - old_log_probs).mean()
-            loss = loss + cfg.kl_coef * kl_penalty
+        # --- Optional KL regularization using beta from config -----------------
+        if cfg.beta > 0 and self.ref_model is not None:
+            ref_log_probs_list = []
+            with torch.no_grad():
+                for c in completions:
+                    lp = compute_sequence_log_probs(self.ref_model, c, response_start=prompt_ids.shape[1])
+                    ref_log_probs_list.append(lp.detach())
+            ref_log_probs = torch.stack(ref_log_probs_list)
+            # Clamp to 0: unclipped mean log-ratio can be negative (acting as divergence bonus).
+            kl_penalty = (new_log_probs - ref_log_probs).mean().clamp(min=0.0)
+            loss = loss + cfg.beta * kl_penalty
 
         # --- Optimizer step ----------------------------------------------------
         self.optimizer.zero_grad()

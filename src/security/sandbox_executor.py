@@ -110,9 +110,34 @@ def _truncate(text: str, max_bytes: int) -> str:
     return encoded[:max_bytes].decode("utf-8", errors="replace")
 
 
+class _CappedStringIO(io.StringIO):
+    def __init__(self, cap: int) -> None:
+        super().__init__()
+        self._cap = cap
+        self._bytes_written = 0
+
+    def write(self, s: str) -> int:
+        remaining = self._cap - self._bytes_written
+        if remaining <= 0:
+            return len(s)
+        # Prevent memory DoS: never encode a huge string just to truncate it.
+        # In the worst case a codepoint is 4 UTF-8 bytes, so slicing a few
+        # characters past the remaining budget is safe.
+        if len(s) > remaining + 4:
+            s = s[:remaining + 4]
+        encoded = s.encode("utf-8", errors="replace")
+        if len(encoded) <= remaining:
+            self._bytes_written += len(encoded)
+            return super().write(s)
+        encoded = encoded[:remaining]
+        decoded = encoded.decode("utf-8", errors="replace")
+        self._bytes_written += len(encoded)
+        return super().write(decoded)
+
+
 def _run_exec(code: str, globs: dict[str, Any], max_bytes: int) -> SandboxResult:
-    out = io.StringIO()
-    err = io.StringIO()
+    out = _CappedStringIO(max_bytes)
+    err = _CappedStringIO(max_bytes)
     result = SandboxResult()
     try:
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
@@ -120,8 +145,8 @@ def _run_exec(code: str, globs: dict[str, Any], max_bytes: int) -> SandboxResult
             _py_builtins.exec(compiled, globs, globs)  # noqa: S102
     except BaseException as caught:
         result.exception = f"{type(caught).__name__}: {caught}"
-    result.stdout = _truncate(out.getvalue(), max_bytes)
-    result.stderr = _truncate(err.getvalue(), max_bytes)
+    result.stdout = out.getvalue()
+    result.stderr = err.getvalue()
     return result
 
 
@@ -133,8 +158,6 @@ class SandboxExecutor:
         for name in config.allowed_builtins:
             if hasattr(_py_builtins, name):
                 safe_builtins[name] = getattr(_py_builtins, name)
-        # Explicitly ensure dangerous names are absent even if someone extended
-        # ``allowed_builtins`` with them by accident.
         for blocked in (
             "eval",
             "exec",
@@ -149,15 +172,27 @@ class SandboxExecutor:
             "setattr",
             "type",
             "hasattr",
+            "__class__",
+            "__bases__",
+            "__subclasses__",
+            "__mro__",
+            "__builtins__",
+            "__globals__",
+            "__code__",
+            "__closure__",
         ):
             safe_builtins.pop(blocked, None)
-        return {"__builtins__": safe_builtins}
+        globs: dict[str, Any] = {"__builtins__": safe_builtins}
+        for attr in ("__class__", "__bases__", "__subclasses__", "__mro__", "__globals__", "__code__", "__closure__", "__dict__"):
+            globs[attr] = None
+        return globs
 
     def execute(
         self,
         code: str,
         config: SandboxConfig | None = None,
     ) -> SandboxResult:
+        global _SANDBOX_POOL
         cfg = config or SandboxConfig()
         if not isinstance(code, str):
             raise SandboxViolation(
@@ -172,11 +207,9 @@ class SandboxExecutor:
 
         globs = self._build_globals(cfg)
 
-        pool = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-        future = pool.submit(_run_exec, code, globs, cfg.max_output_bytes)
+        future = _SANDBOX_POOL.submit(_run_exec, code, globs, cfg.max_output_bytes)
         try:
             result = future.result(timeout=cfg.timeout_seconds)
-            pool.shutdown(wait=True)
             return result
         except concurrent.futures.TimeoutError:
             # CPython cannot force-kill a worker thread; it will continue
@@ -184,13 +217,13 @@ class SandboxExecutor:
             # the caller is not blocked on a runaway sandbox thread.
             try:
                 future.cancel()
-            except Exception:  # noqa: S110
+            except Exception:
                 pass
-            try:
-                pool.shutdown(wait=False, cancel_futures=True)
-            except TypeError:
-                # Older Pythons lack ``cancel_futures``; fall back silently.
-                pool.shutdown(wait=False)
+            old_pool = _SANDBOX_POOL
+            _SANDBOX_POOL = concurrent.futures.ThreadPoolExecutor(
+                max_workers=4, thread_name_prefix="sandbox"
+            )
+            old_pool.shutdown(wait=False)
             return SandboxResult(
                 stdout="",
                 stderr="",
@@ -199,6 +232,7 @@ class SandboxExecutor:
             )
 
 
+_SANDBOX_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=4, thread_name_prefix="sandbox")
 SANDBOX_EXECUTOR = SandboxExecutor()
 
 

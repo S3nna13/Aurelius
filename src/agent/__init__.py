@@ -552,7 +552,6 @@ _LAZY_INTERFACE_EXPORTS = {
     "SessionManager": (".session_manager", "SessionManager"),
     "SessionRecord": (".session_manager", "SessionRecord"),
     "WorkItem": (".session_manager", "WorkItem"),
-    "SessionWorkItem": (".session_manager", "WorkItem"),
     "SessionJournal": (".session_journal", "SessionJournal"),
     "SessionJournalEntry": (".session_journal", "SessionJournalEntry"),
     "SessionJournalBranch": (".session_journal", "SessionJournalBranch"),
@@ -946,7 +945,7 @@ from .agent_memory import AgentMemory, MemoryEntry  # noqa: E402
 from .agent_persistence import AgentPersistence  # noqa: E402
 from .agent_runtime import AgentMessage, AgentRuntime, AgentSpec, AgentStatus  # noqa: E402
 from .multi_agent import DebateCoordinator, SupervisorCoordinator, SwarmCoordinator  # noqa: E402
-from .skill_library import Skill, VoyagerSkillLibrary  # noqa: E402
+from .skill_library import Skill as VoyagerSkill, VoyagerSkillLibrary  # noqa: E402
 from .skill_registry import SkillRegistry, SkillSpec  # noqa: E402
 from .tool_registry import ToolRegistry  # noqa: E402
 
@@ -974,7 +973,7 @@ from .specialist_agents import (  # noqa: E402
 )
 from .agent_registry import AGENT_REGISTRY, AgentType  # noqa: E402
 from .plugin_system import PluginManager  # noqa: E402
-from .skills_registry import SKILLS_REGISTRY, Skill  # noqa: E402
+from .skills_registry import SKILLS_REGISTRY, Skill as RegistrySkill  # noqa: E402
 from .auto_dev import AutoDevAgent, DevGuardrail, DevOperation, DevPlan, DevSandbox  # noqa: E402
 from .tool_sandbox import ToolSandbox  # noqa: E402
 
@@ -987,7 +986,7 @@ __all__ += [
     "AgentStatus",
     "DebateCoordinator",
     "MemoryEntry",
-    "Skill",
+    "VoyagerSkill",
     "SkillRegistry",
     "SkillSpec",
     "SupervisorCoordinator",
@@ -1019,7 +1018,7 @@ __all__ += [
     "AgentType",
     "PluginManager",
     "SKILLS_REGISTRY",
-    "Skill",
+    "RegistrySkill",
     "AutoDevAgent",
     "DevSandbox",
     "DevPlan",

@@ -11,6 +11,7 @@ import argparse
 import ipaddress
 import json
 import logging
+import socket
 import webbrowser
 from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -43,9 +44,12 @@ _BLOCKED_NETWORKS = [
 def _is_private_or_reserved_ip(hostname: str) -> bool:
     try:
         addr = ipaddress.ip_address(hostname)
-        return any(addr in net for net in _BLOCKED_NETWORKS)
     except ValueError:
-        return False
+        try:
+            addr = ipaddress.ip_address(socket.gethostbyname(hostname))
+        except (socket.gaierror, ValueError):
+            return True
+    return any(addr in net for net in _BLOCKED_NETWORKS)
 
 
 def _validate_upstream_url(url: str) -> None:

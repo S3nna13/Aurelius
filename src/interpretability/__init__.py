@@ -32,3 +32,30 @@ from .probing_classifier import LinearProbe as LinearProbe
 from .probing_classifier import ProbeResult as ProbeResult
 from .probing_classifier import ProbeTask as ProbeTask
 from .probing_classifier import ProbingClassifier as ProbingClassifier
+
+__all__ = [
+    "ATTENTION_FLOW_REGISTRY",
+    "ActivationPatcher",
+    "Attribution",
+    "AttributionEdge",
+    "AttributionGraph",
+    "AttributionGraphBuilder",
+    "AttributionMethod",
+    "AttributionNode",
+    "AttentionFlow",
+    "AttentionFlowAnalyzer",
+    "Circuit",
+    "CircuitAnalyzer",
+    "CircuitEdge",
+    "CircuitNode",
+    "DictionaryLearner",
+    "DictionaryResult",
+    "FeatureDecomposer",
+    "GradientAttribution",
+    "LinearProbe",
+    "PatchResult",
+    "PatchTarget",
+    "ProbeResult",
+    "ProbeTask",
+    "ProbingClassifier",
+]

@@ -91,10 +91,13 @@ class DAPOLoss(nn.Module):
         log_ratio = log_probs - old_log_probs
         r = torch.exp(log_ratio)  # shape: (batch, seq_len) or (N,)
 
-        # Decoupled clip: asymmetric bounds depending on sign of advantage
-        # clip(r, 1 - ε_low, 1 + ε_high) for all tokens — same bounds for both
-        # but advantage sign determines which side is binding.
-        r_clipped = torch.clamp(r, 1.0 - self.eps_low, 1.0 + self.eps_high)
+        # Decoupled clip (DAPO Section 3.1): for positive advantages the upper
+        # bound is relaxed to eps_high; for negative advantages it stays at eps_low.
+        r_clipped = torch.where(
+            advantages >= 0,
+            torch.clamp(r, 1.0 - self.eps_low, 1.0 + self.eps_high),
+            torch.clamp(r, 1.0 - self.eps_low, 1.0 + self.eps_low),
+        )
 
         # Surrogate objectives
         surr1 = r * advantages
@@ -193,7 +196,7 @@ class DAPOTrainer:
         )
         self.filter = DAPOFilter()
 
-    def compute_loss(self, batch: dict[str, torch.Tensor]) -> torch.Tensor:
+    def compute_loss(self, batch: dict[str, torch.Tensor]) -> torch.Tensor | None:
         """Compute DAPO loss for a batch.
 
         Expected batch keys:
@@ -204,7 +207,8 @@ class DAPOTrainer:
           - entropy: optional per-token entropy, same shape as log_probs
 
         Returns:
-            Scalar loss tensor.
+            Scalar loss tensor, or None if the batch is filtered out by
+            dynamic sampling (no learning signal).
 
         Raises:
             ValueError: if required keys are missing from batch.
@@ -213,6 +217,10 @@ class DAPOTrainer:
         missing = required - set(batch.keys())
         if missing:
             raise ValueError(f"batch is missing required keys: {missing}")
+
+        rewards = batch.get("rewards")
+        if rewards is not None and not self.filter.should_keep(rewards):
+            return None
 
         log_probs = batch["log_probs"]
         old_log_probs = batch["old_log_probs"]

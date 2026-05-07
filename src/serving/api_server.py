@@ -14,6 +14,7 @@ Endpoints:
 """
 
 import hashlib
+import ipaddress
 import json
 import logging
 import math
@@ -82,6 +83,12 @@ def _check_auth_and_rate_limit(handler: BaseHTTPRequestHandler) -> bool:
     server = handler.server
     auth_mw = getattr(server, "auth_middleware", None)
     rate_limiter = getattr(server, "rate_limiter", None)
+
+    if auth_mw is not None and not auth_mw.is_configured:
+        host = server.server_address[0] if server else "localhost"
+        if host not in ("127.0.0.1", "localhost", "::1"):
+            handler._send_error(401, "Auth middleware removed on non-loopback interface")
+            return False
 
     auth_result = None
     if auth_mw is not None:
@@ -171,6 +178,9 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
 
     def send_response(self, code: int, message: str | None = None) -> None:
         super().send_response(code, message)
+        host = self.server.server_address[0] if self.server else "localhost"
+        if host not in ("127.0.0.1", "localhost", "::1"):
+            logger.warning("CORS enabled on non-loopback host %s", host)
         CORS.add_headers(self)
 
     def do_OPTIONS(self):
@@ -369,6 +379,7 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
                 else:
                     coalesce_key = None
             except Exception:
+                logger.debug("Failed to compute coalesce key", exc_info=True)
                 coalesce_key = None
             if coalesce_key is not None:
                 try:
@@ -395,8 +406,14 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
                 self._record_metrics(start, 500, "generation_error")
                 return
 
-        prompt_tokens = sum(len((m.get("content") or "").split()) for m in request.messages)
-        completion_tokens = len(content.split())
+        tokenizer_encode = getattr(self.server, "tokenizer_encode", None)
+        if tokenizer_encode is not None:
+            prompt_tokens = sum(len(tokenizer_encode(m.get("content") or "")) for m in request.messages)
+            completion_tokens = len(tokenizer_encode(content))
+        else:
+            # NOTE: counts are approximate word counts because a tokenizer is not available.
+            prompt_tokens = sum(len((m.get("content") or "").split()) for m in request.messages)
+            completion_tokens = len(content.split())
 
         response = ChatResponse(
             id=f"chatcmpl-{uuid.uuid4().hex}",
@@ -418,9 +435,9 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
         )
 
         if request.stream:
-            logger.warning(
-                "Streaming requested but not yet implemented; returning non-streaming response"
-            )
+            self._send_error(501, "Streaming is not yet implemented")
+            self._record_metrics(start, 501, "streaming_not_implemented")
+            return
 
         self._send_json(200, response.to_dict())
         self._record_metrics(start, 200)
@@ -462,7 +479,12 @@ def create_server(
     coalescer: RequestCoalescer | None = None,
     bind_and_activate: bool = True,
 ) -> AureliusServer:
-    if host not in ("127.0.0.1", "localhost", "::1") and (
+    try:
+        ip_addr = ipaddress.ip_address(host)
+        is_loopback = ip_addr.is_loopback
+    except ValueError:
+        is_loopback = host in ("localhost",)
+    if not is_loopback and (
         auth_middleware is None or not auth_middleware.is_configured
     ):
         raise RuntimeError(
