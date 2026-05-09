@@ -71,7 +71,6 @@ __all__ = [
     "ZeroVisionSFTConfig",
     "ZeroVisionSFTTrainer",
     "bradley_terry_loss",
-    "calibration_method",
     "dpo_pair_loss",
     "heuristic_blue_fn",
     "heuristic_red_fn",
@@ -126,7 +125,10 @@ from .step_dpo import step_dpo_loss as step_dpo_loss
 
 # Alignment component registry: maps string keys -> class
 ALIGNMENT_REGISTRY: dict = {}
-ALIGNMENT_REGISTRY["prm"] = ProcessRewardModel
+try:
+    ALIGNMENT_REGISTRY["prm"] = ProcessRewardModel
+except NameError:
+    pass
 ALIGNMENT_REGISTRY["adversarial_code_battle"] = AdversarialCodeBattle
 
 from .constitution_dimensions import (
@@ -280,3 +282,13 @@ from .preference_collector import (
 )
 
 ALIGNMENT_REGISTRY["preference_collector"] = PreferenceCollector
+
+from .praxis import PRAXISConfig as PRAXISConfig  # noqa: E402
+from .praxis import PRAXISTrainer as PRAXISTrainer
+from .praxis import PrecisionFusion as PrecisionFusion
+from .praxis import SteeringRewardCorrespondence as SteeringRewardCorrespondence
+from .praxis import ExpertSafetyAffinity as ExpertSafetyAffinity
+from .praxis import MultiTokenAlignmentHorizon as MultiTokenAlignmentHorizon
+from .praxis import PRAXISLoss as PRAXISLoss
+
+ALIGNMENT_REGISTRY["praxis"] = PRAXISTrainer
