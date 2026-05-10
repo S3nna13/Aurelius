@@ -505,7 +505,7 @@ from .reflexion_agent import (  # noqa: E402
     ReflexionResult,
 )
 
-# AGENT_LOOP_REGISTRY["reflexion"] is set inside reflexion_agent.py itself.
+AGENT_LOOP_REGISTRY["reflexion"] = ReflexionAgent
 
 __all__ += [
     "ReflexionAgent",

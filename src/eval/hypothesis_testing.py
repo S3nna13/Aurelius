@@ -110,6 +110,7 @@ def bootstrap_confidence_interval(
     Return (alpha/2, 1-alpha/2) percentiles.
     """
     rng = random.Random(seed)  # noqa: S311
+    diffs = [a - b for a, b in zip(scores_a, scores_b)]
     n = len(diffs)
     if n == 0:
         return (0.0, 0.0)

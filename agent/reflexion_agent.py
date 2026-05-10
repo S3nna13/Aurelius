@@ -412,12 +412,8 @@ class ReflexionAgent:
 
 
 # ---------------------------------------------------------------------------
-# Registry
+# Registry (deferred to agent/__init__.py to avoid circular import)
 # ---------------------------------------------------------------------------
-
-from src.agent import AGENT_LOOP_REGISTRY  # noqa: E402
-
-AGENT_LOOP_REGISTRY["reflexion"] = ReflexionAgent
 
 
 __all__ = [
