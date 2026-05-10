@@ -17,7 +17,7 @@ dependencies = [
 
 [project.optional-dependencies]
 full = [
-    "transformers>=4.45.0",
+    "transformers>=5.8.0",
     "datasets>=3.0.0",
     "accelerate>=1.0.0",
     "trl>=0.12.0",
@@ -29,7 +29,7 @@ full = [
     "scipy>=1.12.0",
 ]
 train = [
-    "transformers>=4.45.0",
+    "transformers>=5.8.0",
     "datasets>=3.0.0",
     "accelerate>=1.0.0",
     "trl>=0.12.0",
