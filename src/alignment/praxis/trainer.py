@@ -1,5 +1,4 @@
 from __future__ import annotations
-import copy
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -14,13 +13,8 @@ from src.alignment.praxis.praxis_loss import PRAXISLoss
 from src.alignment.prime import PRIMEReward, PRIMEConfig
 from src.alignment.constitutional_ai_v3 import CritiqueHead
 from src.alignment.reward_uncertainty import MCDropoutReward
-from src.alignment.grpo_v3 import GroupRewardNormalizer
 from src.alignment.thinking_tokens import ThinkingLossWeights
 from src.alignment.warp import anchor_merge
-try:
-    from src.alignment.hierarchical_reward import HierarchicalRewardModel
-except ImportError:
-    HierarchicalRewardModel = None
 
 
 class PRAXISTrainer:
@@ -47,11 +41,7 @@ class PRAXISTrainer:
         self.prime       = PRIMEReward(PRIMEConfig(beta=config.beta_kl))
         self.critique    = CritiqueHead(config.d_model, config.n_principles)
         self.mc_reward   = MCDropoutReward(config.d_model)
-        try:
-            self.hier = HierarchicalRewardModel(config.d_model) if HierarchicalRewardModel else None
-        except (TypeError, Exception):
-            self.hier = None
-        self.normalizer  = GroupRewardNormalizer(config.n_group)
+        self.hier        = None  # HierarchicalRewardModel requires explicit criteria list
         self.think_wts   = ThinkingLossWeights(config.think_weight, config.answer_weight)
         self.fusion      = PrecisionFusion(n_signals=6)
         self.src         = SteeringRewardCorrespondence(model, config)
@@ -88,10 +78,14 @@ class PRAXISTrainer:
         model_out = self.model(input_ids, mask=mask, labels=labels, return_hidden_states=True)
         _, logits, _, hidden = model_out                            # (B, T, D)
 
-        # Reference log-probs (no grad)
+        # Current policy log-probs — must stay outside no_grad to keep computation graph
+        log_probs_cur = self._get_log_probs(model_out, input_ids, mask)   # (B, T)
+
+        # Reference log-probs: detached clone of current policy.
+        # NOTE: using current policy as its own reference makes PRIME implicit reward identically
+        # zero this step. Wire in a frozen SFT/reference model forward pass here to activate PRIME.
         with torch.no_grad():
-            log_probs_cur = self._get_log_probs(model_out, input_ids, mask)   # (B, T)
-            ref_log_probs = log_probs_cur.detach() * 0.95                     # approx reference
+            ref_log_probs = log_probs_cur.detach().clone()         # (B, T)
 
         # Outcome rewards: cross-entropy of correct tokens (negated = positive reward for low loss)
         B, T = input_ids.shape
@@ -99,13 +93,15 @@ class PRAXISTrainer:
         flat_labels = labels.reshape(-1).clamp(min=0)
         ce_per_token = F.cross_entropy(flat_logits, flat_labels, reduction="none")
         outcome_rewards = -ce_per_token.reshape(B, T).mean(dim=1)   # (B,)
-        outcome_rewards = self.normalizer.normalize(outcome_rewards)
+        # Per-batch z-score normalization (GroupRewardNormalizer expects grouped rollouts)
+        r_std = outcome_rewards.std(unbiased=False).clamp(min=1e-8)
+        outcome_rewards = (outcome_rewards - outcome_rewards.mean()) / r_std
 
         # Compute 6 reward signals
         signals = self.bundle.compute(hidden, log_probs_cur, ref_log_probs, outcome_rewards, mask)
 
         # Inject SRC into r_src slot
-        src_scalar = self.src.compute(hidden.detach())
+        src_scalar = self.src.compute(input_ids)
         r_src_mean = torch.full((B,), src_scalar.item(), device=hidden.device)
         r_src_std  = torch.ones(B, device=hidden.device) * 1e-6
         signals["r_src"] = (r_src_mean, r_src_std)
@@ -115,13 +111,16 @@ class PRAXISTrainer:
         stds  = [signals[k][1] for k in ["r_prime", "r_const", "r_ccot", "r_odin", "r_hier", "r_src"]]
         fused_reward = self.fusion.fuse(means, stds)                 # (B,)
 
-        # MTAH advantage extension
-        advantages_base = fused_reward.unsqueeze(1).expand(-1, T)   # (B, T)
-        advantages = self.mtah.extend(advantages_base)               # (B, T)
+        # MTAH advantage extension — detach so advantages don't carry spurious grad from PRIME
+        advantages_base = fused_reward.detach().unsqueeze(1).expand(-1, T)  # (B, T)
+        advantages = self.mtah.extend(advantages_base)                      # (B, T)
 
-        # Thinking token weights
-        think_weights = self.think_wts.compute_weights(input_ids[0].tolist()).to(hidden.device)
-        advantages = advantages * think_weights.unsqueeze(0)
+        # Thinking token weights — computed per sample so <think> boundaries are respected
+        think_weights = torch.stack(
+            [self.think_wts.compute_weights(input_ids[i].tolist()) for i in range(B)],
+            dim=0,
+        ).to(hidden.device)                              # (B, T)
+        advantages = advantages * think_weights
 
         # Constitutional scores for gating
         with torch.no_grad():
@@ -130,9 +129,8 @@ class PRAXISTrainer:
         # ESA routing loss
         esa_loss = self.esa.compute(hidden.detach(), const_scores)
 
-        # Total loss
-        entropy = -(log_probs_cur * log_probs_cur.exp() * mask.float()).sum(dim=-1, keepdim=False)
-        entropy = entropy.unsqueeze(1).expand(-1, T)
+        # Per-token entropy approximation: -log p(chosen) is MC estimate of H(π) per position
+        entropy = -log_probs_cur * mask.float()   # (B, T)
         total_loss, metrics = self.loss_fn.forward(
             log_probs_cur, log_probs_cur.detach(), advantages, fused_reward, mask,
             ref_log_probs=ref_log_probs, const_scores=const_scores,

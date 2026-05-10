@@ -18,7 +18,7 @@ class SteeringRewardCorrespondence:
         self.model = model
         self.config = config
 
-    def _capture_hidden(self, x: Tensor, apply_steer: bool) -> dict[int, Tensor]:
+    def _capture_hidden(self, input_ids: Tensor, apply_steer: bool = False, **kwargs) -> dict[int, Tensor]:
         captures: dict[int, Tensor] = {}
         hooks = []
 
@@ -40,21 +40,25 @@ class SteeringRewardCorrespondence:
             hooks.append(handle)
 
         with torch.no_grad():
-            self.model(x)
+            self.model(input_ids)
 
         for handle in hooks:
             handle.remove()
 
         return captures
 
-    def compute(self, x: Tensor) -> Tensor:
+    def compute(self, input_ids: Tensor, **kwargs) -> Tensor:
         """Compute SRC reward signal.
+
+        Args:
+            input_ids: (B, T) long tensor of token IDs — the model's embed layer
+                       is applied internally, and hooks capture layer outputs.
 
         Returns a non-positive scalar: 0 when steering has no effect (ideal),
         negative when hidden states diverge significantly from steering.
         """
-        unsteered = self._capture_hidden(x, apply_steer=False)
-        steered   = self._capture_hidden(x, apply_steer=True)
+        unsteered = self._capture_hidden(input_ids, apply_steer=False, **kwargs)
+        steered   = self._capture_hidden(input_ids, apply_steer=True, **kwargs)
 
         distances: list[Tensor] = []
         for idx in self.config.steer_layers:
