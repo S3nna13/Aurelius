@@ -3,7 +3,7 @@ import pytest
 import sys
 import os
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(1, os.path.dirname(os.path.abspath(__file__)))
 
 from aurelius_model_7b import AureliusModel7B, BrainBridge as BrainBridge7B
 from aurelius_model_14b import AureliusModel14B, BrainBridge as BrainBridge14B

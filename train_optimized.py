@@ -6,7 +6,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 import yaml
 import time
 
-from aurelius_model_1b import AureliusModel1B
+from aurelius.aurelius_model_1b import AureliusModel1B
 from memory_optimizer import (
     MixedPrecisionTrainer,
     CpuOffloadManager,

@@ -13,7 +13,7 @@ import torch.nn as nn
 # is run from the repo root or from a sub-directory.
 _REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 if _REPO_ROOT not in sys.path:
-    sys.path.insert(0, _REPO_ROOT)
+    sys.path.insert(1, _REPO_ROOT)
 
 from src.eval.uncertainty import (  # noqa: E402
     MCDropoutEstimator,

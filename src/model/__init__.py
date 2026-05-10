@@ -180,8 +180,22 @@ MODEL_COMPONENT_REGISTRY["hca_attention"] = HeavilyCompressedAttention
 MODEL_COMPONENT_REGISTRY["mhc"] = ManifoldConstrainedHyperConnection
 
 _module = sys.modules[__name__]
-sys.modules.setdefault("src.model", _module)
-sys.modules.setdefault("model", _module)
+sys.modules["src.model"] = _module
+sys.modules["aurelius.model"] = _module
+sys.modules["model"] = _module
+
+
+def _mirror_namespace(primary: str, mirror: str) -> None:
+    for module_name, module in list(sys.modules.items()):
+        if module_name == primary or module_name.startswith(f"{primary}."):
+            mirror_name = mirror + module_name[len(primary) :]
+            sys.modules[mirror_name] = module
+
+
+_mirror_namespace("src.model", "aurelius.model")
+_mirror_namespace("aurelius.model", "src.model")
+_mirror_namespace("src.model", "model")
+_mirror_namespace("aurelius.model", "model")
 
 from src.backends import (  # noqa: E402
     BACKEND_REGISTRY,

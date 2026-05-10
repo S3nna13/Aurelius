@@ -150,6 +150,11 @@ export function useApi<T = unknown>(
   }, [refreshInterval, refresh]);
 
   useEffect(() => {
+    execute();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
     return () => {
       if (abortRef.current) {
         abortRef.current.abort();

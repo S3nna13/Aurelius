@@ -5,7 +5,7 @@ import math
 import copy
 from typing import Optional, Dict, List, Tuple, Any
 
-from aurelius_model_3b import AureliusModel3B
+from aurelius.aurelius_model_3b import AureliusModel3B
 
 
 class PagedOptimizerState:

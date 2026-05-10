@@ -36,9 +36,11 @@ class LearnedEvictionPolicy(nn.Module):
         b, h, n, d = k.shape
         keep = n - n_evict
         if n_evict <= 0:
-            empty_k = k.new_empty(0)
-            empty_v = v.new_empty(0)
-            empty_s = scores.new_empty(0)
+            # Return empty tensors that preserve batch, head, and dimension shapes
+            b, h, _, d = k.shape
+            empty_k = k.new_zeros(b, h, 0, d)
+            empty_v = v.new_zeros(b, h, 0, d)
+            empty_s = scores.new_zeros(b, 0)
             return k, v, scores, empty_k, empty_v, empty_s
         sort_idx = scores.argsort(dim=1, descending=True)
         sort_idx_exp = sort_idx[:, None, :, None].expand(-1, h, -1, d)
@@ -104,6 +106,10 @@ class HierarchicalKVCache(nn.Module):
         b, h, n_new, d = key.shape
         if b != self.t1_k.shape[0]:
             raise ValueError(f"Batch mismatch: expected {self.t1_k.shape[0]}, got {b}")
+        if b != self.t2_k.shape[0]:
+            raise ValueError(f"Tier-2 batch mismatch: expected {self.t2_k.shape[0]}, got {b}")
+        if b != self.t3_k.shape[0]:
+            raise ValueError(f"Tier-3 batch mismatch: expected {self.t3_k.shape[0]}, got {b}")
         new_scores = self.eviction_policy.scorer(key, value, hidden_state)
 
         t1_n = self.t1_n[0].item()
@@ -111,10 +117,11 @@ class HierarchicalKVCache(nn.Module):
 
         if need_evict > 0:
             n_keep_old = max(0, self.cap1 - n_new)
+            n_keep = min(n_keep_old, t1_n)
             old_scores = self.t1_scores[:, :t1_n]
             sorted_old = old_scores.argsort(dim=1, descending=True)
-            keep_old_idx = sorted_old[:, :n_keep_old]
-            evict_old_idx = sorted_old[:, n_keep_old:]
+            keep_old_idx = sorted_old[:, :n_keep]
+            evict_old_idx = sorted_old[:, n_keep:]
 
             keep_idx_exp = keep_old_idx[:, None, :, None].expand(-1, h, -1, d)
             kept_k = torch.gather(self.t1_k[:, :, :t1_n], 2, keep_idx_exp)
@@ -126,9 +133,9 @@ class HierarchicalKVCache(nn.Module):
             evict_v = torch.gather(self.t1_v[:, :, :t1_n], 2, evict_idx_exp)
             evict_scores = torch.gather(self.t1_scores[:, :t1_n], 1, evict_old_idx)
 
-            self.t1_k[:, :, :n_keep_old] = kept_k
-            self.t1_v[:, :, :n_keep_old] = kept_v
-            self.t1_scores[:, :n_keep_old] = kept_scores
+            self.t1_k[:, :, :n_keep] = kept_k
+            self.t1_v[:, :, :n_keep] = kept_v
+            self.t1_scores[:, :n_keep] = kept_scores
             self.t1_k[:, :, n_keep_old:self.cap1] = key
             self.t1_v[:, :, n_keep_old:self.cap1] = value
             self.t1_scores[:, n_keep_old:self.cap1] = new_scores
@@ -152,10 +159,11 @@ class HierarchicalKVCache(nn.Module):
 
         if need_evict > 0:
             n_keep_old = max(0, self.cap2 - n_evict)
+            n_keep = min(n_keep_old, t2_n)
             old_scores = self.t2_scores[:, :t2_n]
             sorted_old = old_scores.argsort(dim=1, descending=True)
-            keep_old_idx = sorted_old[:, :n_keep_old]
-            evict_old_idx = sorted_old[:, n_keep_old:]
+            keep_old_idx = sorted_old[:, :n_keep]
+            evict_old_idx = sorted_old[:, n_keep:]
 
             keep_idx_exp = keep_old_idx[:, None, :, None].expand(-1, h, -1, d)
             kept_k = torch.gather(self.t2_k[:, :, :t2_n], 2, keep_idx_exp)
@@ -167,9 +175,9 @@ class HierarchicalKVCache(nn.Module):
             evict_t3_v = torch.gather(self.t2_v[:, :, :t2_n], 2, evict_old_idx_exp)
             evict_t3_scores = torch.gather(self.t2_scores[:, :t2_n], 1, evict_old_idx)
 
-            self.t2_k[:, :, :n_keep_old] = kept_k
-            self.t2_v[:, :, :n_keep_old] = kept_v
-            self.t2_scores[:, :n_keep_old] = kept_scores
+            self.t2_k[:, :, :n_keep] = kept_k
+            self.t2_v[:, :, :n_keep] = kept_v
+            self.t2_scores[:, :n_keep] = kept_scores
             self.t2_k[:, :, n_keep_old:self.cap2] = k_half
             self.t2_v[:, :, n_keep_old:self.cap2] = v_half
             self.t2_scores[:, n_keep_old:self.cap2] = scores_half
@@ -193,10 +201,11 @@ class HierarchicalKVCache(nn.Module):
 
         if need_evict > 0:
             n_keep_old = max(0, self.cap3 - n_evict)
+            n_keep = min(n_keep_old, t3_n)
             old_scores = self.t3_scores[:, :t3_n]
             sorted_old = old_scores.argsort(dim=1, descending=True)
-            keep_old_idx = sorted_old[:, :n_keep_old]
-            evict_old_idx = sorted_old[:, n_keep_old:]
+            keep_old_idx = sorted_old[:, :n_keep]
+            evict_old_idx = sorted_old[:, n_keep:]
 
             keep_idx_exp = keep_old_idx[:, None, :, None].expand(-1, h, -1, d)
             keep_sk_exp = keep_old_idx[:, None, :, None].expand(-1, h, -1, 1)
@@ -206,11 +215,11 @@ class HierarchicalKVCache(nn.Module):
             kept_sv = torch.gather(self.t3_s_v[:, :, :t3_n], 2, keep_sk_exp)
             kept_scores = torch.gather(self.t3_scores[:, :t3_n], 1, keep_old_idx)
 
-            self.t3_k[:, :, :n_keep_old] = kept_k
-            self.t3_v[:, :, :n_keep_old] = kept_v
-            self.t3_s_k[:, :, :n_keep_old] = kept_sk
-            self.t3_s_v[:, :, :n_keep_old] = kept_sv
-            self.t3_scores[:, :n_keep_old] = kept_scores
+            self.t3_k[:, :, :n_keep] = kept_k
+            self.t3_v[:, :, :n_keep] = kept_v
+            self.t3_s_k[:, :, :n_keep] = kept_sk
+            self.t3_s_v[:, :, :n_keep] = kept_sv
+            self.t3_scores[:, :n_keep] = kept_scores
             self.t3_k[:, :, n_keep_old:self.cap3] = k_q
             self.t3_v[:, :, n_keep_old:self.cap3] = v_q
             self.t3_s_k[:, :, n_keep_old:self.cap3] = k_scale

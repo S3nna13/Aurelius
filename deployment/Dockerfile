@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM python:3.12-slim
+FROM python@sha256:46cb7cc2877e60fbd5e21a9ae6115c30ace7a077b9f8772da879e4590c18c2e3
 WORKDIR /app
 
 # Install uv for fast dependency resolution
@@ -11,12 +11,16 @@ COPY README.md .
 COPY src/ src/
 
 # Install dependencies
-RUN uv sync --no-dev
+RUN uv sync --no-dev && \
+    useradd -r -s /bin/false aurelius && \
+    chown -R aurelius:aurelius /app
 
 # Auth must be configured for production. Set AURELIUS_API_KEYS or AURELIUS_API_KEY
 # before binding to 0.0.0.0. The AURELIUS_AUTH_REQUIRED flag can be set to false
 # for local-only deployments (not recommended for production).
 ENV AURELIUS_AUTH_REQUIRED=true
+
+USER aurelius
 
 EXPOSE 8080
 

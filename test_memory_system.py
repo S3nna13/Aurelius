@@ -1,6 +1,6 @@
 import torch
 import sys
-sys.path.insert(0, '/Users/christienantonio/aurelius')
+sys.path.insert(1, '/Users/christienantonio/aurelius')
 from async_memory import AsyncConsolidationPipeline, ConsolidationTask, PagedLTSMemory
 from deduplication import CosineDeduplicator, L2Deduplicator, PriorityProportionalAllocator
 from prefetch_router import PredictiveMemoryPrefetcher, SparseLTSRouter, PredictiveAttentionRouter, LTSIndexCompressor

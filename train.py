@@ -5,7 +5,7 @@ from torch.optim import AdamW
 from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 import yaml
 
-from aurelius_model import AureliusModel
+from aurelius.aurelius_model import AureliusModel
 import logging
 logger = logging.getLogger("train")
 

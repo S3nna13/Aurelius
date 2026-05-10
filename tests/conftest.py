@@ -17,9 +17,12 @@ Registries protected:
 from __future__ import annotations
 
 import importlib
+import os
 from typing import Any
 
 import pytest
+
+os.environ.setdefault("AURELIUS_SCRYPT_N", str(2**14))
 
 
 def _snapshot(obj: Any) -> Any:

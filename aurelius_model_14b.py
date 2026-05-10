@@ -3,33 +3,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 import math
 from typing import Optional, Dict, Any
+import sys
 
-from memory_core import AurelianMemoryCore
-from agent_core import ToolFormerAdapter, PlanningModule, CriticHead, ValueHead
-from agent_loop import AgentLoopController, AgentMemoryBridge, ExperienceReplayBuffer
-from skills import SkillLibrary
-from nn_utils import RMSNorm, FeedForward, sample_with_top_p_top_k
-
-
-class RotaryEmbedding(nn.Module):
-    def __init__(self, dim: int, max_position: int = 16384, theta: float = 10000.0):
-        super().__init__()
-        inv_freq = 1.0 / (theta ** (torch.arange(0, dim, 2).float() / dim))
-        self.register_buffer('inv_freq', inv_freq)
-
-    def forward(self, x: torch.Tensor, offset: int = 0) -> tuple:
-        t = torch.arange(offset, offset + x.shape[1], device=x.device).float()
-        freqs = t[:, None] @ self.inv_freq[None, :]
-        cos = freqs.cos().unsqueeze(0).unsqueeze(1)
-        sin = freqs.sin().unsqueeze(0).unsqueeze(1)
-        return cos, sin
-
-
-def apply_rotary(x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor) -> torch.Tensor:
-    d = x.shape[-1] // 2
-    x1, x2 = x[..., :d], x[..., d:]
-    return torch.cat([x1 * cos[..., :d] - x2 * sin[..., :d],
-                      x1 * sin[..., :d] + x2 * cos[..., :d]], dim=-1)
+from aurelius.memory_core import AurelianMemoryCore
+from aurelius.agent_core import ToolFormerAdapter, PlanningModule, CriticHead, ValueHead
+from aurelius.agent_loop import AgentLoopController, AgentMemoryBridge, ExperienceReplayBuffer
+from aurelius.skills import SkillLibrary
+from aurelius.nn_utils import RMSNorm, RotaryEmbedding, apply_rotary, SwiGLUFFN, FeedForward, sample_with_top_p_top_k
 
 
 class FlashAttention(nn.Module):
@@ -268,3 +248,8 @@ class AureliusModel14B(nn.Module):
             'gradient_checkpointing': training_config.get('gradient_checkpointing', True),
         })
         return cls(model_config)
+
+
+_module = sys.modules[__name__]
+sys.modules.setdefault("aurelius_model_14b", _module)
+sys.modules.setdefault("aurelius.aurelius_model_14b", _module)

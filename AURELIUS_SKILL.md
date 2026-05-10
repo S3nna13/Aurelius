@@ -64,8 +64,8 @@ Memory flow: `SurpriseGate` scores salience → Episodic slots are consolidated 
 ## Usage
 
 ```python
-from memory_core import AurelianMemoryCore
-from agent_loop import AgentLoopController, AgentMemoryBridge
+from aurelius.memory_core import AurelianMemoryCore
+from aurelius.agent_loop import AgentLoopController, AgentMemoryBridge
 
 mem = AurelianMemoryCore(d_model=768, d_mem=256, episodic_slots=4096,
                          lts_capacity=8192, consolidation_freq=64)

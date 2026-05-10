@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import math
+import sys
 
 
 class SkillEmbedding(nn.Module):
@@ -186,3 +187,8 @@ class SkillLibrary(nn.Module):
             h_out = self.registry.adapter(h_out, composed)
             return h_out, idx
         return self.registry(h)
+
+
+_module = sys.modules[__name__]
+sys.modules.setdefault("skills", _module)
+sys.modules.setdefault("aurelius.skills", _module)

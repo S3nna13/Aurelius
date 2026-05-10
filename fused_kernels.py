@@ -1,5 +1,8 @@
 import torch
 import torch.nn as nn
+import sys
+
+from aurelius.nn_utils import apply_rotary, RMSNorm, RotaryEmbedding, SwiGLUFFN
 
 try:
     from flash_attn import flash_attn_func
@@ -33,7 +36,6 @@ class FlashAttention3Wrapper(nn.Module):
                                   causal=self.causal)
             out = out.transpose(1, 2).reshape(b, t, d)
         else:
-            from nn_utils import apply_rotary
             q = apply_rotary(q, cos, sin)
             k = apply_rotary(k, cos, sin)
             attn = (q @ k.transpose(-2, -1)) / (self.head_dim ** 0.5)
@@ -135,3 +137,8 @@ class KernelRegistry:
         result = kernel(*args)
         elapsed = time_fn() - start
         return result, elapsed
+
+
+_module = sys.modules[__name__]
+sys.modules.setdefault("fused_kernels", _module)
+sys.modules.setdefault("aurelius.fused_kernels", _module)

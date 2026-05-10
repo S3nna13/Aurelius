@@ -1,7 +1,7 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
+sys.path.insert(1, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 
 import pytest
 
@@ -44,6 +44,18 @@ def test_different_session_ids_can_route_to_different_workers(router, config):
     ids = [f"session-{i}" for i in range(50)]
     workers = {router.route(sid) for sid in ids}
     assert len(workers) > 1
+
+
+def test_router_worker_load_counts_sessions():
+    config = SessionConfig(n_workers=4, max_sessions_per_worker=32, eviction_policy="lru")
+    sessions = [
+        Session(session_id="a", worker_id=0, last_active=1.0),
+        Session(session_id="b", worker_id=1, last_active=2.0),
+        Session(session_id="c", worker_id=1, last_active=3.0),
+    ]
+    router = ConsistentHashRouter(config, load_source=lambda: sessions)
+
+    assert router.worker_load() == {0: 1, 1: 2, 2: 0, 3: 0}
 
 
 def test_session_manager_instantiates(config):
@@ -93,3 +105,18 @@ def test_session_count_increases_after_create(manager):
     count_before = manager.session_count()
     manager.create_session()
     assert manager.session_count() == count_before + 1
+
+
+def test_create_session_evicts_lru_when_worker_is_full(monkeypatch):
+    config = SessionConfig(n_workers=1, max_sessions_per_worker=1, eviction_policy="lru")
+    manager = SessionManager(config)
+    monkeypatch.setattr(manager._router, "route", lambda session_id: 0)
+
+    first = manager.create_session("session-a")
+    first.last_active = 1.0
+    second = manager.create_session("session-b")
+
+    assert manager.session_count() == 1
+    assert manager.get_session(first.session_id) is None
+    assert manager.get_session(second.session_id) is second
+    assert manager.worker_load() == {0: 1}

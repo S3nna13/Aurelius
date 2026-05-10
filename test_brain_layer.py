@@ -1,6 +1,6 @@
 import torch
 import sys
-sys.path.insert(0, '/Users/christienantonio/aurelius')
+sys.path.insert(1, '/Users/christienantonio/aurelius')
 from brain_layer import *
 
 B, D = 2, 64

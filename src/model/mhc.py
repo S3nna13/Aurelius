@@ -48,7 +48,8 @@ class ManifoldConstrainedHyperConnection(nn.Module):
             extra = []
 
         weights = _sinkhorn_knopp(self.assignment, steps=self.sinkhorn_steps)
-        mix = torch.diagonal(weights).mean().to(dtype=sublayer_out.dtype, device=sublayer_out.device)
+        mix = torch.diagonal(weights).mean()
+        mix = mix.to(dtype=sublayer_out.dtype, device=sublayer_out.device)
 
         adapted = torch.zeros_like(sublayer_out)
         for adapter in self.adapters:

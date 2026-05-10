@@ -2,9 +2,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import math
+import sys
 
-from memory_core import AurelianMemoryCore
-from nn_utils import RMSNorm, RotaryEmbedding, FeedForward, sample_with_top_p_top_k
+from aurelius.memory_core import AurelianMemoryCore
+from aurelius.nn_utils import RMSNorm, RotaryEmbedding, apply_rotary, SwiGLUFFN, FeedForward, sample_with_top_p_top_k
+from aurelius.agent_loop import AgentLoopController, AgentMemoryBridge
 
 
 class FlashAttention(nn.Module):
@@ -40,8 +42,8 @@ class AgentSkillBlock(nn.Module):
         self.norm3 = RMSNorm(d_model)
         self.gate_mem = nn.Parameter(torch.zeros(1))
 
-        from agent_core import ToolFormerAdapter
-        from skills import SkillLibrary
+        from aurelius.agent_core import ToolFormerAdapter
+        from aurelius.skills import SkillLibrary
         self.tool_adapter = ToolFormerAdapter(d_model, n_heads, n_known_tools)
         self.skill_lib = SkillLibrary(d_model, skill_dim)
         self.norm4 = RMSNorm(d_model)
@@ -84,7 +86,6 @@ class AureliusModel3B(nn.Module):
         self.lm_head = nn.Linear(config['d_model'], config['vocab_size'], bias=False)
         self.token_embedding.weight = self.lm_head.weight
 
-        from agent_loop import AgentLoopController, AgentMemoryBridge
         self.agent_controller = AgentLoopController(
             d_model=config['d_model'],
             n_heads=config['n_heads'],
@@ -146,3 +147,8 @@ class AureliusModel3B(nn.Module):
             next_token = sample_with_top_p_top_k(out['logits'][:, -1, :], temperature, top_k=0, top_p=top_p)
             input_ids = torch.cat([input_ids, next_token], dim=-1)
         return input_ids
+
+
+_module = sys.modules[__name__]
+sys.modules.setdefault("aurelius_model_3b", _module)
+sys.modules.setdefault("aurelius.aurelius_model_3b", _module)

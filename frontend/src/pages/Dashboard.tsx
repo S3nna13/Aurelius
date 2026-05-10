@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   Bot, Activity, Cpu, Puzzle, Wrench, Layers, Play, CheckCircle,
-  AlertTriangle, TrendingUp, MessageSquare, History, BarChart3,
+  AlertTriangle, TrendingUp, MessageSquare, History, BarChart3, Zap,
 } from 'lucide-react';
 import { useApi } from '../hooks/useApi';
 import StatsCard from '../components/StatsCard';
@@ -13,6 +13,7 @@ export default function Dashboard() {
   const { data: healthData } = useApi<{ status: string; services: any[] }>('/health', { refreshInterval: 15000 });
   const { data: notifData } = useApi<{ unread: number }>('/notifications/stats', { refreshInterval: 15000 });
   const { data: pluginData } = useApi<{ total: number; enabled: number }>('/plugins', { refreshInterval: 30000 });
+  const { data: statsData } = useApi<{ requests: number; avg_latency: number; tokens: number }>('/stats/summary', { refreshInterval: 15000 });
 
   const agents = agentData?.agents || [];
   const activeAgents = agents.filter((a: any) => a.state === 'active' || a.state === 'busy').length;
@@ -20,6 +21,9 @@ export default function Dashboard() {
   const unread = notifData?.unread ?? 0;
   const plugins = pluginData?.total ?? 12;
   const pluginsActive = pluginData?.enabled ?? 8;
+  const totalTokens = statsData?.tokens ?? 0;
+  const totalRequests = statsData?.requests ?? 0;
+  const avgLatency = statsData?.avg_latency ?? 0;
 
   const quickActions = [
     { label: 'Agent Grid', icon: Bot, path: '/agents/grid', color: 'text-[#4fc3f7]', desc: 'Manage agents' },
@@ -49,6 +53,8 @@ export default function Dashboard() {
         <StatsCard label="Agents" value={agents.length} icon={Cpu} color="text-violet-400" onClick={() => navigate('/agents/grid')} />
         <StatsCard label="Skills" value="35" icon={Puzzle} color="text-cyan-400" onClick={() => navigate('/skills')} />
         <StatsCard label="Traces" value="Active" icon={History} color="text-rose-400" onClick={() => navigate('/traces')} />
+        <StatsCard label="Tokens" value={totalTokens > 1000 ? `${(totalTokens / 1000).toFixed(1)}k` : String(totalTokens)} icon={Zap} color="text-yellow-400" />
+        <StatsCard label="Requests" value={totalRequests} icon={TrendingUp} color="text-blue-400" />
       </div>
 
       <div>

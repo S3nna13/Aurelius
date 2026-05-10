@@ -8,7 +8,6 @@ from contextlib import asynccontextmanager
 from typing import Optional, Dict, Any, List
 
 import torch
-import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -21,7 +20,38 @@ try:
 except ImportError:
     HAS_PROMETHEUS = False
 
-from nn_utils import sample_with_top_p_top_k, validate_input_ids
+    class _NoOpMetric:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def inc(self, *args, **kwargs):
+            return None
+
+        def dec(self, *args, **kwargs):
+            return None
+
+        def observe(self, *args, **kwargs):
+            return None
+
+        def labels(self, *args, **kwargs):
+            return self
+
+        def set(self, *args, **kwargs):
+            return None
+
+    def make_asgi_app():
+        return None
+
+    Histogram = Counter = Gauge = _NoOpMetric
+
+try:
+    import uvicorn
+    HAS_UVICORN = True
+except ImportError:
+    uvicorn = None
+    HAS_UVICORN = False
+
+from aurelius.nn_utils import sample_with_top_p_top_k, validate_input_ids
 
 
 class ServerState:
@@ -226,7 +256,7 @@ def load_model(model_path: str = None, device: str = None):
     if model_path is not None and os.path.exists(model_path):
         checkpoint = torch.load(model_path, map_location=device, weights_only=True)
         d_model = checkpoint.get('d_model', 768)
-        from aurelius_model import AureliusModel
+        from aurelius.aurelius_model import AureliusModel
         config = {
             'd_model': d_model, 'n_heads': 12, 'd_ff': d_model * 4,
             'n_layers': 12, 'vocab_size': 50257, 'max_seq_len': 2048,
@@ -238,7 +268,7 @@ def load_model(model_path: str = None, device: str = None):
         state.config = config
         logger.info(f"Loaded model from {model_path}")
     else:
-        from aurelius_model import AureliusModel
+        from aurelius.aurelius_model import AureliusModel
         config = {
             'd_model': 768, 'n_heads': 12, 'd_ff': 3072, 'n_layers': 2,
             'vocab_size': 10000, 'max_seq_len': 256, 'd_mem': 128,
@@ -270,6 +300,9 @@ def main():
     parser.add_argument("--model", default=None)
     parser.add_argument("--device", default=None)
     args = parser.parse_args()
+
+    if not HAS_UVICORN:
+        raise RuntimeError("uvicorn is required to run the API server")
 
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(name)s %(message)s')
     load_model(args.model, args.device)

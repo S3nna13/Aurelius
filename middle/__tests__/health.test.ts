@@ -1,37 +1,35 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { buildApp } from '../src/server.js'
-import type { Server } from 'http'
+import { invokeApp } from './request-app.js'
 
-let server: Server
-const BASE = 'http://127.0.0.1:3099'
-
-beforeAll(async () => {
-  const app = buildApp()
-  server = app.listen(3099, '127.0.0.1')
-  await new Promise((resolve) => server.on('listening', resolve))
-})
-
-afterAll(() => {
-  server?.close()
-})
+const app = buildApp()
 
 describe('Health endpoints', () => {
   it('GET /health returns 200', async () => {
-    const res = await fetch(`${BASE}/health`)
+    const res = await invokeApp(app, {
+      method: 'GET',
+      path: '/health',
+    })
     expect(res.status).toBe(200)
     const data = await res.json()
     expect(data.status).toBe('ok')
   })
 
   it('GET /healthz returns alive', async () => {
-    const res = await fetch(`${BASE}/healthz`)
+    const res = await invokeApp(app, {
+      method: 'GET',
+      path: '/healthz',
+    })
     expect(res.status).toBe(200)
     const data = await res.json()
     expect(data.alive).toBe(true)
   })
 
   it('GET /readyz returns ready', async () => {
-    const res = await fetch(`${BASE}/readyz`)
+    const res = await invokeApp(app, {
+      method: 'GET',
+      path: '/readyz',
+    })
     expect(res.status).toBe(200)
     const data = await res.json()
     expect(data.ready).toBe(true)
@@ -40,7 +38,9 @@ describe('Health endpoints', () => {
 
 describe('Agent endpoints', () => {
   it('GET /api/agents returns list', async () => {
-    const res = await fetch(`${BASE}/api/agents`, {
+    const res = await invokeApp(app, {
+      method: 'GET',
+      path: '/api/agents',
       headers: { 'X-API-Key': 'test-admin-key' },
     })
     expect(res.status).toBe(200)
@@ -50,7 +50,9 @@ describe('Agent endpoints', () => {
   })
 
   it('GET /api/agents returns agents with state', async () => {
-    const res = await fetch(`${BASE}/api/agents`, {
+    const res = await invokeApp(app, {
+      method: 'GET',
+      path: '/api/agents',
       headers: { 'X-API-Key': 'test-admin-key' },
     })
     const data = await res.json()
@@ -63,7 +65,9 @@ describe('Agent endpoints', () => {
 
 describe('Activity endpoints', () => {
   it('GET /api/activity returns entries', async () => {
-    const res = await fetch(`${BASE}/api/activity`, {
+    const res = await invokeApp(app, {
+      method: 'GET',
+      path: '/api/activity',
       headers: { 'X-API-Key': 'test-admin-key' },
     })
     expect(res.status).toBe(200)
@@ -74,7 +78,9 @@ describe('Activity endpoints', () => {
 
 describe('Notification endpoints', () => {
   it('GET /api/notifications returns list', async () => {
-    const res = await fetch(`${BASE}/api/notifications`, {
+    const res = await invokeApp(app, {
+      method: 'GET',
+      path: '/api/notifications',
       headers: { 'X-API-Key': 'test-admin-key' },
     })
     expect(res.status).toBe(200)
@@ -83,7 +89,9 @@ describe('Notification endpoints', () => {
   })
 
   it('GET /api/notifications/stats returns stats', async () => {
-    const res = await fetch(`${BASE}/api/notifications/stats`, {
+    const res = await invokeApp(app, {
+      method: 'GET',
+      path: '/api/notifications/stats',
       headers: { 'X-API-Key': 'test-admin-key' },
     })
     expect(res.status).toBe(200)
@@ -95,7 +103,9 @@ describe('Notification endpoints', () => {
 
 describe('Config endpoints', () => {
   it('GET /api/config returns config', async () => {
-    const res = await fetch(`${BASE}/api/config`, {
+    const res = await invokeApp(app, {
+      method: 'GET',
+      path: '/api/config',
       headers: { 'X-API-Key': 'test-admin-key' },
     })
     expect(res.status).toBe(200)
@@ -106,7 +116,9 @@ describe('Config endpoints', () => {
 
 describe('Memory endpoints', () => {
   it('GET /api/memory/layers returns layers', async () => {
-    const res = await fetch(`${BASE}/api/memory/layers`, {
+    const res = await invokeApp(app, {
+      method: 'GET',
+      path: '/api/memory/layers',
       headers: { 'X-API-Key': 'test-admin-key' },
     })
     expect(res.status).toBe(200)
@@ -117,7 +129,9 @@ describe('Memory endpoints', () => {
 
 describe('Log endpoints', () => {
   it('GET /api/logs returns logs', async () => {
-    const res = await fetch(`${BASE}/api/logs`, {
+    const res = await invokeApp(app, {
+      method: 'GET',
+      path: '/api/logs',
       headers: { 'X-API-Key': 'test-admin-key' },
     })
     expect(res.status).toBe(200)
@@ -128,7 +142,9 @@ describe('Log endpoints', () => {
 
 describe('System endpoints', () => {
   it('GET /api/system returns system info', async () => {
-    const res = await fetch(`${BASE}/api/system`, {
+    const res = await invokeApp(app, {
+      method: 'GET',
+      path: '/api/system',
       headers: { 'X-API-Key': 'test-admin-key' },
     })
     expect(res.status).toBe(200)
@@ -141,7 +157,9 @@ describe('System endpoints', () => {
 
 describe('Stats endpoints', () => {
   it('GET /api/stats returns stats', async () => {
-    const res = await fetch(`${BASE}/api/stats`, {
+    const res = await invokeApp(app, {
+      method: 'GET',
+      path: '/api/stats',
       headers: { 'X-API-Key': 'test-admin-key' },
     })
     expect(res.status).toBe(200)

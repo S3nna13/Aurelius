@@ -2,13 +2,14 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   Play, Square, Settings, Trash2, Copy, Bot,
-  Cpu, Thermometer, Sliders, Hash, Maximize2, Minimize2,
+  Cpu, Thermometer, Sliders, Hash, Maximize2, Minimize2, Zap,
 } from 'lucide-react';
 import Select from '../components/ui/Select';
 import Input from '../components/ui/Input';
 import Textarea from '../components/ui/Textarea';
 import Toggle from '../components/ui/Toggle';
 import { useToast } from '../components/ToastProvider';
+import { api } from '../api/AureliusClient';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 
 interface ModelConfig {
@@ -22,6 +23,7 @@ interface ChatMessage {
 
 interface CompletionRequest {
   model: string;
+  backend?: BackendMode;
   messages: ChatMessage[];
   temperature: number;
   max_tokens: number;
@@ -32,6 +34,25 @@ interface CompletionRequest {
 interface CompletionResult {
   model: string; text: string; tokens: number;
   duration: number; timestamp: number;
+}
+
+type BackendMode = 'mock' | 'vllm' | 'agentic';
+type BackendSelection = BackendMode | 'auto';
+
+const AVAILABLE_BACKENDS: Array<{ id: BackendSelection; label: string; description: string }> = [
+  { id: 'auto', label: 'Auto', description: 'Use the saved default backend from Settings' },
+  { id: 'mock', label: 'Mock', description: 'Fast local stub for offline testing' },
+  { id: 'vllm', label: 'vLLM', description: 'GPU-backed high-throughput inference' },
+  { id: 'agentic', label: 'Agentic', description: 'ReAct tool-use loop via Aurelius' },
+];
+
+const VALID_BACKENDS = new Set<BackendMode>(['mock', 'vllm', 'agentic']);
+
+function normalizeBackend(value: string | null | undefined): BackendMode {
+  const normalized = value?.trim().toLowerCase();
+  return normalized && VALID_BACKENDS.has(normalized as BackendMode)
+    ? normalized as BackendMode
+    : 'vllm';
 }
 
 const AVAILABLE_MODELS: ModelConfig[] = [
@@ -45,11 +66,16 @@ export default function Playground() {
   const { toast } = useToast();
   const [prompt, setPrompt] = useState('');
   const [systemPrompt, setSystemPrompt] = useState('You are a helpful assistant.');
-  const [temperature, setTemperature] = useState(0.7);
+  const [temperature, setTemperature] = useLocalStorage<number>('playground_temperature', 0.7);
   const [maxTokens, setMaxTokens] = useState(512);
   const [topP, setTopP] = useState(0.9);
   const [stream, setStream] = useState(true);
-  const [selectedModels, setSelectedModels] = useState<string[]>([AVAILABLE_MODELS[0].id]);
+  const [backend, setBackend] = useLocalStorage<BackendSelection>('playground_backend', 'auto');
+  const [resolvedBackend, setResolvedBackend] = useState<BackendMode>('vllm');
+  const [selectedModels, setSelectedModels] = useLocalStorage<string[]>(
+    'playground_selected_models',
+    [AVAILABLE_MODELS[0].id],
+  );
   const [results, setResults] = useLocalStorage<CompletionResult[]>('playground_results', []);
   const [running, setRunning] = useState(false);
   const [showSettings, setShowSettings] = useState(true);
@@ -59,6 +85,40 @@ export default function Playground() {
 
   useEffect(() => { return () => { abortRef.current?.abort() } }, []);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [results, activeStreams]);
+  useEffect(() => {
+    let active = true;
+
+    api.getConfig()
+      .then(({ config }) => {
+        if (!active) return;
+
+        if (window.localStorage.getItem('playground_selected_models') === null) {
+          const configuredModel = typeof config['chat.model'] === 'string' ? config['chat.model'].trim() : '';
+          const selected = AVAILABLE_MODELS.some((model) => model.id === configuredModel)
+            ? configuredModel
+            : AVAILABLE_MODELS[0].id;
+          setSelectedModels([selected]);
+        }
+
+        setResolvedBackend(normalizeBackend(typeof config['chat.backend'] === 'string' ? config['chat.backend'] : null));
+
+        if (window.localStorage.getItem('playground_temperature') === null) {
+          const configuredTemperature = typeof config['chat.temperature'] === 'string'
+            ? Number.parseFloat(config['chat.temperature'])
+            : Number.NaN;
+          if (Number.isFinite(configuredTemperature)) {
+            setTemperature(configuredTemperature);
+          }
+        }
+      })
+      .catch(() => {
+        // Keep the built-in defaults when config is unavailable.
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [setSelectedModels, setTemperature]);
 
   const toggleModel = (id: string) => {
     setSelectedModels(prev =>
@@ -83,6 +143,7 @@ export default function Playground() {
       try {
         const payload: CompletionRequest = {
           model: modelId,
+          backend: backend === 'auto' ? undefined : backend,
           messages,
           max_tokens: maxTokens,
           temperature,
@@ -144,15 +205,21 @@ export default function Playground() {
     }
     setActiveStreams({});
     setRunning(false);
-  }, [prompt, selectedModels, systemPrompt, temperature, maxTokens, topP, stream, setResults]);
+  }, [prompt, selectedModels, systemPrompt, temperature, maxTokens, topP, stream, backend, setResults]);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-[#e0e0e0] flex items-center gap-2">
-          <Bot size={20} className="text-[#4fc3f7]" />
-          Playground
-        </h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-bold text-[#e0e0e0] flex items-center gap-2">
+            <Bot size={20} className="text-[#4fc3f7]" />
+            Playground
+          </h2>
+          <span className="text-[10px] text-[#9e9eb0] flex items-center gap-1 border border-[#2d2d44] rounded px-2 py-0.5">
+            <Zap size={10} className="text-emerald-400" />
+            {backend === 'auto' ? `Auto → ${resolvedBackend}` : backend}
+          </span>
+        </div>
         <div className="flex gap-2">
           <button onClick={() => setResults([])} className="aurelius-btn-outline flex items-center gap-1.5 text-xs">
             <Trash2 size={12} /> Clear
@@ -205,6 +272,24 @@ export default function Playground() {
               <h3 className="text-xs font-bold text-[#e0e0e0] uppercase tracking-wider flex items-center gap-1.5">
                 <Sliders size={12} className="text-[#4fc3f7]" /> Parameters
               </h3>
+              <div>
+                <label className="flex justify-between text-xs text-[#9e9eb0] mb-1">
+                  <span><Cpu size={10} className="inline mr-1" />Backend</span>
+                  <span>{backend}</span>
+                </label>
+                <Select value={backend} onChange={e => setBackend(e.target.value as BackendSelection)}>
+                  {AVAILABLE_BACKENDS.map(option => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+                <p className="text-[10px] text-[#9e9eb0] mt-1">
+                  {backend === 'auto'
+                    ? `Uses saved default backend: ${resolvedBackend}`
+                    : AVAILABLE_BACKENDS.find(option => option.id === backend)?.description}
+                </p>
+              </div>
               <div>
                 <label className="flex justify-between text-xs text-[#9e9eb0] mb-1">
                   <span><Thermometer size={10} className="inline mr-1" />Temperature</span>

@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import sys
 import os
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(1, os.path.dirname(os.path.abspath(__file__)))
 
 from nn_utils import (
     RMSNorm, RotaryEmbedding, apply_rotary, FeedForward,

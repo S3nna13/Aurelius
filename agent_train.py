@@ -4,10 +4,14 @@ import torch.nn.functional as F
 import yaml
 import time
 
-from aurelius_model_1b import AureliusModel1B
-from agent_core import ToolFormerAdapter, PlanningModule, CriticHead, ValueHead
-from skills import SkillLibrary
-from agent_loop import AgentLoopController, AgentMemoryBridge, AgentEpisode, ExperienceReplayBuffer
+from aurelius.aurelius_model_1b import AureliusModel1B
+from aurelius.skills import SkillLibrary
+from aurelius.agent_loop import (
+    AgentLoopController,
+    AgentMemoryBridge,
+    AgentEpisode,
+    ExperienceReplayBuffer,
+)
 import logging
 logger = logging.getLogger("agent_train")
 
@@ -39,14 +43,11 @@ class AgentAureliusModel(nn.Module):
 
     def forward(self, input_ids: torch.Tensor, tool_descs: torch.Tensor | None = None,
                 return_agent_state: bool = False) -> dict:
-        logits, h = self.base_model(input_ids, return_mem_state=True, return_hidden=True)
-        episodic = None
-        for i, block in enumerate(self.base_model.blocks):
-            _, ms = block.memory(h, return_mem_state=True)
-            if i == 0:
-                episodic = ms.get('mem_read', None)
-        if episodic is not None:
-            h = self.memory_bridge.read_from_memory(h, episodic)
+        base_state = self.base_model.forward_with_states(input_ids)
+        logits = base_state['logits']
+        h = base_state['hidden']
+        episodic = base_state['episodic']
+        h = self.memory_bridge.read_from_memory(h, episodic)
         agent_out = self.agent_controller(h, tool_descs, full_cycle=True)
         if return_agent_state:
             return logits, agent_out

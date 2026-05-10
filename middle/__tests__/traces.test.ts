@@ -1,46 +1,32 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { buildApp } from '../src/server.js'
-import type { Server } from 'http'
+import { invokeApp } from './request-app.js'
 
-let server: Server
-let baseUrl = ''
-
-beforeAll(async () => {
-  const app = buildApp()
-  server = app.listen(0, '127.0.0.1')
-  await new Promise((resolve) => server.on('listening', resolve))
-  const address = server.address()
-  if (address && typeof address === 'object') {
-    baseUrl = `http://127.0.0.1:${address.port}`
-  } else {
-    throw new Error('Failed to determine test server port')
-  }
-})
-
-afterAll(() => {
-  server?.close()
-})
+const app = buildApp()
 
 describe('Trace endpoints', () => {
   it('creates traces, appends steps, and only finalizes terminal statuses', async () => {
-    const createRes = await fetch(`${baseUrl}/api/traces`, {
+    const createRes = await invokeApp(app, {
       method: 'POST',
+      path: '/api/traces',
       headers: {
         'X-API-Key': 'test-admin-key',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
+      body: {
         agentId: 'agent-123',
         agentName: 'Tracer',
         task: 'Run a trace slice',
-      }),
+      },
     })
 
     expect(createRes.status).toBe(201)
     const createData = await createRes.json()
     const traceId = createData.trace.id as string
 
-    const listRes = await fetch(`${baseUrl}/api/traces`, {
+    const listRes = await invokeApp(app, {
+      method: 'GET',
+      path: '/api/traces',
       headers: { 'X-API-Key': 'test-admin-key' },
     })
     expect(listRes.status).toBe(200)
@@ -48,32 +34,34 @@ describe('Trace endpoints', () => {
     expect(listData.total).toBeGreaterThanOrEqual(1)
     expect(listData.traces.some((trace: { id: string }) => trace.id === traceId)).toBe(true)
 
-    const stepRes = await fetch(`${baseUrl}/api/traces/${traceId}/step`, {
+    const stepRes = await invokeApp(app, {
       method: 'POST',
+      path: `/api/traces/${traceId}/step`,
       headers: {
         'X-API-Key': 'test-admin-key',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
+      body: {
         type: 'thought',
         content: 'Break the work into slices.',
         metadata: { source: 'test' },
         duration: 12,
-      }),
+      },
     })
 
     expect(stepRes.status).toBe(201)
 
-    const runningRes = await fetch(`${baseUrl}/api/traces/${traceId}`, {
+    const runningRes = await invokeApp(app, {
       method: 'PATCH',
+      path: `/api/traces/${traceId}`,
       headers: {
         'X-API-Key': 'test-admin-key',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
+      body: {
         status: 'running',
         tokenCount: 77,
-      }),
+      },
     })
 
     expect(runningRes.status).toBe(200)
@@ -83,15 +71,16 @@ describe('Trace endpoints', () => {
     expect(runningData.trace.completedAt).toBeUndefined()
     expect(runningData.trace.totalDuration).toBeUndefined()
 
-    const completeRes = await fetch(`${baseUrl}/api/traces/${traceId}`, {
+    const completeRes = await invokeApp(app, {
       method: 'PATCH',
+      path: `/api/traces/${traceId}`,
       headers: {
         'X-API-Key': 'test-admin-key',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
+      body: {
         status: 'completed',
-      }),
+      },
     })
 
     expect(completeRes.status).toBe(200)
@@ -100,7 +89,9 @@ describe('Trace endpoints', () => {
     expect(completeData.trace.completedAt).toBeDefined()
     expect(completeData.trace.totalDuration).toBeGreaterThanOrEqual(0)
 
-    const detailRes = await fetch(`${baseUrl}/api/traces/${traceId}`, {
+    const detailRes = await invokeApp(app, {
+      method: 'GET',
+      path: `/api/traces/${traceId}`,
       headers: { 'X-API-Key': 'test-admin-key' },
     })
     expect(detailRes.status).toBe(200)

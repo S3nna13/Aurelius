@@ -4,6 +4,8 @@ Dynamic per-token compute allocation via learned routing.
 Pure PyTorch, no external dependencies.
 """
 
+import sys
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -196,3 +198,9 @@ class CapacityAnalyzer:
 
     def reset(self):
         self._records.clear()
+
+
+_module = sys.modules[__name__]
+sys.modules["model.mixture_of_depths_v4"] = _module
+sys.modules["src.model.mixture_of_depths_v4"] = _module
+sys.modules["aurelius.model.mixture_of_depths_v4"] = _module

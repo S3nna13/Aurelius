@@ -11,7 +11,7 @@ from typing import Any
 
 import torch
 
-from skills import SkillRegistry as _SkillRegistry
+from aurelius.skills import SkillRegistry as _SkillRegistry
 
 
 @dataclass

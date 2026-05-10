@@ -6,6 +6,7 @@ import math
 
 import pytest
 import torch
+
 from aurelius.inference.chain_of_thought_v2 import (
     AnswerExtractor,
     CoTBudgetAllocator,

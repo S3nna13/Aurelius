@@ -1,6 +1,8 @@
 import torch
 import sys
-sys.path.insert(0, '/Users/christienantonio/aurelius')
+import pytest
+sys.path.insert(1, '/Users/christienantonio/aurelius')
+pytest.importorskip("reportlab")
 from rust_bridge import _PyFallbackPageTable, _py_estimate_memory, _py_save_checkpoint
 from train_3b import count_parameters
 from generate_report import make_style, PRIMARY, SECONDARY, DARK_BG
@@ -33,7 +35,7 @@ def test_py_save_checkpoint():
         path = os.path.join(tmp, "test.pt")
         tensors = {"w": torch.randn(3, 3), "b": torch.zeros(3)}
         _py_save_checkpoint(path, tensors)
-        loaded = torch.load(path)
+        loaded = torch.load(path, weights_only=True)
         assert "w" in loaded and "b" in loaded
         assert loaded["w"].shape == (3, 3)
 

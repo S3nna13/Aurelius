@@ -1,3 +1,5 @@
+import sys
+
 from .benchmark_config import (
     ALL_BENCHMARKS,
     ARC_CHALLENGE,
@@ -1378,3 +1380,21 @@ __all__ = list(__all__) + [
     "DEFAULT_FAIRNESS_SCORER",
     "FAIRNESS_SCORER_REGISTRY",
 ]
+
+_module = sys.modules[__name__]
+
+
+def _mirror_namespace(primary: str, mirror: str) -> None:
+    for module_name, module in list(sys.modules.items()):
+        if module_name == primary or module_name.startswith(f"{primary}."):
+            mirror_name = mirror + module_name[len(primary) :]
+            sys.modules[mirror_name] = module
+
+
+sys.modules["src.eval"] = _module
+sys.modules["aurelius.eval"] = _module
+sys.modules["eval"] = _module
+_mirror_namespace("src.eval", "aurelius.eval")
+_mirror_namespace("aurelius.eval", "src.eval")
+_mirror_namespace("src.eval", "eval")
+_mirror_namespace("aurelius.eval", "eval")

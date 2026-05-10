@@ -1,12 +1,13 @@
 import torch
 import torch.nn as nn
+import sys
 import torch.nn.functional as F
 import time
 from dataclasses import dataclass, field
 from typing import Optional
 
-from agent_core import ToolFormerAdapter, PlanningModule, CriticHead, ValueHead
-from skills import SkillLibrary
+from aurelius.agent_core import ToolFormerAdapter, PlanningModule, CriticHead, ValueHead
+from aurelius.skills import SkillLibrary
 import logging
 logger = logging.getLogger(__name__)
 
@@ -169,3 +170,8 @@ class ExperienceReplayBuffer:
 
     def __len__(self):
         return len(self.buffer)
+
+
+_module = sys.modules[__name__]
+sys.modules.setdefault("agent_loop", _module)
+sys.modules.setdefault("aurelius.agent_loop", _module)

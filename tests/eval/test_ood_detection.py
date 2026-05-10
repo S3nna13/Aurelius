@@ -1,6 +1,7 @@
 """Tests for src/eval/ood_detection.py"""
 
 import torch
+
 from aurelius.eval.ood_detection import (
     EnergyScorer,
     KNNScorer,

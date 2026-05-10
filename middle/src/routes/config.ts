@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { config as appConfig, normalizeChatBackend } from '../config.js'
 import { getEngine } from '../engine.js'
 import { requireScope } from '../middleware/auth.js'
 
@@ -18,7 +19,11 @@ router.post('/', requireScope('config:write'), (req, res) => {
     return
   }
   for (const [key, value] of Object.entries(config)) {
-    engine.setConfig(key, String(value))
+    if (key === 'chat.backend') {
+      engine.setConfig(key, normalizeChatBackend(String(value), appConfig.defaultChatBackend))
+    } else {
+      engine.setConfig(key, String(value))
+    }
   }
   engine.appendActivity('config.update', true, 'Configuration updated')
   res.json({ success: true, config: engine.getAllConfig() })
@@ -43,7 +48,11 @@ router.put('/:key', requireScope('config:write'), (req, res) => {
     res.status(400).json({ error: 'Value required' })
     return
   }
-  engine.setConfig(key, String(value))
+  if (key === 'chat.backend') {
+    engine.setConfig(key, normalizeChatBackend(String(value), appConfig.defaultChatBackend))
+  } else {
+    engine.setConfig(key, String(value))
+  }
   engine.appendActivity('config.update', true, `${key} updated`)
   res.json({ success: true })
 })

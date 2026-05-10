@@ -8,8 +8,9 @@ from torch.distributed.fsdp.wrap import transformer_auto_wrap_policy
 from torch.utils.checkpoint import checkpoint
 import contextlib
 import os
+import sys
 from typing import Optional, Dict, Any, Tuple
-from nn_utils import sample_with_top_p_top_k
+from aurelius.nn_utils import sample_with_top_p_top_k
 import logging
 logger = logging.getLogger("distributed")
 
@@ -32,14 +33,14 @@ class ModelParallelGroup:
         if tp_size * dp_size != world_size:
             if world_size % tp_size == 0:
                 self.dp_size = world_size // tp_size
-                logger.warning(f adjusted dp_size from {dp_size} to {self.dp_size}")
+                logger.warning(f"adjusted dp_size from {dp_size} to {self.dp_size}")
             elif world_size % dp_size == 0:
                 self.tp_size = world_size // dp_size
-                logger.warning(f adjusted tp_size from {tp_size} to {self.tp_size}")
+                logger.warning(f"adjusted tp_size from {tp_size} to {self.tp_size}")
             else:
                 self.tp_size = 1
                 self.dp_size = world_size
-                logger.warning(f tp_size*dp_size != world_size, falling back to tp=1, dp={world_size}")
+                logger.warning(f"tp_size*dp_size != world_size, falling back to tp=1, dp={world_size}")
 
         self._tp_group = self._create_tp_group(rank)
         self._dp_group = self._create_dp_group(rank)
@@ -353,3 +354,8 @@ def _make_checkpointed_forward(original_forward, module):
     def checkpointed_forward(*args, **kwargs):
         return checkpoint(original_forward, *args, use_reentrant=False, **kwargs)
     return checkpointed_forward
+
+
+_module = sys.modules[__name__]
+sys.modules.setdefault("distributed", _module)
+sys.modules.setdefault("aurelius.distributed", _module)

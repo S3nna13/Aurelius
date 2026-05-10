@@ -111,8 +111,8 @@ API_REGISTRY: dict[str, RegistryEntry] = {
         contract="150M decoder-only transformer with AurelianMemoryCore. "
         "Input: (B, T) token ids -> Output: (B, T, V) logits + mem_states. "
         "Components: RMSNorm, RotaryEmbedding, FlashAttention-like causal attn.",
-        path="aurelius_model.AureliusModel",
-        test_command="python3 -c \"from aurelius_model import AureliusModel; "
+        path="aurelius.aurelius_model.AureliusModel",
+        test_command="python3 -c \"from aurelius.aurelius_model import AureliusModel; "
         "m=AureliusModel({'d_model':768,'n_heads':12,'d_ff':3072,'n_layers':12,"
         "'vocab_size':50257,'max_seq_len':2048,'d_mem':256,'episodic_slots':512,"
         "'lts_capacity':1024,'consolidation_freq':64,'graph_threshold':0.65,"
@@ -123,8 +123,8 @@ API_REGISTRY: dict[str, RegistryEntry] = {
         contract="1B decoder-only transformer with AurelianMemoryCore. "
         "Input: (B, T) -> (B, T, V) logits + mem_states. Extended config for longer "
         "sequences (max_seq_len=4096), larger memory (d_mem=512, episodic_slots=1024).",
-        path="aurelius_model_1b.AureliusModel1B",
-        test_command="python3 -c \"from aurelius_model_1b import AureliusModel1B; "
+        path="aurelius.aurelius_model_1b.AureliusModel1B",
+        test_command="python3 -c \"from aurelius.aurelius_model_1b import AureliusModel1B; "
         "m=AureliusModel1B({'d_model':1536,'n_heads':16,'d_ff':6144,'n_layers':24,"
         "'vocab_size':50257,'max_seq_len':4096,'d_mem':512,'episodic_slots':1024,"
         "'lts_capacity':2048,'consolidation_freq':128,'graph_threshold':0.65,"
@@ -134,15 +134,15 @@ API_REGISTRY: dict[str, RegistryEntry] = {
         name="AureliusModel3B",
         contract="3B decoder-only transformer. Input: (B, T) -> (B, T, V) logits + mem_states. "
         "Extended for agent capabilities: n_known_tools, n_simulations attached via agent_train.",
-        path="aurelius_model_3b.AureliusModel3B",
-        test_command="python3 -c \"from aurelius_model_3b import AureliusModel3B; print('ok')\"",
+        path="aurelius.aurelius_model_3b.AureliusModel3B",
+        test_command="python3 -c \"from aurelius.aurelius_model_3b import AureliusModel3B; print('ok')\"",
     ),
     "model_7b": RegistryEntry(
         name="AureliusModel7B",
         contract="7B decoder-only transformer. Largest variant with max_seq_len=16384, "
         "d_model=3584, n_layers=40, d_mem=1024. Full agent+skills pipeline support.",
-        path="aurelius_model_7b.AureliusModel7B",
-        test_command="python3 -c \"from aurelius_model_7b import AureliusModel7B; print('ok')\"",
+        path="aurelius.aurelius_model_7b.AureliusModel7B",
+        test_command="python3 -c \"from aurelius.aurelius_model_7b import AureliusModel7B; print('ok')\"",
     ),
     # ── Checkpoint helpers ───────────────────────────────────────────
     "recursive_mas_train": RegistryEntry(
@@ -282,3 +282,13 @@ class AureliusModelContract:
         assert isinstance(mem_states, dict), (
             f"mem_states should be dict, got {type(mem_states)}"
         )
+
+
+def get_registry_snapshot() -> dict[str, Any]:
+    """Return the live registry snapshot used by the middle-tier bridge."""
+
+    from aurelius.registry_snapshot import (
+        get_registry_snapshot as build_registry_snapshot,
+    )
+
+    return build_registry_snapshot()

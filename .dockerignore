@@ -47,9 +47,11 @@ docs/plans/
 # Frontend (separate build)
 frontend/
 
-# Rust (build separately)
-crates/
-tools/
+# Rust (build separately — but keep crates/ for NAPI builds)
+crates/*/target/
+crates/*/*.node
+tools/*/target/
+tools/*/*.node
 
 # Alembic
 alembic/

@@ -1,26 +1,16 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { buildApp } from '../src/server.js'
-import type { Server } from 'http'
+import { invokeApp } from './request-app.js'
 
-let server: Server
-const BASE = 'http://127.0.0.1:3098'
-
-beforeAll(async () => {
-  const app = buildApp()
-  server = app.listen(3098, '127.0.0.1')
-  await new Promise((resolve) => server.on('listening', resolve))
-})
-
-afterAll(() => {
-  server?.close()
-})
+const app = buildApp()
 
 describe('Auth endpoints', () => {
   it('POST /api/auth/login with valid key returns token', async () => {
-    const res = await fetch(`${BASE}/api/auth/login`, {
+    const res = await invokeApp(app, {
       method: 'POST',
+      path: '/api/auth/login',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ apiKey: 'test-admin-key' }),
+      body: { apiKey: 'test-admin-key' },
     })
     expect(res.status).toBe(200)
     const data = await res.json()
@@ -29,29 +19,32 @@ describe('Auth endpoints', () => {
   })
 
   it('POST /api/auth/login with invalid key returns 401', async () => {
-    const res = await fetch(`${BASE}/api/auth/login`, {
+    const res = await invokeApp(app, {
       method: 'POST',
+      path: '/api/auth/login',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ apiKey: 'bad-key' }),
+      body: { apiKey: 'bad-key' },
     })
     expect(res.status).toBe(401)
   })
 
   it('POST /api/auth/login with missing key returns 400', async () => {
-    const res = await fetch(`${BASE}/api/auth/login`, {
+    const res = await invokeApp(app, {
       method: 'POST',
+      path: '/api/auth/login',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
+      body: {},
     })
     expect(res.status).toBe(400)
   })
 
   it('POST /api/auth/register creates new user', async () => {
     const username = `test-${Date.now()}`
-    const res = await fetch(`${BASE}/api/auth/register`, {
+    const res = await invokeApp(app, {
       method: 'POST',
+      path: '/api/auth/register',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username }),
+      body: { username },
     })
     expect(res.status).toBe(200)
     const data = await res.json()
@@ -60,17 +53,19 @@ describe('Auth endpoints', () => {
   })
 
   it('POST /api/auth/register with short name returns 400', async () => {
-    const res = await fetch(`${BASE}/api/auth/register`, {
+    const res = await invokeApp(app, {
       method: 'POST',
+      path: '/api/auth/register',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: 'ab' }),
+      body: { username: 'ab' },
     })
     expect(res.status).toBe(400)
   })
 
   it('POST /api/auth/keys/generate creates API key', async () => {
-    const res = await fetch(`${BASE}/api/auth/keys/generate`, {
+    const res = await invokeApp(app, {
       method: 'POST',
+      path: '/api/auth/keys/generate',
       headers: { 'X-API-Key': 'test-admin-key', 'Content-Type': 'application/json' },
     })
     expect(res.status).toBe(200)
@@ -81,7 +76,9 @@ describe('Auth endpoints', () => {
   })
 
   it('GET /api/auth/keys returns keys list', async () => {
-    const res = await fetch(`${BASE}/api/auth/keys`, {
+    const res = await invokeApp(app, {
+      method: 'GET',
+      path: '/api/auth/keys',
       headers: { 'X-API-Key': 'test-admin-key' },
     })
     expect(res.status).toBe(200)
@@ -91,7 +88,9 @@ describe('Auth endpoints', () => {
   })
 
   it('GET /api/auth/users returns users', async () => {
-    const res = await fetch(`${BASE}/api/auth/users`, {
+    const res = await invokeApp(app, {
+      method: 'GET',
+      path: '/api/auth/users',
       headers: { 'X-API-Key': 'test-admin-key' },
     })
     expect(res.status).toBe(200)
@@ -103,26 +102,36 @@ describe('Auth endpoints', () => {
 
 describe('Auth middleware', () => {
   it('blocks unauthenticated requests to protected endpoints', async () => {
-    const res = await fetch(`${BASE}/api/agents`)
+    const res = await invokeApp(app, {
+      method: 'GET',
+      path: '/api/agents',
+    })
     expect(res.status).toBe(401)
   })
 
   it('allows requests with valid API key', async () => {
-    const res = await fetch(`${BASE}/api/activity`, {
+    const res = await invokeApp(app, {
+      method: 'GET',
+      path: '/api/activity',
       headers: { 'X-API-Key': 'test-admin-key' },
     })
     expect(res.status).toBe(200)
   })
 
   it('allows requests with Bearer token', async () => {
-    const res = await fetch(`${BASE}/api/config`, {
-      headers: { 'Authorization': 'Bearer test-admin-key' },
+    const res = await invokeApp(app, {
+      method: 'GET',
+      path: '/api/config',
+      headers: { Authorization: 'Bearer test-admin-key' },
     })
     expect(res.status === 200 || res.status === 401)
   })
 
   it('public paths bypass auth', async () => {
-    const res = await fetch(`${BASE}/health`)
+    const res = await invokeApp(app, {
+      method: 'GET',
+      path: '/health',
+    })
     expect(res.status).toBe(200)
   })
 })

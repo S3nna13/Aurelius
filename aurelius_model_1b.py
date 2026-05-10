@@ -2,9 +2,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import math
+import sys
 
-from memory_core import AurelianMemoryCore
-from nn_utils import RMSNorm, RotaryEmbedding, apply_rotary, FeedForward, sample_with_top_p_top_k
+from aurelius.memory_core import AurelianMemoryCore
+from aurelius.nn_utils import RMSNorm, RotaryEmbedding, apply_rotary, SwiGLUFFN, FeedForward, sample_with_top_p_top_k
 
 
 class FlashAttention(nn.Module):
@@ -86,14 +87,14 @@ class AureliusModel1B(nn.Module):
             elif 'memory' in name and p.ndim >= 2:
                 nn.init.xavier_uniform_(p, gain=0.5)
 
-    def forward(self, input_ids: torch.Tensor,
-                return_mem_state: bool = False,
-                return_hidden: bool = False) -> torch.Tensor | tuple[torch.Tensor, dict]:
+    def _encode(self, input_ids: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict[str, dict]]:
         b, t = input_ids.shape
         h = self.token_embedding(input_ids)
         cos, sin = self.rotary(h)
 
         mem_states = {}
+        episodic = None
+        causal_mask = None
         for i, block in enumerate(self.blocks):
             if self.gradient_checkpointing and self.training:
                 h = torch.utils.checkpoint.checkpoint(
@@ -102,18 +103,34 @@ class AureliusModel1B(nn.Module):
                 )
             else:
                 h = block(h, cos, sin, causal_mask)
-            if return_mem_state:
-                _, ms = block.memory(h, return_mem_state=True)
-                mem_states[f'layer_{i}'] = ms
+            _, ms = block.memory(h, return_mem_state=True)
+            mem_states[f'layer_{i}'] = ms
+            mem_repr = block.memory.q_proj(h).mean(dim=1, keepdim=True)
+            episodic = mem_repr if episodic is None else episodic + mem_repr
 
+        episodic = episodic / max(len(self.blocks), 1)
         h = self.norm_out(h)
         logits = self.lm_head(h)
+        return logits, h, episodic, mem_states
 
+    def forward(self, input_ids: torch.Tensor,
+                return_mem_state: bool = False,
+                return_hidden: bool = False) -> torch.Tensor | tuple[torch.Tensor, dict]:
+        logits, h, _, mem_states = self._encode(input_ids)
         if return_hidden:
             return logits, h
         if return_mem_state:
             return logits, mem_states
         return logits
+
+    def forward_with_states(self, input_ids: torch.Tensor) -> dict[str, torch.Tensor | dict[str, dict]]:
+        logits, h, episodic, mem_states = self._encode(input_ids)
+        return {
+            'logits': logits,
+            'hidden': h,
+            'episodic': episodic,
+            'mem_states': mem_states,
+        }
 
     def _generate_with_cache(self, input_ids: torch.Tensor, kv_cache: list):
         # KV-cache optimization not yet implemented in FlashAttention;
@@ -130,3 +147,8 @@ class AureliusModel1B(nn.Module):
             next_token = sample_with_top_p_top_k(logits[:, -1, :], temperature, top_k)
             input_ids = torch.cat([input_ids, next_token], dim=-1)
         return input_ids
+
+
+_module = sys.modules[__name__]
+sys.modules.setdefault("aurelius_model_1b", _module)
+sys.modules.setdefault("aurelius.aurelius_model_1b", _module)

@@ -1,72 +1,86 @@
-"""Aurelius — Agent Registry, Skills Registry, Plugin System, and API.
+"""
+Aurelius AI compatibility package.
 
-Complete agent and skills management system.
+This package keeps legacy ``aurelius.*`` imports connected to the
+``src.*`` package tree and the repo-root compatibility modules without
+duplicating the source layout.
 """
 
-import sys
+from __future__ import annotations
+
+import os
 from importlib import import_module
 
+__version__ = "1.0.0"
 
-def _alias_subpackage(alias: str, target: str) -> None:
-    module = import_module(target)
-    sys.modules.setdefault(alias, module)
-    globals()[alias.rsplit(".", 1)[-1]] = module
+_PACKAGE_DIR = os.path.dirname(__file__)
+_REPO_ROOT = os.path.abspath(os.path.join(_PACKAGE_DIR, os.pardir))
+_SRC_ROOT = os.path.abspath(os.path.join(_PACKAGE_DIR, os.pardir, "src"))
 
+_package_path = list(__path__)
+if os.path.isdir(_REPO_ROOT):
+    _package_path.insert(0, _REPO_ROOT)
+if os.path.isdir(_SRC_ROOT):
+    _package_path.insert(0, _SRC_ROOT)
+__path__ = _package_path
 
-_src_model = import_module("src.model")
-sys.modules.setdefault("aurelius.model", _src_model)
-if "src.model.transformer" in sys.modules:
-    sys.modules.setdefault("aurelius.model.transformer", sys.modules["src.model.transformer"])
-
-_alias_subpackage("aurelius.data", "src.data")
-_alias_subpackage("aurelius.eval", "src.eval")
-_alias_subpackage("aurelius.evaluation", "src.evaluation")
-_alias_subpackage("aurelius.inference", "src.inference")
-
-_src_training = import_module("src.training")
-sys.modules.setdefault("aurelius.training", _src_training)
-if "src.training.gradient_surgery" in sys.modules:
-    sys.modules.setdefault(
-        "aurelius.training.gradient_surgery",
-        sys.modules["src.training.gradient_surgery"],
-    )
-
-from .agent_registry import (
-    AGENT_REGISTRY,
-    AGENTS_BY_CATEGORY,
-    ALL_AGENTS,
-    CODING_AGENT,
-    COMMUNICATION_AGENT,
-    CREATIVE_AGENT,
-    DEVOPS_AGENT,
-    RESEARCH_AGENT,
-    SCHEDULING_AGENT,
-    SQL_AGENT,
-    TUTOR_AGENT,
+_PUBLIC_SUBPACKAGES = (
+    "agent",
+    "alignment",
+    "backends",
+    "chat",
+    "compression",
+    "computer_use",
+    "data",
+    "deployment",
+    "eval",
+    "federation",
+    "inference",
+    "longcontext",
+    "mcp",
+    "memory",
+    "model",
+    "monitoring",
+    "multiagent",
+    "multimodal",
+    "protocol",
+    "reasoning",
+    "retrieval",
+    "safety",
+    "search",
+    "serving",
+    "simulation",
+    "tools",
+    "training",
+    "ui",
 )
-from .api_registry import get_agent_for_task, get_skills_for_agent, register_api_routes
-from .plugin_system import BUILTIN_PLUGINS, PLUGIN_MANAGER, PluginManager
-from .skills_registry import ALL_SKILLS, SKILL_REGISTRY, SKILLS_BY_CATEGORY
 
-__all__ = [
-    "ALL_AGENTS",
-    "AGENT_REGISTRY",
-    "AGENTS_BY_CATEGORY",
-    "CODING_AGENT",
-    "COMMUNICATION_AGENT",
-    "CREATIVE_AGENT",
-    "DEVOPS_AGENT",
-    "RESEARCH_AGENT",
-    "SCHEDULING_AGENT",
-    "SQL_AGENT",
-    "TUTOR_AGENT",
-    "ALL_SKILLS",
-    "SKILL_REGISTRY",
-    "SKILLS_BY_CATEGORY",
-    "BUILTIN_PLUGINS",
-    "PLUGIN_MANAGER",
-    "PluginManager",
-    "get_agent_for_task",
-    "get_skills_for_agent",
-    "register_api_routes",
-]
+_LEGACY_MODULES = (
+    "api_registry",
+    "agent_registry",
+    "registry_snapshot",
+    "skills_registry",
+    "neural_brain",
+    "self_upgrade",
+)
+
+__all__ = list(_PUBLIC_SUBPACKAGES + _LEGACY_MODULES)
+
+
+def __getattr__(name: str):
+    if name in _PUBLIC_SUBPACKAGES:
+        module = import_module(f"src.{name}")
+    elif name in _LEGACY_MODULES:
+        module = import_module(name)
+    elif os.path.exists(os.path.join(_REPO_ROOT, f"{name}.py")) or os.path.exists(
+        os.path.join(_REPO_ROOT, name, "__init__.py")
+    ):
+        module = import_module(name)
+    else:
+        raise AttributeError(f"module 'aurelius' has no attribute {name!r}")
+    globals()[name] = module
+    return module
+
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(_PUBLIC_SUBPACKAGES) | set(_LEGACY_MODULES))

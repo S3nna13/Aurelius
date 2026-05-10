@@ -3,6 +3,7 @@ import type {
   AgentState, ActivityEntry, Notification, NotificationStats,
   MemoryLayer, MemoryEntry, LogRecord,
 } from 'aurelius-data-engine'
+import { config, normalizeChatBackend } from './config.js'
 
 let _engine: DataEngine | null = null
 
@@ -39,6 +40,25 @@ export function seedInitialData(): void {
 
   engine.setConfig('app.version', '0.1.0')
   engine.setConfig('app.name', 'Aurelius')
+  engine.setConfig(
+    'chat.backend',
+    normalizeChatBackend(engine.getConfig('chat.backend'), config.defaultChatBackend),
+  )
+  if (!engine.getConfig('chat.model')) {
+    engine.setConfig('chat.model', 'aurelius-1.3b')
+  }
+  if (!engine.getConfig('chat.temperature')) {
+    engine.setConfig('chat.temperature', '0.7')
+  }
+  if (!engine.getConfig('chat.upstream_url')) {
+    engine.setConfig('chat.upstream_url', config.upstreamUrl)
+  }
+  if (!engine.getConfig('chat.vllm_upstream_url')) {
+    engine.setConfig('chat.vllm_upstream_url', config.vllmUpstreamUrl)
+  }
+  if (!engine.getConfig('chat.agentic_upstream_url')) {
+    engine.setConfig('chat.agentic_upstream_url', config.agenticUpstreamUrl)
+  }
 
   engine.appendLog('info', 'system', 'System boot sequence complete')
   engine.appendLog('info', 'engine', 'Data engine initialized with seed data')

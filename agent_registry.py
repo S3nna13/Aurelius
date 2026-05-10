@@ -11,7 +11,7 @@ from typing import Any
 
 import torch
 
-from agent_core import (
+from aurelius.agent_core import (
     ToolEmbedding as _ToolEmbedding,
     ToolFormerAdapter as _ToolFormerAdapter,
     PlanningModule as _PlanningModule,
@@ -19,7 +19,7 @@ from agent_core import (
     ValueHead as _ValueHead,
     MCTSNode as _MCTSNode,
 )
-from agent_loop import (
+from aurelius.agent_loop import (
     AgentLoopController as _AgentLoopController,
     AgentMemoryBridge as _AgentMemoryBridge,
     AgentContextManager as _AgentContextManager,

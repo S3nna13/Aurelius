@@ -6,7 +6,6 @@ pub struct Config {
     pub port: u16,
     pub upstream_url: String,
     pub jwt_secret: String,
-    pub jwt_expiry_hours: i64,
     pub rate_limit_rps: u64,
     pub rate_limit_burst: u64,
     pub log_level: String,
@@ -31,10 +30,6 @@ impl Config {
             upstream_url: env::var("UPSTREAM_URL")
                 .unwrap_or_else(|_| "http://127.0.0.1:3001".into()),
             jwt_secret: env::var("JWT_SECRET").expect("JWT_SECRET must be set"),
-            jwt_expiry_hours: env::var("JWT_EXPIRY_HOURS")
-                .ok()
-                .and_then(|v| v.parse().ok())
-                .unwrap_or(24),
             rate_limit_rps: env::var("RATE_LIMIT_RPS")
                 .ok()
                 .and_then(|v| v.parse().ok())

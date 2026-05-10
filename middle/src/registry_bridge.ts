@@ -78,7 +78,7 @@ export async function loadRegistrySnapshot(forceRefresh = false): Promise<Regist
 import json
 import sys
 
-sys.path.insert(0, '.')
+sys.path.insert(1, '.')
 
 from aurelius.api_registry import get_registry_snapshot
 

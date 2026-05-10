@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 
 import torch
+
 from aurelius.model.mixture_of_depths_v3 import (
     MoDBlock,
     MoDConfig,

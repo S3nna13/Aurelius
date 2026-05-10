@@ -9,7 +9,7 @@ import sys
 import pytest
 
 # Ensure project root is on sys.path so the src package is importable.
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.insert(1, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from src.training.data_mixture import (
     DataMixtureSampler,

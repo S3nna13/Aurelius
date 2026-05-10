@@ -3,6 +3,8 @@
 Re-exports defensive components for convenience.
 """
 
+import sys
+
 from src.security.audit_logger import (
     AUDIT_LOGGER,
     AuditCategory,
@@ -148,7 +150,6 @@ from src.security.provenance_attestation import (
     ProvenanceError,
     build_file_attestation,
 )
-from src.security.sbom_generator import SBOM_REGISTRY  # noqa: F401
 
 SECURITY_REGISTRY: dict = {
     "rate_abuse_detector": RATE_ABUSE_DETECTOR_REGISTRY,
@@ -279,3 +280,21 @@ __all__ = [
     "SecurityPostureScorer",
     "POSTURE_SCORER_REGISTRY",
 ]
+
+_module = sys.modules[__name__]
+sys.modules["src.security"] = _module
+sys.modules["aurelius.security"] = _module
+sys.modules["security"] = _module
+
+
+def _mirror_namespace(primary: str, mirror: str) -> None:
+    for module_name, module in list(sys.modules.items()):
+        if module_name == primary or module_name.startswith(f"{primary}."):
+            mirror_name = mirror + module_name[len(primary) :]
+            sys.modules[mirror_name] = module
+
+
+_mirror_namespace("src.security", "aurelius.security")
+_mirror_namespace("aurelius.security", "src.security")
+_mirror_namespace("src.security", "security")
+_mirror_namespace("aurelius.security", "security")

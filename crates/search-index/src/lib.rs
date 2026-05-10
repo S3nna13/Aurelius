@@ -102,7 +102,7 @@ impl SearchIndex {
 
         self.doc_lengths
             .get_mut(&field_key)
-            .unwrap()
+            .expect("Failed to get mutable doc_lengths")
             .insert(id.clone(), tokens.len() as u32);
 
         let mut total: u32 = 0;
@@ -117,7 +117,10 @@ impl SearchIndex {
             self.avg_doc_length
                 .insert(field_key.clone(), total as f64 / count as f64);
         }
-        *self.total_docs.get_mut(&field_key).unwrap() = count;
+        *self
+            .total_docs
+            .get_mut(&field_key)
+            .expect("Failed to get mutable total_docs") = count;
 
         if !self.inverted_index.contains_key(&field_key) {
             self.inverted_index
@@ -134,7 +137,10 @@ impl SearchIndex {
         let doc_len = tokens.len() as f64;
         for (term, freq) in &term_freq {
             let tf = freq / doc_len;
-            let mut idx = self.inverted_index.get_mut(&field_key).unwrap();
+            let mut idx = self
+                .inverted_index
+                .get_mut(&field_key)
+                .expect("Failed to get mutable inverted index");
             idx.entry(term.clone()).or_insert_with(Vec::new).push(tf);
 
             // Update autocomplete trie
@@ -153,7 +159,7 @@ impl SearchIndex {
         }
         self.doc_store
             .get_mut(&field_key)
-            .unwrap()
+            .expect("Failed to get mutable doc_store")
             .insert(id.clone(), content.clone());
     }
 

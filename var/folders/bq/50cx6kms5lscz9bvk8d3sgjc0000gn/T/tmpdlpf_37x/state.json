@@ -1,0 +1,11 @@
+{
+  "processed_files": [
+    {
+      "file": "test_file.zst",
+      "total": 10,
+      "kept": 5,
+      "errors": 0
+    }
+  ],
+  "downloaded_files": {}
+}

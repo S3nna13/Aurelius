@@ -39,7 +39,7 @@ Rust Engine (crates/data-engine/)  Python API Server (src/serving/ — port 8080
 JSON export / Redis / SQLite            Trained checkpoints (safetensors)
 ```
 
-The frontend **never** talks directly to Python. All API calls route through the Node.js BFF, which handles auth, rate limiting, WebSocket multiplexing, SSE, file upload, and cron scheduling. The Python server only exposes model inference endpoints (`/v1/chat/completions`, `/v1/models`).
+The frontend **never** talks directly to Python. All API calls route through the Node.js BFF, which handles auth, rate limiting, WebSocket multiplexing, SSE, file upload, and cron scheduling. The Python server exposes model inference endpoints (`/v1/chat/completions`, `/v1/models`) and can run either a plain generation backend or the ReAct agentic backend via `--engine agentic`.
 
 ---
 
@@ -62,18 +62,56 @@ The frontend **never** talks directly to Python. All API calls route through the
 - **Jailbreak detection** and output filtering
 - **PII scanner** and harm taxonomy (9 categories)
 - **SSRF-hardened** HTTP backend
+- All production `torch.load` calls now enforce `weights_only=True`. Unit‑test exception noted.
+- **Container hardening**: non‑root users and base‑image digests (see `SECURITY.md`).
+- **CI security**: Trivy scans for high/critical CVEs on built images.
+
 
 ### Frontend (Mission Control)
-- **23 pages** — Dashboard, Chat, Analytics, Notifications, Skills, Workflows, Memory, Tasks, Agents, Users, Logs, Health, API Docs, Settings, Data Explorer
+- **Dashboard, chat, analytics, workflows, and admin surfaces**
 - **Real-time streaming** — WebSocket chat, SSE events, live metrics
-- **49 components, 23 hooks** — React 19 + Vite + TypeScript + Tailwind CSS
+- **Shared components and hooks** — React 19 + Vite + TypeScript + Tailwind CSS
+- **Backend switcher** — Mission Control Playground and Chat can target `Auto`, `mock`, `vLLM`, or `agentic`; Settings stores the default backend and upstream URLs used by `Auto`
+  - **Agent Chat** (default mode) — Routes requests through `/api/chat/agent`, which dispatches to the best-fit agent (Coding, Research, or General) based on message content
+  - **Model Chat** — Sends requests directly to `/api/chat/completions`; when backend is `Auto`, the BFF resolves it to the **Default Backend** saved in Settings; explicit backends (`mock`, `vLLM`, `agentic`) override the default
+  - **Auto resolution** — When `Auto` is selected, the BFF reads `chat.backend` from config (defaults to `vllm`); invalid backend values are normalized to the config default
+  - Backend and mode choices persist in `localStorage` across page refreshes
 
 ### Serving & Deployment
 - **OpenAI-compatible API** — drop-in replacement for any OpenAI client
-- **Speculative decoding** — Eagle / Medusa heads for 2-3x throughput
+- **ReAct agentic backend** — enable tool-using chat loops with `--engine agentic`
+- **vLLM paged attention engine** — GPU-accelerated inference with block-wise KV cache management
+  - `--engine vllm --model-path <model> --speculative-decoding --tensor-parallel-size N`
+  - FP8 / INT8 / AWQ / GPTQ quantization via `--quantization fp8|int8|awq|gptq`
+- **Speculative decoding** — Eagle / Medusa heads for 2-3x throughput via `--speculative-decoding`
 - **Continuous batching** and paged KV cache
-- **Docker Compose** — single command for full stack
+- **GPU Dockerfile** — `deployment/Dockerfile.gpu` with multi-stage Rust + vLLM build
+- **Docker Compose GPU** — `deployment/compose.gpu.yaml` for single-command GPU deployment
 - **Helm charts** for Kubernetes deployment
+
+```bash
+# GPU production deployment
+docker compose -f deployment/compose.gpu.yaml up --build
+
+# vLLM inference with speculative decoding
+python -m src.serving.api_server \
+  --engine vllm \
+  --model-path aurelius-ai/aurelius-1b \
+  --gpu-memory-utilization 0.90 \
+  --speculative-decoding \
+  --n-spec-tokens 5
+
+# ReAct agentic backend
+python -m src.serving.api_server \
+  --engine agentic \
+  --model-path aurelius-ai/aurelius-1b
+
+# Quantized INT8 serving
+python -m src.serving.api_server \
+  --engine vllm \
+  --model-path aurelius-ai/aurelius-1b \
+  --quantization int8
+```
 
 ---
 
@@ -91,26 +129,25 @@ python >= 3.12   # Python backend
 ### Installation
 
 ```bash
-# Clone and install Python package
+# Clone and bootstrap the repo
 git clone https://github.com/S3nna13/Aurelius.git
 cd Aurelius
-pip install -e ".[dev]"
+bash scripts/bootstrap.sh
+```
 
-# Build Rust data engine
-cd crates/data-engine
-npm install
-npm run build
-cd ../..
+`bootstrap.sh` installs the Python, Node.js, and Rust dependencies used by the
+repo and performs the optional native builds. For a faster setup that skips the
+Rust build step, use:
 
-# Install Node.js BFF
-cd middle
-npm install
-cd ..
+```bash
+bash scripts/bootstrap.sh --fast
+```
 
-# Install frontend
-cd frontend
-npm install
-cd ..
+If you prefer Makefile targets, `make setup-dev` installs the Python backend,
+frontend, middle layer, and pre-commit hooks.
+
+```bash
+make setup-dev
 ```
 
 ### Running the CLI
@@ -118,9 +155,11 @@ cd ..
 ```bash
 aurelius                      # Interactive chat (default)
 aurelius chat                 # Same as above
-aurelius chat -p aurelius-coding   # Use coding persona
+aurelius chat --persona aurelius-coding   # Use coding persona
 aurelius chat --model-path <ckpt>  # Load trained weights
+aurelius chat --react --model-path <ckpt>  # Enable ReAct tool-use loop
 aurelius serve                 # Start API server + web UI
+aurelius serve --engine agentic --model-path <ckpt>  # ReAct API backend
 aurelius serve --port 8080     # Custom API port
 aurelius --version             # Print version
 ```
@@ -128,16 +167,18 @@ aurelius --version             # Print version
 ### Running the API
 
 ```bash
-# Start Python inference server
-aurelius-api
+# Start the OpenAI-compatible Python server
+aurelius-api --host 127.0.0.1 --port 8080
 
-# Start Node.js BFF (in another terminal)
-cd middle && npm run dev
+# Start the integrated API + web UI stack
+aurelius serve --host 127.0.0.1 --port 8080 --ui-port 7860
 
-# Start frontend (in another terminal)
-cd frontend && npm run dev
+# Or use the Makefile shortcuts
+make dev        # Python API server only
+make middle     # Node.js BFF only
+make frontend   # Vite frontend only
 
-# Or everything at once
+# Or everything at once with Docker
 docker compose up
 docker compose --profile inference up   # with LLM inference
 ```
@@ -146,7 +187,7 @@ docker compose --profile inference up   # with LLM inference
 
 ```python
 import openai
-client = openai.OpenAI(base_url="http://localhost:7870/v1", api_key="none")
+client = openai.OpenAI(base_url="http://localhost:8080/v1", api_key="none")
 response = client.chat.completions.create(
     model="aurelius",
     messages=[{"role": "user", "content": "Hello!"}],
@@ -193,7 +234,7 @@ Key principles:
 
 ```
 Aurelius/
-+-- src/                          # Python backend (~1,720 modules)
++-- src/                          # Python backend (model, alignment, inference, CLI, serving, eval)
 |   +-- model/                    # Transformer core (GQA, RoPE, SwiGLU, MoE, SSMs)
 |   +-- training/                 # Muon, ZClip, curriculum, RLHF trainers
 |   +-- alignment/                # DPO, GRPO, SimPO, ORPO, KTO, SPIN, constitutional AI
@@ -234,7 +275,7 @@ Aurelius/
 |   +-- ui/                       # Server-side UI utilities
 +-- middle/                       # Node.js BFF (TypeScript)
 |   +-- src/
-|       +-- routes/               # 17 route modules (health, agents, activity, etc.)
+|       +-- routes/               # API route modules (health, agents, activity, eval, retrieval, etc.)
 |       +-- middleware/            # Auth, CORS, rate limiting, logging
 |       +-- ws/                   # WebSocket hub
 |       +-- index.ts              # Express server entry
@@ -245,9 +286,9 @@ Aurelius/
 |       +-- provider_router.ts    # LLM provider routing
 +-- frontend/                     # React 19 + Vite + TypeScript
 |   +-- src/
-|       +-- pages/                # 23 pages (Dashboard, Chat, Analytics, etc.)
-|       +-- components/           # 49 reusable components
-|       +-- hooks/                # 23 custom hooks
+|       +-- pages/                # Dashboard, Chat, Analytics, workflows, and admin surfaces
+|       +-- components/           # Shared UI components
+|       +-- hooks/                # Custom hooks and data helpers
 |       +-- lib/                  # Utilities, API client, stores
 +-- crates/                       # Rust workspace (11 crates + 2 tools)
 |   +-- data-engine/              # Core Node.js NAPI data store
@@ -264,7 +305,7 @@ Aurelius/
 |   +-- usage-store/              # PyO3 usage/cost tracking
 +-- configs/                      # Training configs (1.4B, 2.7B, 3B, MoE-5B)
 +-- scripts/                      # Benchmark, bootstrap, export, profile
-+-- tests/                        # 32,400+ tests across all surfaces
++-- tests/                        # Broad test coverage across the stack
 +-- deployment/                   # Docker, Docker Compose, Helm charts
 +-- docs/                         # Documentation
 +-- tools/                        # Rust CLI tools (data-cli, jsonl-merge)
@@ -301,7 +342,7 @@ Aurelius/
 ## Testing
 
 ```bash
-# Python backend (32,400+ tests)
+# Python backend
 pytest -q
 
 # Frontend (Vitest)

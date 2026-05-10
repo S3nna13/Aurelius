@@ -265,7 +265,9 @@ def test_modelema_state_dict_serializable():
     buf = io.BytesIO()
     torch.save(sd, buf)
     buf.seek(0)
-    loaded_sd = torch.load(buf, weights_only=False)
+    # NOTE: In test context we explicitly allow full deserialization.
+    # The buffer only contains a simple state dict.
+    loaded_sd = torch.load(buf, weights_only=False)  # safe: in-memory test, no pickle risk
     assert loaded_sd["step"] == 5
 
 

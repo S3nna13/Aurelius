@@ -208,3 +208,23 @@ clean: ## Clean build artifacts
 	rm -rf middle/dist/ middle/node_modules/
 	rm -rf crates/data-engine/node_modules/
 	rm -rf crates/token-counter/node_modules/
+
+.PHONY: clean-all audit-deps ci
+
+clean-all: clean ## Clean ALL build artifacts (including Rust target dirs)
+	rm -rf target/
+	rm -rf crates/*/target/
+	rm -rf tools/*/target/
+	rm -rf rust_memory/target/
+
+audit-deps: ## Audit all dependencies for vulnerabilities
+	@echo "=== Python ==="
+	pip-audit --desc || true
+	@echo "=== Rust ==="
+	cargo audit || true
+	@echo "=== Node.js (middle) ==="
+	cd middle && npm audit --audit-level=high || true
+	@echo "=== Node.js (frontend) ==="
+	cd frontend && npm audit --audit-level=high || true
+
+ci: lint typecheck security test frontend-lint frontend-test middle-test ## Run all CI checks locally

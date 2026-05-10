@@ -107,4 +107,12 @@ crates/usage-store/target/
 crates/usage-store/*.node
 crates/usage-store/Cargo.lock
 
+# Rust build artifacts (catch-all)
+target/
+*.dylib
+*.so
+*.node
+
 # Tools workspace member
+tools/*/target/
+tools/*/*.node

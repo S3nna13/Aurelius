@@ -12,6 +12,10 @@ on:
     branches:
       - 'main'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -33,10 +37,15 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+          uv pip install --system -e ".[dev]"
 
       - name: Run pytest
         run: |
@@ -63,10 +72,15 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+          uv pip install --system -e ".[dev]"
 
       - name: Run Ruff lint
         run: |
@@ -76,9 +90,17 @@ jobs:
         run: |
           python -m ruff format --check src/ tests/
 
+      - name: Run import cycle check
+        run: |
+          python scripts/check_import_cycles.py
+
       - name: Run py_compile on all Python files
         run: |
-          find src tests -name "*.py" -exec python -m py_compile {} +
+           find src tests -name "*.py" -exec python -m py_compile {} +
+      - name: Run pre-commit checks
+        run: |
+          python -m pip install pre-commit
+          pre-commit run --all-files
 
   security:
     name: Security scan
@@ -94,11 +116,16 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install bandit pip-audit
-          pip install -e ".[dev]"
+          uv pip install --system bandit pip-audit
+          uv pip install --system -e ".[dev]"
 
       - name: Run Bandit
         run: |
@@ -108,6 +135,9 @@ jobs:
       - name: Run pip-audit
         run: |
           pip-audit --desc 2>&1 || true
+
+      - name: Run make audit-deps (consolidated dependency audit)
+        run: make audit-deps 2>&1 || true
 
   frontend:
     name: Frontend lint and test
@@ -136,6 +166,10 @@ jobs:
 
       - name: Run lint
         run: npm run lint
+
+      - name: Run npm audit
+        run: npm audit --audit-level=high
+        continue-on-error: true
 
       - name: Run tests
         run: npm test
@@ -167,3 +201,148 @@ jobs:
 
       - name: Run lint
         run: npm run lint
+
+      - name: Run npm audit
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      - name: Run tests
+        run: npm test
+
+  rust-napi:
+    name: Rust NAPI build and test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+
+      - name: Cache Rust build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build data-engine NAPI crate
+        run: |
+          cd crates/data-engine
+          npm ci
+          npx napi build --release --platform
+
+      - name: Check all Rust crates compile
+        run: cargo check --workspace
+
+      - name: Run cargo audit
+        uses: actions-rust-lang/audit@v1
+        continue-on-error: true
+
+  benchmark:
+    name: Run performance benchmarks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Install dependencies
+        run: |
+          uv pip install --system -e ".[dev]"
+
+      - name: Run KV cache eviction benchmark
+        run: python benchmarks/kv_evict_benchmark.py 2>&1
+        continue-on-error: true
+
+      - name: Run GradScaler performance benchmark
+        run: python benchmarks/grad_scaler_perf.py 2>&1
+        continue-on-error: true
+
+      - name: Run new serving integration tests
+        run: |
+          python -m pytest \
+            tests/serving/test_vllm_engine.py \
+            tests/serving/test_engine_loader.py \
+            tests/serving/test_speculative_decoding.py \
+            tests/serving/test_quantization.py \
+            -v --tb=short
+
+  docker-build-and-scan:
+    name: Build and scan Docker images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build API image
+        run: |
+          docker build -t aurelius-api:ci -f deployment/Dockerfile .
+
+      # The middle image needs the data-engine NAPI binary pre-built.
+      # Install Rust and Node.js for this step.
+      - name: Set up Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+
+      - name: Build data-engine NAPI crate
+        run: |
+          cd crates/data-engine
+          npm ci
+          npx napi build --release --platform
+
+      - name: Build middle image
+        run: |
+          docker build -t aurelius-middle:ci -f middle/Dockerfile .
+
+      - name: Scan API image
+        uses: aquasecurity/trivy-action@0.27.0
+        with:
+          image-ref: aurelius-api:ci
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
+          format: table
+
+      - name: Scan middle image
+        uses: aquasecurity/trivy-action@0.27.0
+        with:
+          image-ref: aurelius-middle:ci
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
+          format: table

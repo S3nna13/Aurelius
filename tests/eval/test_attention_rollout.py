@@ -8,12 +8,13 @@ from __future__ import annotations
 import pytest
 import torch
 import torch.nn as nn
+from torch import Tensor
+
 from aurelius.eval.attention_rollout import (
     AttentionRollout,
     AttentionRolloutHook,
     RolloutAttributor,
 )
-from torch import Tensor
 
 # ---------------------------------------------------------------------------
 # Shared constants

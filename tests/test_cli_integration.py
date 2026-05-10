@@ -5,6 +5,7 @@ from __future__ import annotations
 import subprocess
 import sys
 from pathlib import Path
+from unittest.mock import patch
 
 CLI_MODULE = "src.cli.main"
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -90,10 +91,12 @@ class TestCLIHelp:
     def test_chat_help(self) -> None:
         result = run_cli("chat", "--help")
         assert result.returncode == 0
+        assert "--react" in result.stdout or "ReAct" in result.stdout
 
     def test_serve_help(self) -> None:
         result = run_cli("serve", "--help")
         assert result.returncode == 0
+        assert "agentic" in result.stdout
 
     def test_train_help(self) -> None:
         result = run_cli("train", "--help")
@@ -112,3 +115,27 @@ class TestCLIError:
     def test_train_no_config(self) -> None:
         result = run_cli("train")
         assert result.returncode == 0 or result.returncode == 1
+
+
+class TestCLIRouting:
+    @patch("src.cli.main._run_chat")
+    def test_chat_react_routes_to_run_chat(self, mock_run_chat) -> None:
+        from src.cli.main import main
+
+        rc = main(["chat", "--model-path", "/tmp/checkpoint", "--react"])
+        assert rc == 0
+        mock_run_chat.assert_called_once()
+        kwargs = mock_run_chat.call_args.kwargs
+        assert kwargs["model_path"] == "/tmp/checkpoint"
+        assert kwargs["react"] is True
+
+    @patch("src.cli.main._run_serve")
+    def test_serve_agentic_routes_to_run_serve(self, mock_run_serve) -> None:
+        from src.cli.main import main
+
+        rc = main(["serve", "--engine", "agentic", "--model-path", "/tmp/checkpoint"])
+        assert rc == 0
+        mock_run_serve.assert_called_once()
+        kwargs = mock_run_serve.call_args.kwargs
+        assert kwargs["engine"] == "agentic"
+        assert kwargs["model_path"] == "/tmp/checkpoint"

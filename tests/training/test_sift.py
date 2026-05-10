@@ -5,6 +5,7 @@ import math
 import pytest
 import torch
 import torch.nn as nn
+
 from aurelius.training.sift import InfluenceScorer, SIFTFilter, SIFTLoss, SIFTTrainer
 
 SEED = 42

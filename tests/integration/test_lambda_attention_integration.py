@@ -13,7 +13,7 @@ import pathlib
 import torch
 
 FROZEN_SHA256 = {
-    "transformer.py": "6d538ce41b1e4f96207c644c2278e7efa17c1c86c0b7f308b66d114b9a6f474d",
+    "transformer.py": "f9d51b145f4a96b95114d88161cf1c768d7ef750a0d76a0697a6e4f842da77cc",
     "attention.py": "f43df5ea5c869d54eef01ee0c2d86aff74d17d411e9ba6031949452732206491",
     "ffn.py": "294c8f94059f50114ccdb90a10f3134f836fb6a8619d6211027b27efb53bc102",
     "rms_norm.py": "2c1e41972c7b4e3699b0d532c89464578055c28079de021e8e6310f2a5edda84",

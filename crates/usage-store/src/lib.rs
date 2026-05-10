@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
-use redb::{Database, ReadableTable, TableDefinition};
+use redb::{Database, ReadableDatabase, ReadableTable, TableDefinition};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::sync::Arc;
@@ -49,7 +49,7 @@ impl UsageStoreInner {
             payload,
             timestamp: Utc::now(),
         };
-        let json = serde_json::to_string(&event).unwrap();
+        let json = serde_json::to_string(&event).expect("Failed to serialize event");
 
         let txn = self.db.begin_write()?;
         {
@@ -79,7 +79,7 @@ impl UsageStoreInner {
         let index = txn.open_table(USER_INDEX_TABLE)?;
         let ids = index
             .get(user_id)?
-            .map(|g| g.value().to_string())
+            .map(|g: redb::AccessGuard<'_, &str>| g.value().to_string())
             .unwrap_or_default();
 
         if ids.is_empty() {
@@ -90,7 +90,8 @@ impl UsageStoreInner {
         let mut out = Vec::new();
         for id in ids.split(',') {
             if let Some(guard) = events_table.get(id)? {
-                let ev: Event = serde_json::from_str(guard.value()).unwrap();
+                let ev: Event =
+                    serde_json::from_str(guard.value()).expect("Failed to deserialize event");
                 if let Some(ref t) = since {
                     if ev.timestamp < *t {
                         continue;
@@ -115,9 +116,9 @@ impl UsageStoreInner {
         let index = txn.open_table(USER_INDEX_TABLE)?;
         let ids = index
             .get(user_id)?
-            .map(|g| g.value().to_string())
+            .map(|g: redb::AccessGuard<'_, &str>| g.value().to_string())
             .unwrap_or_default();
-        Ok(ids.split(',').filter(|s| !s.is_empty()).count())
+        Ok(ids.split(',').filter(|s: &&str| !s.is_empty()).count())
     }
 }
 
@@ -150,11 +151,12 @@ impl UsageStore {
     #[pyo3(signature = (user_id, since=None, event_type=None, limit=100))]
     fn query_events(
         &self,
+        py: Python<'_>,
         user_id: &str,
         since: Option<&str>,
         event_type: Option<&str>,
         limit: usize,
-    ) -> PyResult<Vec<PyObject>> {
+    ) -> PyResult<Vec<Py<PyAny>>> {
         let since = match since {
             Some(s) => Some(
                 DateTime::parse_from_rfc3339(s)
@@ -168,12 +170,10 @@ impl UsageStore {
             .query_events(user_id, since, event_type, limit)
             .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(format!("{e}")))?;
 
-        Python::with_gil(|py| {
-            events
-                .into_iter()
-                .map(|ev| event_to_python(py, ev))
-                .collect::<PyResult<Vec<_>>>()
-        })
+        events
+            .into_iter()
+            .map(|ev| event_to_python(py, ev))
+            .collect::<PyResult<Vec<_>>>()
     }
 
     fn event_count(&self, user_id: &str) -> PyResult<usize> {
@@ -183,18 +183,14 @@ impl UsageStore {
     }
 }
 
-fn python_dict_to_json(dict: &Bound<'_, PyDict>) -> PyResult<serde_json::Value> {
-    let json_str = Python::with_gil(|py| {
-        let json_module = py.import("json")?;
-        json_module
-            .getattr("dumps")?
-            .call1((dict,))?
-            .extract::<String>()
-    })?;
-    Ok(serde_json::from_str(&json_str).unwrap())
+fn python_dict_to_json<'py>(dict: &Bound<'py, PyDict>) -> PyResult<serde_json::Value> {
+    let py = dict.py();
+    let json_module = py.import("json")?;
+    let json_str: String = json_module.getattr("dumps")?.call1((dict,))?.extract()?;
+    Ok(serde_json::from_str(&json_str).expect("Failed to parse JSON string"))
 }
 
-fn event_to_python(py: Python, ev: Event) -> PyResult<PyObject> {
+fn event_to_python(py: Python<'_>, ev: Event) -> PyResult<Py<PyAny>> {
     let dict = PyDict::new(py);
     dict.set_item("id", ev.id)?;
     dict.set_item("user_id", ev.user_id)?;

@@ -20,6 +20,7 @@ Covers 15 test cases:
 
 import torch
 import torch.nn as nn
+
 from aurelius.training.schedule_free_adamw import (
     ScheduleFreeAdamW,
     ScheduleFreeSGD,

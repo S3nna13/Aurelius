@@ -78,7 +78,7 @@ impl Metrics {
             .inner
             .latencies
             .get("all")
-            .map(|v| v.clone())
+            .map(|v| v.value().clone())
             .unwrap_or_default();
 
         let p50 = percentile(&latencies, 50.0);
@@ -102,7 +102,7 @@ fn percentile(data: &[f64], p: f64) -> f64 {
         return 0.0;
     }
     let mut sorted = data.to_vec();
-    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    sorted.sort_by(|a, b| a.partial_cmp(b).expect("Comparison failed"));
     let idx = ((p / 100.0) * sorted.len() as f64).ceil() as usize;
     sorted.get(idx.saturating_sub(1)).copied().unwrap_or(0.0)
 }

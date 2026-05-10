@@ -15,6 +15,7 @@ import math
 
 import pytest
 import torch
+
 from aurelius.eval.embedding_analysis_v2 import (
     AnisotropyCorrector,
     EmbeddingAnalysisConfig,

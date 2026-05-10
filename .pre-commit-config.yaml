@@ -39,3 +39,10 @@ repos:
         files: ^frontend/.*\.(ts|tsx)$
         language: node
         additional_dependencies: []
+  - repo: local
+    hooks:
+      - id: check-torch-load
+        name: Check torch.load weights_only=False usage
+        entry: hooks/check_torch_load.py
+        language: python
+        files: \.py$

@@ -107,7 +107,10 @@ impl SessionManager {
             expires_at,
         };
 
-        let mut sessions = self.sessions.lock().unwrap();
+        let mut sessions = self
+            .sessions
+            .lock()
+            .expect("Failed to lock sessions for mutation");
         self.cleanup_expired(&mut sessions);
 
         let user_count = sessions
@@ -135,7 +138,10 @@ impl SessionManager {
 
     #[napi]
     pub fn get_session(&self, session_id: String) -> Option<Session> {
-        let sessions = self.sessions.lock().unwrap();
+        let sessions = self
+            .sessions
+            .lock()
+            .expect("Failed to lock sessions for read");
         sessions.get(&session_id).and_then(|entry| {
             if Utc::now() < entry.expires_at {
                 Some(entry.session.clone())
@@ -147,7 +153,10 @@ impl SessionManager {
 
     #[napi]
     pub fn validate_session(&self, session_id: String) -> SessionValidation {
-        let sessions = self.sessions.lock().unwrap();
+        let sessions = self
+            .sessions
+            .lock()
+            .expect("Failed to lock sessions for read");
         match sessions.get(&session_id) {
             Some(entry) if Utc::now() < entry.expires_at => SessionValidation {
                 valid: true,
@@ -169,7 +178,10 @@ impl SessionManager {
 
     #[napi]
     pub fn touch_session(&self, session_id: String) -> bool {
-        let mut sessions = self.sessions.lock().unwrap();
+        let mut sessions = self
+            .sessions
+            .lock()
+            .expect("Failed to lock sessions for mutation");
         if let Some(entry) = sessions.get_mut(&session_id) {
             if Utc::now() < entry.expires_at {
                 entry.session.last_activity = Utc::now().to_rfc3339();
@@ -181,13 +193,19 @@ impl SessionManager {
 
     #[napi]
     pub fn delete_session(&self, session_id: String) -> bool {
-        let mut sessions = self.sessions.lock().unwrap();
+        let mut sessions = self
+            .sessions
+            .lock()
+            .expect("Failed to lock sessions for mutation");
         sessions.remove(&session_id).is_some()
     }
 
     #[napi]
     pub fn list_user_sessions(&self, user_id: String) -> Vec<Session> {
-        let sessions = self.sessions.lock().unwrap();
+        let sessions = self
+            .sessions
+            .lock()
+            .expect("Failed to lock sessions for read");
         sessions
             .values()
             .filter(|e| e.session.user_id == user_id && Utc::now() < e.expires_at)
@@ -197,7 +215,10 @@ impl SessionManager {
 
     #[napi]
     pub fn delete_user_sessions(&self, user_id: String) -> u32 {
-        let mut sessions = self.sessions.lock().unwrap();
+        let mut sessions = self
+            .sessions
+            .lock()
+            .expect("Failed to lock sessions for mutation");
         let before = sessions.len() as u32;
         sessions.retain(|_, e| e.session.user_id != user_id);
         before - sessions.len() as u32
@@ -205,7 +226,10 @@ impl SessionManager {
 
     #[napi]
     pub fn get_stats(&self) -> SessionStats {
-        let sessions = self.sessions.lock().unwrap();
+        let sessions = self
+            .sessions
+            .lock()
+            .expect("Failed to lock sessions for read");
         let now = Utc::now();
         let total = sessions.len() as u32;
         let active = sessions.values().filter(|e| now < e.expires_at).count() as u32;
@@ -223,7 +247,10 @@ impl SessionManager {
 
     #[napi]
     pub fn cleanup(&self) -> u32 {
-        let mut sessions = self.sessions.lock().unwrap();
+        let mut sessions = self
+            .sessions
+            .lock()
+            .expect("Failed to lock sessions for mutation");
         let before = sessions.len() as u32;
         self.cleanup_expired(&mut sessions);
         before - sessions.len() as u32

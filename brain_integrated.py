@@ -283,7 +283,7 @@ class IntegratedNeuralBrain(nn.Module):
             if tool_id in self._tool_registry:
                 tool_result = self._tool_registry[tool_id](wm_out)
             else:
-                tool_result = wm_out * 0.01
+                raise NotImplementedError(f"Tool {tool_id} not in registry")
             wm_out = self.tool_ctrl.integrate(wm_out, tool_result)
         trajectory.append({'stage': 'tool', 'tool_idx': tool_idx, 'tool_conf': tool_conf, 'wm': wm_out.detach().clone()})
 

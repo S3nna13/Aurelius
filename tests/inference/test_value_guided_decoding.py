@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import torch
 import torch.nn as nn
+
 from aurelius.inference.value_guided_decoding import (
     TokenValueFunction,
     ValueFunctionTrainer,

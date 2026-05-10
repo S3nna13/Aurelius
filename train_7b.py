@@ -14,11 +14,11 @@ import os
 import time
 from functools import partial
 
-from aurelius_model_7b import AureliusModel7B
-from aurelius_model_14b import AureliusModel14B
-from aurelius_model_32b import AureliusModel32B
+from aurelius.aurelius_model_7b import AureliusModel7B
+from aurelius.aurelius_model_14b import AureliusModel14B
+from aurelius.aurelius_model_32b import AureliusModel32B
 from alignment_impl import DPOLoss, ProcessRewardModel
-from memory_core import AurelianMemoryCore
+from aurelius.memory_core import AurelianMemoryCore
 import logging
 logger = logging.getLogger("train_7b")
 
@@ -91,7 +91,7 @@ class AureliusTrainer:
         self.scheduler = SequentialLR(self.optimizer, schedulers=[warmup_sched, cosine_sched], milestones=[warmup_steps])
 
         self.grad_clip = config.get('grad_clip', 1.0)
-        self.scaler = GradScaler('cpu')
+        self.scaler = GradScaler()
         self.global_step = 0
         self.loss_history = {
             'total': [], 'ce': [], 'memory': [], 'agent': [],
@@ -359,7 +359,7 @@ class AureliusTrainer:
 
     def load_checkpoint(self, path):
         checkpoint_path = os.path.join(path, 'checkpoint.pt')
-        checkpoint = torch.load(checkpoint_path, map_location=self.device, weights_only=False)
+        checkpoint = torch.load(checkpoint_path, map_location=self.device, weights_only=True)
         self.model.load_state_dict(checkpoint['model'])
         self.optimizer.load_state_dict(checkpoint['optimizer'])
         self.scheduler.load_state_dict(checkpoint['scheduler'])

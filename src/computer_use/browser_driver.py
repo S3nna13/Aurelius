@@ -10,6 +10,7 @@ All browser interactions are behind abstract interfaces.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from contextlib import suppress
 from dataclasses import dataclass
 
 # ---------------------------------------------------------------------------
@@ -232,9 +233,124 @@ class StubBrowserDriver(BrowserDriver):
 
 
 # ---------------------------------------------------------------------------
+# Playwright driver — real browser automation
+# ---------------------------------------------------------------------------
+
+
+class PlaywrightBrowserDriver(BrowserDriver):
+    """Browser automation driver backed by Playwright.
+
+    Launches a headless Chromium browser. All operations execute
+    against the live page and return the updated state.
+
+    Requires ``playwright`` to be installed and Chromium to be
+    available (``playwright install chromium``).
+    """
+
+    def __init__(self, headless: bool = True, viewport: tuple[int, int] | None = None) -> None:
+        self._page = None
+        self._browser = None
+        self._playwright = None
+        self._headless = headless
+        self._viewport = viewport or (1280, 720)
+
+    def _ensure_browser(self):
+        if self._page is not None:
+            return
+        try:
+            from playwright.sync_api import sync_playwright
+        except ImportError:
+            raise BrowserDriverError(
+                "playwright is not installed. Run: pip install playwright && "
+                "playwright install chromium"
+            )
+        self._playwright = sync_playwright().__enter__()
+        self._browser = self._playwright.chromium.launch(headless=self._headless)
+        context = self._browser.new_context(
+            viewport={"width": self._viewport[0], "height": self._viewport[1]}
+        )
+        self._page = context.new_page()
+
+    def navigate(self, url: str) -> BrowserState:
+        if not url or not url.strip():
+            raise BrowserDriverError("navigate() requires a non-empty url.")
+        self._ensure_browser()
+        try:
+            self._page.goto(url, wait_until="domcontentloaded", timeout=30000)
+            return self._capture_state()
+        except Exception as exc:
+            raise BrowserDriverError(f"Navigation failed: {exc}")
+
+    def click(self, selector: str) -> BrowserState:
+        if not selector or not selector.strip():
+            raise BrowserDriverError("click() requires a non-empty selector.")
+        self._ensure_browser()
+        try:
+            el = self._page.wait_for_selector(selector, timeout=10000)
+            if el is None:
+                raise BrowserDriverError(f"Element not found: {selector}")
+            el.click()
+            self._page.wait_for_timeout(300)
+            return self._capture_state()
+        except BrowserDriverError:
+            raise
+        except Exception as exc:
+            raise BrowserDriverError(f"Click failed: {exc}")
+
+    def type_text(self, selector: str, text: str) -> BrowserState:
+        if not selector or not selector.strip():
+            raise BrowserDriverError("type_text() requires a non-empty selector.")
+        self._ensure_browser()
+        try:
+            el = self._page.wait_for_selector(selector, timeout=10000)
+            if el is None:
+                raise BrowserDriverError(f"Element not found: {selector}")
+            el.fill(text)
+            return self._capture_state()
+        except BrowserDriverError:
+            raise
+        except Exception as exc:
+            raise BrowserDriverError(f"type_text failed: {exc}")
+
+    def get_state(self) -> BrowserState:
+        self._ensure_browser()
+        return self._capture_state()
+
+    def close(self) -> None:
+        with suppress(Exception):
+            if self._browser:
+                self._browser.close()
+            if self._playwright:
+                self._playwright.__exit__(None, None, None)
+        self._page = None
+        self._browser = None
+        self._playwright = None
+
+    def screenshot(self, path: str | None = None) -> bytes | None:
+        self._ensure_browser()
+        try:
+            if path:
+                self._page.screenshot(path=path, full_page=False)
+                return None
+            return self._page.screenshot(full_page=False)
+        except Exception:
+            return None
+
+    def _capture_state(self) -> BrowserState:
+        try:
+            url = self._page.url
+            title = self._page.title()
+            html = self._page.content()
+            return BrowserState(url=url, title=title, html_snapshot=html, ready=True)
+        except Exception:
+            return BrowserState(url="", title="", ready=False)
+
+
+# ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
 
 BROWSER_DRIVER_REGISTRY: dict[str, type[BrowserDriver]] = {
     "stub": StubBrowserDriver,
+    "playwright": PlaywrightBrowserDriver,
 }

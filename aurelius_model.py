@@ -2,9 +2,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import math
+import sys
 
-from memory_core import AurelianMemoryCore
-from nn_utils import RMSNorm, RotaryEmbedding, apply_rotary, FeedForward, sample_with_top_p_top_k
+from aurelius.memory_core import AurelianMemoryCore
+from aurelius.nn_utils import RMSNorm, RotaryEmbedding, apply_rotary, SwiGLUFFN, FeedForward, sample_with_top_p_top_k
 
 
 class Attention(nn.Module):
@@ -103,3 +104,8 @@ class AureliusModel(nn.Module):
             next_token = sample_with_top_p_top_k(logits[:, -1, :], temperature, top_k)
             input_ids = torch.cat([input_ids, next_token], dim=-1)
         return input_ids
+
+
+_module = sys.modules[__name__]
+sys.modules.setdefault("aurelius_model", _module)
+sys.modules.setdefault("aurelius.aurelius_model", _module)

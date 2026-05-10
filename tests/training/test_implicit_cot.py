@@ -7,6 +7,7 @@ import math
 import pytest
 import torch
 import torch.nn as nn
+
 from aurelius.training.implicit_cot import (
     ImplicitCoTConfig,
     ImplicitCoTLoss,

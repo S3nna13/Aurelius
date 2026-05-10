@@ -184,6 +184,22 @@ _module = sys.modules[__name__]
 sys.modules["src.safety"] = _module
 sys.modules["safety"] = _module
 
+
+def _mirror_namespace(primary: str, mirror: str) -> None:
+    for module_name, module in list(sys.modules.items()):
+        if module_name == primary or module_name.startswith(f"{primary}."):
+            mirror_name = mirror + module_name[len(primary) :]
+            sys.modules[mirror_name] = module
+
+
+if __name__.startswith("src.safety"):
+    _mirror_namespace("src.safety", "aurelius.safety")
+    _mirror_namespace("src.safety", "safety")
+elif __name__.startswith("aurelius.safety"):
+    sys.modules["aurelius.safety"] = _module
+    _mirror_namespace("aurelius.safety", "src.safety")
+    _mirror_namespace("aurelius.safety", "safety")
+
 __all__ = [
     "SAFETY_FILTER_REGISTRY",
     "HARM_CLASSIFIER_REGISTRY",

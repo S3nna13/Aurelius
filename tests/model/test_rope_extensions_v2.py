@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import torch
 import torch.nn as nn
+from torch import Tensor
+
 from aurelius.model.rope_extensions_v2 import (
     DynamicNTKRoPE,
     NTKRoPE,
@@ -17,7 +19,6 @@ from aurelius.model.rope_extensions_v2 import (
     RotaryEmbedding,
     YaRNRoPE,
 )
-from torch import Tensor
 
 # ---------------------------------------------------------------------------
 # Shared tiny config constants

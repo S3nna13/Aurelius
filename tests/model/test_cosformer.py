@@ -18,6 +18,7 @@ Test inventory (14 tests):
 """
 
 import torch
+
 from aurelius.model.cosformer import (
     CosformerAttention,
     CosformerBlock,

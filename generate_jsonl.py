@@ -28,7 +28,7 @@ def generate(prompt, max_new=128, temperature=0.8, top_k=40):
     tokenizer = Tokenizer.from_file("data/pretrain/jsonl/tokenizer.json")
     model = AureliusTransformer(CONFIG)
     ckpt = torch.load(
-        "checkpoints/aurelius-jsonl/final.pt", map_location=device, weights_only=False
+        "checkpoints/aurelius-jsonl/final.pt", map_location=device, weights_only=True
     )
     model.load_state_dict(ckpt["model_state_dict"])
     model.to(device)

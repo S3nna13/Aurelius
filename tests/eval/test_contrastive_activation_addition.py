@@ -10,6 +10,8 @@ from __future__ import annotations
 import pytest
 import torch
 import torch.nn as nn
+from torch import Tensor
+
 from aurelius.eval.contrastive_activation_addition import (
     ActivationCollector,
     CAAConfig,
@@ -17,7 +19,6 @@ from aurelius.eval.contrastive_activation_addition import (
     CAAExtractor,
     CAASteeringHook,
 )
-from torch import Tensor
 
 # ---------------------------------------------------------------------------
 # Constants

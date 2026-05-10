@@ -1,5 +1,7 @@
 """Aurelius alignment and safety evaluation."""
 
+import sys
+
 from src.training.process_reward_model import ProcessRewardModel as ProcessRewardModel
 
 from .adversarial_code_battle import (
@@ -200,3 +202,21 @@ from .preference_collector import (
 )
 
 ALIGNMENT_REGISTRY["preference_collector"] = PreferenceCollector
+
+_module = sys.modules[__name__]
+
+
+def _mirror_namespace(primary: str, mirror: str) -> None:
+    for module_name, module in list(sys.modules.items()):
+        if module_name == primary or module_name.startswith(f"{primary}."):
+            mirror_name = mirror + module_name[len(primary) :]
+            sys.modules[mirror_name] = module
+
+
+sys.modules["src.alignment"] = _module
+sys.modules["aurelius.alignment"] = _module
+sys.modules["alignment"] = _module
+_mirror_namespace("src.alignment", "aurelius.alignment")
+_mirror_namespace("aurelius.alignment", "src.alignment")
+_mirror_namespace("src.alignment", "alignment")
+_mirror_namespace("aurelius.alignment", "alignment")

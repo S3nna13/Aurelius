@@ -124,8 +124,8 @@ impl TextProcessor {
     #[napi(constructor)]
     pub fn new() -> Self {
         TextProcessor {
-            sentence_re: Regex::new(r"[.!?]+[\s]+").unwrap(),
-            paragraph_re: Regex::new(r"\n\s*\n").unwrap(),
+            sentence_re: Regex::new(r"[.!?]+[\s]+").expect("Invalid sentence regex"),
+            paragraph_re: Regex::new(r"\n\s*\n").expect("Invalid paragraph regex"),
         }
     }
 
@@ -398,7 +398,7 @@ impl TextProcessor {
 
     #[napi]
     pub fn normalize_whitespace(&self, text: String) -> String {
-        let re = Regex::new(r"\s+").unwrap();
+        let re = Regex::new(r"\s+").expect("Invalid whitespace regex");
         let trimmed = text.trim();
         re.replace_all(trimmed, " ").to_string()
     }
