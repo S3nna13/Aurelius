@@ -1,7 +1,17 @@
-"""Adaptive speculative decoding with dynamic draft length adjustment.
+"""Adaptive speculative decoding — Nightjar-inspired dynamic speculation.
 
-Dynamically adjusts draft length based on EMA-smoothed acceptance rate history,
-targeting a configurable acceptance rate to maximize throughput.
+Nightjar (arXiv:2512.22420) dynamically adjusts speculation length based on
+the current acceptance rate, preventing wasted compute when draft quality
+drops and maximizing throughput when draft quality is high.
+
+Core idea:
+- Track an exponential moving average (EMA) of the acceptance rate.
+- If acceptance rate is high (> threshold), increase K (speculation length).
+- If acceptance rate is low (< threshold), decrease K.
+- This is a simple control loop that adapts to changing draft quality.
+
+This module provides an adapter that wraps any speculative decoder with
+the adaptive speculation length controller.
 """
 
 from __future__ import annotations
@@ -9,289 +19,188 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 
 
 @dataclass
 class AdaptiveSpecConfig:
-    """Configuration for adaptive speculative decoding."""
+    """Configuration for Nightjar-style adaptive speculation.
 
-    init_draft_len: int = 4
-    min_draft_len: int = 1
-    max_draft_len: int = 8
-    alpha: float = 0.1  # EMA smoothing for acceptance rate
-    target_acceptance: float = 0.7  # target acceptance rate
-    adjustment_interval: int = 10  # steps between length adjustments
-    temperature: float = 1.0
+    Attributes:
+        min_K: Minimum speculation length (default 1).
+        max_K: Maximum speculation length (default 8).
+        init_K: Initial speculation length (default 4).
+        target_acceptance: Target acceptance rate (default 0.7).
+            The controller adjusts K to maintain this rate.
+        adapt_rate: How quickly K adapts to changes in acceptance rate
+            (default 0.1). Higher = faster adaptation.
+        ema_alpha: Smoothing factor for the EMA of acceptance rate
+            (default 0.3). Higher = more responsive to recent changes.
+    """
+
+    min_K: int = 1
+    max_K: int = 8
+    init_K: int = 4
+    target_acceptance: float = 0.7
+    adapt_rate: float = 0.1
+    ema_alpha: float = 0.3
 
 
-class AcceptanceRateTracker:
-    """EMA-smoothed acceptance rate tracker."""
+class AdaptiveSpecController:
+    """Nightjar-style adaptive speculation length controller.
 
-    def __init__(self, alpha: float = 0.1, init_rate: float = 0.7) -> None:
-        self._alpha = alpha
-        self._init_rate = init_rate
-        self._rate = init_rate
+    Tracks acceptance rate via EMA and adjusts K dynamically.
 
-    def update(self, n_accepted: int, n_proposed: int) -> None:
-        """Update EMA: rate = alpha * (n_accepted/n_proposed) + (1-alpha) * rate."""
-        if n_proposed <= 0:
-            return
-        batch_rate = n_accepted / n_proposed
-        self._rate = self._alpha * batch_rate + (1.0 - self._alpha) * self._rate
+    Args:
+        cfg: Adaptive speculation configuration.
+    """
 
-    def get_rate(self) -> float:
-        return self._rate
+    def __init__(self, cfg: AdaptiveSpecConfig | None = None) -> None:
+        self.cfg = cfg or AdaptiveSpecConfig()
+        self.K = self.cfg.init_K
+        self._ema: float = self.cfg.target_acceptance
+        self._steps = 0
+        self._total_accepted = 0
+        self._total_proposed = 0
+
+    def update(self, accepted: int, proposed: int) -> int:
+        """Update the controller with the latest acceptance statistics.
+
+        Args:
+            accepted: Number of tokens accepted in this round.
+            proposed: Number of tokens proposed in this round (K).
+
+        Returns:
+            New K value for the next speculation round.
+        """
+        self._steps += 1
+        self._total_accepted += accepted
+        self._total_proposed += proposed
+
+        if proposed == 0:
+            return self.K
+
+        # Instantaneous acceptance rate for this round
+        round_rate = accepted / proposed
+
+        # Update EMA
+        self._ema = (
+            self.cfg.ema_alpha * round_rate
+            + (1 - self.cfg.ema_alpha) * self._ema
+        )
+
+        # Adjust K based on deviation from target
+        error = self._ema - self.cfg.target_acceptance
+        delta = round(self.cfg.adapt_rate * error * self.K)
+        self.K = int(self.K + delta)
+        self.K = max(self.cfg.min_K, min(self.cfg.max_K, self.K))
+
+        return self.K
+
+    @property
+    def overall_acceptance(self) -> float:
+        """Overall acceptance rate across all rounds."""
+        if self._total_proposed == 0:
+            return 0.0
+        return self._total_accepted / self._total_proposed
+
+    @property
+    def ema_acceptance(self) -> float:
+        """Smoothed acceptance rate (EMA)."""
+        return self._ema
 
     def reset(self) -> None:
-        self._rate = self._init_rate
-
-
-@torch.no_grad()
-def sample_draft_tokens(
-    draft_model: nn.Module,
-    input_ids: torch.Tensor,  # (1, T) current context
-    n_tokens: int,
-    temperature: float = 1.0,
-) -> tuple[torch.Tensor, torch.Tensor]:
-    """Autoregressively sample n_tokens from draft_model.
-
-    Returns (draft_ids, draft_log_probs): shapes (1, n_tokens), (1, n_tokens).
-    """
-    draft_ids_list: list[torch.Tensor] = []
-    draft_log_probs_list: list[torch.Tensor] = []
-
-    context = input_ids.clone()
-
-    for _ in range(n_tokens):
-        _, logits, _ = draft_model(context)
-        # logits: (1, seq_len, vocab_size) — take last position
-        last_logits = logits[0, -1, :]  # (vocab_size,)
-
-        if temperature != 1.0 and temperature > 0:
-            last_logits = last_logits / temperature
-
-        log_probs = F.log_softmax(last_logits, dim=-1)  # (vocab_size,)
-        probs = log_probs.exp()
-
-        next_token = torch.multinomial(probs, 1)  # (1,) scalar index
-        token_log_prob = log_probs[next_token]  # (1,)
-
-        draft_ids_list.append(next_token)
-        draft_log_probs_list.append(token_log_prob)
-
-        context = torch.cat([context, next_token.view(1, 1)], dim=1)
-
-    # Stack to (n_tokens,) then unsqueeze to (1, n_tokens)
-    draft_ids = torch.stack(draft_ids_list, dim=0).view(1, n_tokens)  # (1, n_tokens)
-    draft_log_probs = torch.stack(draft_log_probs_list, dim=0).view(1, n_tokens)  # (1, n_tokens)
-
-    return draft_ids, draft_log_probs
-
-
-@torch.no_grad()
-def compute_target_log_probs(
-    target_model: nn.Module,
-    input_ids: torch.Tensor,  # (1, T) context
-    draft_ids: torch.Tensor,  # (1, K) draft tokens
-) -> torch.Tensor:
-    """Run target model on context+draft, return log probs for draft positions.
-
-    Returns (1, K) log probs of the draft tokens at their positions.
-    """
-    K = draft_ids.shape[1]
-    combined = torch.cat([input_ids, draft_ids], dim=1)  # (1, T+K)
-
-    _, logits, _ = target_model(combined)
-    # logits: (1, T+K, vocab_size)
-    # Position T-1 predicts draft token 0, position T predicts draft token 1, ...
-    # draft token k is at position T+k in combined, predicted by logit at position T-1+k
-    T = input_ids.shape[1]
-
-    target_log_probs_list: list[torch.Tensor] = []
-    for k in range(K):
-        pos_logits = logits[0, T - 1 + k, :]  # (vocab_size,)
-        log_probs = F.log_softmax(pos_logits, dim=-1)  # (vocab_size,)
-        token_id = draft_ids[0, k]
-        target_log_probs_list.append(log_probs[token_id].unsqueeze(0))  # (1,)
-
-    target_log_probs = torch.stack(target_log_probs_list, dim=0).view(1, K)  # (1, K)
-    return target_log_probs
-
-
-def speculative_verify(
-    draft_ids: torch.Tensor,  # (1, K)
-    draft_log_probs: torch.Tensor,  # (1, K)
-    target_log_probs: torch.Tensor,  # (1, K)
-) -> tuple[torch.Tensor, int]:
-    """Token-by-token acceptance sampling.
-
-    For each token k:
-      ratio = exp(target_log_prob[k] - draft_log_prob[k]).clamp(max=1.0)
-      accept if uniform() < ratio
-
-    Returns (accepted_ids, n_accepted) where accepted_ids is shape (1, n_accepted).
-    """
-    K = draft_ids.shape[1]
-    n_accepted = 0
-
-    for k in range(K):
-        log_ratio = target_log_probs[0, k] - draft_log_probs[0, k]
-        ratio = log_ratio.exp().clamp(max=1.0)
-        u = torch.rand(1, device=draft_ids.device)
-        if u.item() < ratio.item():
-            n_accepted += 1
-        else:
-            break
-
-    if n_accepted > 0:
-        accepted_ids = draft_ids[:, :n_accepted]  # (1, n_accepted)
-    else:
-        accepted_ids = draft_ids[:, :0]  # (1, 0) empty
-
-    return accepted_ids, n_accepted
-
-
-def adjust_draft_length(
-    current_len: int,
-    acceptance_rate: float,
-    target_rate: float,
-    min_len: int,
-    max_len: int,
-) -> int:
-    """Adjust draft length based on acceptance rate vs target.
-
-    If acceptance_rate > target_rate + 0.1: increase by 1 (more aggressive).
-    If acceptance_rate < target_rate - 0.1: decrease by 1 (more conservative).
-    Clamp to [min_len, max_len].
-    """
-    if acceptance_rate > target_rate + 0.1:
-        new_len = current_len + 1
-    elif acceptance_rate < target_rate - 0.1:
-        new_len = current_len - 1
-    else:
-        new_len = current_len
-
-    return max(min_len, min(max_len, new_len))
+        """Reset the controller to initial state."""
+        self.K = self.cfg.init_K
+        self._ema = self.cfg.target_acceptance
+        self._steps = 0
+        self._total_accepted = 0
+        self._total_proposed = 0
 
 
 class AdaptiveSpeculativeDecoder:
-    """Adaptive speculative decoding with dynamic draft length."""
+    """Wraps a speculative decoder with Nightjar-style adaptive K.
+
+    The controller monitors acceptance rate and adjusts speculation
+    length dynamically, reducing wasted compute on low-quality drafts
+    and maximizing throughput on high-quality drafts.
+
+    Args:
+        decoder: The underlying speculative decoder (must have a
+            ``cfg`` attribute with ``K`` or ``tree_budget``).
+        controller: The adaptive controller.
+    """
 
     def __init__(
         self,
-        target_model: nn.Module,
-        draft_model: nn.Module,
-        cfg: AdaptiveSpecConfig,
+        decoder,
+        controller: AdaptiveSpecController | None = None,
     ) -> None:
-        self.target_model = target_model
-        self.draft_model = draft_model
-        self.cfg = cfg
+        self.decoder = decoder
+        self.controller = controller or AdaptiveSpecController()
 
-        self._tracker = AcceptanceRateTracker(alpha=cfg.alpha, init_rate=cfg.target_acceptance)
-        self._draft_len = cfg.init_draft_len
+    @torch.no_grad()
+    def generate(self, input_ids: torch.Tensor) -> torch.Tensor:
+        """Generate tokens with adaptive speculation length.
 
-        # Stats accumulators
-        self._n_target_calls = 0
-        self._n_tokens_generated = 0
-        self._draft_len_history: list[int] = []
-        self._step = 0
+        Each round: controller picks K → decoder speculates →
+        controller measures acceptance → adjusts K for next round.
 
-    def decode(
-        self,
-        input_ids: torch.Tensor,
-        max_new_tokens: int,
-    ) -> tuple[torch.Tensor, dict]:
-        """Generate max_new_tokens using adaptive speculative decoding.
+        Args:
+            input_ids: (1, prompt_len) input tokens.
 
-        Returns (generated_ids, stats) where:
-          generated_ids: (1, n_tokens_generated)
-          stats: dict with mean_draft_len, mean_acceptance_rate, n_target_calls, n_tokens_generated
+        Returns:
+            (1, prompt_len + generated) output tokens.
         """
-        cfg = self.cfg
-        context = input_ids.clone()
-        generated_tokens: list[torch.Tensor] = []
+        cfg = self.decoder.cfg
+        generated = input_ids.clone()
+        tokens_generated = 0
 
-        self._n_target_calls = 0
-        self._n_tokens_generated = 0
-        self._draft_len_history = []
-        self._step = 0
-        self._tracker.reset()
-        self._draft_len = cfg.init_draft_len
+        while tokens_generated < cfg.max_new_tokens:
+            K = self.controller.K
+            # Set the speculation length on the decoder config
+            if hasattr(cfg, "K"):
+                cfg.K = K
+            elif hasattr(cfg, "tree_budget"):
+                # For tree-based decoders, adapt tree budget
+                cfg.tree_budget = K + 2  # root + K children
 
-        while self._n_tokens_generated < max_new_tokens:
-            remaining = max_new_tokens - self._n_tokens_generated
-            draft_len = min(self._draft_len, remaining)
-            if draft_len <= 0:
-                break
+            # Run one speculation round
+            # Note: we capture the length before to measure acceptance
+            start_len = generated.shape[1]
+            generated = self._run_one_round(generated, K)
+            end_len = generated.shape[1]
 
-            self._draft_len_history.append(draft_len)
+            accepted = end_len - start_len - 1  # -1 for bonus token
+            if accepted < 0:
+                accepted = 0
+            proposed = K
 
-            # 1. Sample draft tokens
-            draft_ids, draft_log_probs = sample_draft_tokens(
-                self.draft_model, context, draft_len, cfg.temperature
-            )
+            # Update controller with results
+            self.controller.update(accepted, proposed)
 
-            # 2. Verify with target model
-            target_log_probs = compute_target_log_probs(self.target_model, context, draft_ids)
-            self._n_target_calls += 1
+            tokens_generated = end_len - input_ids.shape[1]
 
-            # 3. Accept verified tokens
-            accepted_ids, n_accepted = speculative_verify(
-                draft_ids, draft_log_probs, target_log_probs
-            )
+        return generated
 
-            # Update tracker
-            self._tracker.update(n_accepted, draft_len)
+    def _run_one_round(
+        self, input_ids: torch.Tensor, K: int
+    ) -> torch.Tensor:
+        """Run a single speculation round with the underlying decoder.
 
-            # If nothing accepted, fall back to one greedy token from target
-            if n_accepted == 0:
-                # Use the first draft token as a fallback (or resample)
-                # Simple fallback: accept first draft token
-                fallback_token = draft_ids[:, :1]  # (1, 1)
-                generated_tokens.append(fallback_token)
-                context = torch.cat([context, fallback_token], dim=1)
-                self._n_tokens_generated += 1
-            else:
-                generated_tokens.append(accepted_ids)
-                context = torch.cat([context, accepted_ids], dim=1)
-                self._n_tokens_generated += n_accepted
+        Args:
+            input_ids: Current input.
+            K: Speculation length for this round.
 
-            self._step += 1
+        Returns:
+            Extended input with accepted tokens.
+        """
+        # Save original max_new_tokens
+        orig_max = self.decoder.cfg.max_new_tokens
 
-            # 4. Every adjustment_interval steps: adjust draft_len
-            if self._step % cfg.adjustment_interval == 0:
-                self._draft_len = adjust_draft_length(
-                    self._draft_len,
-                    self._tracker.get_rate(),
-                    cfg.target_acceptance,
-                    cfg.min_draft_len,
-                    cfg.max_draft_len,
-                )
+        # Set to K+1 to generate just one round
+        self.decoder.cfg.max_new_tokens = K + 1
+        result = self.decoder.generate(input_ids)
 
-        # Assemble output
-        if generated_tokens:
-            generated_ids = torch.cat(generated_tokens, dim=1)  # (1, n_tokens_generated)
-            # Trim to max_new_tokens if we overshot
-            if generated_ids.shape[1] > max_new_tokens:
-                generated_ids = generated_ids[:, :max_new_tokens]
-        else:
-            generated_ids = torch.zeros((1, 0), dtype=input_ids.dtype, device=input_ids.device)
-
-        stats = self.get_stats()
-        return generated_ids, stats
-
-    def get_stats(self) -> dict[str, float]:
-        """Return current stats dict."""
-        mean_draft_len = (
-            sum(self._draft_len_history) / len(self._draft_len_history)
-            if self._draft_len_history
-            else float(self.cfg.init_draft_len)
-        )
-        return {
-            "mean_draft_len": mean_draft_len,
-            "mean_acceptance_rate": self._tracker.get_rate(),
-            "n_target_calls": float(self._n_target_calls),
-            "n_tokens_generated": float(self._n_tokens_generated),
-        }
+        # Restore
+        self.decoder.cfg.max_new_tokens = orig_max
+        return result
