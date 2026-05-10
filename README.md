@@ -14,12 +14,15 @@
 
 ## Architecture Overview
 
+> ![Aurelius architecture diagram](docs/aurelius-architecture.svg)
+> *Open interactive version: [docs/architecture.html](docs/architecture.html)*
+
 Aurelius is organized into four independent layers, each owning a distinct responsibility:
 
 | Layer | Location | Language | Role |
 |-------|----------|----------|------|
 | **Rust Engine** | `crates/`, `tools/` | Rust 2024 | High-performance data engine, search, tokenization, vector similarity, caching, auth sessions |
-| **Python Backend** | `src/`, `configs/` | Python 3.12 | Model training, inference, API server, CLI |
+| Python Backend | `src/`, `configs/`, `agent/`, `gateway/`, `aurelius_cli/` | Python 3.12 | Model training, inference, API server, CLI |
 | **Node.js BFF** | `middle/` | TypeScript | API gateway for frontend, auth, file serving, WebSocket, SSE, cron scheduler |
 | **Frontend** | `frontend/` | TypeScript / React 19 | Mission Control dashboard, agent management, chat, analytics |
 
@@ -30,9 +33,9 @@ Browser / Frontend
     |  HTTP / WebSocket
     v
 Node.js BFF (middle/ — port 3001)
-    |  NAPI-rs FFI (sync)        |  HTTP proxy
-    v                              v
-Rust Engine (crates/data-engine/)  Python API Server (src/serving/ — port 8080)
+|    |  HTTP proxy                                    v
+v                              v
+Rust Engine (crates/data-engine/)  Python API Server (gateway/ — port 8080)
     |                                    |
     | in-memory state (dashmap+RwLock)   | model inference, persona routing
     v                                    v
@@ -47,7 +50,7 @@ The frontend **never** talks directly to Python. All API calls route through the
 
 ### Model (Pure PyTorch)
 - **1.395B decoder-only transformer** — GQA, RoPE/YaRN, SwiGLU, RMSNorm
-- **150+ architecture modules** — MoE, SSMs (Mamba, RWKV, Griffin), diffusion LM head
+- **~150 research architecture modules** (43 actively used; 211 archived experiments)
 - **Full training pipeline** — pretrain → SFT → DPO → RLHF, all from scratch
 - **No HF Transformers / flash-attn / bitsandbytes / DeepSpeed at runtime**
 
@@ -94,7 +97,7 @@ The frontend **never** talks directly to Python. All API calls route through the
 docker compose -f deployment/compose.gpu.yaml up --build
 
 # vLLM inference with speculative decoding
-python -m src.serving.api_server \
+python -m gateway.aurelius_api \
   --engine vllm \
   --model-path aurelius-ai/aurelius-1b \
   --gpu-memory-utilization 0.90 \
@@ -102,12 +105,12 @@ python -m src.serving.api_server \
   --n-spec-tokens 5
 
 # ReAct agentic backend
-python -m src.serving.api_server \
+python -m gateway.aurelius_api \
   --engine agentic \
   --model-path aurelius-ai/aurelius-1b
 
 # Quantized INT8 serving
-python -m src.serving.api_server \
+python -m gateway.aurelius_api \
   --engine vllm \
   --model-path aurelius-ai/aurelius-1b \
   --quantization int8
