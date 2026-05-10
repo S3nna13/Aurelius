@@ -8,7 +8,7 @@ RUN pip install --no-cache-dir uv
 # Copy package metadata first for layer caching
 COPY pyproject.toml .
 COPY README.md .
-COPY src/ src/
+COPY src/ agent/ aurelius_cli/ gateway/ acp_adapter/ cron/ plugins/ tools/ skills/ optional-skills/ environments/ run_agent.py batch_runner.py aurelius_cli.py aurelius_constants.py aurelius_state.py model_tools.py toolsets.py ./
 
 # Install dependencies
 RUN uv sync --no-dev
@@ -25,4 +25,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')" || exit 1
 
 # Bind loopback by default. Use --host 0.0.0.0 only with AURELIUS_API_KEYS set.
-ENTRYPOINT ["python", "-m", "src.serving.api_server", "--host", "127.0.0.1", "--port", "8080"]
+ENTRYPOINT ["python", "-m", "gateway.aurelius_api", "--host", "127.0.0.1", "--port", "8080"]
