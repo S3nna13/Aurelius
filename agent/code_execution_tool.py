@@ -346,43 +346,5 @@ CODE_EXECUTION_TOOL_REGISTRY: dict[str, type[CodeExecutionTool]] = {
 # ---------------------------------------------------------------------------
 # Wire into TOOL_REGISTRY from src.agent
 # ---------------------------------------------------------------------------
-# Deferred import to avoid circular dependency; guarded so the module is
-# usable in isolation (e.g., direct unit tests before package init).
-try:
-    from src.agent import TOOL_REGISTRY as _TOOL_REGISTRY  # type: ignore[attr-defined]
-
-    _TOOL_REGISTRY.setdefault(
-        "code_execution",
-        {
-            "name": "code_execution",
-            "description": (
-                "Execute a Python code snippet in a sandboxed subprocess "
-                "and return stdout, stderr, and exit code."
-            ),
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "code": {
-                        "type": "string",
-                        "description": "Source code to run.",
-                    },
-                    "language": {
-                        "type": "string",
-                        "enum": ["python", "bash", "javascript"],
-                        "default": "python",
-                    },
-                    "timeout_s": {
-                        "type": "number",
-                        "default": 10.0,
-                        "description": "Wall-clock timeout in seconds.",
-                    },
-                },
-                "required": ["code"],
-            },
-        },
-    )
-except Exception:  # noqa: BLE001
-    logging.getLogger(__name__).debug(
-        "TOOL_REGISTRY wiring failed (expected when imported in isolation)",
-        exc_info=True,
-    )
+# Registration is deferred to agent/__init__.py (right after TOOL_REGISTRY
+# is defined) to avoid circular imports through the src.agent shim.
