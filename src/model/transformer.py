@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -284,6 +286,20 @@ class AureliusTransformer(nn.Module):
 
         return loss, logits, present_key_values
 
+    @staticmethod
+    def _sample(logits: torch.Tensor, temperature: float, top_p: float) -> torch.Tensor:
+        """Top-p nucleus sampling with temperature scaling."""
+        if temperature != 1.0:
+            assert temperature > 0, f"temperature must be > 0, got {temperature}"
+            logits = logits / temperature
+        sorted_logits, sorted_indices = torch.sort(logits, descending=False)
+        cumulative_probs = sorted_logits.softmax(dim=-1).cumsum(dim=-1)
+        sorted_mask = cumulative_probs <= (1.0 - top_p)
+        sorted_mask[..., -1:] = False
+        mask = sorted_mask.scatter(1, sorted_indices, sorted_mask)
+        logits = logits.masked_fill(mask, float("-inf"))
+        return torch.multinomial(logits.softmax(dim=-1), num_samples=1)
+
     @torch.no_grad()
     def generate(
         self,
@@ -323,18 +339,7 @@ class AureliusTransformer(nn.Module):
             _, logits, past_key_values = self(cur_ids, past_key_values=past_key_values)
             next_logits = logits[:, -1, :]
 
-            if temperature != 1.0:
-                assert temperature > 0, f"temperature must be > 0, got {temperature}"
-                next_logits = next_logits / temperature
-
-            sorted_logits, sorted_indices = torch.sort(next_logits, descending=False)
-            cumulative_probs = sorted_logits.softmax(dim=-1).cumsum(dim=-1)
-            sorted_mask = cumulative_probs <= (1.0 - top_p)
-            sorted_mask[..., -1:] = False
-            mask = sorted_mask.scatter(1, sorted_indices, sorted_mask)
-            next_logits = next_logits.masked_fill(mask, float("-inf"))
-
-            next_token = torch.multinomial(next_logits.softmax(dim=-1), num_samples=1)
+            next_token = self._sample(next_logits, temperature, top_p)
 
             if reasoning_budget is not None and not think_closed:
                 think_tokens += 1
@@ -364,7 +369,7 @@ class AureliusTransformer(nn.Module):
         eos_token_id: int | None = None,
         reasoning_budget: int | None = None,
         think_token_id: int = 50400,
-    ) -> Iterator[torch.Tensor]:  # noqa: F821
+    ) -> Iterator[torch.Tensor]:
         """Autoregressive generation yielding one token at a time.
 
         Same algorithm as generate(), but yields each new token as it is
@@ -392,17 +397,13 @@ class AureliusTransformer(nn.Module):
             _, logits, past_key_values = self(cur_ids, past_key_values=past_key_values)
             next_logits = logits[:, -1, :]
 
-            if temperature != 1.0:
-                next_logits = next_logits / temperature
+            next_token = self._sample(next_logits, temperature, top_p)
 
-            sorted_logits, sorted_indices = torch.sort(next_logits, descending=False)
-            cumulative_probs = sorted_logits.softmax(dim=-1).cumsum(dim=-1)
-            sorted_mask = cumulative_probs <= (1.0 - top_p)
-            sorted_mask[..., -1:] = False
-            mask = sorted_mask.scatter(1, sorted_indices, sorted_mask)
-            next_logits = next_logits.masked_fill(mask, float("-inf"))
-
-            next_token = torch.multinomial(next_logits.softmax(dim=-1), num_samples=1)
+            if reasoning_budget is not None and not think_closed:
+                think_tokens += 1
+                if think_tokens >= reasoning_budget:
+                    next_token = torch.full_like(next_token, think_token_id)
+                    think_closed = True
 
             if eos_token_id is not None:
                 finished = finished | (next_token.squeeze(-1) == eos_token_id)
