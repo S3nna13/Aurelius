@@ -31,10 +31,10 @@ jobs:
         run: pip install ruff==0.9.0
 
       - name: Ruff format
-        run: ruff format src/ tests/ scripts/
+        run: ruff format src/ tests/ agent/ aurelius_cli/ gateway/ acp_adapter/ cron/ plugins/ tools/
 
       - name: Ruff fix
-        run: ruff check --fix src/ tests/ scripts/
+        run: ruff check --fix src/ tests/ agent/ aurelius_cli/ gateway/ acp_adapter/ cron/ plugins/ tools/
 
       - name: Check for changes
         id: diff

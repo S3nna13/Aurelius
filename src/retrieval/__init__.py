@@ -163,9 +163,9 @@ from .citation_extractor import (  # noqa: E402
 
 CITATION_REGISTRY["citation_extractor"] = CitationExtractor
 
-from .reranker import CrossEncoderReranker  # noqa: E402
 from .compressor import ContextCompressor  # noqa: E402
 from .query_rewriter import QueryRewriter  # noqa: E402
+from .reranker import CrossEncoderReranker  # noqa: E402
 
 __all__ = [
     "BM25Retriever",

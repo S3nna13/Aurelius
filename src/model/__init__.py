@@ -352,21 +352,29 @@ __all__ = [
 ]
 
 
-from .remode import ReMoDEBlock, ReMoDELayer  # noqa: E402
+from . import (
+    architectures,  # noqa: E402
+    mod,  # noqa: E402
+)
+from .config import HLMConfig, MoDConfig, MoEConfig, ReMoDEConfig  # noqa: E402
+from .diffusion_llm import (  # noqa: E402
+    DiffusionDecoder,
+    DiffusionLLM,
+    DiffusionLLMConfig,
+    DiscreteDiffusion,
+    SemanticTokenizer,
+)
 from .hlm import HLMProfile, HLMRouter, get_hlm_config  # noqa: E402
-from .diffusion_llm import DiffusionDecoder, DiffusionLLM, DiffusionLLMConfig, DiscreteDiffusion, SemanticTokenizer  # noqa: E402
-from . import architectures  # noqa: E402
 from .moe import (  # noqa: E402
     BalancedMoEFFN,
     ExpertChoiceLayer,
     SoftMoELayer,
     SparseMoELayer,
 )
-from .config import HLMConfig, MoDConfig, MoEConfig, ReMoDEConfig  # noqa: E402
-from . import mod  # noqa: E402
+from .remode import ReMoDEBlock, ReMoDELayer  # noqa: E402
 
 try:
-    from .mod import MoDRouter, MoDLayer, CapacityTracker  # noqa: E402
+    from .mod import CapacityTracker, MoDLayer, MoDRouter  # noqa: E402
 except ImportError:
     pass
 

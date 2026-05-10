@@ -7,8 +7,8 @@ import json
 import time
 from dataclasses import dataclass
 from enum import StrEnum
-from urllib.request import Request, urlopen
 from urllib.error import URLError
+from urllib.request import Request, urlopen
 
 
 class CircuitState(StrEnum):

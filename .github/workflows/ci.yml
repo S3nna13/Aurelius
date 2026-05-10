@@ -70,15 +70,15 @@ jobs:
 
       - name: Run Ruff lint
         run: |
-          python -m ruff check src/ tests/
+          python -m ruff check src/ tests/ agent/ aurelius_cli/ gateway/ acp_adapter/ cron/ plugins/ tools/
 
       - name: Run Ruff format check
         run: |
-          python -m ruff format --check src/ tests/
+          python -m ruff format --check src/ tests/ agent/ aurelius_cli/ gateway/ acp_adapter/ cron/ plugins/ tools/
 
       - name: Run py_compile on all Python files
         run: |
-          find src tests -name "*.py" -exec python -m py_compile {} +
+          find src tests agent aurelius_cli gateway acp_adapter cron plugins tools -name "*.py" -exec python -m py_compile {} +
 
   security:
     name: Security scan
@@ -102,8 +102,8 @@ jobs:
 
       - name: Run Bandit
         run: |
-          bandit -r src/ -f json -o bandit-report.json
-          bandit -r src/ -ii -ll
+          bandit -r src/ agent/ aurelius_cli/ gateway/ acp_adapter/ cron/ plugins/ tools/ -f json -o bandit-report.json
+          bandit -r src/ agent/ aurelius_cli/ gateway/ acp_adapter/ cron/ plugins/ tools/ -ii -ll
 
       - name: Run pip-audit
         run: |

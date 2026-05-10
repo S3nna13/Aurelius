@@ -46,7 +46,7 @@ class BenchmarkRunner:
         result = {}
         if benchmark is not None:
             if config.use_ilr:
-                from src.eval.ilr_harness import ILRHarness, ILRConfig
+                from src.eval.ilr_harness import ILRConfig, ILRHarness
 
                 ilr_seed = config.ilr_seed if config.ilr_seed is not None else config.seed
                 benchmark = ILRHarness(

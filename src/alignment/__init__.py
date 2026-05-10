@@ -2,6 +2,7 @@
 
 import warnings
 
+
 def __getattr__(name: str):
     if name == "ProcessRewardModel":
         from src.training.process_reward_model import ProcessRewardModel
