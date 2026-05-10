@@ -14,7 +14,7 @@ serde_json = "1"
 unicode-segmentation = "1.12"
 dashmap = "6"
 rust-stemmers = "1.2"
-radix_trie = "0.2"
+radix_trie = "0.3"
 
 [build-dependencies]
 napi-build = "2"
