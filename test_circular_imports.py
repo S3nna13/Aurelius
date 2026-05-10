@@ -15,29 +15,29 @@ print("=== GREEN TEST: Verify circular imports are fixed ===\n")
 print("Test 1: Import agent and check registrations...")
 try:
     import agent
-    
+
     # Check AGENT_LOOP_REGISTRY has plan_and_execute
     assert "plan_and_execute" in agent.AGENT_LOOP_REGISTRY, (
         f"Missing 'plan_and_execute' in AGENT_LOOP_REGISTRY. "
         f"Keys: {list(agent.AGENT_LOOP_REGISTRY.keys())}"
     )
     print("[OK] plan_and_execute registered in AGENT_LOOP_REGISTRY")
-    
+
     # Check TOOL_REGISTRY has code_execution
     assert "code_execution" in agent.TOOL_REGISTRY, (
         f"Missing 'code_execution' in TOOL_REGISTRY. "
         f"Keys: {list(agent.TOOL_REGISTRY.keys())}"
     )
     print("[OK] code_execution registered in TOOL_REGISTRY")
-    
+
     # Verify PlanAndExecuteAgent is accessible from agent namespace
     assert hasattr(agent, "PlanAndExecuteAgent"), "PlanAndExecuteAgent not in agent namespace"
     print("[OK] PlanAndExecuteAgent accessible from agent namespace")
-    
+
     # Verify CodeExecutionTool is accessible from agent namespace
     assert hasattr(agent, "CodeExecutionTool"), "CodeExecutionTool not in agent namespace"
     print("[OK] CodeExecutionTool accessible from agent namespace")
-    
+
 except Exception as e:
     print(f"[FAIL] {type(e).__name__}: {e}")
     traceback.print_exc()
@@ -68,14 +68,9 @@ print()
 
 # Test 4: Combined import as specified in the task
 print("Test 4: Combined import (task verification command)...")
-try:
-    from agent.plan_and_execute import PlanAndExecuteAgent
-    from agent.code_execution_tool import CodeExecutionTool
-    print("OK")
-except Exception as e:
-    print(f"[FAIL] {type(e).__name__}: {e}")
-    traceback.print_exc()
-    sys.exit(1)
+from agent.plan_and_execute import PlanAndExecuteAgent
+from agent.code_execution_tool import CodeExecutionTool
+print("OK")
 
 print()
 

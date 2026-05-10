@@ -672,7 +672,6 @@ __all__ += [
 from .plan_executor import (  # noqa: E402
     PLAN_EXECUTOR_REGISTRY,
     PlanExecutor,
-    PlanStep,
     StepStatus,
 )
 
@@ -681,7 +680,6 @@ AGENT_LOOP_REGISTRY["plan_executor"] = PlanExecutor
 __all__ += [
     "PLAN_EXECUTOR_REGISTRY",
     "PlanExecutor",
-    "PlanStep",
     "StepStatus",
 ]
 

@@ -9,7 +9,7 @@ memory entries, logs, and configuration store.
 """
 from __future__ import annotations
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 from alembic import op
 import sqlalchemy as sa
