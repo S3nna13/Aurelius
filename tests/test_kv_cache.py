@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import torch
-
 from hierarchical_kv_cache import HierarchicalKVCache
 
 

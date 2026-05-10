@@ -1,6 +1,7 @@
 """Tests for src/inference/medusa_heads.py"""
 
 import torch
+
 from src.inference.medusa_heads import (
     MedusaDecoder,
     MedusaHead,

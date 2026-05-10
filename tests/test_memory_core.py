@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import torch
-
 from aurelius.memory_core import AurelianMemoryCore, GraphConsolidator
 
 

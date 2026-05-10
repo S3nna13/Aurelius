@@ -3,15 +3,12 @@
 from __future__ import annotations
 
 from src.reasoning.toolgt_reasoner import (
-    TOOLGT_REASONER,
     TOOLGT_REGISTRY,
-    TemplateSlot,
     ToolGTReasoner,
     ToolGTSchema,
     ToolGTTemplate,
     classify_intent,
 )
-
 
 # ---------- classify_intent ----------
 

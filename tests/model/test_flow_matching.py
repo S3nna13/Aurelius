@@ -2,7 +2,6 @@
 
 import pytest
 import torch
-
 from aurelius.model.flow_matching import (
     FlowMatchingConfig,
     FlowMatchingSchedule,

@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import torch
-
 import rust_bridge
+import torch
 
 
 def test_rust_bridge_fallback_page_table_and_checkpoint(tmp_path, monkeypatch):

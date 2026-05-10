@@ -234,7 +234,8 @@ class AureliusTransformer(nn.Module):
 
         x = self.embed(input_ids)
         assert past_len + S <= self.config.max_seq_len, (  # noqa: S101
-            f"past_len({past_len}) + S({S}) = {past_len + S} exceeds max_seq_len {self.config.max_seq_len}"
+            f"past_len({past_len}) + S({S}) = {past_len + S} "
+            f"exceeds max_seq_len {self.config.max_seq_len}"
         )
         freqs_cis = self.freqs_cis[past_len : past_len + S]
 
@@ -290,7 +291,7 @@ class AureliusTransformer(nn.Module):
     def _sample(logits: torch.Tensor, temperature: float, top_p: float) -> torch.Tensor:
         """Top-p nucleus sampling with temperature scaling."""
         if temperature != 1.0:
-            assert temperature > 0, f"temperature must be > 0, got {temperature}"
+            assert temperature > 0, f"temperature must be > 0, got {temperature}"  # noqa: S101
             logits = logits / temperature
         sorted_logits, sorted_indices = torch.sort(logits, descending=False)
         cumulative_probs = sorted_logits.softmax(dim=-1).cumsum(dim=-1)

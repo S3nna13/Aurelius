@@ -1,38 +1,56 @@
-import sys, os
+import os
+import sys
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+import logging
+from collections.abc import Callable
+from typing import Any, Dict, Optional, Union
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import math
-from typing import Optional, Dict, Any, Tuple, List, Union, Callable
-
-from brain_layer import (
-    InputEncoder, WorkingMemory, LongTermMemory, ReasoningCore,
-    Planner, ToolController, AgentRouter, Verifier, Critic,
-    ReflectionModule, ExecutiveController, UncertaintyEstimator,
-    SelfImprovementLoop, RMSNorm, GatedResidual, MLP,
-)
-
-from reasoning_paper_impl import (
-    SelfTaughtReasoner, TreeOfThoughtSearcher,
-    QuietStarEngine, SkillLibraryVoyager,
-)
-
-from memory_moe_impl import (
-    NoisyTopKRouter, ExpertChoiceRouter,
-    CompressiveMemory, KNNAttentionLayer, MoEMemoryLayer,
-)
-
 from alignment_impl import (
-    DPOLoss, ConstitutionalClassifier, RARRRetriever, ProcessRewardModel,
+    ConstitutionalClassifier,
+    DPOLoss,
+    ProcessRewardModel,
+    RARRRetriever,
+)
+from brain_layer import (
+    AgentRouter,
+    Critic,
+    ExecutiveController,
+    InputEncoder,
+    LongTermMemory,
+    Planner,
+    ReasoningCore,
+    ReflectionModule,
+    SelfImprovementLoop,
+    ToolController,
+    UncertaintyEstimator,
+    Verifier,
+    WorkingMemory,
+)
+from efficiency_impl import (
+    DistributedTrainingManager,
+    PagedKVManager,
+    StreamingCache,
+    TiledFlashAttention,
+)
+from memory_moe_impl import (
+    CompressiveMemory,
+    ExpertChoiceRouter,
+    KNNAttentionLayer,
+    MoEMemoryLayer,
+    NoisyTopKRouter,
+)
+from reasoning_paper_impl import (
+    QuietStarEngine,
+    SelfTaughtReasoner,
+    SkillLibraryVoyager,
+    TreeOfThoughtSearcher,
 )
 
-from efficiency_impl import (
-    TiledFlashAttention, PagedKVManager,
-    StreamingCache, ZeROOptimizer, DistributedTrainingManager,
-)
-import logging
 logger = logging.getLogger(__name__)
 
 

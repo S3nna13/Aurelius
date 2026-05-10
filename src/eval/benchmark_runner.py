@@ -66,7 +66,10 @@ class BenchmarkRunner:
             except Exception as exc:
                 import traceback
                 logger.error("Benchmark %s failed: %s", name, traceback.format_exc())
-                result = {"_error": f"{type(exc).__name__}: {exc}", "_traceback": traceback.format_exc()}
+                result = {
+                    "_error": f"{type(exc).__name__}: {exc}",
+                    "_traceback": traceback.format_exc(),
+                }
         elapsed = time.monotonic() - start
         score = float(result.get(config.score_key, 0.0))
         n_samples = int(result.get("total", len(predictions)))

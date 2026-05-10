@@ -1,5 +1,7 @@
-import torch
 import sys
+
+import torch
+
 sys.path.insert(1, '/Users/christienantonio/aurelius')
 
 
@@ -45,8 +47,11 @@ def test_reasoning_components():
 
 def test_memory_moe_components():
     from memory_moe_impl import (
-        NoisyTopKRouter, ExpertChoiceRouter,
-        CompressiveMemory, KNNAttentionLayer, MoEMemoryLayer
+        CompressiveMemory,
+        ExpertChoiceRouter,
+        KNNAttentionLayer,
+        MoEMemoryLayer,
+        NoisyTopKRouter,
     )
     x = torch.randn(2, 16, 768)
     nr = NoisyTopKRouter(768, 4)
@@ -69,7 +74,7 @@ def test_memory_moe_components():
 
 
 def test_alignment_components():
-    from alignment_impl import DPOLoss, ConstitutionalClassifier, ProcessRewardModel
+    from alignment_impl import ConstitutionalClassifier, DPOLoss, ProcessRewardModel
     dpo = DPOLoss()
     chosen = torch.tensor([[0.1, 0.2, 0.3]])
     rejected = torch.tensor([[0.3, 0.2, 0.1]])
@@ -88,7 +93,7 @@ def test_alignment_components():
 
 
 def test_efficiency_components():
-    from efficiency_impl import TiledFlashAttention, PagedKVManager, StreamingCache
+    from efficiency_impl import PagedKVManager, StreamingCache, TiledFlashAttention
     x = torch.randn(2, 16, 768)
     ta = TiledFlashAttention(768, 8)
     assert ta(x).shape == x.shape
@@ -112,9 +117,10 @@ def test_memory_core():
 
 
 def test_agent_components():
-    from agent_core import ToolFormerAdapter, PlanningModule, CriticHead, ValueHead
-    from skills import SkillRegistry
+    from agent_core import CriticHead, PlanningModule, ToolFormerAdapter
     from agent_loop import AgentLoopController, AgentMemoryBridge, ExperienceReplayBuffer
+
+    from skills import SkillRegistry
     ta = ToolFormerAdapter(768, 8, 16)
     x = torch.randn(2, 16, 768)
     h, call = ta(x)
@@ -141,7 +147,7 @@ def test_agent_components():
 
 
 def test_kv_cache():
-    from kv_cache_quant import KVCacheQuantizer, PagedAttentionCache
+    from kv_cache_quant import KVCacheQuantizer
     k = torch.randn(2, 8, 32, 64)
     v = torch.randn(2, 8, 32, 64)
     q = KVCacheQuantizer(bits=8)
@@ -195,9 +201,9 @@ def test_moe():
 
 def test_ntm():
     try:
-        from ntm_memory import NTMMemory, NTMController
+        from ntm_memory import NTMController, NTMMemory
     except ImportError:
-        from archive.ntm_memory import NTMMemory, NTMController
+        from archive.ntm_memory import NTMController, NTMMemory
     nm = NTMMemory(64, 64)
     nc = NTMController(256, 64, 64)
     x = torch.randn(2, 256)
@@ -239,7 +245,7 @@ def test_unified_manager():
 
 
 def test_rust_bridge():
-    from rust_bridge import get_page_table, _PyFallbackPageTable
+    from rust_bridge import get_page_table
     pt = get_page_table(64, 1024)
     r = pt.register_page(0, 0.8, 4096, True)
     assert r == "ok" or "full" not in r

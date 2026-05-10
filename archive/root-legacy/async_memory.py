@@ -1,12 +1,12 @@
+import logging
+import math
+import queue
+import threading
+import time
+from dataclasses import dataclass
+
 import torch
 import torch.nn.functional as F
-import math
-import threading
-import queue
-import time
-import logging
-from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass

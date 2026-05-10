@@ -8,7 +8,6 @@ Covers SambaMambaBlock, SambaSWABlock, and SambaModel.
 from __future__ import annotations
 
 import torch
-
 from aurelius.model.samba import SambaMambaBlock, SambaModel, SambaSWABlock
 
 # ---------------------------------------------------------------------------

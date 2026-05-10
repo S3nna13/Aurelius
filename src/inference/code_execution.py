@@ -143,7 +143,9 @@ class _AstChecker(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Call(self, node: ast.Call) -> None:
-        if isinstance(node.func, ast.Name) and node.func.id in ("exec", "eval", "compile", "open", "__import__"):
+        if isinstance(node.func, ast.Name) and node.func.id in (
+            "exec", "eval", "compile", "open", "__import__",
+        ):
             self.violations.append(f"use of '{node.func.id}()' is not allowed")
         if isinstance(node.func, ast.Attribute) and node.func.attr in ("__import__",):
             self.violations.append(f"use of '{node.func.attr}()' is not allowed")

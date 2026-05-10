@@ -6,7 +6,6 @@ import math
 
 import torch
 import torch.nn as nn
-
 from aurelius.training.test_time_adaptation import (
     AdaptableParams,
     AugmentationPool,

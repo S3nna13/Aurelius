@@ -1,7 +1,6 @@
 """Tests for src/model/s4_ssm.py -- S4D Structured State Space Model."""
 
 import torch
-
 from aurelius.model.s4_ssm import S4DBlock, S4DKernel, S4DLayer
 
 # -- default dims for all tests ------------------------------------------------

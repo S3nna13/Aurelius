@@ -19,7 +19,6 @@ Test inventory (15 tests):
 """
 
 import torch
-
 from aurelius.model.performer import (
     PerformerAttention,
     PerformerLayer,

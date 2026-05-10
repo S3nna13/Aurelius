@@ -2,17 +2,22 @@
 from __future__ import annotations
 
 import datetime
+
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
+from reportlab.lib.colors import HexColor
+from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
 from reportlab.lib.pagesizes import letter
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
-    PageBreak, HRFlowable, KeepTogether, ListFlowable, ListItem,
+    HRFlowable,
+    PageBreak,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
 )
-from reportlab.platypus.tableofcontents import TableOfContents
-from reportlab.lib.colors import HexColor
 
 # ── Color palette ────────────────────────────────────────────────────────────
 NAVY   = HexColor("#0D1F3C")
@@ -31,7 +36,7 @@ PAGE_W, PAGE_H = letter
 
 # ── Styles ───────────────────────────────────────────────────────────────────
 def build_styles():
-    base = getSampleStyleSheet()
+    getSampleStyleSheet()  # initialise default styles
 
     styles = {
         "cover_title": ParagraphStyle(
@@ -250,7 +255,6 @@ def build():
     story = []
 
     # ── COVER PAGE ────────────────────────────────────────────────────────────
-    from reportlab.platypus import FrameBreak
     story.append(Spacer(1, 1.2 * inch))
 
     # Cover gradient block (drawn via table)

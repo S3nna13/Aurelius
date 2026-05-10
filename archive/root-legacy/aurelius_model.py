@@ -1,11 +1,16 @@
+import sys
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import math
-import sys
-
 from aurelius.memory_core import AurelianMemoryCore
-from aurelius.nn_utils import RMSNorm, RotaryEmbedding, apply_rotary, SwiGLUFFN, FeedForward, sample_with_top_p_top_k
+from aurelius.nn_utils import (
+    FeedForward,
+    RMSNorm,
+    RotaryEmbedding,
+    apply_rotary,
+    sample_with_top_p_top_k,
+)
 
 
 class Attention(nn.Module):

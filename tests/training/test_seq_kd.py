@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import torch
 import torch.nn as nn
-
 from aurelius.training.seq_kd import (
     GKDLoss,
     MiniLLMLoss,

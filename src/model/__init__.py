@@ -346,7 +346,8 @@ __all__ = [
     "MoDRouter", "MoDLayer", "CapacityTracker",
     "ReMoDELayer", "ReMoDEBlock",
     "HLMRouter", "HLMProfile", "get_hlm_config",
-    "DiffusionLLM", "DiffusionLLMConfig", "SemanticTokenizer", "DiscreteDiffusion", "DiffusionDecoder",
+    "DiffusionLLM", "DiffusionLLMConfig", "SemanticTokenizer",
+    "DiscreteDiffusion", "DiffusionDecoder",
     "architectures",
     "mod",
 ]

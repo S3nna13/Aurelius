@@ -44,7 +44,10 @@ def _validate_backend_url(url: str) -> None:
     if not parsed.hostname:
         raise ValueError(f"backend URL missing host: {url!r}")
     if _is_private_or_reserved(parsed.hostname):
-        raise ValueError(f"backend URL host {parsed.hostname!r} resolves to a private/reserved address")
+        raise ValueError(
+            f"backend URL host {parsed.hostname!r} resolves to "
+            "a private/reserved address"
+        )
 
 
 __all__ = [

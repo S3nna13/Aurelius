@@ -1,7 +1,7 @@
-import torch
-import torch.nn as nn
-import torch.distributed as dist
 import math
+
+import torch
+import torch.distributed as dist
 
 
 class CommunicationBudget:

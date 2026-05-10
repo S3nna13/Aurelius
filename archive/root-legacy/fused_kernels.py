@@ -1,11 +1,12 @@
-import torch
-import torch.nn as nn
 import sys
 
-from aurelius.nn_utils import apply_rotary, RMSNorm, RotaryEmbedding, SwiGLUFFN
+import torch
+import torch.nn as nn
+from aurelius.nn_utils import apply_rotary
 
 try:
-    from flash_attn import flash_attn_func
+    from flash_attn import flash_attn_func  # noqa: F401
+
     HAS_FLASH_3 = True
 except ImportError:
     HAS_FLASH_3 = False

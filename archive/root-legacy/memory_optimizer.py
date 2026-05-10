@@ -1,7 +1,8 @@
+from collections.abc import Iterator
+from contextlib import contextmanager
+
 import torch
 import torch.nn as nn
-from contextlib import contextmanager
-from typing import Iterator
 
 
 class GradientCheckpointing:

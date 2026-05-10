@@ -1,10 +1,16 @@
-import torch
 import sys
+
+import torch
+
 sys.path.insert(1, '/Users/christienantonio/aurelius')
+from adaptive_precision import AdaptivePrecisionManager, FP8LTSMemory, TieredMemoryBank
 from async_memory import AsyncConsolidationPipeline, ConsolidationTask, PagedLTSMemory
 from deduplication import CosineDeduplicator, L2Deduplicator, PriorityProportionalAllocator
-from prefetch_router import PredictiveMemoryPrefetcher, SparseLTSRouter, PredictiveAttentionRouter, LTSIndexCompressor
-from adaptive_precision import AdaptivePrecisionManager, FP8LTSMemory, TieredMemoryBank
+from prefetch_router import (
+    PredictiveAttentionRouter,
+    PredictiveMemoryPrefetcher,
+    SparseLTSRouter,
+)
 
 B, D = 2, 64
 

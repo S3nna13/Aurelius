@@ -1,12 +1,13 @@
+import logging
+import math
+import sys
+from contextlib import contextmanager
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import math
-import sys
-from typing import Optional, Dict, List, Generator, Tuple
-from contextlib import contextmanager
-from aurelius.nn_utils import sample_with_top_p_top_k, validate_input_ids
-import logging
+from aurelius.nn_utils import sample_with_top_p_top_k
+
 logger = logging.getLogger(__name__)
 
 

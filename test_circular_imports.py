@@ -68,8 +68,9 @@ print()
 
 # Test 4: Combined import as specified in the task
 print("Test 4: Combined import (task verification command)...")
-from agent.plan_and_execute import PlanAndExecuteAgent
 from agent.code_execution_tool import CodeExecutionTool
+from agent.plan_and_execute import PlanAndExecuteAgent
+
 print("OK")
 
 print()

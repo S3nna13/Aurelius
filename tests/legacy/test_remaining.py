@@ -1,17 +1,22 @@
-import torch
 import sys
+
 import pytest
+import torch
+
 sys.path.insert(1, '/Users/christienantonio/aurelius')
 pytest.importorskip("reportlab")
-from rust_bridge import _PyFallbackPageTable, _py_estimate_memory, _py_save_checkpoint
-from train_3b import count_parameters
-from generate_report import make_style, PRIMARY, SECONDARY, DARK_BG
+import os
+import tempfile
+
 from agent_train import ImitationDataset
-from kv_cache_quant import KVCacheQuantizer
 from fused_kernels import FlashAttention3Wrapper
-from reportlab.lib.styles import ParagraphStyle
+from generate_report import DARK_BG, PRIMARY, SECONDARY, make_style
+from kv_cache_quant import KVCacheQuantizer
 from reportlab.lib.colors import Color
-import tempfile, os
+from reportlab.lib.styles import ParagraphStyle
+from rust_bridge import _py_estimate_memory, _py_save_checkpoint, _PyFallbackPageTable
+from train_3b import count_parameters
+
 
 def test_py_fallback_page_table():
     pt = _PyFallbackPageTable(capacity=3)

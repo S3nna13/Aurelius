@@ -74,7 +74,13 @@ def estimate_jaccard(sig1: list[int], sig2: list[int]) -> float:
 class LSHIndex:
     """Locality-Sensitive Hashing index using banding technique."""
 
-    def __init__(self, n_hashes: int = 128, n_bands: int = 32, threshold: float = 0.8, max_signatures: int = 10000) -> None:
+    def __init__(
+        self,
+        n_hashes: int = 128,
+        n_bands: int = 32,
+        threshold: float = 0.8,
+        max_signatures: int = 10000,
+    ) -> None:
         if n_hashes % n_bands != 0:
             raise ValueError(f"n_hashes ({n_hashes}) must be divisible by n_bands ({n_bands})")
         self.n_hashes = n_hashes

@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import pytest
 import torch
-
 from aurelius.model.rwkv6 import (
     RWKV6Block,
     RWKV6ChannelMix,

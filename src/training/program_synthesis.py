@@ -80,7 +80,7 @@ def execute_program_safe(
 ) -> tuple[str, bool]:
     wrapped = f"_test_input = {test_input!r}\n{code}"
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: S603
             [sys.executable, "-I", "-S", "-c", wrapped],
             capture_output=True,
             text=True,

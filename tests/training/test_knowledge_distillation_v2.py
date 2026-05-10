@@ -8,7 +8,6 @@ from __future__ import annotations
 import pytest
 import torch
 import torch.nn as nn
-
 from aurelius.training.knowledge_distillation_v2 import (
     DistillationConfig,
     DistillationLoss,

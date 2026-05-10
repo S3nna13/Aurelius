@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.inference.adaptive_speculative import (
     AdaptiveSpecConfig,
     AdaptiveSpecController,
-    AdaptiveSpeculativeDecoder,
 )
 
 

@@ -1,12 +1,16 @@
+import sys
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import math
-import sys
-
-from aurelius.memory_core import AurelianMemoryCore
-from aurelius.nn_utils import RMSNorm, RotaryEmbedding, apply_rotary, SwiGLUFFN, FeedForward, sample_with_top_p_top_k
 from aurelius.agent_loop import AgentLoopController, AgentMemoryBridge
+from aurelius.memory_core import AurelianMemoryCore
+from aurelius.nn_utils import (
+    FeedForward,
+    RMSNorm,
+    RotaryEmbedding,
+    sample_with_top_p_top_k,
+)
 
 
 class FlashAttention(nn.Module):

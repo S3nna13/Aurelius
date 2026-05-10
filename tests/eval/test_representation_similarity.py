@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pytest
 import torch
-
 from aurelius.eval.representation_similarity import (
     CKAAnalyzer,
     LayerSimilarityReport,

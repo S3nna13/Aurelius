@@ -1,14 +1,16 @@
+import os
+import sys
+
 import torch
 import torch.nn as nn
-import sys
-import os
+
 sys.path.insert(1, os.path.dirname(os.path.abspath(__file__)))
 
 from recursive_mas import (
-    RecursiveLink,
-    RecursiveAgentWrapper,
-    RecursiveMASConfig,
     InnerOuterOptimizer,
+    RecursiveAgentWrapper,
+    RecursiveLink,
+    RecursiveMASConfig,
 )
 
 

@@ -1,11 +1,11 @@
+import os
+import sys
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.quantization
-import math
-import os
-import sys
-from aurelius.nn_utils import RMSNorm, RotaryEmbedding, SwiGLUFFN, apply_rotary
+from aurelius.nn_utils import RMSNorm
 
 
 class MobileQuantizer(nn.Module):

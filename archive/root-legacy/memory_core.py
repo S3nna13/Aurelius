@@ -1,9 +1,11 @@
+import logging
+import math
+import sys
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import math
-import logging
-import sys
+
 logger = logging.getLogger(__name__)
 
 

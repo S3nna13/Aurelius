@@ -88,7 +88,11 @@ def cohens_d(scores_a: list[float], scores_b: list[float]) -> float:
     mean_b = sum(scores_b) / n_b
     var_a = sum((x - mean_a) ** 2 for x in scores_a) / (n_a - 1) if n_a > 1 else 0.0
     var_b = sum((x - mean_b) ** 2 for x in scores_b) / (n_b - 1) if n_b > 1 else 0.0
-    pooled_std = math.sqrt(((n_a - 1) * var_a + (n_b - 1) * var_b) / (n_a + n_b - 2)) if n_a + n_b > 2 else math.sqrt((var_a + var_b) / 2)
+    pooled_std = (
+        math.sqrt(((n_a - 1) * var_a + (n_b - 1) * var_b) / (n_a + n_b - 2))
+        if n_a + n_b > 2
+        else math.sqrt((var_a + var_b) / 2)
+    )
     if pooled_std == 0.0:
         # Both distributions are constant; if means differ, effect is infinite
         if mean_a == mean_b:

@@ -14,8 +14,6 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch import Tensor
-
 from aurelius.training.knowledge_distillation_v3 import (
     AttentionTransferLoss,
     CompressionBenchmark,
@@ -24,6 +22,7 @@ from aurelius.training.knowledge_distillation_v3 import (
     PKDLoss,
     SoftTargetLoss,
 )
+from torch import Tensor
 
 # ---------------------------------------------------------------------------
 # Tiny config constants

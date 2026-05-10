@@ -7,7 +7,6 @@ Tiny config: img_size=32, patch_size=8 → N=16 patches,
 from __future__ import annotations
 
 import torch
-
 from aurelius.model.vim import BidirectionalSSM, PatchEmbed, VimBlock, VisionMamba
 
 # ---------------------------------------------------------------------------

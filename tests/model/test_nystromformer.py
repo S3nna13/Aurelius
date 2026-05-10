@@ -19,12 +19,12 @@ Test inventory (15 tests):
 """
 
 import torch
-
 from aurelius.model.nystromformer import (
     NystromAttention,
     NystromformerBlock,
     NystromformerModel,
 )
+
 from src.model.nystromformer import _segment_mean
 
 # ---------------------------------------------------------------------------

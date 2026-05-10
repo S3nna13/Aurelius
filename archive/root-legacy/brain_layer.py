@@ -1,13 +1,16 @@
+import logging
+import math
+import sys
+from collections import deque
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from typing import Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import math
-import sys
-from dataclasses import dataclass, field
-from typing import Optional, Callable
-from collections import deque
-from aurelius.nn_utils import RMSNorm, RotaryEmbedding, SwiGLUFFN, apply_rotary
-import logging
+from aurelius.nn_utils import RMSNorm
+
 logger = logging.getLogger(__name__)
 
 

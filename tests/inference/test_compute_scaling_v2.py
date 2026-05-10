@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 import torch
+
 from src.inference.compute_scaling_v2 import (
     BestOfN,
     ComputeScalingOrchestrator,

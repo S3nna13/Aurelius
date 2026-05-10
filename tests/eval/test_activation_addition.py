@@ -9,14 +9,13 @@ import pytest
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch import Tensor
-
 from aurelius.eval.activation_addition import (
     ActivationAddition,
     RepresentationDatabase,
     SteeringVector,
     SteeringVectorExtractor,
 )
+from torch import Tensor
 
 # ---------------------------------------------------------------------------
 # Shared constants / helpers

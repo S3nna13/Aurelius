@@ -94,12 +94,12 @@ class GCGAttack:
         suffix_embeds = one_hot @ embed_weight  # (suffix_len, d_model)
 
         # Concatenate and add batch dim
-        all_embeds = torch.cat([prefix_embeds.detach(), suffix_embeds], dim=0).unsqueeze(0)
+        all_embeds = torch.cat([prefix_embeds.detach(), suffix_embeds], dim=0).unsqueeze(0)  # noqa: F841
         # (1, seq_len, d_model)
 
         # Append target tokens (no grad)
         with torch.no_grad():
-            target_embeds = embed_weight[target_ids[0]]
+            target_embeds = embed_weight[target_ids[0]]  # noqa: F841
 
         # Forward pass manually through the model using embeddings
         # We need to call the model in a way that accepts pre-computed embeddings.
@@ -252,7 +252,10 @@ class GCGAttack:
         vocab_size = self._vocab_size()
 
         # Initialise suffix with random tokens
-        current_suffix = torch.randint(0, vocab_size, (cfg.suffix_len,), device=device, generator=gen)
+        current_suffix = torch.randint(
+            0, vocab_size, (cfg.suffix_len,),
+            device=device, generator=gen,
+        )
 
         best_suffix = current_suffix.clone()
         best_loss = float("inf")

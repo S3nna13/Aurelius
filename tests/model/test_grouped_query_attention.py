@@ -5,7 +5,6 @@ Import path: aurelius.model.grouped_query_attention
 
 import pytest
 import torch
-
 from aurelius.model.grouped_query_attention import (
     GQAConfig,
     GQALayer,

@@ -1,8 +1,10 @@
+import math
+from collections.abc import Callable
+from typing import Any, Dict, List, Optional, Tuple
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import math
-from typing import Optional, List, Tuple, Dict, Any, Callable
 
 
 class PositionalEncoding(nn.Module):

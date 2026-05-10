@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import torch
+
 from src.inference.token_budget_predictor import (
     AdaptiveStopCriteria,
     BudgetCalibrator,

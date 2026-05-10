@@ -11,13 +11,14 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
+
 revision: str = "0001"
-down_revision: Union[str, None] = None
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = None
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -38,7 +39,11 @@ def upgrade() -> None:
         sa.Column("command", sa.String(512), nullable=False),
         sa.Column("success", sa.Boolean, nullable=False, server_default=sa.text("1")),
         sa.Column("output", sa.Text, nullable=False, server_default=""),
-        sa.Column("agent_id", sa.String(64), sa.ForeignKey("agents.id", ondelete="SET NULL"), nullable=True),
+        sa.Column(
+            "agent_id", sa.String(64),
+            sa.ForeignKey("agents.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
     )
     op.create_index("idx_activity_timestamp", "activity", ["timestamp"])
     op.create_index("idx_activity_command", "activity", ["command"])

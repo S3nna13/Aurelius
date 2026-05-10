@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import pytest
 import torch
-
 from aurelius.model.activation_functions import (
     ActivationBenchmark,
     ActivationConfig,

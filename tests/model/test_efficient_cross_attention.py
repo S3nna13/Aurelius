@@ -2,7 +2,6 @@
 
 import pytest
 import torch
-
 from aurelius.model.efficient_cross_attention import (
     CrossAttentionLayer,
     GatedCrossAttention,

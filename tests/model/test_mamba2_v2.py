@@ -8,7 +8,6 @@ Tiny test config: B=2, T=16, d_model=32, d_state=8, n_heads=4,
 
 import pytest
 import torch
-
 from aurelius.model.mamba2_v2 import Mamba2Block, Mamba2Config, Mamba2Model, SSMKernel
 
 # ---------------------------------------------------------------------------

@@ -2,18 +2,22 @@
 """Generate AURELIUS_REPORT.pdf — 2-page project report."""
 
 import os
+
+from reportlab.lib.colors import HexColor, white
+from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import mm, cm
-from reportlab.lib.colors import HexColor, white, black, Color
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import mm
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
-    PageBreak, Frame, PageTemplate, BaseDocTemplate, FrameBreak
+    BaseDocTemplate,
+    Frame,
+    PageBreak,
+    PageTemplate,
+    Paragraph,
+    Spacer,
+    Table,
+    TableStyle,
 )
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
-from reportlab.platypus.doctemplate import PageTemplate, BaseDocTemplate
-from reportlab.platypus.frames import Frame
-from reportlab.lib import colors
 
 # ── colours ──────────────────────────────────────────────────────────
 PRIMARY   = HexColor("#6C63FF")

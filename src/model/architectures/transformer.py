@@ -1,6 +1,7 @@
 """Transformer architectures: Transformer, BERT, T5, GPT, Llama, Qwen, Gemini patterns.
 
-Papers: Vaswani 2017, Devlin 2018, Raffel 2019, Radford 2018, Touvron 2023, Bai 2023, Team Gemini 2023.
+Papers: Vaswani 2017, Devlin 2018, Raffel 2019, Radford 2018,
+Touvron 2023, Bai 2023, Team Gemini 2023.
 """
 
 from __future__ import annotations

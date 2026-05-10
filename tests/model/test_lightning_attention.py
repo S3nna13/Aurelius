@@ -19,7 +19,6 @@
 
 import torch
 import torch.nn.functional as F
-
 from aurelius.model.lightning_attention import (
     LightningAttentionBlock,
     LightningAttentionLayer,

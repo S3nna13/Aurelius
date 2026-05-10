@@ -14,7 +14,6 @@ from __future__ import annotations
 import pytest
 import torch
 import torch.nn as nn
-
 from aurelius.model.multi_token_prediction_v2 import (
     MTPConfig,
     MTPDecoder,

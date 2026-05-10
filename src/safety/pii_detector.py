@@ -383,7 +383,7 @@ class PIIDetector:
         if mode == "remove":
             return ""
         # Unreachable — __init__ validates the mode.
-        assert False, f"unknown redaction_mode {mode!r}"
+        assert False, f"unknown redaction_mode {mode!r}"  # noqa: S101
 
     # -- scan drivers ------------------------------------------------------
 

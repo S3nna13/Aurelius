@@ -1,7 +1,6 @@
 """Tests for src/training/sequence_packing.py"""
 
 import torch
-
 from aurelius.training.sequence_packing import (
     PackedBatchCollator,
     PackedSequence,

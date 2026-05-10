@@ -1,5 +1,7 @@
-import torch
 import sys
+
+import torch
+
 sys.path.insert(1, '/Users/christienantonio/aurelius')
 from alignment_impl import *
 from efficiency_impl import *

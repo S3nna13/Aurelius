@@ -8,10 +8,8 @@ and fails if any strongly connected dependency cycle is found.
 from __future__ import annotations
 
 import ast
+from collections.abc import Iterable
 from pathlib import Path
-import sys
-from typing import Iterable
-
 
 ROOT = Path(__file__).resolve().parents[1]
 TARGET_GLOBS = (
@@ -174,7 +172,11 @@ def find_cycles(graph: dict[str, set[str]]) -> list[list[str]]:
 
 
 def main() -> int:
-    paths = [ROOT / rel for rel in TARGET_GLOBS if (ROOT / rel).exists() and should_include(ROOT / rel)]
+    paths = [
+        ROOT / rel
+        for rel in TARGET_GLOBS
+        if (ROOT / rel).exists() and should_include(ROOT / rel)
+    ]
     module_index = build_module_index(paths)
     graph = {
         module: collect_dependencies(path, module_index)

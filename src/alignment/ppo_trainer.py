@@ -336,8 +336,12 @@ class PPOTrainer:
             prompt_len = prompt_ids.shape[1] if prompt_ids is not None else 0
             # logits[:, :-1, :] aligns predictions with their targets; slice token positions.
             log_probs_shifted = F.log_softmax(logits[:, :-1, :], dim=-1)  # (B, seq-1, V)
-            log_probs_for_tokens = log_probs_shifted[:, prompt_len - 1 : prompt_len - 1 + T, :]  # (B, T, V)
-            curr_log_probs = log_probs_for_tokens.gather(2, tokens.unsqueeze(-1)).squeeze(-1)  # (B, T)
+            log_probs_for_tokens = log_probs_shifted[
+                :, prompt_len - 1 : prompt_len - 1 + T, :
+            ]  # (B, T, V)
+            curr_log_probs = log_probs_for_tokens.gather(
+                2, tokens.unsqueeze(-1)
+            ).squeeze(-1)  # (B, T)
 
             # Value head over all hidden states
             curr_values = self.value_head(hidden)  # (B, T)

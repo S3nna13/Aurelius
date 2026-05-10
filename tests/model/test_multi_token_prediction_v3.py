@@ -11,7 +11,6 @@ import math
 import pytest
 import torch
 import torch.optim as optim
-
 from aurelius.model.multi_token_prediction_v3 import (
     MTPTrainer,
     MultiTokenHead,

@@ -5,8 +5,8 @@ from enum import Enum
 from typing import Any
 
 MODEL_ROUTER_REGISTRY: dict[str, type] = {}
-from src.routing.intent import Intent, IntentClassifier
-from src.runtime.ark_config import ArkConfig
+from src.routing.intent import Intent, IntentClassifier  # noqa: E402
+from src.runtime.ark_config import ArkConfig  # noqa: E402
 
 
 class RouteAction(Enum):

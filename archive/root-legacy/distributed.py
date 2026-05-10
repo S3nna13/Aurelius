@@ -1,17 +1,16 @@
+import logging
+import sys
+from typing import Any, Dict, Optional
+
 import torch
 import torch.distributed as dist
 import torch.nn as nn
-import torch.nn.functional as F
+from aurelius.nn_utils import sample_with_top_p_top_k
 from torch.distributed.fsdp import FullyShardedDataParallel as FSDP
 from torch.distributed.fsdp import MixedPrecision, ShardingStrategy, StateDictType
 from torch.distributed.fsdp.wrap import transformer_auto_wrap_policy
 from torch.utils.checkpoint import checkpoint
-import contextlib
-import os
-import sys
-from typing import Optional, Dict, Any, Tuple
-from aurelius.nn_utils import sample_with_top_p_top_k
-import logging
+
 logger = logging.getLogger("distributed")
 
 

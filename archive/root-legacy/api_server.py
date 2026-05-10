@@ -2,10 +2,10 @@
 
 import logging
 import os
-import time
 import threading
+import time
 from contextlib import asynccontextmanager
-from typing import Optional, Dict, Any, List
+from typing import Any, Optional
 
 import torch
 from fastapi import FastAPI, HTTPException
@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 logger = logging.getLogger(__name__)
 
 try:
-    from prometheus_client import make_asgi_app, Histogram, Counter, Gauge
+    from prometheus_client import Counter, Gauge, Histogram, make_asgi_app
     HAS_PROMETHEUS = True
 except ImportError:
     HAS_PROMETHEUS = False
@@ -80,7 +80,7 @@ MODEL_INFO = Gauge('aurelius_model_info', 'Model metadata', ['d_model', 'n_layer
 
 
 class GenerateRequest(BaseModel):
-    prompt: List[int] = Field(..., description="Tokenized prompt as list of ints")
+    prompt: list[int] = Field(..., description="Tokenized prompt as list of ints")
     max_new_tokens: int = Field(default=128, ge=1, le=4096)
     temperature: float = Field(default=0.8, ge=0.0, le=2.0)
     top_p: float = Field(default=0.9, ge=0.0, le=1.0)
@@ -88,7 +88,7 @@ class GenerateRequest(BaseModel):
 
 
 class GenerateResponse(BaseModel):
-    tokens: List[int]
+    tokens: list[int]
     token_count: int
     duration_ms: float
 
@@ -195,7 +195,7 @@ async def generate(req: GenerateRequest):
 
 
 @app.post("/v1/completions")
-async def openai_completions(request: Dict[str, Any]):
+async def openai_completions(request: dict[str, Any]):
     if not state.ready or state.model is None:
         raise HTTPException(status_code=503, detail="Model not loaded")
     prompt = request.get("prompt", "")

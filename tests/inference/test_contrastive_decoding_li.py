@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import torch
+
 from src.inference.contrastive_decoding_li import (
     CDScorer,
     CDSearcher,

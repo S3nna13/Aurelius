@@ -5,6 +5,7 @@ Runs a dummy forward/backward pass a few times and measures the overhead of
 instantiating the scaler and calling ``scale``/``step``/``update``.
 """
 import time
+
 import torch
 from torch.cuda.amp import GradScaler
 

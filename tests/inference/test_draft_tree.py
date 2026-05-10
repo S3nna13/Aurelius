@@ -2,17 +2,16 @@
 
 from __future__ import annotations
 
-import pytest
 import torch
 
 from src.inference.draft_tree import (
     DraftNode,
+    best_leaf_path,
     equal_growth_parent_indices,
     parent_indices,
     root_to_leaf_paths,
-    best_leaf_path,
-    tree_causal_mask,
     tokens_from_draft,
+    tree_causal_mask,
 )
 
 

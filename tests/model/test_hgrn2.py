@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import pytest
 import torch
-
 from aurelius.model.hgrn2 import HGRN2Block, HGRN2Cell, HGRN2Layer, HGRN2Model
 
 # ---------------------------------------------------------------------------

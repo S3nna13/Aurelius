@@ -7,6 +7,7 @@ and ConformalLMDecoder.
 import pytest
 import torch
 import torch.nn.functional as F
+
 from src.inference.conformal_lm import (
     CalibrationSet,
     ConformalLMDecoder,

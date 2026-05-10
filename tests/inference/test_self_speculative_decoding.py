@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import torch
+
 from src.inference.self_speculative_decoding import (
     DraftQualityMonitor,
     EarlyExitHead,

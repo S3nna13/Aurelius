@@ -20,14 +20,12 @@ import argparse
 import json
 import logging
 import struct
-import sys
 from pathlib import Path
 from typing import Any
 
 import torch
 
 from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 
 logger = logging.getLogger(__name__)
 
@@ -202,7 +200,12 @@ def export_gguf(
                     t = t.to(torch.float32)
                     f.write(t.numpy().tobytes())
 
-    logger.info("Exported GGUF to %s (%d tensors, %.2f GB)", output_path, len(tensor_keys), output_path.stat().st_size / (1024**3))
+    logger.info(
+        "Exported GGUF to %s (%d tensors, %.2f GB)",
+        output_path,
+        len(tensor_keys),
+        output_path.stat().st_size / (1024**3),
+    )
 
 
 def main() -> None:

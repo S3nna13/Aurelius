@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import pytest
 import torch
-
-from aurelius import aurelius_model_1b as package_model_1b
 from aurelius_model_1b import AureliusModel1B
 from aurelius_model_3b import AureliusModel3B
 from aurelius_model_7b import AureliusModel7B
 from aurelius_model_14b import AureliusModel14B
 from aurelius_model_32b import AureliusModel32B
+
+from aurelius import aurelius_model_1b as package_model_1b
 
 
 def tiny_config(**overrides):

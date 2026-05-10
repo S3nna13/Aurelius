@@ -2,7 +2,6 @@
 
 import pytest
 import torch
-
 from aurelius.model.token_skip import (
     ConfidenceGate,
     SkippableLayer,

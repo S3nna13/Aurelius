@@ -1,15 +1,20 @@
+import sys
+from typing import Any, Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import math
-from typing import Optional, Dict, Any
-import sys
-
-from aurelius.memory_core import AurelianMemoryCore
-from aurelius.agent_core import ToolFormerAdapter, PlanningModule, CriticHead, ValueHead
+from aurelius.agent_core import CriticHead, PlanningModule, ToolFormerAdapter
 from aurelius.agent_loop import AgentLoopController, AgentMemoryBridge, ExperienceReplayBuffer
+from aurelius.memory_core import AurelianMemoryCore
+from aurelius.nn_utils import (
+    FeedForward,
+    RMSNorm,
+    RotaryEmbedding,
+    apply_rotary,
+    sample_with_top_p_top_k,
+)
 from aurelius.skills import SkillLibrary
-from aurelius.nn_utils import RMSNorm, RotaryEmbedding, apply_rotary, SwiGLUFFN, FeedForward, sample_with_top_p_top_k
 
 
 class FlashAttention(nn.Module):
@@ -172,7 +177,7 @@ class AureliusModel32B(nn.Module):
     def forward(self, input_ids: torch.Tensor,
                 tool_descs: Optional[torch.Tensor] = None,
                 return_agent_state: bool = False,
-                use_brain: bool = True) -> Dict[str, Any]:
+                use_brain: bool = True) -> dict[str, Any]:
         b, t = input_ids.shape
         h = self.token_embedding(input_ids)
         cos, sin = self.rotary(h)
@@ -221,7 +226,7 @@ class AureliusModel32B(nn.Module):
             input_ids = torch.cat([input_ids, next_token], dim=-1)
         return input_ids
 
-    def count_parameters(self) -> Dict[str, int]:
+    def count_parameters(self) -> dict[str, int]:
         total = sum(p.numel() for p in self.parameters())
         trainable = sum(p.numel() for p in self.parameters() if p.requires_grad)
         memory = sum(p.numel() for n, p in self.named_parameters() if 'memory' in n)

@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import pytest
 import torch
 
 from gateway.kv_cache_compression import (
-    CompressedBlock,
-    KVCacheCompressor,
     CompressedPagedKVCache,
+    KVCacheCompressor,
 )
 
 

@@ -28,7 +28,11 @@ logger = logging.getLogger(__name__)
 class CurriculumMixer:
     """Curriculum data mixer driven by a YAML stage specification."""
 
-    def __init__(self, config_path: str | Path, base_data_dir: str | Path = "data/pretrain") -> None:
+    def __init__(
+        self,
+        config_path: str | Path,
+        base_data_dir: str | Path = "data/pretrain",
+    ) -> None:
         self.config_path = Path(config_path)
         self.base_data_dir = Path(base_data_dir)
         self.stages: list[dict[str, Any]] = []

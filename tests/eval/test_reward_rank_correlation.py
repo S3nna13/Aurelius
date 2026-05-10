@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import torch
-
 from aurelius.eval.reward_rank_correlation import (
     KendallTau,
     RankCorrelationMetrics,

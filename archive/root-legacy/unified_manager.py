@@ -1,16 +1,21 @@
-import torch
+import logging
+import sys
 import threading
 import time
-import sys
 from threading import Lock
 
-from async_memory import AsyncConsolidationPipeline, PagedLTSMemory, ConsolidationTask
-from adaptive_precision import AdaptivePrecisionManager, TieredMemoryBank
-from prefetch_router import PredictiveMemoryPrefetcher, SparseLTSRouter
-from deduplication import (CosineDeduplicator, PriorityProportionalAllocator,
-                           MemoryAwareGradientAccumulator, LZ4MemoryCompressor)
+import torch
+from adaptive_precision import AdaptivePrecisionManager
+from async_memory import AsyncConsolidationPipeline, ConsolidationTask, PagedLTSMemory
+from deduplication import (
+    CosineDeduplicator,
+    LZ4MemoryCompressor,
+    MemoryAwareGradientAccumulator,
+    PriorityProportionalAllocator,
+)
+from prefetch_router import PredictiveMemoryPrefetcher
 from rust_bridge import get_page_table
-import logging
+
 logger = logging.getLogger(__name__)
 
 

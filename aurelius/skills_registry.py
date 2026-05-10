@@ -1,6 +1,6 @@
 from typing import Any
 
-from src.agent.skills_registry import Skill, SKILLS_REGISTRY
+from src.agent.skills_registry import SKILLS_REGISTRY, Skill
 
 SKILL_REGISTRY = SKILLS_REGISTRY
 

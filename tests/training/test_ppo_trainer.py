@@ -11,7 +11,6 @@ import math
 import pytest
 import torch
 import torch.nn as nn
-
 from aurelius.training.ppo_trainer import (
     PPOConfig,
     PPOLoss,

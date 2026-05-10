@@ -8,9 +8,9 @@ import uuid
 import pytest
 
 from plugins.memory.verifiable_store import (
-    VerificationRecord,
     VerifiableFact,
     VerifiableMemoryStore,
+    VerificationRecord,
 )
 
 

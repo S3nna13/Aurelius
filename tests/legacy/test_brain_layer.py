@@ -1,5 +1,7 @@
-import torch
 import sys
+
+import torch
+
 sys.path.insert(1, '/Users/christienantonio/aurelius')
 from brain_layer import *
 
