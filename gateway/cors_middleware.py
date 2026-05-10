@@ -14,21 +14,24 @@ class CORSMiddleware:
 
     def __init__(
         self,
-        allowed_origins: str | list[str] = "*",
+        allowed_origins: str | list[str] | None = None,
         allowed_methods: str = "GET, POST, PUT, DELETE, PATCH, OPTIONS",
         allowed_headers: str = "Content-Type, Authorization, X-API-Key, X-Request-ID",
         allow_credentials: bool | None = None,
         max_age: int = 86400,
     ) -> None:
+        if allowed_origins is None:
+            allowed_origins = ""
         self.allowed_origins = (
             allowed_origins if isinstance(allowed_origins, str) else ", ".join(allowed_origins)
         )
         self.allowed_methods = allowed_methods
         self.allowed_headers = allowed_headers
         # Per CORS spec, Access-Control-Allow-Origin: * cannot be used with credentials.
-        # If origins is *, force credentials off; let caller override via explicit origins.
+        # Default: credentials OK when origins are explicitly set (not empty, not *).
+        origins_is_wide_open = self.allowed_origins in ("", "*")
         self.allow_credentials = (
-            allow_credentials if allow_credentials is not None else self.allowed_origins != "*"
+            allow_credentials if allow_credentials is not None else not origins_is_wide_open
         )
         self.max_age = max_age
 
