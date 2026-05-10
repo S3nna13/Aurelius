@@ -76,6 +76,13 @@ from .progressive_search import (  # noqa: F401
 
 MEMORY_REGISTRY["progressive_search"] = DEFAULT_PROGRESSIVE_SEARCHER
 
+# --- Cycle-XXX MemMachine ground-truth preservation (arXiv 2604.04853) --------
+from .verifiable_store import (  # noqa: F401
+    VerifiableFact,
+    VerifiableMemoryStore,
+    VerificationRecord,
+)
+
 __all__ += [
     "LayeredMemory",
     "LayeredMemoryEntry",
@@ -89,4 +96,7 @@ __all__ += [
     "ProgressiveSearchError",
     "DEFAULT_PROGRESSIVE_SEARCHER",
     "PROGRESSIVE_SEARCH_REGISTRY",
+    "VerifiableFact",
+    "VerifiableMemoryStore",
+    "VerificationRecord",
 ]
