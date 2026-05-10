@@ -99,6 +99,57 @@ Rust Engine (crates/data-engine/)  ←  Node.js NAPI bindings
 | `rate_limiter.py` | Token bucket rate limiting |
 | `guardrails.py` | Output safety guardrails |
 | `streaming.py`, `sse_chat_stream.py` | Streaming inference |
+| `kv_cache_compression.py` | PackKV-inspired INT8 KV cache quantization + sparse encoding |
+| `paged_kv_cache.py` | Paged KV cache with block management |
+
+## Inference Engine (arXiv-powered)
+
+Aurelius implements four state-of-the-art inference optimizations sourced from recent ML research:
+
+### Tree-Based Speculative Decoding (Yggdrasil, NeurIPS 2025)
+**Reference:** `src/inference/draft_tree.py`, `src/inference/speculative.py`
+
+Yggdrasil replaces the standard linear (chain) draft structure with an equal-growth tree, enabling the target model to verify multiple draft paths in a single forward pass. Key components:
+
+- `equal_growth_parent_indices(total_budget, nodes_per_level)` — builds a tree where each level has ~equal nodes, statically sized for the total draft budget
+- `tree_causal_mask(parents)` — attention mask allowing token i to attend to all ancestors in the tree plus tree siblings; correct for tree-structured verification
+- `best_leaf_path(nodes)` — selects the highest-cumulative-score root-to-leaf path via O(n) tree traversal
+
+The tree structure provides O(depth) verification parallelism vs O(draft_length) sequential for chain-based speculative decoding.
+
+### Adaptive Speculative Decoding (Nightjar, arXiv:2512.22420)
+**Reference:** `src/inference/adaptive_speculative.py`
+
+Nightjar dynamically adjusts the speculation length K based on real-time acceptance rate. The controller uses exponential moving average (EMA) of acceptance rate and adapts K per step:
+
+- `AdaptiveSpecController` — tracks EMA acceptance rate with configurable smoothing (default α=0.3)
+- `adapt_rate` parameter — controls sensitivity (default 0.1), scaled by current K
+- K increases when acceptance > target_acceptance (default 70%), decreases when below
+- Clamped to [min_K=1, max_K=8] to avoid thrashing
+
+Wraps any base `SpeculativeDecoder` — drop-in replacement for fixed-K speculation.
+
+### KV Cache Compression (PackKV, arXiv:2512.24449)
+**Reference:** `gateway/kv_cache_compression.py`
+
+PackKV introduces lossy compression for KV cache data, targeting the observation that KV entries follow heavy-tail distributions. Two complementary methods:
+
+- **INT8 per-token quantization** — scale per token, quantize to int8, decompress with <0.02 max error. Achieves ~2x compression (float16 → int8 + float16 scale).
+- **Sparse encoding** — when fraction of near-zero entries exceeds `sparse_threshold` (default 50%), store indices and values separately for additional 1.5-2x compression.
+
+`CompressedPagedKVCache` wraps `PagedKVCache` and applies compression on every Nth block (configurable via `compress_frequency`), enabling a smooth quality/compression tradeoff.
+
+### Agent Memory: Ground-Truth Preservation (MemMachine, arXiv:2604.04853)
+**Reference:** `plugins/memory/verifiable_store.py`
+
+MemMachine's key insight: agent memory systems often lose or distort original data through compression/processing. Aurelius preserves ground truth alongside processed versions:
+
+- `VerifiableFact` — fact with original `content` (ground truth, never replaced), optional `compressed_version`, confidence score, and verification provenance chain
+- `VerifiableMemoryStore` — stores facts, supports keyword search with confidence-ranked results
+- `verify_fact()` — appends a `VerificationRecord` and takes `min()` of current confidence with verification confidence (lower verification reduces trust)
+- `store_compressed()` — stores processed/compressed version without touching original content
+- `get_ground_truth()` — always returns original content regardless of what compressed version exists
+- `get_unverified(min_confidence)` — returns facts needing verification attention
 
 ## Development Commands
 

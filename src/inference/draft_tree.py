@@ -156,34 +156,39 @@ def best_leaf_path(nodes: list[DraftNode]) -> list[int]:
     """Return the highest-scoring root-to-leaf path by summed node scores.
 
     Args:
-        nodes: Flat list of DraftNodes.
+        nodes: Flat list of DraftNodes (root at index 0).
 
     Returns:
         Token-id sequence along the best path.
     """
+    if not nodes:
+        return []
+
+    # Build child index list for efficient traversal
+    children: list[list[int]] = [[] for _ in range(len(nodes))]
+    for idx, node in enumerate(nodes):
+        if node.parent is not None:
+            children[node.parent].append(idx)
+
     best_score = float("-inf")
     best_path: list[int] = []
-    for path in root_to_leaf_paths(nodes):
-        # Build index mapping once for efficiency
-        index_map = {}
-        for i, node in enumerate(nodes):
-            key = (node.token_id, node.parent)
-            index_map[key] = i
 
-        score = 0.0
-        current_parent: int | None = None
-        for token in path:
-            key = (token, current_parent)
-            if key in index_map:
-                idx = index_map[key]
-                score += nodes[idx].score
-                current_parent = idx
-            else:
-                break
+    def traverse(node_idx: int, path: list[int], acc_score: float) -> None:
+        nonlocal best_score, best_path
+        node = nodes[node_idx]
+        new_path = path + [node.token_id]
+        new_score = acc_score + node.score
+        child_list = children[node_idx]
+        if not child_list:
+            # Leaf — check if this is the best path so far
+            if new_score > best_score:
+                best_score = new_score
+                best_path = new_path
+        else:
+            for child in child_list:
+                traverse(child, new_path, new_score)
 
-        if score > best_score:
-            best_score = score
-            best_path = path
+    traverse(0, [], 0.0)
     return best_path
 
 
