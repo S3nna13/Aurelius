@@ -127,8 +127,19 @@ from .step_dpo import step_dpo_loss as step_dpo_loss
 
 # Alignment component registry: maps string keys -> class
 ALIGNMENT_REGISTRY: dict = {}
-ALIGNMENT_REGISTRY["prm"] = ProcessRewardModel
-ALIGNMENT_REGISTRY["adversarial_code_battle"] = AdversarialCodeBattle
+
+
+def _register_lazy_components():
+    """Populate registry entries that require deferred imports."""
+    from src.training.process_reward_model import ProcessRewardModel
+
+    from .adversarial_code_battle import AdversarialCodeBattle
+
+    ALIGNMENT_REGISTRY.setdefault("prm", ProcessRewardModel)
+    ALIGNMENT_REGISTRY.setdefault("adversarial_code_battle", AdversarialCodeBattle)
+
+
+_register_lazy_components()
 
 from .constitution_dimensions import (
     CONSTITUTION_DIMENSIONS as CONSTITUTION_DIMENSIONS,
