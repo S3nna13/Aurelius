@@ -84,7 +84,7 @@ class GCGAttack:
 
         # Straight-through: compute embeddings for the full sequence but
         # replace suffix positions with differentiable one-hot @ W_e
-        embed_weight = self._embed_weight  # (vocab_size, d_model)
+        embed_weight = self._embed_weight.detach()
 
         # Prefix embeddings (no grad needed)
         with torch.no_grad():
@@ -99,9 +99,7 @@ class GCGAttack:
 
         # Append target tokens (no grad)
         with torch.no_grad():
-            target_embeds = embed_weight[target_ids[0]]  # (target_len, d_model)
-        torch.cat([all_embeds, target_embeds.unsqueeze(0)], dim=1)
-        # (1, seq_len + target_len, d_model)
+            target_embeds = embed_weight[target_ids[0]]
 
         # Forward pass manually through the model using embeddings
         # We need to call the model in a way that accepts pre-computed embeddings.
@@ -248,13 +246,13 @@ class GCGAttack:
             loss_history: list of per-step best losses (length n_steps).
         """
         cfg = self.config
-        torch.manual_seed(cfg.seed)
+        gen = torch.Generator(device=self._device()).manual_seed(cfg.seed)
 
         device = self._device()
         vocab_size = self._vocab_size()
 
         # Initialise suffix with random tokens
-        current_suffix = torch.randint(0, vocab_size, (cfg.suffix_len,), device=device)
+        current_suffix = torch.randint(0, vocab_size, (cfg.suffix_len,), device=device, generator=gen)
 
         best_suffix = current_suffix.clone()
         best_loss = float("inf")

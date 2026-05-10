@@ -272,7 +272,6 @@ __all__ = [
     "CheckpointSigner",
     "CheckpointIntegrityError",
     # sbom_generator
-    "SBOM_REGISTRY",
     # combined registry
     "SECURITY_REGISTRY",
     # posture_scorer

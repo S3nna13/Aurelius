@@ -21,7 +21,7 @@ _MASK_PATTERNS: list[tuple[str, str]] = [
 class DataMasker:
     """Mask PII and sensitive data in strings."""
 
-    patterns: list[tuple[str, str]] = field(default_factory=lambda: _MASK_PATTERNS)
+    patterns: list[tuple[str, str]] = field(default_factory=lambda: list(_MASK_PATTERNS))
 
     def mask(self, text: str, replacement: str = "[REDACTED]") -> str:
         result = text

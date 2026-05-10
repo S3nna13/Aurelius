@@ -9,6 +9,7 @@ All logic is stdlib-only; no foreign dependencies.
 
 from __future__ import annotations
 
+import threading
 import time
 from dataclasses import dataclass
 from enum import Enum
@@ -61,6 +62,7 @@ class CircuitBreaker:
         self._failure_count: int = 0
         self._success_count: int = 0
         self._open_time: float = 0.0
+        self._lock = threading.Lock()
 
     # ------------------------------------------------------------------
     # Public properties (read-only views)
@@ -83,75 +85,53 @@ class CircuitBreaker:
     # ------------------------------------------------------------------
 
     def record_success(self) -> CircuitState:
-        """Notify the breaker that the last call succeeded.
-
-        In ``HALF_OPEN``: increments the success counter; when it reaches
-        ``success_threshold`` the circuit closes and all counts reset.
-
-        In ``CLOSED``: resets the failure counter (health restored).
-
-        Returns the current :class:`CircuitState` after the transition.
-        """
-        if self._state is CircuitState.HALF_OPEN:
-            self._success_count += 1
-            if self._success_count >= self._config.success_threshold:
-                self._state = CircuitState.CLOSED
+        with self._lock:
+            if self._state is CircuitState.HALF_OPEN:
+                self._success_count += 1
+                if self._success_count >= self._config.success_threshold:
+                    self._state = CircuitState.CLOSED
+                    self._failure_count = 0
+                    self._success_count = 0
+            elif self._state is CircuitState.CLOSED:
                 self._failure_count = 0
-                self._success_count = 0
-        elif self._state is CircuitState.CLOSED:
-            self._failure_count = 0
-        return self._state
+            return self._state
 
     def record_failure(self) -> CircuitState:
-        """Notify the breaker that the last call failed.
-
-        In ``CLOSED``: increments failure counter; trips to ``OPEN`` when the
-        threshold is reached.
-
-        In ``HALF_OPEN``: immediately trips back to ``OPEN``.
-
-        Returns the current :class:`CircuitState` after the transition.
-        """
-        if self._state is CircuitState.HALF_OPEN:
-            self._state = CircuitState.OPEN
-            self._open_time = time.monotonic()
-            self._success_count = 0
-        else:
-            self._failure_count += 1
-            if (
-                self._state is CircuitState.CLOSED
-                and self._failure_count >= self._config.failure_threshold
-            ):
+        with self._lock:
+            if self._state is CircuitState.HALF_OPEN:
                 self._state = CircuitState.OPEN
                 self._open_time = time.monotonic()
-        return self._state
+                self._success_count = 0
+            else:
+                self._failure_count += 1
+                if (
+                    self._state is CircuitState.CLOSED
+                    and self._failure_count >= self._config.failure_threshold
+                ):
+                    self._state = CircuitState.OPEN
+                    self._open_time = time.monotonic()
+            return self._state
 
     def allow_request(self) -> bool:
-        """Decide whether a new request may proceed.
-
-        * ``CLOSED`` → always ``True``.
-        * ``OPEN`` → ``False`` until ``recovery_timeout_s`` elapses, then
-          transitions to ``HALF_OPEN`` and returns ``True``.
-        * ``HALF_OPEN`` → ``True`` (probe requests are permitted).
-        """
-        if self._state is CircuitState.CLOSED:
-            return True
-        if self._state is CircuitState.OPEN:
-            elapsed = time.monotonic() - self._open_time
-            if elapsed >= self._config.recovery_timeout_s:
-                self._state = CircuitState.HALF_OPEN
-                self._success_count = 0
+        with self._lock:
+            if self._state is CircuitState.CLOSED:
                 return True
-            return False
-        # HALF_OPEN
-        return True
+            if self._state is CircuitState.OPEN:
+                elapsed = time.monotonic() - self._open_time
+                if elapsed >= self._config.recovery_timeout_s:
+                    self._state = CircuitState.HALF_OPEN
+                    self._success_count = 0
+                    return True
+                return False
+            return True
 
     def reset(self) -> None:
         """Force the breaker back to its initial ``CLOSED`` state."""
-        self._state = CircuitState.CLOSED
-        self._failure_count = 0
-        self._success_count = 0
-        self._open_time = 0.0
+        with self._lock:
+            self._state = CircuitState.CLOSED
+            self._failure_count = 0
+            self._success_count = 0
+            self._open_time = 0.0
 
     # ------------------------------------------------------------------
     # Observability

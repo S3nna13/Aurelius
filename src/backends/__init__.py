@@ -78,7 +78,10 @@ def register_backend_adapter_pytorch() -> None:
 # Register the reference PyTorch adapter at import time so that a bare
 # ``import src.backends`` is sufficient to get ``"pytorch"`` in the
 # registry. The registration is idempotent.
-register_backend_adapter_pytorch()
+try:
+    register_backend_adapter_pytorch()
+except Exception:
+    pass
 
 # --- Ollama adapter (additive, cycle-146) --------------------------------------
 # --- Backend health checker (additive, cycle-146) ------------------------------

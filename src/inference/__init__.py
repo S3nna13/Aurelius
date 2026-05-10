@@ -85,9 +85,13 @@ from src.inference.reasoning_level_controller import (  # noqa: E402
     parse_reasoning_level,
 )
 
-DECODER_REGISTRY: dict[str, object] = {
+_DECODER_REGISTRY: dict[str, object] = {
     "reasoning_level": parse_reasoning_level,
 }
+try:
+    DECODER_REGISTRY.update(_DECODER_REGISTRY)
+except NameError:
+    DECODER_REGISTRY = _DECODER_REGISTRY
 
 __all__ += [
     "DECODER_REGISTRY",

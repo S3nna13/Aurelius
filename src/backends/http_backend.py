@@ -1,29 +1,50 @@
 from __future__ import annotations
 
+import ipaddress
 import json
+import logging
+import socket
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
 _ALLOWED_SCHEMES = frozenset(["http", "https"])
+_BLOCKED_NETWORKS = [
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("169.254.0.0/16"),
+    ipaddress.ip_network("0.0.0.0/8"),
+    ipaddress.ip_network("::1/128"),
+    ipaddress.ip_network("fe80::/10"),
+    ipaddress.ip_network("fc00::/7"),
+]
+
+
+def _is_private_or_reserved(host: str) -> bool:
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        try:
+            ip = ipaddress.ip_address(socket.gethostbyname(host))
+        except (socket.gaierror, ValueError):
+            return True
+    return ip.is_private or ip.is_loopback or ip.is_reserved or ip.is_link_local
 
 
 def _validate_backend_url(url: str) -> None:
-    """Validate backend URL: only http/https schemes allowed.
-
-    SSRF mitigation for bandit B310 / CWE-22. The base URL is config-supplied
-    and typically points at a loopback inference server, but we still enforce
-    the scheme allowlist to prevent file://, gopher://, ftp:// etc.
-    """
     try:
         parsed = urlparse(url)
-    except Exception as exc:  # pragma: no cover - urlparse rarely raises
+    except Exception as exc:
         raise ValueError(f"malformed backend URL: {url!r}") from exc
     if parsed.scheme not in _ALLOWED_SCHEMES:
         raise ValueError(f"backend URL scheme {parsed.scheme!r} not allowed; must be http or https")
     if not parsed.hostname:
         raise ValueError(f"backend URL missing host: {url!r}")
+    if _is_private_or_reserved(parsed.hostname):
+        raise ValueError(f"backend URL host {parsed.hostname!r} resolves to a private/reserved address")
 
 
 __all__ = [
@@ -54,12 +75,12 @@ class HTTPBackend:
 
     def _post(self, url: str, body: dict) -> dict:
         cfg = self._config
+        _validate_backend_url(url)
         encoded = json.dumps(body).encode()
         req = urllib.request.Request(url, data=encoded, headers=self._headers(), method="POST")  # noqa: S310
         last_exc: Exception | None = None
         for attempt in range(cfg.max_retries):
             try:
-                _validate_backend_url(url)
                 with urllib.request.urlopen(req, timeout=cfg.timeout_s) as resp:  # nosec B310 - scheme validated by _validate_backend_url  # noqa: S310
                     return json.loads(resp.read())
             except urllib.error.HTTPError as exc:
@@ -102,7 +123,8 @@ class HTTPBackend:
         try:
             with urllib.request.urlopen(req, timeout=cfg.timeout_s) as resp:  # nosec B310 - scheme validated by _validate_backend_url  # noqa: S310
                 return resp.status == 200
-        except Exception:
+        except Exception as exc:
+            logging.getLogger(__name__).debug("Health check failed for %s: %s", health_url, exc)
             return False
 
 

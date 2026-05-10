@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import torch
@@ -20,6 +21,7 @@ class RLVRConfig:
     kl_coeff: float = 0.04
     clip_ratio: float = 0.2
     normalize_rewards: bool = True
+    tokenizer_decode: Callable[[list[int]], str] | None = None
 
 
 class VerifiableReward:
@@ -143,7 +145,8 @@ def compute_rlvr_loss(
         (loss, metrics_dict)
     """
     if config.normalize_rewards:
-        advantages = (rewards - rewards.mean()) / (rewards.std() + 1e-8)
+        std = rewards.std() if rewards.numel() > 1 else torch.tensor(1.0, device=rewards.device)
+        advantages = (rewards - rewards.mean()) / std.clamp(min=1e-8)
     else:
         advantages = rewards
 
@@ -155,7 +158,9 @@ def compute_rlvr_loss(
     clipped = torch.clamp(ratio, 1 - config.clip_ratio, 1 + config.clip_ratio)
 
     policy_loss = -torch.min(ratio * advantages, clipped * advantages).mean()
-    kl_loss = (log_probs - ref_log_probs).mean()
+    # Mean log-ratio is an unclipped KL approximation that can go negative,
+    # which would turn the penalty into a divergence bonus.
+    kl_loss = (log_probs - ref_log_probs).sum(dim=-1).mean().clamp(min=0.0)
     total = policy_loss + config.kl_coeff * kl_loss
 
     metrics = {
@@ -209,7 +214,10 @@ class RLVRTrainer:
         completions_text: list[str] = []
         for i in range(cfg.n_samples):
             ids = completion_ids[i].tolist()
-            text = bytes(tok % 256 for tok in ids).decode(errors="replace")
+            if cfg.tokenizer_decode is not None:
+                text = cfg.tokenizer_decode(ids)
+            else:
+                text = bytes(tok % 256 for tok in ids).decode(errors="replace")
             completions_text.append(text)
 
         # 3. Score with reward_fn
@@ -218,16 +226,10 @@ class RLVRTrainer:
         ]
         rewards = torch.tensor(reward_list, dtype=torch.float32)
 
-        # 4. Compute ref log probs (no grad)
+        # 4. Compute ref log probs for the SAME completions (no grad)
         with torch.no_grad():
             self.ref_model.eval()
-            _, ref_log_probs = sample_completions(
-                self.ref_model,
-                prompt_ids,
-                n_samples=cfg.n_samples,
-                max_new_tokens=cfg.max_new_tokens,
-                temperature=cfg.temperature,
-            )
+            ref_log_probs = self._recompute_log_probs_ref(prompt_ids, completion_ids)
 
         # 5. Recompute policy log probs with gradient
         self.policy_model.train()
@@ -260,6 +262,28 @@ class RLVRTrainer:
         full_ids = torch.cat([prompt_expanded, completion_ids], dim=1)
 
         _, logits, _ = self.policy_model(full_ids)
+
+        log_probs_all = F.log_softmax(logits[:, :-1, :], dim=-1)
+
+        completion_lp = log_probs_all[:, prompt_len - 1 : prompt_len - 1 + T, :]
+
+        token_lp = completion_lp.gather(2, completion_ids.unsqueeze(-1)).squeeze(-1)
+
+        return token_lp
+
+    def _recompute_log_probs_ref(
+        self,
+        prompt_ids: Tensor,
+        completion_ids: Tensor,
+    ) -> Tensor:
+        """Recompute per-token log probs for completions under reference model (no grad)."""
+        n_samples, T = completion_ids.shape
+        prompt_len = prompt_ids.shape[1]
+
+        prompt_expanded = prompt_ids.expand(n_samples, -1)
+        full_ids = torch.cat([prompt_expanded, completion_ids], dim=1)
+
+        _, logits, _ = self.ref_model(full_ids)
 
         log_probs_all = F.log_softmax(logits[:, :-1, :], dim=-1)
 

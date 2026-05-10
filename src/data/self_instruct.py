@@ -195,7 +195,7 @@ def parse_generated_instructions(raw_text: str) -> list[str]:
     """
     instructions: list[str] = []
     # Try to match numbered items first (e.g. "1. ...", "1) ...")
-    numbered = re.findall(r"^\s*\d+[.)]\s+(.+)", raw_text, re.MULTILINE)
+    numbered = re.findall(r"^\s*\d+[.)]\s+(.+)", raw_text, re.MULTILINE | re.DOTALL)
     if numbered:
         for item in numbered:
             item = item.strip()

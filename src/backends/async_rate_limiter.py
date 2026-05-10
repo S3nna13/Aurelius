@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -41,6 +42,7 @@ class AsyncFixedWindowRateLimiter:
     def __init__(self, config: RateLimitConfig) -> None:
         self._config = config
         self._windows: dict[str, _WindowState] = {}
+        self._lock = asyncio.Lock()
 
     def _get_or_create(self, key: str) -> _WindowState:
         if key not in self._windows:
@@ -55,13 +57,14 @@ class AsyncFixedWindowRateLimiter:
         return state
 
     async def acquire(self, key: str = "default") -> bool:
-        state = self._maybe_reset(self._get_or_create(key))
-        if state.count < self._config.requests_per_window:
-            state.count += 1
-            return True
-        raise RateLimitExceeded(
+        async with self._lock:
+            state = self._maybe_reset(self._get_or_create(key))
+            if state.count < self._config.burst_limit:
+                state.count += 1
+                return True
+            raise RateLimitExceeded(
             f"Rate limit exceeded for key '{key}': "
-            f"{self._config.requests_per_window} req/{self._config.window_seconds}s"
+            f"{self._config.burst_limit} req/{self._config.window_seconds}s"
         )
 
     async def try_acquire(self, key: str = "default") -> bool:
@@ -70,17 +73,19 @@ class AsyncFixedWindowRateLimiter:
         except RateLimitExceeded:
             return False
 
-    def reset(self, key: str = "default") -> None:
-        if key in self._windows:
-            state = self._windows[key]
-            state.window_start = time.monotonic()
-            state.count = 0
+    async def reset(self, key: str = "default") -> None:
+        async with self._lock:
+            if key in self._windows:
+                state = self._windows[key]
+                state.window_start = time.monotonic()
+                state.count = 0
 
-    def get_remaining(self, key: str = "default") -> int:
-        if key not in self._windows:
-            return self._config.requests_per_window
-        state = self._maybe_reset(self._windows[key])
-        return max(0, self._config.requests_per_window - state.count)
+    async def get_remaining(self, key: str = "default") -> int:
+        async with self._lock:
+            if key not in self._windows:
+                return self._config.requests_per_window
+            state = self._maybe_reset(self._windows[key])
+            return max(0, self._config.requests_per_window - state.count)
 
     def get_stats(self) -> dict[str, Any]:
         result: dict[str, Any] = {}

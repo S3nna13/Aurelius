@@ -1,7 +1,5 @@
 """Aurelius 1.3B transformer model."""
 
-import sys
-
 from .aqlm_quant import AQLMCodebook, AQLMConfig, AQLMLinear
 from .attention import GroupedQueryAttention, apply_rope, precompute_rope_frequencies
 from .checkpoint_migration import (
@@ -178,24 +176,6 @@ MODEL_COMPONENT_REGISTRY["matryoshka_embedding"] = MatryoshkaEmbedding
 MODEL_COMPONENT_REGISTRY["csa_attention"] = CompressedSparseAttention
 MODEL_COMPONENT_REGISTRY["hca_attention"] = HeavilyCompressedAttention
 MODEL_COMPONENT_REGISTRY["mhc"] = ManifoldConstrainedHyperConnection
-
-_module = sys.modules[__name__]
-sys.modules["src.model"] = _module
-sys.modules["aurelius.model"] = _module
-sys.modules["model"] = _module
-
-
-def _mirror_namespace(primary: str, mirror: str) -> None:
-    for module_name, module in list(sys.modules.items()):
-        if module_name == primary or module_name.startswith(f"{primary}."):
-            mirror_name = mirror + module_name[len(primary) :]
-            sys.modules[mirror_name] = module
-
-
-_mirror_namespace("src.model", "aurelius.model")
-_mirror_namespace("aurelius.model", "src.model")
-_mirror_namespace("src.model", "model")
-_mirror_namespace("aurelius.model", "model")
 
 from src.backends import (  # noqa: E402
     BACKEND_REGISTRY,
@@ -380,9 +360,15 @@ from .moe import (  # noqa: E402
     BalancedMoEFFN,
     ExpertChoiceLayer,
     SoftMoELayer,
+    SparseMoELayer,
 )
 from .config import HLMConfig, MoDConfig, MoEConfig, ReMoDEConfig  # noqa: E402
 from . import mod  # noqa: E402
+
+try:
+    from .mod import MoDRouter, MoDLayer, CapacityTracker  # noqa: E402
+except ImportError:
+    pass
 
 _LAZY_EXPORTS = {
     "SessionRecord": ("src.agent.session_manager", "SessionRecord"),

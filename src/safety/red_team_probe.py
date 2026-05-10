@@ -123,8 +123,8 @@ class RedTeamProbe:
         prompts: list[str] = []
         for t in self._templates:
             try:
-                prompts.append(t.template.format(target=target))
-            except (KeyError, IndexError):
+                prompts.append(t.template.replace("{target}", target))
+            except ValueError:
                 prompts.append(t.template)
         return prompts
 
@@ -179,8 +179,8 @@ class RedTeamProbe:
         results: list[ProbeResult] = []
         for t in self._templates:
             try:
-                prompt = t.template.format(target=target)
-            except (KeyError, IndexError):
+                prompt = t.template.replace("{target}", target)
+            except ValueError:
                 prompt = t.template
             try:
                 response = response_fn(prompt)

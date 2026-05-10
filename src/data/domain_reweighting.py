@@ -240,7 +240,9 @@ def build_reweighted_batch(
 
     for _ in range(batch_size):
         domain = reweighter.sample_domain(rng)
-        pool = domain_data[domain]
+        pool = domain_data.get(domain, [])
+        if not pool:
+            continue
         seq = rng.choice(pool)
         sequences.append(seq.long())
         domain_labels.append(domain)

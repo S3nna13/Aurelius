@@ -173,7 +173,9 @@ class FFNFactory:
         Raises:
             ValueError: If config.activation is not recognised.
         """
-        act = config.activation.lower()
+        act = (config.activation or "").lower()
+        if not act:
+            raise ValueError("Activation must not be empty or None")
         if act == "swiglu":
             return SwiGLUFFN(config.d_model, config.d_ff)
         elif act == "geglu":
@@ -230,11 +232,11 @@ class FFNFactory:
         d_m, d_ff = config.d_model, config.d_ff
         act = config.activation.lower()
 
-        if act in _GLU_VARIANTS or act == "squared_relu":
-            # Two input projections + one output projection
-            forward_flops = 2 * 2 * B * T * d_m * d_ff
+        if act in _GLU_VARIANTS:
+            # Three projections (GLU variants)
+            forward_flops = 3 * 2 * B * T * d_m * d_ff
         else:
-            # Two projections (standard MLP)
+            # Two projections (standard MLP / SquaredReLU)
             forward_flops = 2 * B * T * d_m * d_ff * 2
 
         return {

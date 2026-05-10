@@ -1,8 +1,86 @@
 """Aurelius alignment and safety evaluation."""
 
-import sys
+import warnings
 
-from src.training.process_reward_model import ProcessRewardModel as ProcessRewardModel
+def __getattr__(name: str):
+    if name == "ProcessRewardModel":
+        from src.training.process_reward_model import ProcessRewardModel
+        return ProcessRewardModel
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+__all__ = [
+    "ALIGNMENT_REGISTRY",
+    "AbsoluteZeroConfig",
+    "AbsoluteZeroTrainer",
+    "AdversarialCodeBattle",
+    "AnnealedLambda",
+    "BattleTranscript",
+    "BluePatch",
+    "CONSTITUTION_DIMENSIONS",
+    "CPOBatch",
+    "CPOConfig",
+    "CPOTrainer",
+    "ConstitutionDimension",
+    "ConstitutionLevel",
+    "ConstitutionReport",
+    "ConstitutionScorer",
+    "CrossStageDistillation",
+    "DEFAULT_CONSTITUTION_TEXT",
+    "DEFAULT_GRADERS",
+    "DimensionGrade",
+    "DPOConfig",
+    "DPOLoss",
+    "DPOTrainer",
+    "GenerativeRewardModel",
+    "GRMConfig",
+    "KTOBatch",
+    "KTOConfig",
+    "KTOLoss",
+    "KTOTrainer",
+    "KTOv2Loss",
+    "LengthReward",
+    "LengthRewardConfig",
+    "OnlineRFTConfig",
+    "OnlineRFTTrainer",
+    "ORPOBatch",
+    "ORPOConfig",
+    "ORPOTrainer",
+    "PARLReward",
+    "PREFERENCE_COLLECTOR",
+    "PreferenceCollector",
+    "PreferenceItem",
+    "ProcessRewardModel",
+    "REWARD_CALIBRATOR_REGISTRY",
+    "RLHFPhase",
+    "RLHF_PIPELINE",
+    "RLHFPipeline",
+    "RedFinding",
+    "Round",
+    "RFTSample",
+    "SPINBatch",
+    "SPINConfig",
+    "SPINLoss",
+    "SPINTrainer",
+    "ScoredCandidate",
+    "SelfRewardBatch",
+    "SelfRewardConfig",
+    "SelfRewardTrainer",
+    "StepDPOTrainer",
+    "StepPreferenceExample",
+    "ToggleReward",
+    "ZeroVisionSFTConfig",
+    "ZeroVisionSFTTrainer",
+    "bradley_terry_loss",
+    "calibration_method",
+    "dpo_pair_loss",
+    "heuristic_blue_fn",
+    "heuristic_red_fn",
+    "kto_v2_loss_functional",
+    "listnet_loss",
+    "margin_ranking_loss",
+    "ordinal_ranking_loss",
+    "step_dpo_loss",
+]
 
 from .adversarial_code_battle import (
     AdversarialCodeBattle,
@@ -202,21 +280,3 @@ from .preference_collector import (
 )
 
 ALIGNMENT_REGISTRY["preference_collector"] = PreferenceCollector
-
-_module = sys.modules[__name__]
-
-
-def _mirror_namespace(primary: str, mirror: str) -> None:
-    for module_name, module in list(sys.modules.items()):
-        if module_name == primary or module_name.startswith(f"{primary}."):
-            mirror_name = mirror + module_name[len(primary) :]
-            sys.modules[mirror_name] = module
-
-
-sys.modules["src.alignment"] = _module
-sys.modules["aurelius.alignment"] = _module
-sys.modules["alignment"] = _module
-_mirror_namespace("src.alignment", "aurelius.alignment")
-_mirror_namespace("aurelius.alignment", "src.alignment")
-_mirror_namespace("src.alignment", "alignment")
-_mirror_namespace("aurelius.alignment", "alignment")

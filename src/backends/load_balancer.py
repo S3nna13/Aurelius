@@ -7,6 +7,7 @@ selection strategies. All logic is stdlib-only; no foreign dependencies.
 from __future__ import annotations
 
 import random
+import threading
 from dataclasses import dataclass
 from enum import Enum
 
@@ -56,6 +57,7 @@ class LoadBalancer:
         self._instances: list[BackendInstance] = list(instances)
         self._algorithm = algorithm
         self._rr_index: int = 0
+        self._lock = threading.Lock()
 
     # ------------------------------------------------------------------
     # Selection
@@ -82,9 +84,10 @@ class LoadBalancer:
         return self._select_round_robin()
 
     def _select_round_robin(self) -> BackendInstance:
-        idx = self._rr_index % len(self._instances)
-        self._rr_index = (idx + 1) % len(self._instances)
-        return self._instances[idx]
+        with self._lock:
+            idx = self._rr_index % len(self._instances)
+            self._rr_index = (idx + 1) % len(self._instances)
+            return self._instances[idx]
 
     def _select_weighted_round_robin(self) -> BackendInstance:
         # Score = weight * 1 / (active_requests + 1); highest score wins.
@@ -107,12 +110,14 @@ class LoadBalancer:
 
     def acquire(self, instance: BackendInstance) -> None:
         """Mark a request as in-flight on *instance*."""
-        instance.active_requests += 1
-        instance.total_requests += 1
+        with self._lock:
+            instance.active_requests += 1
+            instance.total_requests += 1
 
     def release(self, instance: BackendInstance) -> None:
         """Mark a request as completed on *instance* (floor at 0)."""
-        instance.active_requests = max(0, instance.active_requests - 1)
+        with self._lock:
+            instance.active_requests = max(0, instance.active_requests - 1)
 
     # ------------------------------------------------------------------
     # Pool management

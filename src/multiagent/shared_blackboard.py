@@ -53,7 +53,10 @@ class Blackboard:
 
     def _notify(self, entry: BlackboardEntry) -> None:
         for cb in self._subscribers.get(entry.key, []):
-            cb(entry)
+            try:
+                cb(entry)
+            except Exception:
+                pass
 
     def keys(self) -> list[str]:
         return sorted(self._store.keys())

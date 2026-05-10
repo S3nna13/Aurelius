@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
@@ -24,7 +25,7 @@ class HealthMetric:
 
 @dataclass
 class DeploymentHealthMonitor:
-    _metrics: list[HealthMetric] = field(default_factory=list, repr=False)
+    _metrics: deque[HealthMetric] = field(default_factory=lambda: deque(maxlen=10000), repr=False)
 
     def record(self, metric: HealthMetric) -> None:
         self._metrics.append(metric)

@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Aurelius — 1.3B decoder-only LLM trained from scratch"
 requires-python = ">=3.12"
 dependencies = [
-    "torch>=2.3.0",
+    "torch>=2.3.0,<3.0",
     "tokenizers>=0.20.0",
     "safetensors>=0.4.0",
     "pyyaml>=6.0",
@@ -22,6 +22,11 @@ full = [
     "accelerate>=1.0.0",
     "trl>=0.12.0",
     "peft>=0.13.0",
+    "pydantic>=2.0.0",
+    "pillow>=10.0.0",
+    "huggingface_hub>=0.24.0",
+    "pyarrow>=14.0.0",
+    "scipy>=1.12.0",
 ]
 train = [
     "transformers>=4.45.0",
@@ -29,9 +34,9 @@ train = [
     "accelerate>=1.0.0",
     "trl>=0.12.0",
     "peft>=0.13.0",
-    "datatrove[io,processing]>=0.3.0",
-    "flash-attn>=2.6.0; platform_machine=='x86_64'",
-    "deepspeed>=0.15.0; platform_machine=='x86_64'",
+    "datatrove[io,processing]>=0.9.0",
+    "flash-attn>=2.6.0,<3.0; platform_machine=='x86_64'",
+    "deepspeed>=0.15.0,<1.0; platform_machine=='x86_64'",
     "wandb>=0.18.0",
     "bitsandbytes>=0.44.0; platform_machine=='x86_64'",
 ]
@@ -49,6 +54,7 @@ serve = [
     "openai>=1.50.0",
     "httpx>=0.27.0",
     "psutil>=6.0.0",
+    "xgrammar>=0.1.0",
 ]
 db = [
     "alembic>=1.14.0",
@@ -57,7 +63,7 @@ db = [
 dev = [
     "pytest>=9.0.3",
     "pytest-cov>=5.0.0",
-    "ruff>=0.7.0",
+    "ruff==0.9.0",
 ]
 
 [project.scripts]

@@ -25,6 +25,7 @@ from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import DataLoader
 
 from src.data.tokenized_loader import TokenizedShardDataset
+from src.safety.safety_token_regularization import SafetyTokenRegularizer
 from src.training.muon import Muon
 from src.training.zclip import ZClip
 
@@ -543,11 +544,13 @@ class AureliusTrainer:
         train_dataloader: DataLoader,
         val_dataloader: DataLoader | None,
         cfg: TrainConfig,
+        safety_regularizer: SafetyTokenRegularizer | None = None,
     ) -> None:
         self.cfg = cfg
         self.model = model
         self.train_dataloader = train_dataloader
         self.val_dataloader = val_dataloader
+        self.safety_regularizer = safety_regularizer
 
         # Count parameters
         self.n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -841,11 +844,13 @@ class AureliusTrainer:
             labels = batch.get("labels", input_ids)
 
             with self.accelerator.accumulate(self.model):
-                loss, _, _ = self.model(input_ids=input_ids, labels=labels)
+                loss, logits, _ = self.model(input_ids=input_ids, labels=labels)
+                if self.safety_regularizer is not None and logits is not None:
+                    str_loss = self.safety_regularizer.compute_str_loss(logits)
+                    loss = loss + str_loss
 
                 self.accelerator.backward(loss)
 
-                # Gradient clipping
                 if self.accelerator.sync_gradients:
                     if self.zclip is not None:
                         self.zclip.clip_grad_norm_(self.model.parameters())
@@ -855,12 +860,12 @@ class AureliusTrainer:
                             self.cfg.max_grad_norm,
                         )
 
-                if self.muon_optimizer is not None:
-                    self.muon_optimizer.step()
-                    self.muon_optimizer.zero_grad()
-                self.adamw_optimizer.step()
-                self.scheduler.step()
-                self.adamw_optimizer.zero_grad()
+                    if self.muon_optimizer is not None:
+                        self.muon_optimizer.step()
+                        self.muon_optimizer.zero_grad()
+                    self.adamw_optimizer.step()
+                    self.scheduler.step()
+                    self.adamw_optimizer.zero_grad()
 
             step_loss_accum += loss.detach().float().item()
             micro_steps_in_accum += 1
@@ -877,10 +882,13 @@ class AureliusTrainer:
                 batch_tokens = self.cfg.global_batch_tokens
                 self.tokens_seen += batch_tokens
 
+                avg_loss = step_loss_accum / max(1, micro_steps_in_accum)
+                step_loss_accum = 0.0
+                micro_steps_in_accum = 0
+
                 # Logging
                 if self.global_step % self.cfg.log_interval_steps == 0:
                     elapsed = time.perf_counter() - step_start_time
-                    avg_loss = step_loss_accum / max(1, micro_steps_in_accum)
                     tokens_per_sec = (batch_tokens * self.cfg.log_interval_steps) / max(
                         elapsed, 1e-6
                     )
@@ -908,8 +916,6 @@ class AureliusTrainer:
                         if self.cfg.wandb_enabled:
                             self.accelerator.log(metrics, step=self.global_step)
 
-                    step_loss_accum = 0.0
-                    micro_steps_in_accum = 0
                     step_start_time = time.perf_counter()
 
                 # Checkpointing

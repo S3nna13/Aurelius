@@ -2,7 +2,7 @@ name: Ruff Autofix
 
 on:
   push:
-    branches: [main]
+    branches-ignore: [main]
     paths:
       - '**.py'
       - 'pyproject.toml'
@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   autofix:
@@ -27,7 +28,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install ruff
-        run: pip install ruff
+        run: pip install ruff==0.9.0
 
       - name: Ruff format
         run: ruff format src/ tests/ scripts/
@@ -44,11 +45,12 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Commit and push fixes
+      - name: Create pull request for fixes
         if: steps.diff.outputs.changed == 'true'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "style: ruff autofix [skip ci]"
-          git push
+        uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7.0.8
+        with:
+          commit-message: "style: ruff autofix [skip ci]"
+          title: "style: ruff autofix"
+          body: "Automated ruff format + fix applied by CI."
+          branch: automated/ruff-autofix
+          base: main

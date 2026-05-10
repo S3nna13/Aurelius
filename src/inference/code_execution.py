@@ -17,10 +17,11 @@ process.
 
 from __future__ import annotations
 
+import ast
 import contextlib
 import io
+import multiprocessing
 import re
-import threading
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -112,36 +113,66 @@ def extract_code_blocks(text: str, language: str = "python") -> list[str]:
 # Sanitization
 # ---------------------------------------------------------------------------
 
-# Patterns that are unconditionally blocked
-_BLOCKED_PATTERNS: list[tuple[str, str]] = [
-    (r"\bimport\s+os\b", "import of 'os' is not allowed"),
-    (r"\bimport\s+sys\b", "import of 'sys' is not allowed"),
-    (r"\bsubprocess\b", "use of 'subprocess' is not allowed"),
-    (r"\b__import__\s*\(", "use of '__import__' is not allowed"),
-    (r"\bexec\s*\(", "use of 'exec' is not allowed"),
-    (r"\beval\s*\(", "use of 'eval' is not allowed"),
-    (r"\bopen\s*\(", "use of 'open' is not allowed"),
-    (r"\bfile\s*\(", "use of 'file' is not allowed"),
-    (r"\bsocket\b", "use of 'socket' is not allowed"),
-]
+_BLOCKED_ATTRS = frozenset({
+    "__class__", "__bases__", "__subclasses__", "__builtins__",
+    "__globals__", "__code__", "__closure__", "__dict__",
+    "__mro__", "__import__",
+})
+
+
+class _AstChecker(ast.NodeVisitor):
+    def __init__(self) -> None:
+        self.violations: list[str] = []
+
+    def visit_Import(self, node: ast.Import) -> None:
+        for alias in node.names:
+            root = alias.name.split(".")[0]
+            self.violations.append(f"import of '{root}' is not allowed")
+        self.generic_visit(node)
+
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+        if node.module:
+            root = node.module.split(".")[0]
+            self.violations.append(f"import from '{root}' is not allowed")
+        self.generic_visit(node)
+
+    def visit_Attribute(self, node: ast.Attribute) -> None:
+        if node.attr in _BLOCKED_ATTRS:
+            self.violations.append(f"access to '{node.attr}' is not allowed")
+        self.generic_visit(node)
+
+    def visit_Call(self, node: ast.Call) -> None:
+        if isinstance(node.func, ast.Name) and node.func.id in ("exec", "eval", "compile", "open", "__import__"):
+            self.violations.append(f"use of '{node.func.id}()' is not allowed")
+        if isinstance(node.func, ast.Attribute) and node.func.attr in ("__import__",):
+            self.violations.append(f"use of '{node.func.attr}()' is not allowed")
+        self.generic_visit(node)
 
 
 def sanitize_code(code: str, allowed_modules: list[str]) -> tuple[bool, str]:
-    """Check code for dangerous patterns.
+    try:
+        tree = ast.parse(code)
+    except SyntaxError as e:
+        return False, f"SyntaxError: {e}"
 
-    Returns (is_safe, reason). reason is "" when safe, else explains the block.
-    """
-    # Check unconditionally blocked patterns
-    for pattern, reason in _BLOCKED_PATTERNS:
-        if re.search(pattern, code):
-            return False, reason
+    checker = _AstChecker()
+    checker.visit(tree)
 
-    # Check all import statements against the allowed list
-    import_pattern = re.compile(r"^\s*(?:import|from)\s+([a-zA-Z_][a-zA-Z0-9_]*)", re.MULTILINE)
-    for m in import_pattern.finditer(code):
-        module = m.group(1)
-        if module not in allowed_modules:
-            return False, f"import of '{module}' is not in the allowed modules list"
+    allowed_roots = set(allowed_modules)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                root = alias.name.split(".")[0]
+                if root not in allowed_roots:
+                    return False, f"import of '{root}' is not in the allowed modules list"
+        elif isinstance(node, ast.ImportFrom):
+            if node.module:
+                root = node.module.split(".")[0]
+                if root not in allowed_roots:
+                    return False, f"import from '{root}' is not in the allowed modules list"
+
+    if checker.violations:
+        return False, checker.violations[0]
 
     return True, ""
 
@@ -227,18 +258,19 @@ def execute_python(code: str, config: ExecutionConfig) -> ExecutionResult:
         try:
             compiled = compile(code, "<sandbox>", "exec")
             with contextlib.redirect_stdout(stdout_buf), contextlib.redirect_stderr(stderr_buf):
-                # nosec B102 -- sandboxed run; input validated via sanitize_code() and _MAX_EXEC_LEN; globals come from _make_restricted_globals().
-                exec(compiled, restricted_globals)  # noqa: S102  # nosec B102
+                exec(compiled, restricted_globals)  # noqa: S102
         except Exception as exc:
             exc_holder.append(exc)
 
-    thread = threading.Thread(target=_run, daemon=True)
-    thread.start()
-    thread.join(timeout=config.timeout_seconds)
+    proc = multiprocessing.Process(target=_run, daemon=True)
+    proc.start()
+    proc.join(timeout=config.timeout_seconds)
 
     elapsed = time.monotonic() - start
 
-    if thread.is_alive():
+    if proc.is_alive():
+        proc.terminate()
+        proc.join(timeout=1.0)
         return ExecutionResult(
             code=code,
             stdout=stdout_buf.getvalue()[: config.max_output_len],

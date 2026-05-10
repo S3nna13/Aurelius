@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
+
+_SAFE_KEY_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
 class SecretBackend(StrEnum):
@@ -35,26 +38,29 @@ class SecretProvider:
         self._env_keys: list[str] = []
 
     def set(self, key: str, value: str, redact: bool = True) -> None:
+        if not _SAFE_KEY_RE.match(key):
+            raise ValueError(f"Invalid secret key: {key!r}")
         sv = SecretValue(key=key, value=value, redacted=redact)
         if self._backend == SecretBackend.ENV:
             os.environ[key] = value
             if key not in self._env_keys:
                 self._env_keys.append(key)
         elif self._backend == SecretBackend.FILE:
+            if self._file_dir is None:
+                raise RuntimeError("FILE backend requires set_file_dir() to be called first")
             self._store[key] = sv
-            if self._file_dir is not None:
-                file_path = Path(self._file_dir) / key
-                file_path.write_text(value)
+            self._file_path(key).write_text(value)
         else:
-            # MEMORY
             self._store[key] = sv
 
     def get(self, key: str) -> str | None:
+        if not _SAFE_KEY_RE.match(key):
+            raise ValueError(f"Invalid secret key: {key!r}")
         if self._backend == SecretBackend.ENV:
             return os.environ.get(key)
         elif self._backend == SecretBackend.FILE:
             if self._file_dir is not None:
-                file_path = Path(self._file_dir) / key
+                file_path = self._file_path(key)
                 if file_path.exists():
                     return file_path.read_text()
             # Fall back to in-memory store for FILE backend
@@ -67,6 +73,17 @@ class SecretProvider:
 
     def set_file_dir(self, path: str) -> None:
         self._file_dir = path
+
+    def _file_path(self, key: str) -> Path:
+        if not _SAFE_KEY_RE.match(key):
+            raise ValueError(f"Invalid secret key: {key}")
+        if self._file_dir is None:
+            raise RuntimeError("File directory not set")
+        path = (Path(self._file_dir) / key).resolve()
+        base = Path(self._file_dir).resolve()
+        if not str(path).startswith(str(base)):
+            raise ValueError(f"Secret key escapes storage directory: {key}")
+        return path
 
     def list_keys(self) -> list[str]:
         if self._backend == SecretBackend.ENV:
@@ -82,6 +99,8 @@ class SecretProvider:
             return list(self._store.keys())
 
     def delete(self, key: str) -> bool:
+        if not _SAFE_KEY_RE.match(key):
+            raise ValueError(f"Invalid secret key: {key!r}")
         if self._backend == SecretBackend.ENV:
             result = os.environ.pop(key, None)
             existed = result is not None
@@ -92,7 +111,7 @@ class SecretProvider:
             existed = key in self._store
             self._store.pop(key, None)
             if self._file_dir is not None:
-                file_path = Path(self._file_dir) / key
+                file_path = self._file_path(key)
                 if file_path.exists():
                     file_path.unlink()
                     existed = True

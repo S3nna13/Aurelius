@@ -150,7 +150,7 @@ _W_CUSTOM = 0.03
 # the repetition sub-score at 1.0; fewer repetitions scale linearly.
 _REP_NGRAM = 3
 _REP_MIN = 8  # at this count, sub-score = 1.0
-_REP_START = 3  # below this count, sub-score = 0.0
+_REP_START = 2  # below this count, sub-score = 0.0
 
 # Hard cap on the input length we consider for regex scanning. Anything beyond
 # this is truncated (after normalisation) so adversarial inputs cannot make

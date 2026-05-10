@@ -383,7 +383,7 @@ class PIIDetector:
         if mode == "remove":
             return ""
         # Unreachable — __init__ validates the mode.
-        raise ValueError(f"unknown redaction_mode {mode!r}")
+        assert False, f"unknown redaction_mode {mode!r}"
 
     # -- scan drivers ------------------------------------------------------
 
@@ -469,7 +469,7 @@ def _looks_like_token(s: str) -> bool:
 
 
 def _resolve_overlaps(matches: Iterable[PIIMatch]) -> list[PIIMatch]:
-    """Greedy overlap resolution.
+    """Sweep-line overlap resolution.
 
     Sorted by (confidence desc, length desc, start asc). A match is accepted
     if it doesn't overlap any already-accepted span.
@@ -484,16 +484,17 @@ def _resolve_overlaps(matches: Iterable[PIIMatch]) -> list[PIIMatch]:
 
     ordered = sorted(matches, key=key)
     accepted: list[PIIMatch] = []
+    ends: list[int] = []
     for m in ordered:
         s, e = m.span
         conflict = False
-        for a in accepted:
-            as_, ae = a.span
-            if s < ae and as_ < e:
+        for ae in ends:
+            if s < ae:
                 conflict = True
                 break
         if not conflict:
             accepted.append(m)
+            ends.append(e)
     return accepted
 
 

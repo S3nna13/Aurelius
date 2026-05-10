@@ -6,6 +6,7 @@ Prometheus text format (Apache-2.0), clean-room Aurelius implementation.
 
 from __future__ import annotations
 
+import yaml
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -72,45 +73,30 @@ class HelmChartGenerator:
     def generate_values_yaml(self, chart: HelmChart) -> str:
         """Return the content of values.yaml as a string."""
         v = chart.values
-
-        # Build env_vars block
-        env_lines: list[str] = []
-        if v.env_vars:
-            for k, val in v.env_vars.items():
-                env_lines.append(f'  {k}: "{val}"')
-        env_block = "\n".join(env_lines) if env_lines else "  {}"
-
-        # Build resources blocks
-        req_lines = "\n".join(f'    {k}: "{val}"' for k, val in v.resources_requests.items())
-        lim_lines = "\n".join(f'    {k}: "{val}"' for k, val in v.resources_limits.items())
-
-        return (
-            f"replicaCount: {v.replicas}\n"
-            "\n"
-            "image:\n"
-            f"  repository: {v.image_repository}\n"
-            f'  tag: "{v.image_tag}"\n'
-            "  pullPolicy: IfNotPresent\n"
-            "\n"
-            f"service:\n"
-            f"  type: {v.service_type}\n"
-            f"  port: {v.port}\n"
-            "\n"
-            "resources:\n"
-            "  requests:\n"
-            f"{req_lines}\n"
-            "  limits:\n"
-            f"{lim_lines}\n"
-            "\n"
-            "ingress:\n"
-            f"  enabled: {'true' if v.ingress_enabled else 'false'}\n"
-            "\n"
-            "gpu:\n"
-            f"  enabled: {'true' if v.gpu_enabled else 'false'}\n"
-            "\n"
-            "env:\n"
-            f"{env_block}\n"
-        )
+        values_dict = {
+            "replicaCount": v.replicas,
+            "image": {
+                "repository": v.image_repository,
+                "tag": v.image_tag,
+                "pullPolicy": "IfNotPresent",
+            },
+            "service": {
+                "type": v.service_type,
+                "port": v.port,
+            },
+            "resources": {
+                "requests": v.resources_requests,
+                "limits": v.resources_limits,
+            },
+            "ingress": {
+                "enabled": v.ingress_enabled,
+            },
+            "gpu": {
+                "enabled": v.gpu_enabled,
+            },
+            "env": v.env_vars,
+        }
+        return yaml.dump(values_dict, default_flow_style=False, sort_keys=False)
 
     def generate_deployment_yaml(self, chart: HelmChart) -> str:
         """Return the content of templates/deployment.yaml as a string."""
@@ -261,12 +247,12 @@ class _HelmArtifactBuilder(ContainerBuilder):
             version=chart.version,
             app_version=chart.app_version,
             description=chart.description,
-            values=HelmChartValues(image_repository=spec.image_name),
+            values=HelmChartValues(image_repository=spec.image_name, image_tag=spec.image_tag),
         )
         written = _GENERATOR.write_chart(chart_copy, Path(output_dir))
         return BuildResult(
             success=True,
-            image_tag=f"{spec.image_name}:latest",
+            image_tag=f"{spec.image_name}:{spec.image_tag}",
             sbom_path=None,
             log_lines=[f"Wrote Helm chart files: {list(written.keys())}"],
         )

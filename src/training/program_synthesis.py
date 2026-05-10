@@ -11,8 +11,9 @@ Pipeline per step:
 from __future__ import annotations
 
 import io
+import multiprocessing
+import subprocess
 import sys
-import threading
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -79,47 +80,21 @@ def execute_program_safe(
     test_input: str,
     timeout: float,
 ) -> tuple[str, bool]:
-    """Execute Python code string safely and capture stdout.
-
-    The code runs inside a restricted namespace where __builtins__ is
-    limited to a safe subset.  stdout is captured via io.StringIO.
-    A threading.Timer is used to enforce the timeout.
-
-    Returns:
-        (output_str, success_bool)
-    """
-    result_holder: list = [None, False]
-
-    def _run() -> None:
-        buf = io.StringIO()
-        namespace: dict = {
-            "__builtins__": _SAFE_BUILTINS,
-            "__name__": "__main__",
-            "_test_input": test_input,
-        }
-        old_stdout = sys.stdout
-        try:
-            sys.stdout = buf
-            exec(code, namespace)  # noqa: S102  # nosec B102
-            output = buf.getvalue()
-            result_holder[0] = output
-            result_holder[1] = True
-        except Exception:
-            result_holder[0] = ""
-            result_holder[1] = False
-        finally:
-            sys.stdout = old_stdout
-
-    thread = threading.Thread(target=_run, daemon=True)
-    thread.start()
-    thread.join(timeout=timeout)
-
-    if thread.is_alive():
+    wrapped = f"_test_input = {test_input!r}\n{code}"
+    try:
+        result = subprocess.run(
+            [sys.executable, "-I", "-S", "-c", wrapped],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+        output = result.stdout
+        success = result.returncode == 0
+        return (output, success)
+    except subprocess.TimeoutExpired:
         return ("", False)
-
-    output = result_holder[0] if result_holder[0] is not None else ""
-    success = result_holder[1]
-    return (output, success)
+    except Exception:
+        return ("", False)
 
 
 # ---------------------------------------------------------------------------

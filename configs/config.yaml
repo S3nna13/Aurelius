@@ -33,3 +33,16 @@ data:
   memory_curriculum: 2B_tokens
   eval_interval: 500
   save_interval: 2000
+
+mcp_gateway:
+  enabled: false
+  tool_allowlist: []
+  role_capabilities: {}
+  allowed_egress_domains: []
+  allowed_egress_ips: []
+  require_hitl_for_destructive: true
+  rate_limit_per_tool: 60
+  rate_limit_window: 60.0
+  rate_limit_per_user: 120
+  sanitize_outputs: true
+  audit_log_path: "logs/mcp_audit.jsonl"

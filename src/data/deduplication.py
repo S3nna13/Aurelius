@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import sys
+from collections import OrderedDict
 
 # ---------------------------------------------------------------------------
 # Shingling
@@ -42,7 +43,7 @@ def minhash_signature(shingles: set[str], n_hashes: int = 128, seed: int = 42) -
     for i in range(n_hashes):
         min_val = _MAX_INT
         for s in shingles:
-            h = int(hashlib.sha256(f"{i}:{s}".encode()).hexdigest()[:8], 16)
+            h = int(hashlib.sha256(f"{i}:{s}".encode()).hexdigest()[:16], 16)
             if h < min_val:
                 min_val = h
         signature.append(min_val)
@@ -73,15 +74,17 @@ def estimate_jaccard(sig1: list[int], sig2: list[int]) -> float:
 class LSHIndex:
     """Locality-Sensitive Hashing index using banding technique."""
 
-    def __init__(self, n_hashes: int = 128, n_bands: int = 32, threshold: float = 0.8) -> None:
+    def __init__(self, n_hashes: int = 128, n_bands: int = 32, threshold: float = 0.8, max_signatures: int = 10000) -> None:
+        if n_hashes % n_bands != 0:
+            raise ValueError(f"n_hashes ({n_hashes}) must be divisible by n_bands ({n_bands})")
         self.n_hashes = n_hashes
         self.n_bands = n_bands
         self.threshold = threshold
         self.rows_per_band = n_hashes // n_bands
-        # buckets[band_idx][bucket_key] = list of doc_ids
+        self.max_signatures = max_signatures
         self._buckets: list[dict[int, list[str]]] = [{} for _ in range(n_bands)]
-        # Store signatures for candidate verification
         self._signatures: dict[str, list[int]] = {}
+        self._signature_order: OrderedDict[str, None] = OrderedDict()
 
     def _band_hash(self, band_slice: list[int]) -> int:
         """Hash a band slice to a bucket key."""
@@ -110,6 +113,11 @@ class LSHIndex:
                 bucket[bucket_key] = [doc_id]
 
         self._signatures[doc_id] = signature
+        self._signature_order[doc_id] = None
+        while len(self._signatures) > self.max_signatures:
+            oldest = next(iter(self._signature_order))
+            self._signature_order.popitem(last=False)
+            del self._signatures[oldest]
         return list(candidates)
 
 
