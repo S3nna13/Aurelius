@@ -1,7 +1,7 @@
 version: "3.9"
 
 services:
-  aurelius:
+  aurelius-api:
     build:
       args:
         - BUILDKIT_INLINE_CACHE=1

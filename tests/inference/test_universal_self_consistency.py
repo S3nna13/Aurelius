@@ -8,14 +8,13 @@ from __future__ import annotations
 
 import pytest
 import torch
-from torch import Tensor
-
-from aurelius.inference.universal_self_consistency import (
+from src.inference.universal_self_consistency import (
     SelfConsistencyDecoder,
     SelfConsistencyVoter,
     TemperatureSampler,
     UniversalSCScorer,
 )
+from torch import Tensor
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers

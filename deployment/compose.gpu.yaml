@@ -1,10 +1,7 @@
 version: "3.9"
 
 services:
-  aurelius:
-    build:
-      context: ..
-      dockerfile: deployment/Dockerfile.gpu
+  aurelius-api:
     deploy:
       resources:
         reservations:
@@ -16,26 +13,3 @@ services:
       - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
       - AURELIUS_DEVICE=cuda
       - AURELIUS_DTYPE=bfloat16
-      - AURELIUS_MODEL_PATH=${AURELIUS_MODEL_PATH:-aurelius-ai/aurelius-1b}
-      - AURELIUS_AUTH_REQUIRED=true
-      - AURELIUS_API_KEYS=${AURELIUS_API_KEYS:-}
-    ports:
-      - "8080:8080"
-    command: >
-      --host 0.0.0.0
-      --engine vllm
-      --model-path ${AURELIUS_MODEL_PATH:-aurelius-ai/aurelius-1b}
-      --gpu-memory-utilization 0.90
-      --tensor-parallel-size ${AURELIUS_TENSOR_PARALLEL_SIZE:-1}
-      --quantization none
-    volumes:
-      - model-cache:/root/.cache/huggingface
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 120s
-
-volumes:
-  model-cache:

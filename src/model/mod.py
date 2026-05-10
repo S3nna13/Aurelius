@@ -137,3 +137,38 @@ class MoDLayer(nn.Module):
         aux_loss = ((router_probs.mean(dim=1) - target) ** 2).mean()
 
         return output, None, aux_loss
+class CapacityTracker:
+    """Tracks MoD routing statistics across forward passes.
+
+    Ported from Aurelius's src/model/mod_v2.py CapacityTracker.
+    """
+
+    def __init__(self, n_layers: int = 1) -> None:
+        self.n_layers = n_layers
+        self.utilization: list[list[float]] = [[] for _ in range(n_layers)]
+        self.routing_variance: list[list[float]] = [[] for _ in range(n_layers)]
+
+    def record(
+        self, layer_idx: int, selected_count: int, total_count: int, scores: list[float]
+    ) -> None:
+        util = selected_count / max(total_count, 1)
+        self.utilization[layer_idx].append(util)
+
+        if scores:
+            mean_score = sum(scores) / len(scores)
+            variance = sum((s - mean_score) ** 2 for s in scores) / len(scores)
+            self.routing_variance[layer_idx].append(variance)
+
+    def mean_utilization(self, layer_idx: int) -> float:
+        if not self.utilization[layer_idx]:
+            return 0.0
+        return sum(self.utilization[layer_idx]) / len(self.utilization[layer_idx])
+
+    def summary(self) -> dict[str, Any]:
+        return {
+            "layer_utilization": [self.mean_utilization(i) for i in range(self.n_layers)],
+            "mean_utilization": sum(self.mean_utilization(i) for i in range(self.n_layers))
+            / max(self.n_layers, 1),
+        }
+
+

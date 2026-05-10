@@ -28,10 +28,7 @@ runs/
 
 # macOS
 .DS_Store
-* 2.py
-* 3.py
-* 4.py
-* 5.py
+*\ [2-9].*
 
 # IDE
 .idea/
@@ -46,38 +43,35 @@ wandb/
 
 # Agent / cycle artifacts
 .aurelius-*.log
+aurelius_loop_v*.json
 .ruff_cache/
 .pytest_cache/
 aurelius.egg-info/
 
 # Deployment
-.dockerignore
-data/
+/data/
 
 # IDE
 *.swo
 *~
 
 # Frontend
-frontend/node_modules/
 frontend/dist/
 frontend/.env
 frontend/.env.local
 
 # Middle layer
-middle/node_modules/
 middle/dist/
 
 # Server layer
-server/node_modules/
 
-# Rust crates
-crates/data-engine/node_modules/
-crates/data-engine/target/
-crates/data-engine/*.node
-crates/token-counter/node_modules/
-crates/token-counter/target/
-crates/token-counter/*.node
+# Node.js — workspace hoists to root
+node_modules/
+**/node_modules/
+*.node
+
+# Python type/lint caches
+.mypy_cache/
 
 # Alembic
 alembic/versions/*.pyc
@@ -103,16 +97,16 @@ training_data/
 *.parquet
 
 # Rust crates (usage-store)
-crates/usage-store/target/
-crates/usage-store/*.node
 crates/usage-store/Cargo.lock
 
-# Rust build artifacts (catch-all)
-target/
-*.dylib
-*.so
-*.node
+# Rust memory (standalone PyO3)
+rust_memory/target/
 
-# Tools workspace member
-tools/*/target/
-tools/*/*.node
+# Root target (workspace)
+/target/
+
+# Nested git repos
+tools/jsonl-merge/
+
+# Agent loop artifacts
+.serena/

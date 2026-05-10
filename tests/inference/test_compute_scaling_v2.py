@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import pytest
 import torch
-
-from aurelius.inference.compute_scaling_v2 import (
+from src.inference.compute_scaling_v2 import (
     BestOfN,
     ComputeScalingOrchestrator,
     InferenceScalingConfig,

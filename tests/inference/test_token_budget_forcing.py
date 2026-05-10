@@ -4,14 +4,13 @@ from __future__ import annotations
 
 import pytest
 import torch
-from torch import LongTensor, Tensor
-
-from aurelius.inference.token_budget_forcing import (
+from src.inference.token_budget_forcing import (
     BudgetConfig,
     BudgetForcingDecoder,
     BudgetForcingLogitsProcessor,
     BudgetTracker,
 )
+from torch import LongTensor, Tensor
 
 # ---------------------------------------------------------------------------
 # Constants used across tests

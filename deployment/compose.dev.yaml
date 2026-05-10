@@ -12,7 +12,7 @@ services:
     environment:
       - AURELIUS_LOG_LEVEL=debug
       - AURELIUS_RELOAD=true
-    command: uvicorn src.serving.api_server:app --host 0.0.0.0 --port 8080 --reload
+    command: python -m src.serving.api_server --host 0.0.0.0 --port 8080
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz')"]
       interval: 30s

@@ -11,9 +11,61 @@ not a dumping ground. Prefer family manifests, variant configs, adapters, or
 downstream surface configs over adding booleans to the backbone config."
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any
 
 from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY
+
+
+@dataclass
+class MoEConfig:
+    enabled: bool = False
+    num_experts: int = 8
+    top_k: int = 2
+    every_n_layers: int = 2
+    d_model: int = 2048
+    d_ff: int = 8192
+    capacity_factor: float = 1.25
+    jitter_noise: float = 0.0
+    load_balance_alpha: float = 0.01
+    z_loss_coeff: float = 0.001
+    router_type: str = "topk"
+
+
+@dataclass
+class MoDConfig:
+    enabled: bool = False
+    capacity_factor: float = 0.5
+    router_type: str = "learned"
+    aux_loss_coeff: float = 0.01
+    z_loss_coeff: float = 0.001
+
+
+@dataclass
+class ReMoDEConfig:
+    enabled: bool = False
+    mod_capacity: float = 0.5
+    moe_num_experts: int = 8
+    moe_top_k: int = 2
+    d_model: int = 2048
+    d_ff: int = 8192
+    load_balance_alpha: float = 0.01
+    mod_aux_loss_coeff: float = 0.01
+    shared_experts: int = 1
+    every_n_layers: int = 1
+
+
+@dataclass
+class HLMConfig:
+    enabled: bool = False
+    d_model: int = 2048
+    n_layers: int = 24
+    n_heads: int = 16
+    d_ff: int = 8192
+    layer_pattern: list[str] = field(default_factory=lambda: [])
+    moe: MoEConfig = field(default_factory=MoEConfig)
+    mod: MoDConfig = field(default_factory=MoDConfig)
+    remode: ReMoDEConfig = field(default_factory=ReMoDEConfig)
 
 
 @dataclass
@@ -68,6 +120,27 @@ class AureliusConfig:
     moe_every_n_layers: int = 2
     moe_capacity_factor: float = 1.25
     moe_jitter_noise: float = 0.0
+    moe_strategy: str = "topk"
+    moe_z_loss_coeff: float = 0.001
+    moe_expert_dropout: float = 0.0
+
+    # MoD (Mixture of Depth)
+    mod_enabled: bool = False
+    mod_capacity_factor: float = 0.5
+    mod_router_type: str = "learned"
+    mod_aux_loss_coeff: float = 0.01
+
+    # ReMoDE (Residual MoD + MoE)
+    remode_enabled: bool = False
+    remode_mod_capacity: float = 0.5
+    remode_num_experts: int = 8
+    remode_top_k: int = 2
+    remode_shared_experts: int = 1
+    remode_every_n_layers: int = 1
+
+    # HLM (Hybrid Language Model)
+    hlm_enabled: bool = False
+    hlm_layer_pattern: str = ""
 
     # Multi-Token Prediction (MTP)
     mtp_enabled: bool = False
@@ -587,3 +660,35 @@ class AureliusConfig:
         assert self.n_heads % self.n_kv_heads == 0, (  # noqa: S101
             f"n_heads ({self.n_heads}) must be divisible by n_kv_heads ({self.n_kv_heads})"
         )
+MOE_PRESETS: dict[str, dict[str, Any]] = {
+    "small": {"num_experts": 4, "top_k": 2, "d_model": 512, "d_ff": 2048},
+    "base": {"num_experts": 8, "top_k": 2, "d_model": 2048, "d_ff": 8192},
+    "large": {"num_experts": 16, "top_k": 4, "d_model": 4096, "d_ff": 16384},
+    "flash": {"num_experts": 256, "top_k": 6, "d_model": 4096, "d_ff": 16384},
+    "pro": {"num_experts": 384, "top_k": 6, "d_model": 7168, "d_ff": 28672},
+}
+
+MOD_PRESETS: dict[str, dict[str, Any]] = {
+    "light": {"capacity_factor": 0.25},
+    "medium": {"capacity_factor": 0.5},
+    "heavy": {"capacity_factor": 0.75},
+}
+
+HLM_PRESETS: dict[str, dict[str, Any]] = {
+    "hybrid_moe": {
+        "layer_pattern": ["dense", "dense", "dense", "moe"] * 6,
+        "moe": MOE_PRESETS["base"],
+    },
+    "hybrid_mod": {
+        "layer_pattern": ["mod", "dense"] * 12,
+        "mod": MOD_PRESETS["medium"],
+    },
+    "remode": {
+        "layer_pattern": ["remode"] * 24,
+        "remode": {"mod_capacity": 0.5, "moe_num_experts": 8, "moe_top_k": 2},
+    },
+    "deepseek_v4": {
+        "layer_pattern": ["dense", "dense", "remode"] * 8,
+        "remode": {"mod_capacity": 0.3, "moe_num_experts": 128, "moe_top_k": 6},
+    },
+}

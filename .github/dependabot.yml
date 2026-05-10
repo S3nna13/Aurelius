@@ -38,20 +38,30 @@ updates:
           - "@types/react*"
 
   - package-ecosystem: "cargo"
-    directory: "/crates/usage-store"
+    directory: "/"
     schedule:
       interval: "monthly"
     labels:
       - "dependencies"
       - "rust"
 
-  - package-ecosystem: "cargo"
-    directory: "/tools/jsonl-merge"
+  - package-ecosystem: "npm"
+    directory: "/middle"
     schedule:
-      interval: "monthly"
+      interval: "weekly"
+      day: "monday"
     labels:
       - "dependencies"
-      - "rust"
+      - "middle"
+
+  - package-ecosystem: "npm"
+    directory: "/server"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "dependencies"
+      - "server"
 
   - package-ecosystem: "docker"
     directory: "/deployment"
