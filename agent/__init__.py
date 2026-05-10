@@ -407,6 +407,38 @@ __all__ += [
     "WebRequestSpec",
 ]
 
+# Add code execution tool descriptor to TOOL_REGISTRY
+TOOL_REGISTRY.setdefault(
+    "code_execution",
+    {
+        "name": "code_execution",
+        "description": (
+            "Execute a Python code snippet in a sandboxed subprocess "
+            "and return stdout, stderr, and exit code."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "description": "Source code to run.",
+                },
+                "language": {
+                    "type": "string",
+                    "enum": ["python", "bash", "javascript"],
+                    "default": "python",
+                },
+                "timeout_s": {
+                    "type": "number",
+                    "default": 10.0,
+                    "description": "Wall-clock timeout in seconds.",
+                },
+            },
+            "required": ["code"],
+        },
+    },
+)
+
 
 # --- plugin hook registry (additive) ----------------------------------------
 from .plugin_hook import (  # noqa: E402
@@ -513,6 +545,26 @@ __all__ += [
     "ReflexionConfig",
     "ReflexionMemory",
     "ReflexionResult",
+]
+
+
+# --- plan-and-execute agent (additive) -------------------------------------
+from .plan_and_execute import (  # noqa: E402
+    ExecutionPlan,
+    PlanAndExecuteAgent,
+    PlanConfig,
+    PlanExecuteResult,
+    PlanStep,
+)
+
+AGENT_LOOP_REGISTRY["plan_and_execute"] = PlanAndExecuteAgent
+
+__all__ += [
+    "ExecutionPlan",
+    "PlanAndExecuteAgent",
+    "PlanConfig",
+    "PlanExecuteResult",
+    "PlanStep",
 ]
 
 
