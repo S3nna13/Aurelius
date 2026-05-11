@@ -19,6 +19,35 @@ def test_flash_284b_config():
     assert config.mhc_expansion_factor == 4
 
 
+def test_2_7b_config():
+    config = AureliusConfig.aurelius_2_7b()
+    assert config.d_model == 2560
+    assert config.n_layers == 32
+    assert config.n_heads == 20
+    assert config.n_kv_heads == 5
+    assert config.max_seq_len == 8192
+    assert config.tie_embeddings is True
+    assert config.use_gradient_checkpointing is True
+    assert config.d_model == config.n_heads * config.head_dim
+    assert config.n_heads % config.n_kv_heads == 0
+
+
+def test_3b_config():
+    config = AureliusConfig.aurelius_3b()
+    assert config.d_model == 3072
+    assert config.n_layers == 28
+    assert config.n_heads == 24
+    assert config.n_kv_heads == 6
+    assert config.max_seq_len == 4096
+    assert config.tie_embeddings is True
+    assert config.use_gradient_checkpointing is True
+    assert config.rope_scaling_type == "yarn"
+    assert config.rope_scaling_factor == 4.0
+    assert config.rope_original_max_seq_len == 4096
+    assert config.d_model == config.n_heads * config.head_dim
+    assert config.n_heads % config.n_kv_heads == 0
+
+
 def test_pro_1_6t_config():
     config = AureliusConfig.aurelius_pro_1_6t()
     assert config.d_model == 7168
