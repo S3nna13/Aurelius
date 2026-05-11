@@ -1,4 +1,4 @@
-"""Unit tests for `src/agent/web_browse_tool.py`.
+"""Unit tests for `agent/web_browse_tool.py`.
 
 These tests exercise **pure logic only** — no real HTTP requests.
 """
@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.agent.web_browse_tool import (
+from agent.web_browse_tool import (
     DEFAULT_TOOL_DESCRIPTOR,
     PrivateHostBlocked,
     UrlValidationError,

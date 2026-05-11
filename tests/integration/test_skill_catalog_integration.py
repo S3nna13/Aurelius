@@ -1,11 +1,11 @@
-"""Integration tests for ``src.agent.skill_catalog``."""
+"""Integration tests for ``agent.skill_catalog``."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-from src.agent import SkillCatalog, SkillCatalogEntry
+from agent import SkillCatalog, SkillCatalogEntry
 
 
 def _repo_root(tmp_path: Path) -> Path:

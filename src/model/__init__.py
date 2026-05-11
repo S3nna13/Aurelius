@@ -341,13 +341,27 @@ __all__ = [
     "Workstream",
     "SessionRecord",
     # additive model patterns
-    "MoEConfig", "MoDConfig", "ReMoDEConfig", "HLMConfig",
-    "SparseMoELayer", "BalancedMoEFFN", "SoftMoELayer", "ExpertChoiceLayer",
-    "MoDRouter", "MoDLayer", "CapacityTracker",
-    "ReMoDELayer", "ReMoDEBlock",
-    "HLMRouter", "HLMProfile", "get_hlm_config",
-    "DiffusionLLM", "DiffusionLLMConfig", "SemanticTokenizer",
-    "DiscreteDiffusion", "DiffusionDecoder",
+    "MoEConfig",
+    "MoDConfig",
+    "ReMoDEConfig",
+    "HLMConfig",
+    "SparseMoELayer",
+    "BalancedMoEFFN",
+    "SoftMoELayer",
+    "ExpertChoiceLayer",
+    "MoDRouter",
+    "MoDLayer",
+    "CapacityTracker",
+    "ReMoDELayer",
+    "ReMoDEBlock",
+    "HLMRouter",
+    "HLMProfile",
+    "get_hlm_config",
+    "DiffusionLLM",
+    "DiffusionLLMConfig",
+    "SemanticTokenizer",
+    "DiscreteDiffusion",
+    "DiffusionDecoder",
     "architectures",
     "mod",
 ]
@@ -380,7 +394,7 @@ except ImportError:
     pass
 
 _LAZY_EXPORTS = {
-    "SessionRecord": ("src.agent.session_manager", "SessionRecord"),
+    "SessionRecord": ("agent.session_manager", "SessionRecord"),
 }
 
 

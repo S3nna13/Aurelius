@@ -1,10 +1,10 @@
-"""Unit tests for src/agent/ast_fim.py (16 tests)."""
+"""Unit tests for agent/ast_fim.py (16 tests)."""
 
 from __future__ import annotations
 
 import pytest
 
-from src.agent.ast_fim import (
+from agent.ast_fim import (
     AST_FIM_REGISTRY,
     ASTAnalyzer,
     FIMFormat,

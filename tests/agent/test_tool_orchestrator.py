@@ -1,6 +1,6 @@
-"""Tests for src/agent/tool_orchestrator.py."""
+"""Tests for agent/tool_orchestrator.py."""
 
-from src.agent.tool_orchestrator import (
+from agent.tool_orchestrator import (
     TOOL_ORCHESTRATOR,
     ToolCall,
     ToolCallOutcome,

@@ -1,10 +1,10 @@
-"""Tests for src/agent/workflow_graph.py"""
+"""Tests for agent/workflow_graph.py"""
 
 from __future__ import annotations
 
 import pytest
 
-from src.agent.workflow_graph import (
+from agent.workflow_graph import (
     AGENT_REGISTRY,
     WorkflowGraph,
     WorkflowResult,

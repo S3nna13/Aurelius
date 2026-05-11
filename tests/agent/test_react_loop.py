@@ -1,4 +1,4 @@
-"""Unit tests for src.agent.react_loop.ReActLoop."""
+"""Unit tests for agent.react_loop.ReActLoop."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from collections.abc import Iterator
 
 import pytest
 
-from src.agent.react_loop import ReActLoop
+from agent.react_loop import ReActLoop
 
 
 def _scripted(responses: list[str]):

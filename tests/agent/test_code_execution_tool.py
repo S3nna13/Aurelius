@@ -1,11 +1,11 @@
-"""Unit tests for src.agent.code_execution_tool (16 tests).
+"""Unit tests for agent.code_execution_tool (16 tests).
 
 Code execution: Inspired by Gemini 2.5 code execution tool (Google DeepMind 2025).
 """
 
 from __future__ import annotations
 
-from src.agent.code_execution_tool import (
+from agent.code_execution_tool import (
     CODE_EXECUTION_TOOL_REGISTRY,
     CodeExecutionTool,
     ExecutionLanguage,

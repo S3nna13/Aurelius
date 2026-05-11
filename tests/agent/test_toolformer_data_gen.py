@@ -1,4 +1,4 @@
-"""Unit tests for :mod:`src.agent.toolformer_data_gen`.
+"""Unit tests for :mod:`agent.toolformer_data_gen`.
 
 Covers ≥12 distinct test cases as required by the project spec:
   1. ToolCallAnnotation dataclass creation and field access
@@ -23,12 +23,12 @@ from __future__ import annotations
 import pytest
 import torch
 
-from agent.toolformer_data_gen import _CharLM
-from src.agent.toolformer_data_gen import (
+from agent.toolformer_data_gen import (
     Tool,
     ToolCallAnnotation,
     ToolformerConfig,
     ToolformerDataGenerator,
+    _CharLM,
 )
 
 # ---------------------------------------------------------------------------

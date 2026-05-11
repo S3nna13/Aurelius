@@ -1,12 +1,12 @@
-"""Tests for src.agent.training_pipeline."""
+"""Tests for agent.training_pipeline."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-from src.agent.react_loop import AgentStep, AgentTrace
-from src.agent.training_pipeline import (
+from agent.react_loop import AgentStep, AgentTrace
+from agent.training_pipeline import (
     AgentTrainingCollector,
     trace_to_training_entry,
 )

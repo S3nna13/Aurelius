@@ -13,8 +13,8 @@ import random
 
 import pytest
 
-from src.agent import AGENT_LOOP_REGISTRY
-from src.agent.swarm_scaler import SwarmScaler, SwarmScalerConfig, WorkerStats
+from agent import AGENT_LOOP_REGISTRY
+from agent.swarm_scaler import SwarmScaler, SwarmScalerConfig, WorkerStats
 
 
 def _worker_fn(payload: dict) -> dict:

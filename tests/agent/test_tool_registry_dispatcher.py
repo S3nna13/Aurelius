@@ -1,4 +1,4 @@
-"""Unit tests for :mod:`src.agent.tool_registry_dispatcher`."""
+"""Unit tests for :mod:`agent.tool_registry_dispatcher`."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import time
 
 import pytest
 
-from src.agent.tool_registry_dispatcher import (
+from agent.tool_registry_dispatcher import (
     SessionBudget,
     ToolInvocationResult,
     ToolRegistryDispatcher,

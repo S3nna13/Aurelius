@@ -8,7 +8,7 @@ to end.
 
 from __future__ import annotations
 
-from src.agent import AGENT_LOOP_REGISTRY, BeamPlanner, PlanNode
+from agent import AGENT_LOOP_REGISTRY, BeamPlanner, PlanNode
 
 
 def _echo_generate(task, path):

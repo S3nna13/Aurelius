@@ -1,9 +1,9 @@
-"""Tests for src/agent/trace_analyzer.py."""
+"""Tests for agent/trace_analyzer.py."""
 
 from __future__ import annotations
 
-from src.agent.execution_tracer import ExecutionEvent, ExecutionEventType
-from src.agent.trace_analyzer import TraceAnalyzer
+from agent.execution_tracer import ExecutionEvent, ExecutionEventType
+from agent.trace_analyzer import TraceAnalyzer
 
 
 def _evt(

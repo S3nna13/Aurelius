@@ -1,8 +1,8 @@
-"""Unit tests for src/agent/preserve_thinking.py (15 tests)."""
+"""Unit tests for agent/preserve_thinking.py (15 tests)."""
 
 from __future__ import annotations
 
-from src.agent.preserve_thinking import (
+from agent.preserve_thinking import (
     PreserveThinkingBuffer,
     PreserveThinkingConfig,
 )

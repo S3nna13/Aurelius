@@ -1,9 +1,9 @@
-"""Tests for src.agent.multi_agent."""
+"""Tests for agent.multi_agent."""
 
 from __future__ import annotations
 
-from src.agent.agent_runtime import AgentRuntime, AgentSpec
-from src.agent.multi_agent import SupervisorCoordinator, SwarmCoordinator
+from agent.agent_runtime import AgentRuntime, AgentSpec
+from agent.multi_agent import SupervisorCoordinator, SwarmCoordinator
 
 
 def _agent(name: str) -> AgentSpec:

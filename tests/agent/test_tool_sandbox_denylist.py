@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.agent.tool_sandbox_denylist import (
+from agent.tool_sandbox_denylist import (
     DEFAULT_DENYLIST,
     DenylistCategory,
     DenylistRule,

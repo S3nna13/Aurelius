@@ -1,4 +1,4 @@
-"""Unit tests for src.agent.background_executor (15 tests)."""
+"""Unit tests for agent.background_executor (15 tests)."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import time
 
 import pytest
 
-from src.agent.background_executor import (
+from agent.background_executor import (
     BackgroundExecutor,
     BackgroundExecutorConfig,
     BackgroundTask,

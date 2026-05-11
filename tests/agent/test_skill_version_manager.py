@@ -1,11 +1,11 @@
-"""Tests for src.agent.skill_version_manager."""
+"""Tests for agent.skill_version_manager."""
 
 from __future__ import annotations
 
 import pytest
 
-from agent.skill_version_manager import DEFAULT_SKILL_VERSION_MANAGER
-from src.agent.skill_version_manager import (
+from agent.skill_version_manager import (
+    DEFAULT_SKILL_VERSION_MANAGER,
     SKILL_VERSION_REGISTRY,
     SkillVersion,
     SkillVersionError,

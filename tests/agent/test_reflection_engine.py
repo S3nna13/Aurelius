@@ -1,10 +1,10 @@
-"""Tests for src/agent/reflection_engine.py"""
+"""Tests for agent/reflection_engine.py"""
 
 from __future__ import annotations
 
 import pytest
 
-from src.agent.reflection_engine import (
+from agent.reflection_engine import (
     REFLECTION_ENGINE_REGISTRY,
     Reflection,
     ReflectionEngine,

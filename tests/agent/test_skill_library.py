@@ -1,8 +1,8 @@
-"""Tests for src.agent.skill_library."""
+"""Tests for agent.skill_library."""
 
 from __future__ import annotations
 
-from src.agent.skill_library import Skill, VoyagerSkillLibrary
+from agent.skill_library import Skill, VoyagerSkillLibrary
 
 
 def _make_library(tmp_path) -> VoyagerSkillLibrary:

@@ -2,8 +2,8 @@ import time
 
 import pytest
 
-from src.agent.run_store import RunStatus
-from src.agent.sqlite_run_store import SQLiteRunStore
+from agent.run_store import RunStatus
+from agent.sqlite_run_store import SQLiteRunStore
 
 
 @pytest.fixture()

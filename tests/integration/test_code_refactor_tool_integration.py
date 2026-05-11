@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pathlib
 
-import src.agent as agent_pkg
-from src.agent import CodeRefactorTool, RefactorResult
+import agent as agent_pkg
+from agent import CodeRefactorTool, RefactorResult
 
 
 def test_exposed_via_src_agent() -> None:

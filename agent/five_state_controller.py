@@ -3,7 +3,7 @@
 This module provides a *lifecycle supervisor* that owns a finite-state
 machine over ``IDLE / RUNNING / PAUSED / COMPLETED / ERROR`` and wraps
 an arbitrary chunk-yielding backend. It is orthogonal to the ReAct
-message-iteration loop (``src.agent.react_loop``): a controller can
+message-iteration loop (``agent.react_loop``): a controller can
 drive any backend callable that respects the :class:`ControlContext`.
 
 The controller is thread-safe for external actors (pause/resume/stop/

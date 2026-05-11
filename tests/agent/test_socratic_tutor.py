@@ -1,10 +1,10 @@
-"""Tests for src.agent.socratic_tutor."""
+"""Tests for agent.socratic_tutor."""
 
 from __future__ import annotations
 
 import pytest
 
-from src.agent.socratic_tutor import (
+from agent.socratic_tutor import (
     DEFAULT_SOCRATIC_TUTOR,
     SOCRATIC_TUTOR_REGISTRY,
     ConceptMastery,

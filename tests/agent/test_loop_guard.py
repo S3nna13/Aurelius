@@ -1,10 +1,10 @@
-"""Tests for src/agent/loop_guard.py"""
+"""Tests for agent/loop_guard.py"""
 
 from __future__ import annotations
 
 import pytest
 
-from src.agent.loop_guard import (
+from agent.loop_guard import (
     AGENT_REGISTRY,
     AgentLoopGuard,
     LoopGuardConfig,

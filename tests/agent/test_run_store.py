@@ -2,7 +2,7 @@ import time
 
 import pytest
 
-from src.agent.run_store import (
+from agent.run_store import (
     AGENT_RUN_STORE,
     AgentRunStore,
     RunStatus,

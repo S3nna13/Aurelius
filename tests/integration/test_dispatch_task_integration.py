@@ -4,7 +4,7 @@ from __future__ import annotations
 
 
 def test_dispatch_task_exposed_on_agent_surface():
-    import src.agent as agent
+    import agent as agent
 
     for name in (
         "DispatchOutcome",
@@ -21,7 +21,7 @@ def test_dispatch_task_exposed_on_agent_surface():
 
 
 def test_prior_agent_entries_intact():
-    import src.agent as agent
+    import agent as agent
 
     assert "xml" in agent.TOOL_CALL_PARSER_REGISTRY
     assert "json" in agent.TOOL_CALL_PARSER_REGISTRY
@@ -37,7 +37,7 @@ def test_config_flag_defaults_off():
 
 
 def test_end_to_end_dispatch_three_inputs():
-    from src.agent import Dispatcher, DispatchTask
+    from agent import Dispatcher, DispatchTask
 
     class UpperTask(DispatchTask):
         name = "upper"

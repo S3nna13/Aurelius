@@ -1,10 +1,10 @@
-"""Unit tests for src/agent/skill_executor.py."""
+"""Unit tests for agent/skill_executor.py."""
 
 from __future__ import annotations
 
 import pytest
 
-from src.agent.skill_executor import (
+from agent.skill_executor import (
     DEFAULT_SKILL_EXECUTOR,
     SKILL_EXECUTOR_REGISTRY,
     ExecutionResult,

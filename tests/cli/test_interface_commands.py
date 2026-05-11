@@ -7,7 +7,7 @@ import io
 import json
 from pathlib import Path
 
-from src.agent.interface_runtime import AureliusInterfaceRuntime
+from agent.interface_runtime import AureliusInterfaceRuntime
 from src.cli.interface_commands import build_interface_parser, dispatch_interface_command
 from src.ui import AureliusShell
 

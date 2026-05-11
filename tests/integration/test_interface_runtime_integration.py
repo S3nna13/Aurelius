@@ -1,11 +1,11 @@
-"""Integration tests for ``src.agent.interface_runtime``."""
+"""Integration tests for ``agent.interface_runtime``."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-from src.agent import (
+from agent import (
     AureliusInterfaceRuntime,
     SessionManager,
     SkillCatalog,

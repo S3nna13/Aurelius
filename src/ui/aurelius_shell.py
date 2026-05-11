@@ -20,8 +20,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from src.agent.skill_catalog import SkillCatalog
-from src.agent.surface_catalog import describe_ui_surface
+from agent.skill_catalog import SkillCatalog
+from agent.surface_catalog import describe_ui_surface
 from src.model.interface_framework import (
     ApprovalRequest,
     AureliusInterfaceFramework,
@@ -1376,7 +1376,7 @@ class AureliusShell:
         return SkillCatalog(self.framework.paths.repo_root)
 
     def _build_runtime(self):
-        from src.agent.interface_runtime import AureliusInterfaceRuntime
+        from agent.interface_runtime import AureliusInterfaceRuntime
 
         return AureliusInterfaceRuntime.from_repo_root(
             root_dir=self.framework.paths.repo_root,

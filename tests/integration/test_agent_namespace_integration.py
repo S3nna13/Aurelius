@@ -1,27 +1,27 @@
-"""Integration tests for the public ``src.agent`` namespace."""
+"""Integration tests for the public ``agent`` namespace."""
 
 from __future__ import annotations
 
 import importlib
 
-import src.agent as agent_pkg
+import agent as agent_pkg
 
 EXPECTED_EXPORTS = {
-    "AgentRuntime": ("src.agent.agent_runtime", "AgentRuntime"),
-    "AgentSpec": ("src.agent.agent_runtime", "AgentSpec"),
-    "AgentMessage": ("src.agent.agent_runtime", "AgentMessage"),
-    "AgentStatus": ("src.agent.agent_runtime", "AgentStatus"),
-    "AgentMemory": ("src.agent.agent_memory", "AgentMemory"),
-    "MemoryEntry": ("src.agent.agent_memory", "MemoryEntry"),
-    "AgentPersistence": ("src.agent.agent_persistence", "AgentPersistence"),
-    "SkillRegistry": ("src.agent.skill_registry", "SkillRegistry"),
-    "SkillSpec": ("src.agent.skill_registry", "SkillSpec"),
-    "Skill": ("src.agent.skill_library", "Skill"),
-    "VoyagerSkillLibrary": ("src.agent.skill_library", "VoyagerSkillLibrary"),
-    "ToolRegistry": ("src.agent.tool_registry", "ToolRegistry"),
-    "SupervisorCoordinator": ("src.agent.multi_agent", "SupervisorCoordinator"),
-    "SwarmCoordinator": ("src.agent.multi_agent", "SwarmCoordinator"),
-    "DebateCoordinator": ("src.agent.multi_agent", "DebateCoordinator"),
+    "AgentRuntime": ("agent.agent_runtime", "AgentRuntime"),
+    "AgentSpec": ("agent.agent_runtime", "AgentSpec"),
+    "AgentMessage": ("agent.agent_runtime", "AgentMessage"),
+    "AgentStatus": ("agent.agent_runtime", "AgentStatus"),
+    "AgentMemory": ("agent.agent_memory", "AgentMemory"),
+    "MemoryEntry": ("agent.agent_memory", "MemoryEntry"),
+    "AgentPersistence": ("agent.agent_persistence", "AgentPersistence"),
+    "SkillRegistry": ("agent.skill_registry", "SkillRegistry"),
+    "SkillSpec": ("agent.skill_registry", "SkillSpec"),
+    "Skill": ("agent.skill_library", "Skill"),
+    "VoyagerSkillLibrary": ("agent.skill_library", "VoyagerSkillLibrary"),
+    "ToolRegistry": ("agent.tool_registry", "ToolRegistry"),
+    "SupervisorCoordinator": ("agent.multi_agent", "SupervisorCoordinator"),
+    "SwarmCoordinator": ("agent.multi_agent", "SwarmCoordinator"),
+    "DebateCoordinator": ("agent.multi_agent", "DebateCoordinator"),
 }
 
 

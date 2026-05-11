@@ -23,7 +23,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any, TextIO
 
-from src.agent.surface_catalog import describe_backend_surface, describe_engine_surface
+from agent.surface_catalog import describe_backend_surface, describe_engine_surface
 from src.backends.base import BackendAdapterError
 
 __all__ = [

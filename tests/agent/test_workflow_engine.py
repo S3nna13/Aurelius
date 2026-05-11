@@ -1,10 +1,10 @@
-"""Unit tests for src/agent/workflow_engine.py."""
+"""Unit tests for agent/workflow_engine.py."""
 
 from __future__ import annotations
 
 import pytest
 
-from src.agent.workflow_engine import (
+from agent.workflow_engine import (
     DEFAULT_WORKFLOW_EXECUTOR,
     WORKFLOW_EXECUTOR_REGISTRY,
     WorkflowDAG,

@@ -9,7 +9,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-from src.agent.agent_swarm import AgentSwarm, CriticalPathAnalyzer, SubAgentResult
+from agent.agent_swarm import AgentSwarm, CriticalPathAnalyzer, SubAgentResult
 
 
 @dataclass

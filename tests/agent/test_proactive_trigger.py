@@ -1,4 +1,4 @@
-"""Unit tests for src/agent/proactive_trigger.py — ProactiveTriggerRegistry.
+"""Unit tests for agent/proactive_trigger.py — ProactiveTriggerRegistry.
 
 10–16 tests covering: config defaults, register/unregister, enable/disable,
 check_all firing logic, cooldown, max_fires, fire_count, reset, and both
@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.agent.proactive_trigger import (
+from agent.proactive_trigger import (
     ProactiveTriggerConfig,
     ProactiveTriggerRegistry,
     TriggerSpec,

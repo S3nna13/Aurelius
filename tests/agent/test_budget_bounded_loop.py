@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.agent.budget_bounded_loop import (
+from agent.budget_bounded_loop import (
     BudgetBoundedLoop,
     BudgetState,
     ToolInvocationBudgetError,

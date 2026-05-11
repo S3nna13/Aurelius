@@ -1,10 +1,10 @@
-"""Unit tests for src/agent/nl_command_parser.py."""
+"""Unit tests for agent/nl_command_parser.py."""
 
 from __future__ import annotations
 
 import pytest
 
-from src.agent.nl_command_parser import (
+from agent.nl_command_parser import (
     DEFAULT_NL_PARSER,
     NL_PARSER_REGISTRY,
     NLCommandParseError,

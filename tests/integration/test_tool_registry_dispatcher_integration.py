@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import src.agent as agent_surface
-from src.agent import (
+import agent as agent_surface
+from agent import (
     AGENT_LOOP_REGISTRY,
     SessionBudget,
     ToolInvocationResult,

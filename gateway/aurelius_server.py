@@ -47,10 +47,10 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Any
 
+from agent.command_dispatcher import CommandDispatcher
+from agent.nl_command_parser import NLCommandParseError, NLCommandParser
+from agent.skill_executor import ExecutionResult, SkillContext, SkillExecutor
 from gateway.mission_control import ActivityLog
-from src.agent.command_dispatcher import CommandDispatcher
-from src.agent.nl_command_parser import NLCommandParseError, NLCommandParser
-from src.agent.skill_executor import ExecutionResult, SkillContext, SkillExecutor
 from src.workflow.workflow_monitor import WorkflowMonitor, WorkflowStatus
 
 
@@ -1036,7 +1036,7 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
             self._send_json(403, {"error": "Invalid license key"})
 
     def _handle_modes(self) -> None:
-        from src.agent.agent_mode_registry import AGENT_MODE_REGISTRY
+        from agent.agent_mode_registry import AGENT_MODE_REGISTRY
 
         modes = []
         for registry in AGENT_MODE_REGISTRY.values():

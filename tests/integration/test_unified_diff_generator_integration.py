@@ -1,7 +1,7 @@
 """Integration tests for the unified-diff generator surface.
 
 Verifies that :class:`UnifiedDiffGenerator` and :class:`DiffResult` are
-exposed via :mod:`src.agent`, that prior agent registry entries remain
+exposed via :mod:`agent`, that prior agent registry entries remain
 intact, and that generated diffs round-trip through the production
 ``apply_patch_via_python`` helper from :mod:`src.eval.swebench_lite_scorer`.
 """
@@ -11,8 +11,8 @@ from __future__ import annotations
 import tempfile
 from pathlib import Path
 
-from src import agent
-from src.agent import DiffResult, UnifiedDiffGenerator
+import agent
+from agent import DiffResult, UnifiedDiffGenerator
 from src.eval.swebench_lite_scorer import apply_patch_via_python
 
 

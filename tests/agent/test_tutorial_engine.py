@@ -1,10 +1,10 @@
-"""Unit tests for src/agent/tutorial_engine.py."""
+"""Unit tests for agent/tutorial_engine.py."""
 
 from __future__ import annotations
 
 import pytest
 
-from src.agent.tutorial_engine import (
+from agent.tutorial_engine import (
     DEFAULT_TUTORIAL_ENGINE,
     TUTORIAL_ENGINE_REGISTRY,
     Tutorial,

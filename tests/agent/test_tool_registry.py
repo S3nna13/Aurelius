@@ -1,8 +1,8 @@
-"""Tests for src.agent.tool_registry."""
+"""Tests for agent.tool_registry."""
 
 from __future__ import annotations
 
-from src.agent.tool_registry import ToolRegistry, ToolSpec
+from agent.tool_registry import ToolRegistry, ToolSpec
 
 
 def _echo(message: str) -> dict[str, str]:
@@ -17,6 +17,7 @@ def test_execute_requires_authentication() -> None:
         requires_auth=True,
     )
     registry.register(spec, handler=_echo)
+    registry.set_group(spec.id, "runtime")
 
     result = registry.execute(spec.id, authenticated=False, message="hello")
 
@@ -31,6 +32,7 @@ def test_execute_respects_requested_sandbox_level() -> None:
         sandbox_level="read",
     )
     registry.register(spec, handler=_echo)
+    registry.set_group(spec.id, "fs")
 
     result = registry.execute(
         spec.id,
@@ -51,6 +53,7 @@ def test_execute_succeeds_when_controls_allow_it() -> None:
         sandbox_level="write",
     )
     registry.register(spec, handler=_echo)
+    registry.set_group(spec.id, "runtime")
 
     result = registry.execute(
         spec.id,

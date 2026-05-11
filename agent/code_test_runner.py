@@ -5,7 +5,7 @@ command) in a subprocess with a wall-clock timeout and parses the
 output for pass/fail/skipped/error counts and the names of failing
 tests.
 
-The runner composes :class:`src.agent.code_execution_sandbox.CodeExecutionSandbox`
+The runner composes :class:`agent.code_execution_sandbox.CodeExecutionSandbox`
 for process isolation and environment hardening. Pure standard library.
 """
 

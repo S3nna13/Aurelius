@@ -1,10 +1,10 @@
-"""Tests for src/agent/tool_use_tracker.py"""
+"""Tests for agent/tool_use_tracker.py"""
 
 from __future__ import annotations
 
 import pytest
 
-from src.agent.tool_use_tracker import (
+from agent.tool_use_tracker import (
     TOOL_USE_TRACKER_REGISTRY,
     ToolBudget,
     ToolCall,

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from src import agent as agent_pkg
-from src.agent.web_browse_tool import DEFAULT_TOOL_DESCRIPTOR, WebBrowseTool
+import agent as agent_pkg
+from agent.web_browse_tool import DEFAULT_TOOL_DESCRIPTOR, WebBrowseTool
 from src.model.config import AureliusConfig
 
 
@@ -38,7 +38,7 @@ def test_end_to_end_build_validate_summarize():
     spec = tool.build_request("https://example.com/path", headers={"Accept": "text/html"})
     tool.validate_request(spec)
 
-    from src.agent.web_browse_tool import WebFetchResult
+    from agent.web_browse_tool import WebFetchResult
 
     fake = WebFetchResult(
         status=200,

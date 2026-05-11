@@ -1,10 +1,10 @@
-"""Tests for src/agent/memory_writer.py"""
+"""Tests for agent/memory_writer.py"""
 
 from __future__ import annotations
 
 import pytest
 
-from src.agent.memory_writer import (
+from agent.memory_writer import (
     MEMORY_WRITER_REGISTRY,
     MemoryRecord,
     MemoryType,

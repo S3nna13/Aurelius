@@ -8,7 +8,7 @@ import pytest
 
 
 def test_task_decomposer_exposed_on_agent_surface():
-    import src.agent as agent
+    import agent as agent
 
     assert hasattr(agent, "TaskDecomposer")
     assert hasattr(agent, "TaskDAG")
@@ -19,7 +19,7 @@ def test_task_decomposer_exposed_on_agent_surface():
 
 
 def test_prior_agent_entries_intact():
-    import src.agent as agent
+    import agent as agent
 
     # Parsers and prior loops still registered.
     assert "xml" in agent.TOOL_CALL_PARSER_REGISTRY
@@ -41,7 +41,7 @@ def test_prior_agent_entries_intact():
 
 
 def test_end_to_end_decompose():
-    from src.agent import TaskDecomposer
+    from agent import TaskDecomposer
 
     payload = [
         {"id": "plan", "description": "plan it", "depends_on": []},
@@ -75,7 +75,7 @@ def test_end_to_end_decompose():
 
 
 def test_end_to_end_cycle_rejected():
-    from src.agent import TaskDecomposer, TaskDecompositionError
+    from agent import TaskDecomposer, TaskDecompositionError
 
     payload = [
         {"id": "a", "description": "a", "depends_on": ["b"]},

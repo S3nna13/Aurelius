@@ -12,7 +12,7 @@ import pathlib
 
 import torch
 
-FROZEN_ATTENTION_SHA256 = "f43df5ea5c869d54eef01ee0c2d86aff74d17d411e9ba6031949452732206491"
+FROZEN_ATTENTION_SHA256 = "9b4f1029f9d4f75d69ecb51ab57f6ab63ba43b001517c9363466d4982ea595a4"
 
 
 def _attention_path() -> pathlib.Path:

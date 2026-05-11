@@ -1,4 +1,4 @@
-"""Unit tests for ``src.agent.interface_runtime``."""
+"""Unit tests for ``agent.interface_runtime``."""
 
 from __future__ import annotations
 
@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from src.agent.interface_runtime import AureliusInterfaceRuntime
-from src.agent.session_manager import SessionManager
-from src.agent.skill_catalog import SkillCatalog
+from agent.interface_runtime import AureliusInterfaceRuntime
+from agent.session_manager import SessionManager
+from agent.skill_catalog import SkillCatalog
 from src.model import (
     ApprovalRequest,
     AureliusInterfaceFramework,
@@ -85,7 +85,7 @@ def test_runtime_drives_the_full_thread_session_and_audit_lifecycle(tmp_path):
         thread,
         category="file write",
         action_summary="record runtime state",
-        affected_resources=["src/agent/interface_runtime.py"],
+        affected_resources=["agent/interface_runtime.py"],
         reason="The runtime should create structured approvals.",
         reversible=True,
         minimum_scope="allow_once",

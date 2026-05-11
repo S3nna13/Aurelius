@@ -1,10 +1,10 @@
-"""Tests for src/agent/action_scorer.py"""
+"""Tests for agent/action_scorer.py"""
 
 from __future__ import annotations
 
 import pytest
 
-from src.agent.action_scorer import AGENT_REGISTRY, ActionScore, ActionScorer, ScoreLambdas
+from agent.action_scorer import AGENT_REGISTRY, ActionScore, ActionScorer, ScoreLambdas
 
 # ---------------------------------------------------------------------------
 # Fixtures

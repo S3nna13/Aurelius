@@ -1,4 +1,4 @@
-"""Unit tests for ``src.agent.mcp_client``.
+"""Unit tests for ``agent.mcp_client``.
 
 All tests use a fake ``call_fn`` that returns canned JSON-RPC
 responses; there is no real transport in play.
@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.agent.mcp_client import (
+from agent.mcp_client import (
     MCP_PROTOCOL_VERSION,
     MCPClient,
     MCPPrompt,

@@ -1,4 +1,4 @@
-"""Tests for src.agent.plugin_sandbox."""
+"""Tests for agent.plugin_sandbox."""
 
 from __future__ import annotations
 
@@ -6,8 +6,8 @@ import types
 
 import pytest
 
-from src.agent.plugin_hook import PluginHookRegistry
-from src.agent.plugin_sandbox import (
+from agent.plugin_hook import PluginHookRegistry
+from agent.plugin_sandbox import (
     PLUGIN_SANDBOX_REGISTRY,
     PluginSandbox,
     SandboxConfig,

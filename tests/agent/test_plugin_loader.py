@@ -1,4 +1,4 @@
-"""Tests for src.agent.plugin_loader — dynamic plugin module loading."""
+"""Tests for agent.plugin_loader — dynamic plugin module loading."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from src.agent.plugin_loader import (
+from agent.plugin_loader import (
     DEFAULT_PLUGIN_LOADER,
     PLUGIN_LOADER_REGISTRY,
     LoadedPlugin,

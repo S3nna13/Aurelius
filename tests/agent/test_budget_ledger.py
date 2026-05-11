@@ -1,4 +1,4 @@
-"""Unit tests for src/agent/budget_ledger.py.
+"""Unit tests for agent/budget_ledger.py.
 
 Thirty tests covering validation, transactional semantics, determinism,
 and registry round-trips.  Pure stdlib.
@@ -10,7 +10,7 @@ import math
 
 import pytest
 
-from src.agent.budget_ledger import (
+from agent.budget_ledger import (
     BUDGET_LEDGER_REGISTRY,
     BudgetExhaustedError,
     BudgetLedger,

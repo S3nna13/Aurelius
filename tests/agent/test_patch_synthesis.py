@@ -1,10 +1,10 @@
-"""Unit tests for src/agent/patch_synthesis.py (16 tests)."""
+"""Unit tests for agent/patch_synthesis.py (16 tests)."""
 
 from __future__ import annotations
 
 import pytest
 
-from src.agent.patch_synthesis import (
+from agent.patch_synthesis import (
     PATCH_REGISTRY,
     Patch,
     PatchError,

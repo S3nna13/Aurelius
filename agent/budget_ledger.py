@@ -3,7 +3,7 @@
 This module provides :class:`BudgetLedger`, a transactional accounting
 primitive that tracks independent spend against several resources
 simultaneously (tokens, wall-clock, cost, tool-calls, errors, ...).  It is
-the counterpart of :mod:`src.agent.budget_bounded_loop`, which only tracks
+the counterpart of :mod:`agent.budget_bounded_loop`, which only tracks
 a single scalar cap.  Production agents need soft (advisory) and hard
 (fatal) limits on each resource; exceeding a hard limit is transactional
 — the spend that would push the ledger over is rejected without mutating

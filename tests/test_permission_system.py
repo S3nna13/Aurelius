@@ -1,6 +1,6 @@
 """Tests for permission system."""
 
-from src.agent.permission_system import (
+from agent.permission_system import (
     AutoModeClassifier,
     PermissionMode,
     PermissionRequest,

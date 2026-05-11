@@ -1,4 +1,4 @@
-"""Unit tests for :mod:`src.agent.code_refactor_tool`."""
+"""Unit tests for :mod:`agent.code_refactor_tool`."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import ast
 
 import pytest
 
-from src.agent.code_refactor_tool import CodeRefactorTool, RefactorResult
+from agent.code_refactor_tool import CodeRefactorTool, RefactorResult
 
 
 @pytest.fixture()
