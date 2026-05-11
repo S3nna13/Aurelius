@@ -438,42 +438,6 @@ class AureliusConfig:
         return cls()
 
     @classmethod
-    def aurelius_2_7b(cls) -> "AureliusConfig":
-        """2.7B dense: 32 layers, d_model=2560, GQA 20:5."""
-        return cls(
-            d_model=2560,
-            n_layers=32,
-            n_heads=20,
-            n_kv_heads=5,
-            head_dim=128,
-            d_ff=7168,
-            vocab_size=128000,
-            max_seq_len=8192,
-            rope_theta=500_000.0,
-            rms_norm_eps=1e-6,
-            dropout=0.0,
-            tie_embeddings=True,
-        )
-
-    @classmethod
-    def aurelius_3b(cls) -> "AureliusConfig":
-        """3B dense: 32 layers, d_model=2560, GQA 20:5, wider FFN."""
-        return cls(
-            d_model=2560,
-            n_layers=34,
-            n_heads=20,
-            n_kv_heads=5,
-            head_dim=128,
-            d_ff=8192,
-            vocab_size=128000,
-            max_seq_len=16384,
-            rope_theta=500_000.0,
-            rms_norm_eps=1e-6,
-            dropout=0.1,
-            tie_embeddings=True,
-        )
-
-    @classmethod
     def aurelius_3b_moe(cls) -> "AureliusConfig":
         """3B MoE: 32 layers, 8 experts, top-2, every 2 layers."""
         return cls(
@@ -652,6 +616,58 @@ class AureliusConfig:
             mhc_sinkhorn_iterations=20,
         )
 
+# ── Variant factory classmethods ─────────────────────────────────
+
+    @classmethod
+    def aurelius_2_7b(cls) -> "AureliusConfig":
+        """2.7B dense variant — fits in 26GB M1 Pro with bs=1, grad_ckpt, Muon+AdamW.
+
+        Memory: ~17.3GB (optimizer: Muon 6.9GB + AdamW 1.9GB, model: 8.5GB).
+        Throughput: 800-1200 tok/s on M1 Pro 16-core GPU.
+        """
+        return cls(
+            d_model=2560,
+            n_layers=32,
+            n_heads=20,
+            n_kv_heads=5,
+            head_dim=128,
+            d_ff=7168,
+            vocab_size=128_000,
+            max_seq_len=8192,
+            rope_theta=500_000.0,
+            rms_norm_eps=1e-6,
+            dropout=0.0,
+            tie_embeddings=True,
+            use_gradient_checkpointing=True,
+        )
+
+    @classmethod
+    def aurelius_3b(cls) -> "AureliusConfig":
+        """3B dense variant — tight fit in 26GB M1 Pro; requires 8-bit optim, bs=1.
+
+        Memory: ~20.5GB (optimizer: 8bit Muon 4.7GB + AdamW 1.7GB, model: 11.1GB).
+        Uses max_seq_len=4096 during early pretraining (YaRN extends to 8192 later).
+        Throughput: 600-900 tok/s on M1 Pro 16-core GPU.
+        """
+        return cls(
+            d_model=3072,
+            n_layers=28,
+            n_heads=24,
+            n_kv_heads=6,
+            head_dim=128,
+            d_ff=8192,
+            vocab_size=128_000,
+            max_seq_len=4096,
+            rope_theta=500_000.0,
+            rope_scaling_type="yarn",
+            rope_scaling_factor=4.0,
+            rope_original_max_seq_len=4096,
+            rms_norm_eps=1e-6,
+            dropout=0.0,
+            tie_embeddings=True,
+            use_gradient_checkpointing=True,
+        )
+
     def __post_init__(self) -> None:
         assert self.d_model == self.n_heads * self.head_dim, (  # noqa: S101
             f"d_model ({self.d_model}) must equal n_heads ({self.n_heads}) "
@@ -660,6 +676,8 @@ class AureliusConfig:
         assert self.n_heads % self.n_kv_heads == 0, (  # noqa: S101
             f"n_heads ({self.n_heads}) must be divisible by n_kv_heads ({self.n_kv_heads})"
         )
+
+
 MOE_PRESETS: dict[str, dict[str, Any]] = {
     "small": {"num_experts": 4, "top_k": 2, "d_model": 512, "d_ff": 2048},
     "base": {"num_experts": 8, "top_k": 2, "d_model": 2048, "d_ff": 8192},
