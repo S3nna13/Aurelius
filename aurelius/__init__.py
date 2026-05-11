@@ -1,36 +1,59 @@
-"""Aurelius — Agent Registry, Skills Registry, Plugin System, and API.
+"""Aurelius — Legacy compatibility namespace.
 
-Complete agent and skills management system.
+Provides the ``aurelius.*`` import path that some tests and legacy code
+still reference.  Each top-level sub-package alias is eagerly registered
+in ``sys.modules`` so that ``from aurelius.training.X import Y`` resolves
+to ``src.training.X`` transparently.
+
+Usage
+-----
+    from aurelius.training.gradient_surgery import GradientSurgeon
+    from aurelius.alignment.constitutional_ai import ConstitutionalAI
 """
 
+from __future__ import annotations
+
+import importlib
 import sys
-from importlib import import_module
 
 
-def _alias_subpackage(alias: str, target: str) -> None:
-    module = import_module(target)
-    sys.modules.setdefault(alias, module)
-    globals()[alias.rsplit(".", 1)[-1]] = module
+def _alias(alias: str, target: str) -> None:
+    """Register *alias* in ``sys.modules`` pointing to *target*."""
+    mod = importlib.import_module(target)
+    sys.modules.setdefault(alias, mod)
 
 
-_src_model = import_module("src.model")
-sys.modules.setdefault("aurelius.model", _src_model)
-if "src.model.transformer" in sys.modules:
-    sys.modules.setdefault("aurelius.model.transformer", sys.modules["src.model.transformer"])
+# ── Sub-package aliases (eager — breaks circular imports) ─────────
+# Each call does importlib.import_module("src.X") and registers it
+# as sys.modules["aurelius.X"].  From that point on Python resolves
+# "aurelius.X.Y" as "src.X.Y" automatically.
+_alias("aurelius.data", "src.data")
+_alias("aurelius.eval", "src.eval")
+_alias("aurelius.evaluation", "src.evaluation")
+_alias("aurelius.training", "src.training")
+_alias("aurelius.alignment", "src.alignment")
+_alias("aurelius.inference", "src.inference")
+_alias("aurelius.serving", "src.serving")
+_alias("aurelius.safety", "src.safety")
+_alias("aurelius.model", "src.model")
+_alias("aurelius.agent", "src.agent")
+_alias("aurelius.security", "src.security")
+_alias("aurelius.memory", "src.memory")
+_alias("aurelius.quantization", "src.quantization")
+_alias("aurelius.routing", "src.routing")
+_alias("aurelius.workflow", "src.workflow")
+_alias("aurelius.multiagent", "src.multiagent")
+_alias("aurelius.tools", "src.tools")
+_alias("aurelius.compression", "src.compression")
+_alias("aurelius.optimizers", "src.optimizers")
+_alias("aurelius.interpretability", "src.interpretability")
+_alias("aurelius.deployment", "src.deployment")
+_alias("aurelius.monitoring", "src.monitoring")
+_alias("aurelius.persona", "src.persona")
+_alias("aurelius.cache", "src.cache")
 
-_alias_subpackage("aurelius.data", "src.data")
-_alias_subpackage("aurelius.eval", "src.eval")
-_alias_subpackage("aurelius.evaluation", "src.evaluation")
-
-_src_training = import_module("src.training")
-sys.modules.setdefault("aurelius.training", _src_training)
-if "src.training.gradient_surgery" in sys.modules:
-    sys.modules.setdefault(
-        "aurelius.training.gradient_surgery",
-        sys.modules["src.training.gradient_surgery"],
-    )
-
-from .agent_registry import (
+# ── Agent registry (legacy names) ────────────────────────────────
+from .agent_registry import (  # noqa: E402
     AGENT_REGISTRY,
     AGENTS_BY_CATEGORY,
     ALL_AGENTS,
@@ -39,9 +62,20 @@ from .agent_registry import (
     RESEARCH_AGENT,
     TUTOR_AGENT,
 )
-from .api_registry import get_agent_for_task, get_skills_for_agent, register_api_routes
-from .plugin_system import BUILTIN_PLUGINS, PLUGIN_MANAGER, PluginManager
-from .skills_registry import ALL_SKILLS, SKILL_REGISTRY, SKILLS_BY_CATEGORY
+
+# ── Plugin system ────────────────────────────────────────────────
+from .plugin_system import (  # noqa: E402
+    BUILTIN_PLUGINS,
+    PLUGIN_MANAGER,
+    PluginManager,
+)
+
+# ── Skills registry ──────────────────────────────────────────────
+from .skills_registry import (  # noqa: E402
+    ALL_SKILLS,
+    SKILL_REGISTRY,
+    SKILLS_BY_CATEGORY,
+)
 
 __all__ = [
     "ALL_AGENTS",
@@ -57,7 +91,4 @@ __all__ = [
     "BUILTIN_PLUGINS",
     "PLUGIN_MANAGER",
     "PluginManager",
-    "get_agent_for_task",
-    "get_skills_for_agent",
-    "register_api_routes",
 ]

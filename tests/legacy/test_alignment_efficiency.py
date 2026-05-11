@@ -1,3 +1,6 @@
+import pytest
+
+pytest.skip("legacy test: module removed during reorganization", allow_module_level=True)
 import sys
 
 import torch

@@ -6,25 +6,25 @@
 <title>Aurelius Architecture</title>
 <style>
   :root {
-    --text-primary: #1a1a18;
-    --text-secondary: #5f5e5a;
-    --text-tertiary: #88877f;
+    --text-primary: #000000;
+    --text-secondary: #333333;
+    --text-tertiary: #666666;
     --bg-primary: #ffffff;
-    --bg-secondary: #f6f5f0;
-    --bg-tertiary: #eeedeb;
-    --border: rgba(0,0,0,0.15);
-    --border-hover: rgba(0,0,0,0.3);
+    --bg-secondary: #f5f5f5;
+    --bg-tertiary: #eaeaea;
+    --border: rgba(0,0,0,0.2);
+    --border-hover: rgba(0,0,0,0.4);
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --text-primary: #e8e6de;
-      --text-secondary: #b4b2a9;
-      --text-tertiary: #888780;
-      --bg-primary: #1a1a18;
-      --bg-secondary: #2c2c2a;
-      --bg-tertiary: #3d3d3a;
-      --border: rgba(255,255,255,0.15);
-      --border-hover: rgba(255,255,255,0.3);
+      --text-primary: #f0f0f0;
+      --text-secondary: #cccccc;
+      --text-tertiary: #999999;
+      --bg-primary: #1a1a1a;
+      --bg-secondary: #2a2a2a;
+      --bg-tertiary: #333333;
+      --border: rgba(255,255,255,0.2);
+      --border-hover: rgba(255,255,255,0.4);
     }
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -48,50 +48,54 @@
   h1 { font-size: 18px; font-weight: 500; color: var(--text-primary); margin-bottom: 8px; }
   .subtitle { font-size: 13px; color: var(--text-tertiary); margin-bottom: 24px; }
   svg { width: 100%; height: auto; }
-  .t  { font-family: system-ui, -apple-system, sans-serif; font-size: 14px; fill: var(--text-primary); }
-  .ts { font-family: system-ui, -apple-system, sans-serif; font-size: 12px; fill: var(--text-secondary); }
-  .th { font-family: system-ui, -apple-system, sans-serif; font-size: 14px; fill: var(--text-primary); font-weight: 500; }
+  .t  { font-family: system-ui, -apple-system, sans-serif; font-size: 14px; fill: #000000; }
+  .ts { font-family: system-ui, -apple-system, sans-serif; font-size: 12px; fill: #333333; }
+  .th { font-family: system-ui, -apple-system, sans-serif; font-size: 14px; fill: #000000; font-weight: 600; }
   .box { fill: var(--bg-secondary); stroke: var(--border); stroke-width: 0.5px; }
   .arr { stroke: var(--text-secondary); stroke-width: 1.5px; fill: none; }
   .leader { stroke: var(--text-tertiary); stroke-width: 0.5px; stroke-dasharray: 4 3; fill: none; }
   .node { cursor: pointer; transition: opacity 0.15s; }
   .node:hover { opacity: 0.82; }
-  .c-purple > rect, .c-purple > circle, .c-purple > ellipse { fill: #EEEDFE; stroke: #534AB7; }
-  .c-purple > .th, .c-purple > text.th { fill: #3C3489; }
-  .c-purple > .ts, .c-purple > text.ts { fill: #534AB7; }
-  .c-purple > .t,  .c-purple > text.t  { fill: #3C3489; }
-  .c-teal > rect, .c-teal > circle, .c-teal > ellipse { fill: #E1F5EE; stroke: #0F6E56; }
-  .c-teal > .th, .c-teal > text.th { fill: #085041; }
-  .c-teal > .ts, .c-teal > text.ts { fill: #0F6E56; }
-  .c-teal > .t,  .c-teal > text.t  { fill: #085041; }
-  .c-coral > rect, .c-coral > circle, .c-coral > ellipse { fill: #FAECE7; stroke: #993C1D; }
-  .c-coral > .th, .c-coral > text.th { fill: #712B13; }
-  .c-coral > .ts, .c-coral > text.ts { fill: #993C1D; }
-  .c-coral > .t,  .c-coral > text.t  { fill: #712B13; }
-  .c-blue > rect, .c-blue > circle, .c-blue > ellipse { fill: #E6F1FB; stroke: #185FA5; }
-  .c-blue > .th, .c-blue > text.th { fill: #0C447C; }
-  .c-blue > .ts, .c-blue > text.ts { fill: #185FA5; }
-  .c-blue > .t,  .c-blue > text.t  { fill: #0C447C; }
-  .c-gray > rect, .c-gray > circle, .c-gray > ellipse { fill: #F1EFE8; stroke: #5F5E5A; }
-  .c-gray > .th, .c-gray > text.th { fill: #444441; }
-  .c-gray > .ts, .c-gray > text.ts { fill: #5F5E5A; }
-  .c-gray > .t,  .c-gray > text.t  { fill: #444441; }
+  .c-purple > rect, .c-purple > circle, .c-purple > ellipse { fill: #EEEDFE; stroke: #534AB7; stroke-width: 1px; }
+  .c-purple > .th, .c-purple > text.th { fill: #2E2680; }
+  .c-purple > .ts, .c-purple > text.ts { fill: #4338A8; }
+  .c-purple > .t,  .c-purple > text.t  { fill: #2E2680; }
+  .c-teal > rect, .c-teal > circle, .c-teal > ellipse { fill: #E1F5EE; stroke: #0F6E56; stroke-width: 1px; }
+  .c-teal > .th, .c-teal > text.th { fill: #06402F; }
+  .c-teal > .ts, .c-teal > text.ts { fill: #0B5A45; }
+  .c-teal > .t,  .c-teal > text.t  { fill: #06402F; }
+  .c-coral > rect, .c-coral > circle, .c-coral > ellipse { fill: #FAECE7; stroke: #993C1D; stroke-width: 1px; }
+  .c-coral > .th, .c-coral > text.th { fill: #5C200E; }
+  .c-coral > .ts, .c-coral > text.ts { fill: #802F14; }
+  .c-coral > .t,  .c-coral > text.t  { fill: #5C200E; }
+  .c-blue > rect, .c-blue > circle, .c-blue > ellipse { fill: #E6F1FB; stroke: #185FA5; stroke-width: 1px; }
+  .c-blue > .th, .c-blue > text.th { fill: #0A3560; }
+  .c-blue > .ts, .c-blue > text.ts { fill: #13508E; }
+  .c-blue > .t,  .c-blue > text.t  { fill: #0A3560; }
+  .c-gray > rect, .c-gray > circle, .c-gray > ellipse { fill: #F1EFE8; stroke: #5F5E5A; stroke-width: 1px; }
+  .c-gray > .th, .c-gray > text.th { fill: #222222; }
+  .c-gray > .ts, .c-gray > text.ts { fill: #444444; }
+  .c-gray > .t,  .c-gray > text.t  { fill: #222222; }
   @media (prefers-color-scheme: dark) {
-    .c-purple > rect, .c-purple > circle, .c-purple > ellipse { fill: #3C3489; stroke: #AFA9EC; }
-    .c-purple > .th, .c-purple > text.th { fill: #CECBF6; }
-    .c-purple > .ts, .c-purple > text.ts { fill: #AFA9EC; }
-    .c-teal > rect, .c-teal > circle, .c-teal > ellipse { fill: #085041; stroke: #5DCAA5; }
-    .c-teal > .th, .c-teal > text.th { fill: #9FE1CB; }
-    .c-teal > .ts, .c-teal > text.ts { fill: #5DCAA5; }
-    .c-coral > rect, .c-coral > circle, .c-coral > ellipse { fill: #712B13; stroke: #F0997B; }
-    .c-coral > .th, .c-coral > text.th { fill: #F5C4B3; }
-    .c-coral > .ts, .c-coral > text.ts { fill: #F0997B; }
-    .c-blue > rect, .c-blue > circle, .c-blue > ellipse { fill: #0C447C; stroke: #85B7EB; }
-    .c-blue > .th, .c-blue > text.th { fill: #B5D4F4; }
-    .c-blue > .ts, .c-blue > text.ts { fill: #85B7EB; }
-    .c-gray > rect, .c-gray > circle, .c-gray > ellipse { fill: #444441; stroke: #B4B2A9; }
-    .c-gray > .th, .c-gray > text.th { fill: #D3D1C7; }
-    .c-gray > .ts, .c-gray > text.ts { fill: #B4B2A9; }
+    .c-purple > rect, .c-purple > circle, .c-purple > ellipse { fill: #3C3489; stroke: #AFA9EC; stroke-width: 1px; }
+    .c-purple > .th, .c-purple > text.th { fill: #E8E6F8; }
+    .c-purple > .ts, .c-purple > text.ts { fill: #C5C2F0; }
+    .c-teal > rect, .c-teal > circle, .c-teal > ellipse { fill: #085041; stroke: #5DCAA5; stroke-width: 1px; }
+    .c-teal > .th, .c-teal > text.th { fill: #B8F0DC; }
+    .c-teal > .ts, .c-teal > text.ts { fill: #80DABB; }
+    .c-coral > rect, .c-coral > circle, .c-coral > ellipse { fill: #712B13; stroke: #F0997B; stroke-width: 1px; }
+    .c-coral > .th, .c-coral > text.th { fill: #FDD8CA; }
+    .c-coral > .ts, .c-coral > text.ts { fill: #F0B09A; }
+    .c-blue > rect, .c-blue > circle, .c-blue > ellipse { fill: #0C447C; stroke: #85B7EB; stroke-width: 1px; }
+    .c-blue > .th, .c-blue > text.th { fill: #D0E4F8; }
+    .c-blue > .ts, .c-blue > text.ts { fill: #9DC8F0; }
+    .c-gray > rect, .c-gray > circle, .c-gray > ellipse { fill: #444441; stroke: #B4B2A9; stroke-width: 1px; }
+    .c-gray > .th, .c-gray > text.th { fill: #E8E8E8; }
+    .c-gray > .ts, .c-gray > text.ts { fill: #CCCCCC; }
+    /* Override SVG text fills in dark mode */
+    .t  { fill: #f0f0f0 !important; }
+    .ts { fill: #cccccc !important; }
+    .th { fill: #f0f0f0 !important; }
   }
 </style>
 </head>

@@ -6,11 +6,13 @@ import time
 
 import pytest
 
-from src.memory.long_term_memory import (
+from plugins.memory.long_term_memory import (
     _MAX_CAPACITY,
     _MAX_KEY_LEN,
     _MAX_TAGS,
     _MAX_VALUE_STR_LEN,
+)
+from src.memory.long_term_memory import (
     LONG_TERM_MEMORY,
     LongTermMemory,
     LTMEntry,
