@@ -5,8 +5,11 @@ BACKWARD-COMPATIBLE WRAPPER: delegates to UnifiedPersonaRegistry.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from enum import StrEnum
+
+logger = logging.getLogger(__name__)
 
 from src.persona import (
     AURELIUS_ANALYST,
@@ -118,7 +121,8 @@ class PersonaRegistry:
         unified_id = _LEGACY_TO_UNIFIED.get(persona_id, persona_id)
         try:
             unified = self._unified.get(unified_id)
-        except Exception:
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("PersonaRegistry.get failed for %r: %s", unified_id, exc)
             return None
         return self._to_legacy(unified)
 
@@ -142,7 +146,8 @@ class PersonaRegistry:
         unified_id = _LEGACY_TO_UNIFIED.get(persona_id, persona_id)
         try:
             unified = self._unified.get(unified_id)
-        except Exception:
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("PersonaRegistry.apply_persona failed to resolve unified persona %r: %s", unified_id, exc)
             unified = None
 
         if unified is not None:

@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 import time
 from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -55,8 +58,8 @@ class Blackboard:
         for cb in self._subscribers.get(entry.key, []):
             try:
                 cb(entry)
-            except Exception:  # noqa: S110
-                pass
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("Blackboard subscriber callback failed: %s", exc)
 
     def keys(self) -> list[str]:
         return sorted(self._store.keys())

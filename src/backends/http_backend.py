@@ -11,6 +11,8 @@ import urllib.request
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
+logger = logging.getLogger(__name__)
+
 _ALLOWED_SCHEMES = frozenset(["http", "https"])
 _BLOCKED_NETWORKS = [
     ipaddress.ip_network("10.0.0.0/8"),
@@ -50,6 +52,10 @@ def _validate_backend_url(url: str) -> None:
     if not parsed.hostname:
         raise ValueError(f"backend URL missing host: {url!r}")
     if os.environ.get("AURELIUS_ALLOW_PRIVATE_URLS") == "1":
+        logger.warning(
+            "AURELIUS_ALLOW_PRIVATE_URLS bypass active — skipping private IP validation for: %s",
+            url,
+        )
         return
     if _is_private_or_reserved(parsed.hostname):
         raise ValueError(

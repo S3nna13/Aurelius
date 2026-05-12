@@ -162,3 +162,63 @@ def _isolate_safe_extractor_registry():
     snap = _snapshot(registry)
     yield
     _restore(registry, snap)
+
+
+# ---------------------------------------------------------------------------
+# AGENT_REGISTRY
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _isolate_agent_registry():
+    """Snapshot/restore AGENT_REGISTRY around every test."""
+    try:
+        mod = importlib.import_module("aurelius.agent_registry")
+        registry = mod.AGENT_REGISTRY
+    except Exception:
+        yield
+        return
+
+    snap = _snapshot(registry)
+    yield
+    _restore(registry, snap)
+
+
+# ---------------------------------------------------------------------------
+# SKILL_REGISTRY
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _isolate_skill_registry():
+    """Snapshot/restore SKILL_REGISTRY around every test."""
+    try:
+        mod = importlib.import_module("aurelius.skills_registry")
+        registry = mod.SKILL_REGISTRY
+    except Exception:
+        yield
+        return
+
+    snap = _snapshot(registry)
+    yield
+    _restore(registry, snap)
+
+
+# ---------------------------------------------------------------------------
+# BUILTIN_PLUGINS (aurelius.plugin_system)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _isolate_builtin_plugins():
+    """Snapshot/restore BUILTIN_PLUGINS around every test."""
+    try:
+        mod = importlib.import_module("aurelius.plugin_system")
+        registry = mod.BUILTIN_PLUGINS
+    except Exception:
+        yield
+        return
+
+    snap = _snapshot(registry)
+    yield
+    _restore(registry, snap)
