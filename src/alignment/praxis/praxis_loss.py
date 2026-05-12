@@ -16,7 +16,7 @@ class PRAXISLoss:
 
     def __init__(self, config: PRAXISConfig) -> None:
         self.config = config
-        self.dapo   = DAPOLoss(
+        self.dapo = DAPOLoss(
             eps_low=config.eps_low,
             eps_high=config.eps_high,
             beta_entropy=config.lambda_ent,
@@ -24,15 +24,15 @@ class PRAXISLoss:
 
     def forward(
         self,
-        log_probs: Tensor,        # (B, T)
-        old_log_probs: Tensor,    # (B, T)
-        advantages: Tensor,       # (B, T)
-        fused_rewards: Tensor,    # (B,) from PrecisionFusion
-        mask: Tensor,             # (B, T) bool
+        log_probs: Tensor,  # (B, T)
+        old_log_probs: Tensor,  # (B, T)
+        advantages: Tensor,  # (B, T)
+        fused_rewards: Tensor,  # (B,) from PrecisionFusion
+        mask: Tensor,  # (B, T) bool
         ref_log_probs: Tensor | None = None,  # (B, T) for KL
-        const_scores: Tensor | None = None,   # (B,) constitutional gate signal
-        entropy: Tensor | None = None,        # (B, T) optional entropy term
-        esa_loss: Tensor | None = None,       # scalar from ExpertSafetyAffinity
+        const_scores: Tensor | None = None,  # (B,) constitutional gate signal
+        entropy: Tensor | None = None,  # (B, T) optional entropy term
+        esa_loss: Tensor | None = None,  # scalar from ExpertSafetyAffinity
     ) -> tuple[Tensor, dict]:
         cfg = self.config
 
@@ -42,7 +42,9 @@ class PRAXISLoss:
             if gate_mask.sum() == 0:
                 esa_term = esa_loss if esa_loss is not None else log_probs.new_zeros(())
                 return esa_term, {
-                    "dapo_loss": 0.0, "kl_penalty": 0.0, "const_gate_ratio": 0.0,
+                    "dapo_loss": 0.0,
+                    "kl_penalty": 0.0,
+                    "const_gate_ratio": 0.0,
                     "esa_loss": esa_term.item() if hasattr(esa_term, "item") else 0.0,
                 }
             advantages = advantages * gate_mask.unsqueeze(1)
@@ -55,8 +57,8 @@ class PRAXISLoss:
         # 3. KL penalty against reference
         kl_penalty = log_probs.new_zeros(())
         if ref_log_probs is not None:
-            mask_f     = mask.float()
-            valid_cnt  = mask_f.sum().clamp(min=1.0)
+            mask_f = mask.float()
+            valid_cnt = mask_f.sum().clamp(min=1.0)
             kl_penalty = ((log_probs - ref_log_probs) * mask_f).sum() / valid_cnt
             kl_penalty = cfg.beta_kl * kl_penalty
 

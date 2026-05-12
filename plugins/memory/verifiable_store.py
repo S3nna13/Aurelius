@@ -135,9 +135,7 @@ class VerifiableMemoryStore:
             # Exact substring match
             substring_score = 2.0 if query_lower in content_lower else 0.0
             # Term-frequency score
-            term_score = sum(
-                1 for term in query_terms if term in content_lower
-            )
+            term_score = sum(1 for term in query_terms if term in content_lower)
             return substring_score + term_score + fact.confidence
 
         ranked = sorted(self._facts.values(), key=score, reverse=True)
@@ -164,18 +162,12 @@ class VerifiableMemoryStore:
         fact.verifications.append(verification)
         fact.confidence = min(fact.confidence, verification.confidence)
 
-    def get_unverified(
-        self, min_confidence: float = 0.3
-    ) -> list[VerifiableFact]:
+    def get_unverified(self, min_confidence: float = 0.3) -> list[VerifiableFact]:
         """Return active facts whose confidence is below *min_confidence*.
 
         These facts have not been adequately verified and may need attention.
         """
-        return [
-            f
-            for f in self._facts.values()
-            if f.is_active and f.confidence < min_confidence
-        ]
+        return [f for f in self._facts.values() if f.is_active and f.confidence < min_confidence]
 
     # ------------------------------------------------------------------
     # Compression-safe ground truth

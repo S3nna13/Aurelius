@@ -184,9 +184,7 @@ class MemoryGuidelineInducer:
         self._step_count = 0
 
     def _init_guideline_emb(self) -> nn.Parameter:
-        emb = nn.Parameter(
-            torch.randn(self.embed_dim, device=self._device) * 0.02
-        )
+        emb = nn.Parameter(torch.randn(self.embed_dim, device=self._device) * 0.02)
         return emb
 
     def _score_alignment(
@@ -246,13 +244,10 @@ class MemoryGuidelineInducer:
                 pref_batch = pref_batch[:pair_count]
                 non_pref_batch = non_pref_batch[:pair_count]
 
-                pref_embs = torch.stack(
-                    [self._encode_text(t.to_text()) for t in pref_batch]
+                pref_embs = torch.stack([self._encode_text(t.to_text()) for t in pref_batch])
+                non_pref_embs = torch.stack(
+                    [self._encode_text(t.to_text()) for t in non_pref_batch]
                 )
-                non_pref_embs = torch.stack([
-                    self._encode_text(t.to_text())
-                    for t in non_pref_batch
-                ])
 
                 g_emb = self._guideline_emb.unsqueeze(0)
                 pref_expanded = g_emb.expand(len(pref_embs), -1)
@@ -298,9 +293,7 @@ class MemoryGuidelineInducer:
         with torch.no_grad():
             content_emb = self._encode_text(content)
             guideline_emb = (
-                self._encode_text(guideline)
-                if guideline is not None
-                else self._guideline_emb
+                self._encode_text(guideline) if guideline is not None else self._guideline_emb
             )
             score = self._score_alignment(guideline_emb, content_emb)
             return torch.sigmoid(score).item()
@@ -563,9 +556,7 @@ class MemCoE:
         action_emb_t = action_emb.unsqueeze(0).to(self._device)
         guideline_emb_t = guideline_emb.unsqueeze(0).to(self._device)
 
-        proc_reward = self.inducer.compute_process_reward(
-            content_after, action, correct_answer
-        )
+        proc_reward = self.inducer.compute_process_reward(content_after, action, correct_answer)
         process_rewards.append(proc_reward)
 
         if len(self._trace_buffer) >= self.inducer.batch_size * 2:

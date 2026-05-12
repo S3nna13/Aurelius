@@ -12,6 +12,7 @@ def test_praxis_config_defaults():
     assert cfg.k_mtah == 2
     assert cfg.warp_interval == 50
 
+
 def test_praxis_config_custom():
     cfg = PRAXISConfig(n_group=4, eps_low=0.1, steer_layers=[8, 12])
     assert cfg.n_group == 4

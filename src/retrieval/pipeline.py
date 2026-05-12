@@ -119,7 +119,9 @@ class RetrievalPipeline:
 
         return self._safe("retriever", _do, [])
 
-    def _resolve_chunks(self, hits: list[tuple[int, float]]) -> tuple[list[str], list[float], list[int]]:
+    def _resolve_chunks(
+        self, hits: list[tuple[int, float]]
+    ) -> tuple[list[str], list[float], list[int]]:
         chunks: list[str] = []
         scores: list[float] = []
         ids: list[int] = []
@@ -170,7 +172,12 @@ class RetrievalPipeline:
             except Exception:  # pragma: no cover
                 return []
             sources = [
-                Source(id=str(ids[i] if i < len(ids) else i), text=c, origin="retrieval", retrieved_at="")
+                Source(
+                    id=str(ids[i] if i < len(ids) else i),
+                    text=c,
+                    origin="retrieval",
+                    retrieved_at="",
+                )
                 for i, c in enumerate(chunks)
             ]
             # We don't have the model output at retrieval time, so we record

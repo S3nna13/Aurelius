@@ -1,4 +1,5 @@
 """Aurelius project constants."""
+
 from __future__ import annotations
 
 PROJECT_NAME: str = "Aurelius"

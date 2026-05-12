@@ -76,7 +76,9 @@ class Decontaminator:
         self.benchmarks.append(fp)
         logger.info(
             "Loaded benchmark '%s': %d %d-gram fingerprints",
-            name, len(fp.fingerprints), ngram_size,
+            name,
+            len(fp.fingerprints),
+            ngram_size,
         )
         return fp
 
@@ -160,7 +162,8 @@ class Decontaminator:
 
         logger.info(
             "Decontamination: %d kept, %d removed (%.1f%%)",
-            len(cleaned), len(contaminated),
+            len(cleaned),
+            len(contaminated),
             len(contaminated) / max(len(cleaned) + len(contaminated), 1) * 100,
         )
         return cleaned, contaminated
@@ -179,4 +182,4 @@ class Decontaminator:
             if words:
                 return {hash(" ".join(words))}
             return set()
-        return {hash(" ".join(words[i:i + n])) for i in range(len(words) - n + 1)}
+        return {hash(" ".join(words[i : i + n])) for i in range(len(words) - n + 1)}

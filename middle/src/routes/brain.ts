@@ -3,6 +3,7 @@ import { requireScope } from '../middleware/auth.js';
 import { spawn } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { resolvePythonExecutable } from '../python_runtime.js';
 
 const router = Router();
 let brainConcurrency = 0;
@@ -17,7 +18,7 @@ function runBrain(cmd: string, res: Response): void {
   }
   brainConcurrency++
 
-  const python = spawn('python3', ['-c', cmd], { cwd: repoRoot })
+  const python = spawn(resolvePythonExecutable(repoRoot), ['-c', cmd], { cwd: repoRoot })
   let result = ''
   let killed = false
 

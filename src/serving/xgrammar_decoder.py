@@ -194,9 +194,7 @@ if _XGRAMMAR_AVAILABLE:
             according to the XGrammar-compiled JSON schema.
             """
             if len(vocab) != self.vocab_size:
-                raise ValueError(
-                    f"vocab length {len(vocab)} != vocab_size {self.vocab_size}"
-                )
+                raise ValueError(f"vocab length {len(vocab)} != vocab_size {self.vocab_size}")
 
             grammar = self._compile_schema(schema, vocab)
             matcher = xgr.GrammarMatcher(grammar)

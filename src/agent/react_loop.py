@@ -66,6 +66,8 @@ class AgentStep:
 class AgentTrace:
     """Full transcript of a :meth:`ReActLoop.run` invocation."""
 
+    task: str = ""
+    system_prompt: str = ""
     steps: list[AgentStep] = field(default_factory=list)
     final_answer: str | None = None
     status: str = "no_answer"  # one of {success, budget, error, no_answer}

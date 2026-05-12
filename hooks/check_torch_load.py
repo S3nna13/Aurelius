@@ -6,6 +6,7 @@ The hook scans the files passed by pre‑commit (via ``sys.argv[1:]``) and
 exits with status 1 if it finds a disallowed pattern.  Test files are allowed
 to keep the existing unit‑test ``weights_only=False`` usage.
 """
+
 import pathlib
 import re
 import sys

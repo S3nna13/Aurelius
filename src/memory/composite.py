@@ -105,7 +105,9 @@ class ArchitectureDecomposer:
             pattern = "research_question"
 
         tasks = self._routing_table.get(pattern, self._routing_table["research_question"])
-        return [SubTask(name=t["name"], architecture=t["architecture"], input_data=query) for t in tasks]
+        return [
+            SubTask(name=t["name"], architecture=t["architecture"], input_data=query) for t in tasks
+        ]
 
     def list_patterns(self) -> list[str]:
         return list(self._routing_table.keys())

@@ -1,4 +1,5 @@
 """Optional Liger kernel monkey-patching for memory-efficient training."""
+
 from __future__ import annotations
 
 import logging
@@ -6,8 +7,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def apply_liger_kernels(model, enable_rope=True, enable_rms_norm=True,
-                        enable_swiglu=True, enable_fused_ce=True) -> bool:
+def apply_liger_kernels(
+    model, enable_rope=True, enable_rms_norm=True, enable_swiglu=True, enable_fused_ce=True
+) -> bool:
     """Patch model in-place with Liger fused kernels. Returns True if applied."""
     try:
         from liger_kernel.ops.rms_norm import LigerRMSNormFunction  # noqa: F401
@@ -16,6 +18,7 @@ def apply_liger_kernels(model, enable_rope=True, enable_rms_norm=True,
         from liger_kernel.transformers.monkey_patch import (
             _patch_rms_norm_module,
         )
+
         # Patch each norm layer
         for module in model.modules():
             module_name = type(module).__name__
@@ -35,6 +38,7 @@ def apply_liger_cross_entropy(vocab_size: int):
     """Return Liger fused linear cross-entropy loss or standard fallback."""
     try:
         from liger_kernel.transformers.functional import liger_fused_linear_cross_entropy
+
         return liger_fused_linear_cross_entropy
     except ImportError:
         return None

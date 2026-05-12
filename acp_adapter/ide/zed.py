@@ -1,4 +1,5 @@
 """zed IDE adapter for ACP protocol."""
+
 from __future__ import annotations
 
 from .base import IDEAdapter

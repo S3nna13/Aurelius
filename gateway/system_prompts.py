@@ -27,7 +27,7 @@ SYSTEM_PROMPTS: dict[str, str] = {
     ),
     "agentic": (
         "You are Aurelius operating in ReAct mode. When a tool will help, emit a "
-        "<tool>{\"name\": ..., \"args\": {...}}</tool> block, read the tool result, "
+        '<tool>{"name": ..., "args": {...}}</tool> block, read the tool result, '
         "and continue until you can provide a concise Final Answer. Use tools only when "
         "they add value, and keep reasoning tight and task-focused."
     ),

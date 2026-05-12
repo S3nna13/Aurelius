@@ -124,7 +124,7 @@ class _CappedStringIO(io.StringIO):
         # In the worst case a codepoint is 4 UTF-8 bytes, so slicing a few
         # characters past the remaining budget is safe.
         if len(s) > remaining + 4:
-            s = s[:remaining + 4]
+            s = s[: remaining + 4]
         encoded = s.encode("utf-8", errors="replace")
         if len(encoded) <= remaining:
             self._bytes_written += len(encoded)
@@ -184,9 +184,14 @@ class SandboxExecutor:
             safe_builtins.pop(blocked, None)
         globs: dict[str, Any] = {"__builtins__": safe_builtins}
         for attr in (
-            "__class__", "__bases__", "__subclasses__",
-            "__mro__", "__globals__", "__code__",
-            "__closure__", "__dict__",
+            "__class__",
+            "__bases__",
+            "__subclasses__",
+            "__mro__",
+            "__globals__",
+            "__code__",
+            "__closure__",
+            "__dict__",
         ):
             globs[attr] = None
         return globs

@@ -33,12 +33,12 @@ logger = logging.getLogger("ark.orchestrator")
 
 
 class InferenceTier(Enum):
-    CACHE = "cache"           # 0 model inference, 0 cost
-    MEMORY = "memory"         # 0 model inference, 0 cost
-    DENSE = "dense"           # low cost, fast
-    MOE = "moe"              # higher cost, higher capacity
-    ENSEMBLE = "ensemble"     # both models, merged result
-    SPECULATIVE = "spec"      # dense drafts, MoE verifies
+    CACHE = "cache"  # 0 model inference, 0 cost
+    MEMORY = "memory"  # 0 model inference, 0 cost
+    DENSE = "dense"  # low cost, fast
+    MOE = "moe"  # higher cost, higher capacity
+    ENSEMBLE = "ensemble"  # both models, merged result
+    SPECULATIVE = "spec"  # dense drafts, MoE verifies
 
 
 @dataclass
@@ -144,7 +144,9 @@ class UnifiedInferenceOrchestrator:
             # seq_len = estimate_sequence_length(prompt, memory_context)
             # if self.kv_memory_manager.should_offload(seq_len, gpu_budget=...):
             #     self.kv_memory_manager.enforce_gpu_budget(...)
-            logger.debug("KV tiering active (InfLLM-style); GPU/CPU mask will be applied during inference")
+            logger.debug(
+                "KV tiering active (InfLLM-style); GPU/CPU mask will be applied during inference"
+            )
 
         # 5. Select generation path
         content, tier_used, model_name = self._select_path(prompt, decision, memory_context)
@@ -176,7 +178,9 @@ class UnifiedInferenceOrchestrator:
         # Merge memory context into prompt
         augmented = prompt
         if memory_context:
-            augmented = "Context:\n" + "\n".join(f"- {c}" for c in memory_context[-3:]) + "\n\n" + prompt
+            augmented = (
+                "Context:\n" + "\n".join(f"- {c}" for c in memory_context[-3:]) + "\n\n" + prompt
+            )
 
         # Route by action type
         if action == "cache" or action == "small":

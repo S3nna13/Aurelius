@@ -1,4 +1,5 @@
 """Tests for all 14 new arXiv modules (May 2026 paper implementations)."""
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock
@@ -11,6 +12,7 @@ class TestRMR:
 
     def test_correlation_dimension_monitor_update(self):
         from src.inference.rmr import CorrelationDimensionMonitor
+
         monitor = CorrelationDimensionMonitor(embedding_dim=128)
         state = torch.randn(128)
         dim = monitor.update(state)
@@ -19,6 +21,7 @@ class TestRMR:
 
     def test_correlation_dimension_monitor_reset(self):
         from src.inference.rmr import CorrelationDimensionMonitor
+
         monitor = CorrelationDimensionMonitor(embedding_dim=128)
         monitor.update(torch.randn(128))
         monitor.reset()
@@ -27,6 +30,7 @@ class TestRMR:
 
     def test_persistent_direction_tracker_update(self):
         from src.inference.rmr import PersistentDirectionTracker
+
         tracker = PersistentDirectionTracker(d_model=64, num_directions=4)
         v_t = torch.randn(64)
         v_tp1 = torch.randn(64)
@@ -36,6 +40,7 @@ class TestRMR:
 
     def test_persistent_direction_tracker_eigenproblem(self):
         from src.inference.rmr import PersistentDirectionTracker
+
         tracker = PersistentDirectionTracker(d_model=32, num_directions=3)
         for _ in range(10):
             tracker.update(torch.randn(32), torch.randn(32))
@@ -45,6 +50,7 @@ class TestRMR:
 
     def test_rmr_controller_step(self):
         from src.inference.rmr import RMRController
+
         ctrl = RMRController(d_model=64, lambda_min=0.8, eta=0.7)
         v_t = torch.randn(64)
         result = ctrl.step(v_t)
@@ -54,6 +60,7 @@ class TestRMR:
 
     def test_rmr_controller_apply_damping(self):
         from src.inference.rmr import RMRController
+
         ctrl = RMRController(d_model=32)
         V = torch.randn(10, 32)
         damped = ctrl.apply_damping(V)
@@ -81,6 +88,7 @@ class TestAGoQ:
 
     def test_activation_quantizer_quantize(self):
         from src.compression.agoq import ActivationQuantizer
+
         quantizer = ActivationQuantizer(blocksize=32)
         x = torch.randn(128)
         q, scale, zp = quantizer.quantize(x)
@@ -89,6 +97,7 @@ class TestAGoQ:
 
     def test_gradient_quantizer_quantize(self):
         from src.compression.agoq import GradientQuantizer
+
         quantizer = GradientQuantizer(blocksize=32)
         grad = torch.randn(128)
         q, scale = quantizer.quantize(grad)
@@ -96,6 +105,7 @@ class TestAGoQ:
 
     def test_gradient_quantizer_local_accumulate(self):
         from src.compression.agoq import GradientQuantizer
+
         quantizer = GradientQuantizer(blocksize=32)
         main_q = torch.randint(-127, 127, (128,), dtype=torch.int8)
         main_scale = torch.ones(4)
@@ -105,6 +115,7 @@ class TestAGoQ:
 
     def test_agoq_config_defaults(self):
         from src.compression.agoq import AGoQConfig, LayerType
+
         config = AGoQConfig()
         assert config.gradient_bits == 8
         assert config.blocksize == 128
@@ -113,6 +124,7 @@ class TestAGoQ:
 
     def test_agoq_quantizer_step(self):
         from src.compression.agoq import AGoQConfig, AGoQQuantizer
+
         config = AGoQConfig()
         quantizer = AGoQQuantizer(config)
         quantizer.step()
@@ -120,6 +132,7 @@ class TestAGoQ:
 
     def test_dbcapp_compensation(self):
         from src.compression.agoq import AGoQConfig, AGoQQuantizer
+
         config = AGoQConfig(pipeline_stage=1, num_stages=4)
         quantizer = AGoQQuantizer(config)
         adjusted = quantizer.apply_dynamic_bit_compensation()
@@ -131,18 +144,21 @@ class TestMemCoE:
 
     def test_memory_schema_init(self):
         from src.memory.memcoe import MemorySchema
+
         schema = MemorySchema(guideline="Store user preferences")
         assert schema.guideline == "Store user preferences"
         assert schema.version == 0
 
     def test_memory_schema_add_update(self):
         from src.memory.memcoe import MemorySchema
+
         schema = MemorySchema(guideline="Test")
         schema.update_guideline("New content")
         assert len(schema.guideline) > 0
 
     def test_memcoe_stage1_induction(self):
         from src.memory.memcoe import MemCoE, MemoryTrace
+
         memcoe = MemCoE(embed_dim=64)
         traces = [
             MemoryTrace(
@@ -158,12 +174,14 @@ class TestMemCoE:
 
     def test_memcoe_stage2_policy_update(self):
         from src.memory.memcoe import MemCoE
+
         memcoe = MemCoE(embed_dim=64)
         result = memcoe.store_episodic("test_key", "test content")
         assert result is None
 
     def test_memcoe_dual_memory_retrieval(self):
         from src.memory.memcoe import MemCoE
+
         memcoe = MemCoE(embed_dim=64)
         memcoe.store_episodic("query_key", "test content")
         retrieved = memcoe.retrieve_episodic("query_key")
@@ -175,12 +193,14 @@ class TestSAPO:
 
     def test_sapo_config_defaults(self):
         from src.alignment.sapo import SAPOConfig
+
         config = SAPOConfig()
         assert config.segment_entropy_threshold == 0.75
         assert config.min_segment_tokens == 5
 
     def test_segment_extractor_basic(self):
         from src.alignment.sapo import SAPOConfig, SegmentExtractor
+
         config = SAPOConfig()
         extractor = SegmentExtractor(config)
         token_ids = torch.randint(0, 1000, (32,))
@@ -211,6 +231,7 @@ class TestSAPO:
 
     def test_segment_level_advantage_compute(self):
         from src.alignment.sapo import SAPOConfig, Segment, SegmentLevelAdvantage
+
         config = SAPOConfig()
         advantage = SegmentLevelAdvantage(config)
         rewards = torch.tensor(1.0)
@@ -229,7 +250,7 @@ class TestSAPO:
         class DummyModel(torch.nn.Module):
             def __init__(self):
                 super().__init__()
-                self.config = type('obj', (object,), {'d_model': 64})()
+                self.config = type("obj", (object,), {"d_model": 64})()
 
             def __call__(self, x):
                 return torch.randn(2, 10, 64)
@@ -256,26 +277,31 @@ class TestNSI:
 
     def test_skill_graph_init(self):
         from src.agent.neuro_symbolic_skill import SkillGraph
+
         graph = SkillGraph(graph_id="test_graph")
         assert len(graph) == 0
 
     def test_skill_node_base_init(self):
         from src.agent.neuro_symbolic_skill import NodeOpType, SkillNode
+
         node = SkillNode(node_id="n1", op_type=NodeOpType.PRIMITIVE_OP)
         assert node.op_type == NodeOpType.PRIMITIVE_OP
 
     def test_dataop_node(self):
         from src.agent.neuro_symbolic_skill import DataOpNode, NodeOpType
+
         node = DataOpNode(node_id="d1", op_type=NodeOpType.DATA_OP)
         assert node.op_type == NodeOpType.DATA_OP
 
     def test_checkop_node(self):
         from src.agent.neuro_symbolic_skill import CheckOpNode, NodeOpType
+
         node = CheckOpNode(node_id="c1", condition="x > 0", op_type=NodeOpType.CHECK_OP)
         assert node.condition == "x > 0"
 
     def test_skill_graph_add_node(self):
         from src.agent.neuro_symbolic_skill import NodeOpType, SkillGraph, SkillNode
+
         graph = SkillGraph(graph_id="test")
         node = SkillNode(node_id="n1", op_type=NodeOpType.PRIMITIVE_OP)
         graph.add_node(node)
@@ -283,16 +309,19 @@ class TestNSI:
 
     def test_trace_to_logic_inducer_init(self):
         from src.agent.neuro_symbolic_skill import TraceToLogicInducer
+
         inducer = TraceToLogicInducer()
         assert inducer is not None
 
     def test_nsi_agent_init(self):
         from src.agent.neuro_symbolic_skill import NSIAgent
+
         agent = NSIAgent(agent_id="test_agent")
         assert agent is not None
 
     def test_skill_graph_execute(self):
         from src.agent.neuro_symbolic_skill import NodeOpType, PrimitiveOpNode, SkillGraph
+
         graph = SkillGraph(graph_id="test")
         node = PrimitiveOpNode(node_id="p1", action_name="move", op_type=NodeOpType.PRIMITIVE_OP)
         graph.add_node(node)
@@ -310,6 +339,7 @@ class TestAgentReputation:
             VerificationRegime,
             VerificationStrength,
         )
+
         regime = VerificationRegime(
             regime_id="code_review",
             method=VerificationMethod.AUTOMATED_TESTING,
@@ -326,6 +356,7 @@ class TestAgentReputation:
             EvidenceEvent,
             VerificationStrength,
         )
+
         event = EvidenceEvent(
             event_id="ev1",
             agent_id="agent_1",
@@ -342,6 +373,7 @@ class TestAgentReputation:
 
     def test_reputation_card_init(self):
         from src.multiagent.reputation import ReputationCard
+
         card = ReputationCard(
             agent_id="agent_1",
             context="debugging",
@@ -352,6 +384,7 @@ class TestAgentReputation:
 
     def test_policy_engine_allocation(self):
         from src.multiagent.reputation import PolicyEngine, ReputationCard
+
         engine = PolicyEngine()
         card = ReputationCard(
             agent_id="a1",
@@ -364,6 +397,7 @@ class TestAgentReputation:
 
     def test_reputation_service_register(self):
         from src.multiagent.reputation import PolicyEngine, ReputationService
+
         engine = PolicyEngine()
         service = ReputationService(policy_engine=engine)
         service.register_agent("agent_1", context="debugging")
@@ -371,6 +405,7 @@ class TestAgentReputation:
 
     def test_decentralized_framework_init(self):
         from src.multiagent.reputation import DecentralizedReputationFramework
+
         framework = DecentralizedReputationFramework()
         assert framework is not None
 
@@ -380,17 +415,20 @@ class TestTopologySafety:
 
     def test_interaction_topology_enum(self):
         from src.safety.topology_safety import InteractionTopology
+
         assert InteractionTopology.SEQUENTIAL is not None
         assert InteractionTopology.PARALLEL_VOTING is not None
 
     def test_topology_failure_mode_enum(self):
         from src.safety.topology_safety import TopologyFailureMode
+
         assert TopologyFailureMode.ORDERING_INSTABILITY is not None
         assert TopologyFailureMode.INFORMATION_CASCADE is not None
         assert TopologyFailureMode.FUNCTIONAL_COLLAPSE is not None
 
     def test_topology_analyzer_init(self):
         from src.safety.topology_safety import TopologyAnalyzer
+
         analyzer = TopologyAnalyzer(n_permutations=2)
         assert analyzer is not None
 
@@ -477,6 +515,7 @@ class TestSuperpositionGeometry:
 
     def test_superposition_geometry_config_defaults(self):
         from src.safety.superposition_geometry import SuperpositionGeometryConfig
+
         config = SuperpositionGeometryConfig()
         assert config.misalignment_risk_threshold == 0.5
 
@@ -485,6 +524,7 @@ class TestSuperpositionGeometry:
             FeatureSuperpositionAnalyzer,
             SuperpositionGeometryConfig,
         )
+
         config = SuperpositionGeometryConfig()
         analyzer = FeatureSuperpositionAnalyzer(config=config)
         assert analyzer is not None
@@ -494,6 +534,7 @@ class TestSuperpositionGeometry:
             FeatureSuperpositionAnalyzer,
             SuperpositionGeometryConfig,
         )
+
         config = SuperpositionGeometryConfig()
         analyzer = FeatureSuperpositionAnalyzer(config=config)
 
@@ -517,6 +558,7 @@ class TestSuperpositionGeometry:
             GradientSpilloverModel,
             SuperpositionGeometryConfig,
         )
+
         config = SuperpositionGeometryConfig()
         model = GradientSpilloverModel(config=config)
         assert model is not None
@@ -526,6 +568,7 @@ class TestSuperpositionGeometry:
             GradientSpilloverModel,
             SuperpositionGeometryConfig,
         )
+
         config = SuperpositionGeometryConfig()
         spillover = GradientSpilloverModel(config=config)
 
@@ -545,6 +588,7 @@ class TestSuperpositionGeometry:
             GeometryAwareFilter,
             SuperpositionGeometryConfig,
         )
+
         config = SuperpositionGeometryConfig()
         filter = GeometryAwareFilter(config=config)
         assert filter is not None
@@ -554,6 +598,7 @@ class TestSuperpositionGeometry:
             GeometryAwareFilter,
             SuperpositionGeometryConfig,
         )
+
         config = SuperpositionGeometryConfig()
         filter = GeometryAwareFilter(config=config)
 
@@ -572,6 +617,7 @@ class TestSuperpositionGeometry:
             MisalignmentGeometryMonitor,
             SuperpositionGeometryConfig,
         )
+
         config = SuperpositionGeometryConfig()
         monitor = MisalignmentGeometryMonitor(config=config)
         assert monitor is not None
@@ -582,17 +628,20 @@ class TestOODPathway:
 
     def test_ood_pathway_config_defaults(self):
         from src.model.ood_pathway import OODPathwayConfig
+
         config = OODPathwayConfig()
         assert config.trajectory_threshold == 0.5
 
     def test_embedding_pathway_init(self):
         from src.model.ood_pathway import EmbeddingPathway, OODPathwayConfig
+
         config = OODPathwayConfig()
         pathway = EmbeddingPathway(config=config)
         assert pathway is not None
 
     def test_embedding_pathway_detect(self):
         from src.model.ood_pathway import EmbeddingPathway, OODPathwayConfig
+
         config = OODPathwayConfig()
         pathway = EmbeddingPathway(config=config)
         reference = torch.randn(100, 32)
@@ -603,12 +652,14 @@ class TestOODPathway:
 
     def test_trajectory_pathway_init(self):
         from src.model.ood_pathway import OODPathwayConfig, TrajectoryPathway
+
         config = OODPathwayConfig()
         pathway = TrajectoryPathway(config=config)
         assert pathway is not None
 
     def test_trajectory_pathway_detect(self):
         from src.model.ood_pathway import OODPathwayConfig, TrajectoryPathway
+
         config = OODPathwayConfig()
         pathway = TrajectoryPathway(config=config)
         hidden_states = torch.randn(5, 2, 10, 32)
@@ -648,6 +699,7 @@ class TestOODPathway:
 
     def test_length_confound_corrector_init(self):
         from src.model.ood_pathway import LengthConfoundCorrector
+
         corrector = LengthConfoundCorrector()
         assert corrector is not None
 
@@ -679,11 +731,13 @@ class TestTURDPO:
 
     def test_reasoning_topology_extractor_init(self):
         from src.alignment.tur_dpo import ReasoningTopologyExtractor
+
         extractor = ReasoningTopologyExtractor(d_model=64)
         assert extractor is not None
 
     def test_reasoning_topology_extractor_extract(self):
         from src.alignment.tur_dpo import ReasoningTopologyExtractor
+
         extractor = ReasoningTopologyExtractor(d_model=64)
         hidden = torch.randn(2, 8, 64)
         topology = extractor.extract_topology(hidden)
@@ -693,6 +747,7 @@ class TestTURDPO:
 
     def test_uncalibrated_uncertainty_reward_init(self):
         from src.alignment.tur_dpo import UncalibratedUncertaintyReward
+
         reward = UncalibratedUncertaintyReward(d_model=64)
         assert reward is not None
 
@@ -704,8 +759,7 @@ class TestTURDPO:
         chosen_uncertainty = torch.ones(2)
         rejected_uncertainty = torch.ones(2)
         loss, metrics = tur_dpo_loss(
-            chosen_log_probs, rejected_log_probs,
-            chosen_uncertainty, rejected_uncertainty
+            chosen_log_probs, rejected_log_probs, chosen_uncertainty, rejected_uncertainty
         )
         assert loss is not None
         assert "tur_dpo_loss" in metrics
@@ -716,11 +770,13 @@ class TestAEM:
 
     def test_entropy_modulator_init(self):
         from src.alignment.aem import EntropyModulator
+
         modulator = EntropyModulator(d_model=64)
         assert modulator is not None
 
     def test_entropy_modulator_forward(self):
         from src.alignment.aem import EntropyModulator
+
         modulator = EntropyModulator(d_model=32)
         response = torch.randn(2, 10, 32)
         baseline = torch.randn(2, 10, 32)
@@ -734,6 +790,7 @@ class TestGRBen:
 
     def test_gr_ben_config_defaults(self):
         from src.eval.gr_ben import GRBenConfig
+
         config = GRBenConfig()
         assert "auroc" in config.evaluation_metrics
 
@@ -753,10 +810,10 @@ class TestGRBen:
 
         from src.eval.gr_ben import GRBenEvaluator
 
-        sys.modules['sklearn.metrics'] = MagicMock()
-        sys.modules['sklearn'] = MagicMock()
-        sys.modules['sklearn.metrics.roc_auc_score'] = MagicMock(return_value=0.85)
-        sys.modules['sklearn.metrics.accuracy_score'] = MagicMock(return_value=0.8)
+        sys.modules["sklearn.metrics"] = MagicMock()
+        sys.modules["sklearn"] = MagicMock()
+        sys.modules["sklearn.metrics.roc_auc_score"] = MagicMock(return_value=0.85)
+        sys.modules["sklearn.metrics.accuracy_score"] = MagicMock(return_value=0.8)
 
         class DummyPRM:
             def score_step(self, prompt, steps):
@@ -775,6 +832,7 @@ class TestEVICT:
 
     def test_draft_candidate(self):
         from src.inference.evict import DraftCandidate
+
         candidate = DraftCandidate(
             token_ids=torch.tensor([1, 2, 3]),
             log_probs=torch.tensor([-0.1, -0.2, -0.3]),
@@ -785,18 +843,21 @@ class TestEVICT:
 
     def test_expert_activation_profile(self):
         from src.inference.evict import ExpertActivationProfile
+
         profile = ExpertActivationProfile(vocab_size=1000, n_experts=8)
         cost = profile.profile_token(42)
         assert isinstance(cost, float)
 
     def test_evict_verifier_init(self):
         from src.inference.evict import EVICTVerifier, ExpertActivationProfile
+
         profile = ExpertActivationProfile(vocab_size=1000, n_experts=8)
         verifier = EVICTVerifier(expert_profile=profile, draft_score_threshold=0.1)
         assert verifier is not None
 
     def test_evict_verifier_verify(self):
         from src.inference.evict import DraftCandidate, EVICTVerifier, ExpertActivationProfile
+
         profile = ExpertActivationProfile(vocab_size=1000, n_experts=8)
         verifier = EVICTVerifier(expert_profile=profile, draft_score_threshold=0.1)
         candidates = [

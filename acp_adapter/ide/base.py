@@ -1,4 +1,5 @@
 """Base IDE adapter for ACP protocol."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

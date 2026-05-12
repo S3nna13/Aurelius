@@ -143,6 +143,7 @@ class PluginSandbox:
             if max_memory_mb is not None:
                 try:
                     import resource as _res
+
                     mem_bytes = max_memory_mb * 1024 * 1024
                     for _rl_name in ("RLIMIT_AS", "RLIMIT_DATA"):
                         _rl = getattr(_res, _rl_name, None)

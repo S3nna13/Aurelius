@@ -220,19 +220,25 @@ class PPOTrainer:
             hidden = logits
         return hidden, logits, pkv
 
-    def enable_safety_geometry(self, reference_unsafe: Tensor,
-                               reference_safe: Tensor,
-                               coeff: float = 0.001,
-                               check_interval: int = 100) -> None:
+    def enable_safety_geometry(
+        self,
+        reference_unsafe: Tensor,
+        reference_safe: Tensor,
+        coeff: float = 0.001,
+        check_interval: int = 100,
+    ) -> None:
         """Enable safety geometry preservation monitoring."""
         from src.safety.geometry_preservation import SafetyGeometryMonitor
+
         self._safety_geo_monitor = SafetyGeometryMonitor(
-            self.policy, reference_unsafe, reference_safe)
+            self.policy, reference_unsafe, reference_safe
+        )
         self._safety_geo_coeff = coeff
         self._safety_geo_check_interval = check_interval
 
-    def _check_safety_geometry(self, unsafe_activations: Tensor | None = None,
-                               safe_activations: Tensor | None = None) -> Tensor:
+    def _check_safety_geometry(
+        self, unsafe_activations: Tensor | None = None, safe_activations: Tensor | None = None
+    ) -> Tensor:
         """Check safety geometry drift and return regularization loss (0 if disabled)."""
         if self._safety_geo_monitor is None:
             return torch.tensor(0.0, device=next(self.policy.parameters()).device)
@@ -241,7 +247,8 @@ class PPOTrainer:
             if self._step_count % self._safety_geo_check_interval == 0:
                 self._safety_geo_monitor.check_and_warn(unsafe_activations, safe_activations)
             return self._safety_geo_monitor.geometry_preservation_loss(
-                unsafe_activations, safe_activations, self._safety_geo_coeff)
+                unsafe_activations, safe_activations, self._safety_geo_coeff
+            )
         return torch.tensor(0.0, device=next(self.policy.parameters()).device)
 
     def collect_rollout(self, prompt_ids: Tensor) -> dict:
@@ -365,18 +372,19 @@ class PPOTrainer:
             # When prompt is prepended, token positions start at prompt_len in the sequence.
             prompt_len = prompt_ids.shape[1] if prompt_ids is not None else 0
             # logits[:, :-1, :] aligns predictions with their targets; slice token positions.
-            log_probs_shifted = F.log_softmax(
-                logits[:, :-1, :], dim=-1)  # (B, seq-1, V)
+            log_probs_shifted = F.log_softmax(logits[:, :-1, :], dim=-1)  # (B, seq-1, V)
             log_probs_for_tokens = log_probs_shifted[
-                :, prompt_len - 1 : prompt_len - 1 + T, :]  # (B, T, V)
-            curr_log_probs = log_probs_for_tokens.gather(
-                2, tokens.unsqueeze(-1)).squeeze(-1)  # (B, T)
+                :, prompt_len - 1 : prompt_len - 1 + T, :
+            ]  # (B, T, V)
+            curr_log_probs = log_probs_for_tokens.gather(2, tokens.unsqueeze(-1)).squeeze(
+                -1
+            )  # (B, T)
 
             # Value head over all hidden states, then slice to only token positions
             # hidden: (B, P+T, d_model), curr_values_full: (B, P+T)
             # We need only the T positions corresponding to the generated tokens
             curr_values_full = self.value_head(hidden)  # (B, P+T)
-            curr_values = curr_values_full[:, prompt_len:prompt_len + T]  # (B, T)
+            curr_values = curr_values_full[:, prompt_len : prompt_len + T]  # (B, T)
 
             p_loss, _ = ppo_policy_loss(curr_log_probs, old_log_probs, advantages, cfg.clip_ratio)
             v_loss = ppo_value_loss(curr_values, returns)

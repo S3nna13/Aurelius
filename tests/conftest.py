@@ -1,4 +1,4 @@
-"""Global test fixtures and configuration."""
+"""Global test fixtures and configuration.
 
 Provides autouse function-scoped fixtures that snapshot module-level singleton
 registries before each test and restore them afterwards.  This prevents

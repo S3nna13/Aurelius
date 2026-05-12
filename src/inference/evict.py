@@ -6,6 +6,7 @@ offline-profiled verification cost. Training-free, lossless.
 
 Paper: arXiv:2605.00342 — Pan et al.
 """
+
 from __future__ import annotations
 
 from typing import NamedTuple
@@ -41,13 +42,15 @@ class EVICTVerifier:
     only the cost-effective prefix where candidate benefit > verification cost.
     """
 
-    def __init__(self, expert_profile: ExpertActivationProfile,
-                 draft_score_threshold: float = 0.1) -> None:
+    def __init__(
+        self, expert_profile: ExpertActivationProfile, draft_score_threshold: float = 0.1
+    ) -> None:
         self.expert_profile = expert_profile
         self.threshold = draft_score_threshold
 
-    def plan_verification(self, candidates: list[DraftCandidate],
-                         max_verification_tokens: int) -> list[int]:
+    def plan_verification(
+        self, candidates: list[DraftCandidate], max_verification_tokens: int
+    ) -> list[int]:
         """Select which draft tokens to actually verify.
 
         Returns list of token indices to keep (prefix of draft sequence).
@@ -99,8 +102,9 @@ class EVICTScheduler:
     def __init__(self, verifier: EVICTVerifier) -> None:
         self.verifier = verifier
 
-    def schedule_batch(self, batch_drafts: list[list[DraftCandidate]],
-                       max_tokens: int) -> list[list[DraftCandidate]]:
+    def schedule_batch(
+        self, batch_drafts: list[list[DraftCandidate]], max_tokens: int
+    ) -> list[list[DraftCandidate]]:
         """Schedule verification for a batch of draft trees."""
         scheduled = []
         budget = max_tokens // len(batch_drafts) if batch_drafts else 0
@@ -110,4 +114,10 @@ class EVICTScheduler:
         return scheduled
 
 
-__all__ = ["EVICTVerifier", "EVICTScheduler", "DraftCandidate", "ExpertActivationProfile", "evict_speedup_ratio"]
+__all__ = [
+    "EVICTVerifier",
+    "EVICTScheduler",
+    "DraftCandidate",
+    "ExpertActivationProfile",
+    "evict_speedup_ratio",
+]

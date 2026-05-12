@@ -92,7 +92,15 @@ include = ["aurelius*", "src*"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-extend-exclude = ["archive/**", "tests/legacy/**", "aurelius/data_pipeline/**", "generate_dissertation.py"]
+extend-exclude = [
+    "archive/**",
+    "tests/legacy/**",
+    "aurelius/data_pipeline/**",
+    "generate_dissertation.py",
+    # Frozen: SHA256 of this file is tested in integration tests.
+    # Ruff format would add blank lines changing the hash.
+    "src/model/attention.py",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "S"]
@@ -144,6 +152,13 @@ ignore = ["S105", "S110", "S311"]
 "src/security/encryptor.py" = ["E501"]
 "tests/alignment/test_praxis_e2e.py" = ["E501"]
 "tests/reasoning/test_toolgt_reasoner.py" = ["E501"]
+"registry_snapshot.py" = ["E501"]
+"test_circular_imports.py" = ["S101", "E402", "E501"]
+"tests/inference/test_speculative.py" = ["E402"]
+"tests/test_aurelius_model.py" = ["E402"]
+"tests/test_kv_cache.py" = ["E402"]
+"tests/test_rust_bridge.py" = ["E402"]
+"tests/test_package_namespace.py" = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

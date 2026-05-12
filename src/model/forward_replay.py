@@ -6,6 +6,7 @@ compatible target hidden-states for all editing layers.
 
 Paper: arXiv:2605.00358 (ICML 2026) — Liu et al.
 """
+
 from __future__ import annotations
 
 import torch
@@ -64,9 +65,7 @@ class ForwardReplayTargetBuilder:
         target_hidden: Tensor,
     ) -> Tensor:
         """Perform forward replay edit from first editor layer."""
-        layer_targets = self.compute_anchor_target(
-            input_ids, edit_layer, target_hidden
-        )
+        layer_targets = self.compute_anchor_target(input_ids, edit_layer, target_hidden)
 
         with torch.enable_grad():
             self.model.train()

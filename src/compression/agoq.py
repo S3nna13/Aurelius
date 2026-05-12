@@ -5,6 +5,7 @@ gradient quantization with All-Reduce communication.
 
 Paper: arXiv:2605.00539 (cs.CL) — Lin et al.
 """
+
 from __future__ import annotations
 
 import math
@@ -343,9 +344,7 @@ class AGoQIntegration:
             def forward_hook(module, input, output):
                 if isinstance(module, nn.Linear) and isinstance(output, Tensor):
                     lt = self._infer_layer_type(module, module_name)
-                    self.quantizer.quantize_activation(
-                        output, lt, id(module)
-                    )
+                    self.quantizer.quantize_activation(output, lt, id(module))
 
             return forward_hook
 

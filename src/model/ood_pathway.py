@@ -418,10 +418,12 @@ class TwoPathwayOODDetector:
         if id_emb is None:
             raise RuntimeError("ID embeddings required. Call fit_reference or pass id_embeddings.")
 
-        labels = torch.cat([
-            torch.zeros(id_emb.shape[0]),
-            torch.ones(ood_embeddings.shape[0]),
-        ])
+        labels = torch.cat(
+            [
+                torch.zeros(id_emb.shape[0]),
+                torch.ones(ood_embeddings.shape[0]),
+            ]
+        )
         embeddings = torch.cat([id_emb, ood_embeddings], dim=0)
 
         losses = []
@@ -732,11 +734,9 @@ class CircuitAttributor:
         )
 
         if layer_scores.numel() > 0:
-            top_layers_list = (
-                torch.argsort(layer_scores, descending=True)
-                [: self.config.circuit_attr_top_k]
-                .tolist()
-            )
+            top_layers_list = torch.argsort(layer_scores, descending=True)[
+                : self.config.circuit_attr_top_k
+            ].tolist()
         else:
             top_layers_list = []
 
@@ -745,11 +745,9 @@ class CircuitAttributor:
         if layer_attn_scores:
             avg_head_scores = torch.stack([s.mean(dim=0).mean() for s in layer_attn_scores])
             head_scores = avg_head_scores
-            top_heads_list = (
-                torch.argsort(avg_head_scores, descending=True)
-                [: self.config.circuit_attr_top_k]
-                .tolist()
-            )
+            top_heads_list = torch.argsort(avg_head_scores, descending=True)[
+                : self.config.circuit_attr_top_k
+            ].tolist()
 
         return CircuitAttribution(
             layer_scores=layer_scores.cpu(),

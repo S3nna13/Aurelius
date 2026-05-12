@@ -211,9 +211,7 @@ def _entropy_based_classification(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Calibrate DuoAttention head classification."
-    )
+    parser = argparse.ArgumentParser(description="Calibrate DuoAttention head classification.")
     parser.add_argument(
         "--model-path",
         default=None,
@@ -323,9 +321,7 @@ def main() -> None:
         print(f"Loaded {len(lines)} calibration lines; using synthetic token IDs.")
 
     # Synthetic token IDs for forward-pass probing
-    calibration_ids = torch.randint(
-        0, config.vocab_size, (args.n_samples, args.seq_len)
-    )
+    calibration_ids = torch.randint(0, config.vocab_size, (args.n_samples, args.seq_len))
 
     # ------------------------------------------------------------------
     # Classify heads

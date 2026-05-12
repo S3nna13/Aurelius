@@ -166,7 +166,7 @@ class DownloadManager:
         try:
             if url.startswith("http"):
                 logger.info("Downloading %s to %s", url, output_file)
-                urllib.request.urlretrieve(url, str(temp_file))  # noqa: S310
+                urllib.request.urlretrieve(url, str(temp_file))  # noqa: S310  # nosec B310
                 os.rename(str(temp_file), str(output_file))
                 with open(output_file, encoding="utf-8") as f:
                     for line in f:

@@ -5,6 +5,7 @@ Dynamical-systems view: mode collapse = geometric collapse (trajectory confined
 to low-dimensional region). RMR identifies dominant self-reinforcing directions
 via bounded-spectrum generalized eigenvalue problem and applies low-rank damping.
 """
+
 from __future__ import annotations
 
 import logging
@@ -162,8 +163,10 @@ class PersistentDirectionTracker:
         if v_tp1 is not None:
             v_tp1 = v_tp1.detach().reshape(-1)
             centered_next = v_tp1 - self._v_bar
-            cross = 0.5 * (centered_next.unsqueeze(1) * centered.unsqueeze(0) +
-                           centered.unsqueeze(1) * centered_next.unsqueeze(0))
+            cross = 0.5 * (
+                centered_next.unsqueeze(1) * centered.unsqueeze(0)
+                + centered.unsqueeze(1) * centered_next.unsqueeze(0)
+            )
             if self._Sigma_Delta is None:
                 self._Sigma_Delta = cross
             else:
@@ -181,9 +184,12 @@ class PersistentDirectionTracker:
 
         try:
             eigenvalues, eigenvectors = torch.linalg.eig(
-                torch.linalg.solve(self._Sigma + self.eps * torch.eye(
-                    self.d_model, device=self._Sigma.device, dtype=self._Sigma.dtype
-                ), self._Sigma_Delta)
+                torch.linalg.solve(
+                    self._Sigma
+                    + self.eps
+                    * torch.eye(self.d_model, device=self._Sigma.device, dtype=self._Sigma.dtype),
+                    self._Sigma_Delta,
+                )
             )
         except Exception:
             logger.debug(
@@ -204,8 +210,8 @@ class PersistentDirectionTracker:
         eigenvectors = eigenvectors.real.float()
 
         perm = torch.argsort(eigenvalues.abs(), descending=True)
-        eigenvalues = eigenvalues[perm[:self.num_directions]]
-        eigenvectors = eigenvectors[:, perm[:self.num_directions]]
+        eigenvalues = eigenvalues[perm[: self.num_directions]]
+        eigenvectors = eigenvectors[:, perm[: self.num_directions]]
 
         return eigenvalues, eigenvectors
 
@@ -270,16 +276,13 @@ class RMRController:
 
         if v_t.dim() == 2:
             batch_results = []
-            next_values = (
-                v_tp1
-                if v_tp1 is not None and v_tp1.shape[0] == v_t.shape[0]
-                else None
-            )
+            next_values = v_tp1 if v_tp1 is not None and v_tp1.shape[0] == v_t.shape[0] else None
             for i in range(v_t.shape[0]):
                 r = self._step_single(v_t[i], next_values[i] if next_values is not None else None)
                 batch_results.append(r)
             return {
-                "correlation_dim": sum(r["correlation_dim"] for r in batch_results) / len(batch_results),  # noqa: E501
+                "correlation_dim": sum(r["correlation_dim"] for r in batch_results)
+                / len(batch_results),  # noqa: E501
                 "top_eigenvalue": (
                     sum(r["top_eigenvalue"] for r in batch_results) / len(batch_results)
                 ),
@@ -291,11 +294,13 @@ class RMRController:
         corr_dim = self._corr_monitor.update(v_t)
 
         if len(self._trackers) == 0:
-            self._trackers.append(PersistentDirectionTracker(
-                d_model=self.d_model,
-                num_directions=self.num_directions,
-                decay=self.gamma,
-            ))
+            self._trackers.append(
+                PersistentDirectionTracker(
+                    d_model=self.d_model,
+                    num_directions=self.num_directions,
+                    decay=self.gamma,
+                )
+            )
         self._trackers[0].update(v_t, v_tp1)
 
         top_eigenvalue = 0.0
@@ -381,7 +386,10 @@ class RMRController:
 
     def is_collapsing(self) -> bool:
         """Check if generation is entering mode collapse."""
-        return self._corr_monitor._corr_sum is not None and self._corr_monitor._estimate_dimension() < self.correlation_dim_threshold  # noqa: E501
+        return (
+            self._corr_monitor._corr_sum is not None
+            and self._corr_monitor._estimate_dimension() < self.correlation_dim_threshold
+        )  # noqa: E501
 
     def reset(self) -> None:
         self._trackers.clear()

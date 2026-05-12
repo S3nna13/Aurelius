@@ -102,5 +102,7 @@ class DuoAttentionManager:
         for h in range(n_heads):
             mask = self.get_kv_mask(layer_idx, h, k_len).to(scores.device)
             # Expand mask to (1, 1, 1, k_len) for broadcasting
-            scores[:, h, :, :] = scores[:, h, :, :].masked_fill(~mask.unsqueeze(0).unsqueeze(0), float("-inf"))
+            scores[:, h, :, :] = scores[:, h, :, :].masked_fill(
+                ~mask.unsqueeze(0).unsqueeze(0), float("-inf")
+            )
         return scores

@@ -6,6 +6,7 @@ Two variants:
 
 Reference: arXiv:2501.03262
 """
+
 from __future__ import annotations
 
 import torch
@@ -64,9 +65,7 @@ def reinforce_pp_loss(
         advantages = advantages / advantages.std(unbiased=False).clamp(min=1e-8)
     else:
         # Global normalization across full batch
-        advantages = (rewards - rewards.mean()) / (
-            rewards.std(unbiased=False).clamp(min=1e-8)
-        )
+        advantages = (rewards - rewards.mean()) / (rewards.std(unbiased=False).clamp(min=1e-8))
 
     # REINFORCE gradient: -log_prob * advantage (summed over tokens, averaged over batch)
     target_log_probs = log_probs.gather(-1, targets.unsqueeze(-1)).squeeze(-1)
@@ -105,8 +104,14 @@ def reinforce_pp_loss(
 class ReinforcePPTrainer:
     """Minimal REINFORCE++ trainer wrapper."""
 
-    def __init__(self, model, ref_model=None, kl_coef: float = 0.01,
-                 entropy_coef: float = 0.001, variant: str = "standard"):
+    def __init__(
+        self,
+        model,
+        ref_model=None,
+        kl_coef: float = 0.01,
+        entropy_coef: float = 0.001,
+        variant: str = "standard",
+    ):
         self.model = model
         self.ref_model = ref_model
         self.kl_coef = kl_coef

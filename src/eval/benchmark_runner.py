@@ -45,7 +45,14 @@ class BenchmarkRunner:
         start = time.monotonic()
         benchmark = self._registry.get(name)
         if benchmark is None:
-            raise ValueError(f"Unknown benchmark: {name!r}")
+            elapsed = time.monotonic() - start
+            return BenchmarkResult(
+                benchmark_name=name,
+                score=0.0,
+                n_samples=len(predictions),
+                elapsed_seconds=elapsed,
+                metadata={"_error": f"Unknown benchmark: {name!r}"},
+            )
         result = {}
         if benchmark is not None:
             if config.use_ilr:
@@ -65,6 +72,7 @@ class BenchmarkRunner:
                     result = raw
             except Exception as exc:
                 import traceback
+
                 logger.error("Benchmark %s failed: %s", name, traceback.format_exc())
                 result = {
                     "_error": f"{type(exc).__name__}: {exc}",

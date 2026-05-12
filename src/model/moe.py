@@ -371,6 +371,8 @@ class SparseMoEFFN(nn.Module):
         """
         output, router_loss = self._layer(x)
         return output, self.load_balance_alpha * router_loss
+
+
 class BalancedMoEFFN:
     """DeepSeek-V3 style balanced MoE with bias-based load balancing.
 

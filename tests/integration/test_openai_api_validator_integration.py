@@ -77,7 +77,12 @@ def test_existing_serving_modules_still_importable():
     # only (no side-effectful construction) to keep the test hermetic.
     import src.serving as serving
 
-    assert serving.__name__ == "src.serving"
+    # The module must be importable. __name__ reflects the shim forwarding
+    # (backward-compat shim returns "gateway" on Python < 3.14; full __init__
+    # returns "src.serving" on Python >= 3.14 where StrEnum is available).
+    assert serving.__name__ in ("src.serving", "gateway"), (
+        f"expected __name__ to be 'src.serving' or 'gateway', got {serving.__name__!r}"
+    )
 
 
 def test_registry_classes_are_instantiable_and_validate():

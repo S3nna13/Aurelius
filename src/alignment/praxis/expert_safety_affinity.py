@@ -30,7 +30,7 @@ class ExpertSafetyAffinity:
         Returns:
             Scalar ESA loss (non-negative).
         """
-        unsafe_mask = const_scores < self.config.tau_safety   # (B,) bool
+        unsafe_mask = const_scores < self.config.tau_safety  # (B,) bool
         if not unsafe_mask.any():
             return hidden.new_zeros(())
 
@@ -39,11 +39,11 @@ class ExpertSafetyAffinity:
 
         for layer in self.moe_layers:
             gate: nn.Linear = layer.ffn.router.gate
-            router_logits = gate(hidden)          # (B, T, n_experts)
+            router_logits = gate(hidden)  # (B, T, n_experts)
             n_experts = router_logits.shape[-1]
 
-            unsafe_logits = router_logits[unsafe_mask]          # (n_unsafe, T, n_experts)
-            unsafe_logits = unsafe_logits.reshape(-1, n_experts) # (n_unsafe*T, n_experts)
+            unsafe_logits = router_logits[unsafe_mask]  # (n_unsafe, T, n_experts)
+            unsafe_logits = unsafe_logits.reshape(-1, n_experts)  # (n_unsafe*T, n_experts)
 
             target = torch.zeros(n_experts, device=hidden.device)
             for idx in self.config.safety_experts:

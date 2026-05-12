@@ -56,13 +56,11 @@ class TestAdaptiveSpecController:
         assert new_k == 6
 
     def test_ema_smoothing(self):
-        ctrl = AdaptiveSpecController(
-            AdaptiveSpecConfig(init_K=4, ema_alpha=0.5, adapt_rate=1.0)
-        )
+        ctrl = AdaptiveSpecController(AdaptiveSpecConfig(init_K=4, ema_alpha=0.5, adapt_rate=1.0))
         ctrl.update(3, 4)  # 0.75
         ema_after_one = ctrl.ema_acceptance
         ctrl.update(1, 4)  # 0.25
-        ema_after_two = ctrl.ema_acceptance
+        _ema_after_two = ctrl.ema_acceptance  # noqa: F841
         # ema = alpha * round_rate + (1-alpha) * prev_ema
         expected_after_one = 0.5 * 0.75 + 0.5 * 0.7  # 0.7 is init
         assert abs(ema_after_one - expected_after_one) < 0.01

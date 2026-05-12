@@ -108,7 +108,9 @@ class MemoryManager:
         if key in self.cpu_cache:
             if not torch.cuda.is_available():
                 # No GPU — return CPU tensor directly; caller must handle device placement.
-                logger.debug("prefetch_to_gpu called without CUDA; returning CPU tensor for %s", key)
+                logger.debug(
+                    "prefetch_to_gpu called without CUDA; returning CPU tensor for %s", key
+                )
                 return self.cpu_cache[key]
             if self._prefetch_stream is not None:
                 with torch.cuda.stream(self._prefetch_stream):

@@ -270,13 +270,18 @@ class GRPOTrainer:
         self._safety_geo_step = 0
         self._safety_geo_check_interval = 100
 
-    def enable_safety_geometry(self, reference_unsafe: Tensor,
-                               reference_safe: Tensor,
-                               coeff: float = 0.001,
-                               check_interval: int = 100) -> None:
+    def enable_safety_geometry(
+        self,
+        reference_unsafe: Tensor,
+        reference_safe: Tensor,
+        coeff: float = 0.001,
+        check_interval: int = 100,
+    ) -> None:
         from src.safety.geometry_preservation import SafetyGeometryMonitor
+
         self._safety_geo_monitor = SafetyGeometryMonitor(
-            self.model, reference_unsafe, reference_safe)
+            self.model, reference_unsafe, reference_safe
+        )
         self._safety_geo_coeff = coeff
         self._safety_geo_check_interval = check_interval
 
@@ -322,8 +327,10 @@ class GRPOTrainer:
             self._safety_geo_step += 1
             if self._safety_geo_step % self._safety_geo_check_interval == 0:
                 import logging
+
                 logging.getLogger(__name__).info(
-                    "Safety geometry check at step %d", self._safety_geo_step)
+                    "Safety geometry check at step %d", self._safety_geo_step
+                )
 
         # 5. Backward + step
         self.optimizer.zero_grad()

@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 # Enums
 # ---------------------------------------------------------------------------
 
+
 class InteractionTopology(Enum):
     """Interaction topology types for multi-agent systems."""
 
@@ -107,6 +108,7 @@ class TopologyFailureMode(Enum):
 # Protocols / Interfaces
 # ---------------------------------------------------------------------------
 
+
 class Agent(Protocol):
     """Minimal agent interface expected by topology evaluation."""
 
@@ -122,13 +124,13 @@ class Agent(Protocol):
 class AgentFactory(Protocol):
     """Factory for creating fresh agent instances to avoid state leakage."""
 
-    def __call__(self, agent_id: str) -> Agent:
-        ...
+    def __call__(self, agent_id: str) -> Agent: ...
 
 
 # ---------------------------------------------------------------------------
 # Dataclasses for metrics
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class OrderingInstabilityMetric:
@@ -235,6 +237,7 @@ class AblationResult:
 # TopologyAnalyzer
 # ---------------------------------------------------------------------------
 
+
 class TopologyAnalyzer:
     """Analyzes agent interaction structures for vulnerability to each failure mode.
 
@@ -292,10 +295,7 @@ class TopologyAnalyzer:
         agent_ids = [f"agent_{i}" for i in range(n)]
 
         n_perms = min(self.n_permutations, math.factorial(n))
-        permutations = [
-            list(self.rng.sample(agent_ids, n))
-            for _ in range(n_perms)
-        ]
+        permutations = [list(self.rng.sample(agent_ids, n)) for _ in range(n_perms)]
 
         approval_rates: list[float] = []
         for perm in permutations:
@@ -361,8 +361,7 @@ class TopologyAnalyzer:
             all_first_round_judgments.extend(first_round_judgments)
 
             first_approved = (
-                self._parse_approval(first_round_judgments[0])
-                if first_round_judgments else False
+                self._parse_approval(first_round_judgments[0]) if first_round_judgments else False
             )
 
             final_approved = self._parse_approval(context[-1])
@@ -374,16 +373,17 @@ class TopologyAnalyzer:
                 corrections += 1
 
         n_prompts = len(prompts) or 1
-        agreement_rate = sum(
-            f == first_judgments[i]
-            for i, f in enumerate(final_judgments)
-        ) / n_prompts
+        agreement_rate = (
+            sum(f == first_judgments[i] for i, f in enumerate(final_judgments)) / n_prompts
+        )
 
         correction_rate = corrections / n_prompts
 
-        first_round_approvals = [
-            self._parse_approval(j) for j in all_first_round_judgments
-        ] if all_first_round_judgments else []
+        first_round_approvals = (
+            [self._parse_approval(j) for j in all_first_round_judgments]
+            if all_first_round_judgments
+            else []
+        )
         cascade_depth = self._estimate_cascade_depth(first_round_approvals)
 
         cascade_prob = self._estimate_cascade_probability(agreement_rate, n)
@@ -578,7 +578,7 @@ class TopologyAnalyzer:
         std_approval = np.std(approval_probs)
         if std_approval < 1e-8:
             return 0.0
-        slope = cov / (std_risk ** 2) if std_risk > 1e-8 else 0.0
+        slope = cov / (std_risk**2) if std_risk > 1e-8 else 0.0
         return float(slope)
 
     def _compute_fairness_score(self, votes: list[list[bool]], risk_labels: list[bool]) -> float:
@@ -613,6 +613,7 @@ class TopologyAnalyzer:
 # ---------------------------------------------------------------------------
 # TopologicalAblation
 # ---------------------------------------------------------------------------
+
 
 class TopologicalAblation:
     """Experimental framework for controlled topology comparison.
@@ -724,9 +725,7 @@ class TopologicalAblation:
             approval_rate = float(np.mean(profile.ordering.approval_rates))
 
         fairness_score = profile.collapse.fairness_score if profile.collapse else 0.0
-        discrimination_score = (
-            profile.collapse.discrimination_slope if profile.collapse else 0.0
-        )
+        discrimination_score = profile.collapse.discrimination_slope if profile.collapse else 0.0
 
         return AblationResult(
             topology=topology,
@@ -813,6 +812,7 @@ class TopologicalAblation:
 # ---------------------------------------------------------------------------
 # SafetyTopologyEvaluator
 # ---------------------------------------------------------------------------
+
 
 class SafetyTopologyEvaluator:
     """Evaluates agentic AI system safety under different interaction topologies.
@@ -987,6 +987,7 @@ class SafetyTopologyEvaluator:
 # TopologyAwareDeployment
 # ---------------------------------------------------------------------------
 
+
 class TopologyAwareDeployment:
     """Helper for deploying agentic systems with topology-aware safety measures.
 
@@ -1029,9 +1030,7 @@ class TopologyAwareDeployment:
         profiles = self.evaluator.evaluate(prompts, risk_labels)
 
         candidate_topologies = [
-            topo
-            for topo, profile in profiles.items()
-            if not profile.critical_failures()
+            topo for topo, profile in profiles.items() if not profile.critical_failures()
         ]
 
         if not candidate_topologies:
@@ -1154,8 +1153,7 @@ class TopologyAwareDeployment:
 
         if len(context) >= 3:
             agreement_count = sum(
-                1 for prior in context
-                if self._parse_approval(prior) == current_approved
+                1 for prior in context if self._parse_approval(prior) == current_approved
             )
             agreement_rate = agreement_count / len(context)
             if agreement_rate >= cascade_threshold:
@@ -1206,22 +1204,28 @@ class TopologyAwareDeployment:
         }
 
         if topology == InteractionTopology.SEQUENTIAL:
-            constraints.update({
-                "ordering_monitor_enabled": True,
-                "max_sequence_length": self.max_agents,
-                "instability_threshold_pp": 30.0,
-            })
+            constraints.update(
+                {
+                    "ordering_monitor_enabled": True,
+                    "max_sequence_length": self.max_agents,
+                    "instability_threshold_pp": 30.0,
+                }
+            )
         elif topology == InteractionTopology.PARALLEL_VOTING:
-            constraints.update({
-                "min_voting_agents": 3,
-                "collapse_threshold": 0.90,
-                "calibration_check_enabled": True,
-            })
+            constraints.update(
+                {
+                    "min_voting_agents": 3,
+                    "collapse_threshold": 0.90,
+                    "calibration_check_enabled": True,
+                }
+            )
         elif topology == InteractionTopology.MESH:
-            constraints.update({
-                "max_cascade_depth": 3,
-                "cascade_detection_enabled": True,
-            })
+            constraints.update(
+                {
+                    "max_cascade_depth": 3,
+                    "cascade_detection_enabled": True,
+                }
+            )
 
         return constraints
 

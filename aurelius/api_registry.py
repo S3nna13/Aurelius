@@ -10,6 +10,7 @@ from typing import Any
 
 try:
     from aurelius.agent_registry import (
+        AGENT_CATEGORIES,
         AGENT_REGISTRY,
         AGENTS_BY_CATEGORY,
         ALL_AGENTS,
@@ -17,10 +18,12 @@ try:
     )
     from aurelius.skills_registry import (
         ALL_SKILLS,
+        SKILL_CATEGORIES,
         SKILL_REGISTRY,
         SKILLS_BY_CATEGORY,
         skill_to_dict,
     )
+
     _HAS_REGISTRIES = True
 except ImportError:
     _HAS_REGISTRIES = False
@@ -37,9 +40,9 @@ def get_registry_snapshot(category: str | None = None) -> dict[str, Any]:
     skills = SKILLS_BY_CATEGORY.get(category, []) if category else ALL_SKILLS
     return {
         "agents": [agent_to_dict(agent) for agent in agents],
-        "agent_categories": sorted(AGENTS_BY_CATEGORY.keys()),
+        "agent_categories": list(AGENT_CATEGORIES),
         "skills": [skill_to_dict(skill) for skill in skills],
-        "skill_categories": sorted(SKILLS_BY_CATEGORY.keys()),
+        "skill_categories": list(SKILL_CATEGORIES),
     }
 
 
@@ -56,14 +59,18 @@ def register_api_routes(app: Any) -> None:
         return {
             "agents": [
                 {
-                    "id": a.id, "name": a.name, "description": a.description,
-                    "category": a.category, "capabilities": a.capabilities,
-                    "default_tools": a.default_tools, "icon": a.icon,
+                    "id": a.id,
+                    "name": a.name,
+                    "description": a.description,
+                    "category": a.category,
+                    "capabilities": a.capabilities,
+                    "default_tools": a.default_tools,
+                    "icon": a.icon,
                 }
                 for a in agents
             ],
             "total": len(agents),
-            "categories": list(AGENTS_BY_CATEGORY.keys()),
+            "categories": list(AGENT_CATEGORIES),
         }
 
     @app.route("/api/registry/agents/<agent_id>", methods=["GET"])
@@ -71,12 +78,18 @@ def register_api_routes(app: Any) -> None:
         agent = AGENT_REGISTRY.get(agent_id)
         if not agent:
             return {"error": f"Agent '{agent_id}' not found"}, 404
-        return {"agent": {
-            "id": agent.id, "name": agent.name, "description": agent.description,
-            "category": agent.category, "capabilities": agent.capabilities,
-            "default_tools": agent.default_tools, "icon": agent.icon,
-            "parameters": agent.parameters,
-        }}
+        return {
+            "agent": {
+                "id": agent.id,
+                "name": agent.name,
+                "description": agent.description,
+                "category": agent.category,
+                "capabilities": agent.capabilities,
+                "default_tools": agent.default_tools,
+                "icon": agent.icon,
+                "parameters": agent.parameters,
+            }
+        }
 
     @app.route("/api/registry/skills", methods=["GET"])
     def list_skills():
@@ -88,13 +101,17 @@ def register_api_routes(app: Any) -> None:
         return {
             "skills": [
                 {
-                    "id": s.id, "name": s.name, "description": s.description,
-                    "category": s.category, "agent_types": s.agent_types, "tags": s.tags,
+                    "id": s.id,
+                    "name": s.name,
+                    "description": s.description,
+                    "category": s.category,
+                    "agent_types": s.agent_types,
+                    "tags": s.tags,
                 }
                 for s in skills
             ],
             "total": len(skills),
-            "categories": list(SKILLS_BY_CATEGORY.keys()),
+            "categories": list(SKILL_CATEGORIES),
         }
 
     @app.route("/api/registry/skills/<skill_id>", methods=["GET"])
@@ -102,10 +119,16 @@ def register_api_routes(app: Any) -> None:
         skill = SKILL_REGISTRY.get(skill_id)
         if not skill:
             return {"error": f"Skill '{skill_id}' not found"}, 404
-        return {"skill": {
-            "id": skill.id, "name": skill.name, "description": skill.description,
-            "category": skill.category, "agent_types": skill.agent_types, "tags": skill.tags,
-        }}
+        return {
+            "skill": {
+                "id": skill.id,
+                "name": skill.name,
+                "description": skill.description,
+                "category": skill.category,
+                "agent_types": skill.agent_types,
+                "tags": skill.tags,
+            }
+        }
 
 
 def get_agent_for_task(task: str) -> dict[str, Any]:
@@ -145,8 +168,12 @@ def get_skills_for_agent(agent_id: str) -> list[dict[str, Any]]:
     skills = []
     for skill in ALL_SKILLS:
         if agent_id in skill.agent_types or not skill.agent_types:
-            skills.append({
-                "id": skill.id, "name": skill.name,
-                "description": skill.description, "category": skill.category,
-            })
+            skills.append(
+                {
+                    "id": skill.id,
+                    "name": skill.name,
+                    "description": skill.description,
+                    "category": skill.category,
+                }
+            )
     return skills

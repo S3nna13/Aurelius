@@ -34,13 +34,12 @@ _CLASSIFICATION_SYSTEM = (
 )
 
 _SUMMARIZE_SYSTEM = (
-    "Summarize the following text in at most {max_words} words. "
-    "Respond with only the summary."
+    "Summarize the following text in at most {max_words} words. Respond with only the summary."
 )
 
 _EXTRACT_TAGS_SYSTEM = (
     "Extract up to {max_tags} relevant tags from the following text. "
-    "Respond with a JSON array of lowercase strings, e.g. [\"tag1\", \"tag2\"]. "
+    'Respond with a JSON array of lowercase strings, e.g. ["tag1", "tag2"]. '
     "No other output."
 )
 

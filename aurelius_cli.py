@@ -1,4 +1,5 @@
 """Thin CLI entry point for Aurelius agent."""
+
 from __future__ import annotations
 
 from aurelius_cli.main import main as _main

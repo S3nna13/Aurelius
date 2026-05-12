@@ -253,7 +253,7 @@ class RedditPipeline:
             url = f"{_PUSHSHIFT_BASE}/{ftype}/"
             try:
                 req = urllib.request.Request(url, headers={"User-Agent": "Aurelius/1.0"})  # noqa: S310
-                with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310
+                with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310  # nosec B310
                     html = resp.read().decode("utf-8")
                 for chunk in html.split('href="')[1:]:
                     fname = chunk.split('"', 1)[0]
@@ -308,7 +308,7 @@ class RedditPipeline:
             logger.info("Downloading %s ...", fname)
             try:
                 req = urllib.request.Request(url, headers={"User-Agent": "Aurelius/1.0"})  # noqa: S310
-                with urllib.request.urlopen(req, timeout=300) as resp:  # noqa: S310
+                with urllib.request.urlopen(req, timeout=300) as resp:  # noqa: S310  # nosec B310
                     total = int(resp.headers.get("Content-Length", 0))
                     downloaded = 0
                     chunk_size = 65536

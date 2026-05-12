@@ -253,8 +253,11 @@ class GCGAttack:
 
         # Initialise suffix with random tokens
         current_suffix = torch.randint(
-            0, vocab_size, (cfg.suffix_len,),
-            device=device, generator=gen,
+            0,
+            vocab_size,
+            (cfg.suffix_len,),
+            device=device,
+            generator=gen,
         )
 
         best_suffix = current_suffix.clone()

@@ -241,15 +241,19 @@ class DAPOTrainer:
 # ---------------------------------------------------------------------------
 
 
-def dapo_token_level_loss(log_probs: torch.Tensor, ref_log_probs: torch.Tensor,
-                          advantages: torch.Tensor, eps_low: float = 0.2,
-                          eps_high: float = 0.28,
-                          token_mask: torch.Tensor | None = None) -> torch.Tensor:
+def dapo_token_level_loss(
+    log_probs: torch.Tensor,
+    ref_log_probs: torch.Tensor,
+    advantages: torch.Tensor,
+    eps_low: float = 0.2,
+    eps_high: float = 0.28,
+    token_mask: torch.Tensor | None = None,
+) -> torch.Tensor:
     """DAPO token-level policy gradient with asymmetric clipping.
-    
+
     Critical for long-chain-of-thought: each token gets its own advantage
     weighting rather than the sequence-level average. Prevents length bias.
-    
+
     Args:
         log_probs:     (B, S) current policy log-probs
         ref_log_probs: (B, S) reference policy log-probs
@@ -278,17 +282,18 @@ def dapo_token_level_loss(log_probs: torch.Tensor, ref_log_probs: torch.Tensor,
 # ---------------------------------------------------------------------------
 
 
-def dynamic_sampling_filter(prompts: list, rewards_per_group: torch.Tensor,
-                             group_size: int) -> list[bool]:
+def dynamic_sampling_filter(
+    prompts: list, rewards_per_group: torch.Tensor, group_size: int
+) -> list[bool]:
     """Remove prompts where all group responses are correct or all wrong.
-    
+
     DAPO dynamic sampling: avoid training on trivially solved or unsolvable
     prompts, which waste compute and cause entropy collapse.
     Returns list of bool: True = keep this prompt group.
     """
     keep = []
     for i in range(0, len(rewards_per_group), group_size):
-        group = rewards_per_group[i:i + group_size]
+        group = rewards_per_group[i : i + group_size]
         all_correct = (group > 0.99).all()
         all_wrong = (group < 0.01).all()
         keep.append(not (all_correct or all_wrong))

@@ -713,6 +713,8 @@ class AureliusConfig:
         assert self.n_heads % self.n_kv_heads == 0, (  # noqa: S101
             f"n_heads ({self.n_heads}) must be divisible by n_kv_heads ({self.n_kv_heads})"
         )
+
+
 MOE_PRESETS: dict[str, dict[str, Any]] = {
     "small": {"num_experts": 4, "top_k": 2, "d_model": 512, "d_ff": 2048},
     "base": {"num_experts": 8, "top_k": 2, "d_model": 2048, "d_ff": 8192},

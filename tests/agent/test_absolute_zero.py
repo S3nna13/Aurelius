@@ -1,4 +1,5 @@
 """Tests for Absolute Zero self-play skill generation."""
+
 from __future__ import annotations
 
 from src.agent.absolute_zero import AbsoluteZeroConfig, AbsoluteZeroLoop
@@ -24,7 +25,7 @@ class DummyModelFn:
 
 def test_extract_code_python():
     loop = AbsoluteZeroLoop(DummyModelFn(), DummySkillEvolver(), AbsoluteZeroConfig())
-    text = '```python\ndef foo():\n    return 1\n```'
+    text = "```python\ndef foo():\n    return 1\n```"
     code = loop._extract_code(text)
     assert code is not None
     assert "def foo" in code

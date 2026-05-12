@@ -157,8 +157,9 @@ class Muon(Optimizer):
         return loss
 
 
-def build_muon_optimizer(model, muon_lr: float = 0.02, adam_lr: float = 3e-4,
-                         weight_decay: float = 0.1) -> tuple:
+def build_muon_optimizer(
+    model, muon_lr: float = 0.02, adam_lr: float = 3e-4, weight_decay: float = 0.1
+) -> tuple:
     """Split model params into Muon (matrices) and AdamW (rest) groups."""
     muon_params, adam_params = [], []
     for name, p in model.named_parameters():
@@ -171,6 +172,7 @@ def build_muon_optimizer(model, muon_lr: float = 0.02, adam_lr: float = 3e-4,
             muon_params.append(p)
 
     muon_opt = Muon(muon_params, lr=muon_lr, weight_decay=weight_decay)
-    adam_opt = torch.optim.AdamW(adam_params, lr=adam_lr,
-                                  betas=(0.9, 0.95), weight_decay=weight_decay)
+    adam_opt = torch.optim.AdamW(
+        adam_params, lr=adam_lr, betas=(0.9, 0.95), weight_decay=weight_decay
+    )
     return muon_opt, adam_opt

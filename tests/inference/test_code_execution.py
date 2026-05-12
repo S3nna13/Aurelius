@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sys
+
 import pytest
 
 from src.inference.code_execution import (
@@ -11,6 +13,13 @@ from src.inference.code_execution import (
     execute_python,
     extract_code_blocks,
     sanitize_code,
+)
+
+# All tests in this file use execute_python / CodeInterpreterSession which rely on
+# multiprocessing.Process; torch's use of spawn is incompatible with Python 3.14.
+pytestmark = pytest.mark.skipif(
+    sys.version_info >= (3, 14),
+    reason="torch multiprocessing spawn incompatible with Python 3.14",
 )
 
 # ---------------------------------------------------------------------------

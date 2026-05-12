@@ -954,8 +954,10 @@ from .self_upgrade import (
     SelfUpgradeSystem,
     UpgradeProposal,
 )  # noqa: E402
-from .skill_library import Skill as VoyagerSkill  # noqa: E402
-from .skill_library import VoyagerSkillLibrary
+from .skill_library import Skill, VoyagerSkillLibrary  # noqa: E402
+
+# Backward-compat aliases so existing code that imported "VoyagerSkill" works
+VoyagerSkill = Skill  # type: ignore[has-type, misc]  # noqa: N816
 from .skill_registry import SkillRegistry, SkillSpec  # noqa: E402
 from .skills_registry import SKILLS_REGISTRY  # noqa: E402
 from .skills_registry import Skill as RegistrySkill
@@ -987,6 +989,7 @@ __all__ += [
     "AgentStatus",
     "DebateCoordinator",
     "MemoryEntry",
+    "Skill",
     "VoyagerSkill",
     "SkillRegistry",
     "SkillSpec",

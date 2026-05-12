@@ -7,6 +7,7 @@ Create Date: 2026-04-26
 Creates tables for agents, sessions, activity, notifications,
 memory entries, logs, and configuration store.
 """
+
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -40,7 +41,8 @@ def upgrade() -> None:
         sa.Column("success", sa.Boolean, nullable=False, server_default=sa.text("1")),
         sa.Column("output", sa.Text, nullable=False, server_default=""),
         sa.Column(
-            "agent_id", sa.String(64),
+            "agent_id",
+            sa.String(64),
             sa.ForeignKey("agents.id", ondelete="SET NULL"),
             nullable=True,
         ),

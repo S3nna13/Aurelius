@@ -106,17 +106,25 @@ class MemoryManager:
         working_key: str | None = None,
     ) -> dict[str, Any]:
         layered_entry = self.layered.store(
-            content, layer_name,
+            content,
+            layer_name,
             importance_score=importance,
         )
         episodic_entry = self.episodic.store(
-            "memory", content, importance=importance,
+            "memory",
+            content,
+            importance=importance,
         )
         long_term_entry = self.long_term.store(
-            content[:40], content, importance=importance, tags=set(tags or []),
+            content[:40],
+            content,
+            importance=importance,
+            tags=set(tags or []),
         )
         zettel_entry = self.zettelkasten.add(
-            content=content, tags=tags or [], importance=importance,
+            content=content,
+            tags=tags or [],
+            importance=importance,
         )
         if working_key is not None:
             self.working.set(working_key, content)
@@ -146,10 +154,10 @@ class MemoryManager:
 
     def consolidate(self) -> int:
         result = self.consolidator.consolidate(
-            self.episodic._entries if hasattr(self.episodic, '_entries') else [],
+            self.episodic._entries if hasattr(self.episodic, "_entries") else [],
             semantic_memory=self.semantic,
         )
-        return result.n_consolidated if hasattr(result, 'n_consolidated') else 0
+        return result.n_consolidated if hasattr(result, "n_consolidated") else 0
 
     def set_working_memory(self, key: str, value: Any) -> None:
         self.working.set(key, value)
@@ -162,8 +170,12 @@ class MemoryManager:
             "layered_entries": len(self.layered),
             "episodic_entries": len(self.episodic),
             "long_term_entries": len(self.long_term),
-            "zettel_entries": len(self.zettelkasten._notes) if hasattr(self.zettelkasten, '_notes') else 0,
-            "semantic_concepts": len(self.semantic._concepts) if hasattr(self.semantic, '_concepts') else 0,
+            "zettel_entries": len(self.zettelkasten._notes)
+            if hasattr(self.zettelkasten, "_notes")
+            else 0,
+            "semantic_concepts": len(self.semantic._concepts)
+            if hasattr(self.semantic, "_concepts")
+            else 0,
             "working_slots": len(self.working),
         }
 

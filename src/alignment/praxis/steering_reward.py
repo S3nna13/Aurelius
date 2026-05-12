@@ -20,7 +20,9 @@ class SteeringRewardCorrespondence:
         self.model = model
         self.config = config
 
-    def _capture_hidden(self, input_ids: Tensor, apply_steer: bool = False, **kwargs) -> dict[int, Tensor]:
+    def _capture_hidden(
+        self, input_ids: Tensor, apply_steer: bool = False, **kwargs
+    ) -> dict[int, Tensor]:
         captures: dict[int, Tensor] = {}
         hooks = []
 
@@ -36,6 +38,7 @@ class SteeringRewardCorrespondence:
                         direction = F.normalize(direction, dim=-1)
                         h = h + self.config.steer_alpha * direction
                     captures[layer_idx] = h.detach()
+
                 return hook
 
             handle = self.model.layers[idx].register_forward_hook(make_hook(idx, apply_steer))
@@ -60,7 +63,7 @@ class SteeringRewardCorrespondence:
         negative when hidden states diverge significantly from steering.
         """
         unsteered = self._capture_hidden(input_ids, apply_steer=False, **kwargs)
-        steered   = self._capture_hidden(input_ids, apply_steer=True, **kwargs)
+        steered = self._capture_hidden(input_ids, apply_steer=True, **kwargs)
 
         distances: list[Tensor] = []
         for idx in self.config.steer_layers:
@@ -68,8 +71,9 @@ class SteeringRewardCorrespondence:
                 continue
             u = unsteered[idx]
             s = steered[idx]
-            cos_sim  = F.cosine_similarity(u.reshape(-1, u.shape[-1]),
-                                           s.reshape(-1, s.shape[-1]), dim=-1)
+            cos_sim = F.cosine_similarity(
+                u.reshape(-1, u.shape[-1]), s.reshape(-1, s.shape[-1]), dim=-1
+            )
             distances.append(1.0 - cos_sim.mean())
 
         if not distances:

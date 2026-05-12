@@ -189,14 +189,16 @@ class GRPOTrainer:
             if self.ref_model is not None:
                 for c in completions:
                     lp = compute_sequence_log_probs(
-                        self.ref_model, c,
+                        self.ref_model,
+                        c,
                         response_start=prompt_ids.shape[1],
                     )
                     old_log_probs_list.append(lp.detach())
             else:
                 for c in completions:
                     lp = compute_sequence_log_probs(
-                        self.model, c,
+                        self.model,
+                        c,
                         response_start=prompt_ids.shape[1],
                     )
                     old_log_probs_list.append(lp.detach())
@@ -207,7 +209,8 @@ class GRPOTrainer:
         new_log_probs_list = []
         for c in completions:
             lp = compute_sequence_log_probs(
-                self.model, c,
+                self.model,
+                c,
                 response_start=prompt_ids.shape[1],
             )
             new_log_probs_list.append(lp)
@@ -222,7 +225,8 @@ class GRPOTrainer:
             with torch.no_grad():
                 for c in completions:
                     lp = compute_sequence_log_probs(
-                        self.ref_model, c,
+                        self.ref_model,
+                        c,
                         response_start=prompt_ids.shape[1],
                     )
                     ref_log_probs_list.append(lp.detach())

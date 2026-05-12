@@ -92,14 +92,14 @@ class TestRootToLeafPaths:
         # Paths: [1,2,3] and [1,4]
         nodes = [
             DraftNode(token_id=1, score=0.5, parent=None),  # 0
-            DraftNode(token_id=2, score=0.4, parent=0),    # 1
-            DraftNode(token_id=3, score=0.3, parent=1),    # 2
-            DraftNode(token_id=4, score=0.35, parent=0),   # 3
+            DraftNode(token_id=2, score=0.4, parent=0),  # 1
+            DraftNode(token_id=3, score=0.3, parent=1),  # 2
+            DraftNode(token_id=4, score=0.35, parent=0),  # 3
         ]
         paths = root_to_leaf_paths(nodes)
         path_sets = [set(p) for p in paths]
         assert {1, 2, 3} in path_sets or [1, 2, 3] in paths  # root->2->3
-        assert {1, 4} in path_sets or [1, 4] in paths        # root->4
+        assert {1, 4} in path_sets or [1, 4] in paths  # root->4
 
     def test_empty_for_internal_nodes(self):
         nodes = [
@@ -118,9 +118,9 @@ class TestBestLeafPath:
         # Path scores: [1,2,4]=0.5+0.1+0.2=0.8, [1,3]=0.5+0.9=1.4 → [1,3] wins
         nodes = [
             DraftNode(token_id=1, score=0.5, parent=None),  # 0: root
-            DraftNode(token_id=2, score=0.1, parent=0),     # 1
-            DraftNode(token_id=3, score=0.9, parent=0),    # 2
-            DraftNode(token_id=4, score=0.2, parent=1),   # 3
+            DraftNode(token_id=2, score=0.1, parent=0),  # 1
+            DraftNode(token_id=3, score=0.9, parent=0),  # 2
+            DraftNode(token_id=4, score=0.2, parent=1),  # 3
         ]
         path = best_leaf_path(nodes)
         # Best path is [1, 3] since its score (1.4) > [1, 2, 4] (0.8)
@@ -131,9 +131,9 @@ class TestBestLeafPath:
         # Path scores: [1,2]=1.0, [1,3]=1.0, [1,2,4]=1.5 → [1,2,4] wins
         nodes = [
             DraftNode(token_id=1, score=0.5, parent=None),  # 0
-            DraftNode(token_id=2, score=0.5, parent=0),    # 1
-            DraftNode(token_id=3, score=0.5, parent=0),    # 2
-            DraftNode(token_id=4, score=0.5, parent=1),    # 3
+            DraftNode(token_id=2, score=0.5, parent=0),  # 1
+            DraftNode(token_id=3, score=0.5, parent=0),  # 2
+            DraftNode(token_id=4, score=0.5, parent=1),  # 3
         ]
         path = best_leaf_path(nodes)
         assert path == [1, 2, 4]
@@ -190,6 +190,8 @@ class TestTokensFromDraft:
         assert pids == [None, 0, 0, 1]
 
     def test_order_preserved(self):
-        nodes = [DraftNode(token_id=i, score=1.0, parent=None if i == 0 else i - 1) for i in range(5)]
+        nodes = [
+            DraftNode(token_id=i, score=1.0, parent=None if i == 0 else i - 1) for i in range(5)
+        ]
         tokens, _ = tokens_from_draft(nodes)
         assert list(tokens) == list(range(5))

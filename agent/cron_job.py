@@ -35,9 +35,7 @@ class CronJob:
                 f"schedule_kind must be one of {_SCHEDULE_KINDS}, got {self.schedule_kind!r}"
             )
         if self.delivery not in _DELIVERY_TARGETS:
-            raise ValueError(
-                f"delivery must be one of {_DELIVERY_TARGETS}, got {self.delivery!r}"
-            )
+            raise ValueError(f"delivery must be one of {_DELIVERY_TARGETS}, got {self.delivery!r}")
 
 
 class CronJobStore:

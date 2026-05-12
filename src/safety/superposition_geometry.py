@@ -15,6 +15,7 @@ Geometry-Aware Data Filtering:
 
 Reference: arXiv:2605.00842 "Understanding Emergent Misalignment via Feature Superposition Geometry"
 """
+
 from __future__ import annotations
 
 import logging
@@ -94,9 +95,7 @@ class FeatureSuperpositionAnalyzer:
         """
         self._validate_tensor(sae_weights, "sae_weights", dim=2)
         self._validate_tensor(toxic_feature_indices, "toxic_feature_indices", dim=1)
-        self._validate_tensor(
-            misalignment_feature_indices, "misalignment_feature_indices", dim=1
-        )
+        self._validate_tensor(misalignment_feature_indices, "misalignment_feature_indices", dim=1)
 
         self._feature_directions = sae_weights.to(self.device)
         self._toxic_feature_indices = toxic_feature_indices.to(self.device)
@@ -109,9 +108,7 @@ class FeatureSuperpositionAnalyzer:
             len(misalignment_feature_indices),
         )
 
-    def compute_feature_similarities(
-        self, layer: int, activations: Tensor | None = None
-    ) -> Tensor:
+    def compute_feature_similarities(self, layer: int, activations: Tensor | None = None) -> Tensor:
         """Compute cosine similarities between misalignment and toxic features.
 
         Args:
@@ -165,9 +162,7 @@ class FeatureSuperpositionAnalyzer:
 
         return results
 
-    def identify_high_risk_features(
-        self, threshold: float | None = None
-    ) -> Tensor:
+    def identify_high_risk_features(self, threshold: float | None = None) -> Tensor:
         """Identify features with highest risk of spillover.
 
         Args:
@@ -239,14 +234,10 @@ class FeatureSuperpositionAnalyzer:
         alignment = 1.0 - max_toxic_sim
         return alignment
 
-    def _validate_tensor(
-        self, tensor: Tensor, name: str, dim: int
-    ) -> None:
+    def _validate_tensor(self, tensor: Tensor, name: str, dim: int) -> None:
         """Validate tensor dimensions."""
         if tensor.dim() != dim:
-            raise ValueError(
-                f"{name} must have {dim} dimensions, got {tensor.dim()}"
-            )
+            raise ValueError(f"{name} must have {dim} dimensions, got {tensor.dim()}")
 
 
 class GradientSpilloverModel:
@@ -543,9 +534,7 @@ class GeometryAwareFilter:
 
         return activations[self._filtered_indices]
 
-    def compute_toxic_distance(
-        self, activations: Tensor, aggregate: str = "mean"
-    ) -> float:
+    def compute_toxic_distance(self, activations: Tensor, aggregate: str = "mean") -> float:
         """Compute distance to toxic feature subspace.
 
         Args:
@@ -649,9 +638,7 @@ class MisalignmentGeometryMonitor:
             spillover = self._spillover_model.compute_spillover(gradient_update)
             self._spillover_model.accumulate_spillover(spillover)
 
-        similarities = self._analyzer.compute_feature_similarities(
-            layer_idx, activations
-        )
+        similarities = self._analyzer.compute_feature_similarities(layer_idx, activations)
 
         mean_toxic_sim = similarities.max(dim=1).values.mean().item()
         max_toxic_sim = similarities.max().item()
@@ -730,8 +717,7 @@ class MisalignmentGeometryMonitor:
         centered_risks = risks_tensor - risks_tensor.mean()
 
         slope = (
-            torch.dot(centered_steps, centered_risks)
-            / (centered_steps.norm() ** 2 + 1e-8)
+            torch.dot(centered_steps, centered_risks) / (centered_steps.norm() ** 2 + 1e-8)
         ).item()
 
         return {

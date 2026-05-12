@@ -1,6 +1,7 @@
 import { spawn } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { resolvePythonExecutable } from './python_runtime.js';
 
 export interface RegistryAgent {
   id: string;
@@ -37,7 +38,7 @@ let pendingSnapshot: Promise<RegistrySnapshot> | null = null;
 
 function runPythonJson(code: string): Promise<RegistrySnapshot> {
   return new Promise((resolve, reject) => {
-    const python = spawn('python3', ['-c', code], { cwd: repoRoot });
+    const python = spawn(resolvePythonExecutable(repoRoot), ['-c', code], { cwd: repoRoot });
     let stdout = '';
     let stderr = '';
 
@@ -52,7 +53,7 @@ function runPythonJson(code: string): Promise<RegistrySnapshot> {
     python.on('error', reject);
     python.on('close', (exitCode) => {
       if (exitCode !== 0) {
-        reject(new Error(stderr.trim() || `python3 exited with code ${exitCode}`));
+        reject(new Error(stderr.trim() || `python exited with code ${exitCode}`));
         return;
       }
 

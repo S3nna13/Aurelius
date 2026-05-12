@@ -1,4 +1,5 @@
 """Tests for Liger kernel integration."""
+
 from __future__ import annotations
 
 import torch

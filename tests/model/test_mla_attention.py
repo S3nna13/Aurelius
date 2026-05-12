@@ -1,4 +1,5 @@
 """Tests for MLA attention."""
+
 from __future__ import annotations
 
 import torch
@@ -35,6 +36,7 @@ def test_mla_output_not_nan():
 def test_kv_cache_savings():
     cfg = MLAConfig(n_heads=8, head_dim=64, kv_lora_rank=128)
     from src.model.mla import compute_kv_cache_savings
+
     result = compute_kv_cache_savings(cfg)
     assert result["standard_per_token"] == 1024
     assert result["mla_per_token"] == 128

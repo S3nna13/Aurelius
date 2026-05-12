@@ -21,9 +21,7 @@ class AIDevAnalyzer:
 
     def load(self, data: list[dict]) -> list[AgenticPR]:
         self.prs = [
-            AgenticPR(
-                **{k: v for k, v in d.items() if k in AgenticPR.__annotations__}
-            )
+            AgenticPR(**{k: v for k, v in d.items() if k in AgenticPR.__annotations__})
             for d in data
         ]
         return self.prs

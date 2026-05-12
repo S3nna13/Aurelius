@@ -16,15 +16,31 @@ from typing import Any
 
 TOOL_PROFILES: dict[str, list[str]] = {
     "full": [
-        "runtime", "fs", "web", "sessions", "memory",
-        "ui", "automation", "messaging", "nodes", "agents", "media",
+        "runtime",
+        "fs",
+        "web",
+        "sessions",
+        "memory",
+        "ui",
+        "automation",
+        "messaging",
+        "nodes",
+        "agents",
+        "media",
     ],
     "coding": [
-        "runtime", "fs", "web", "sessions", "memory",
-        "automation", "agents",
+        "runtime",
+        "fs",
+        "web",
+        "sessions",
+        "memory",
+        "automation",
+        "agents",
     ],
     "messaging": [
-        "messaging", "sessions", "memory",
+        "messaging",
+        "sessions",
+        "memory",
     ],
     "minimal": [
         "sessions",
@@ -64,8 +80,7 @@ class ToolRegistry:
     def set_profile(self, profile: str) -> None:
         if profile not in TOOL_PROFILES:
             raise ValueError(
-                f"Unknown tool profile {profile!r}; "
-                f"available: {', '.join(sorted(TOOL_PROFILES))}"
+                f"Unknown tool profile {profile!r}; available: {', '.join(sorted(TOOL_PROFILES))}"
             )
         self._profile = profile
 
@@ -86,7 +101,9 @@ class ToolRegistry:
             tid
             for tid, spec in self._tools.items()
             if spec.enabled
-            and TOOL_GROUP_REGISTRY.get(tid, "") in allowed_groups
+            and (
+                tid not in TOOL_GROUP_REGISTRY or TOOL_GROUP_REGISTRY.get(tid, "") in allowed_groups
+            )
         ]
 
     def get(self, tool_id: str) -> ToolSpec | None:

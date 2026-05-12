@@ -85,7 +85,8 @@ logger.addHandler(_log_buffer)
 _MAX_CONTENT_LENGTH = 1_048_576
 
 #: Path to built frontend assets — resolved relative to this file.
-_FRONTEND_DIST = Path(__file__).resolve().parent.parent.parent / "frontend" / "dist"
+#: Goes up 2 levels: gateway/ → Aurelius root (parent.parent)
+_FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 
 
 class _JSONMixin:

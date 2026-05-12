@@ -173,14 +173,11 @@ def find_cycles(graph: dict[str, set[str]]) -> list[list[str]]:
 
 def main() -> int:
     paths = [
-        ROOT / rel
-        for rel in TARGET_GLOBS
-        if (ROOT / rel).exists() and should_include(ROOT / rel)
+        ROOT / rel for rel in TARGET_GLOBS if (ROOT / rel).exists() and should_include(ROOT / rel)
     ]
     module_index = build_module_index(paths)
     graph = {
-        module: collect_dependencies(path, module_index)
-        for module, path in module_index.items()
+        module: collect_dependencies(path, module_index) for module, path in module_index.items()
     }
     cycles = find_cycles(graph)
     if cycles:

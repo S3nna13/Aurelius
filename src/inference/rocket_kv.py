@@ -9,6 +9,7 @@ essential for Aurelius's ReAct agent loop.
 
 Paper: arXiv:2502.14051 (ICML 2025, NVIDIA)
 """
+
 from __future__ import annotations
 
 import torch
@@ -18,9 +19,15 @@ from torch import Tensor
 class RocketKVCache:
     """Two-stage KV cache manager combining SnapKV eviction + Quest-style sparse decode."""
 
-    def __init__(self, n_layers: int, n_heads: int, head_dim: int,
-                 max_positions: int = 2048, top_k_positions: int = 256,
-                 observation_window: int = 32):
+    def __init__(
+        self,
+        n_layers: int,
+        n_heads: int,
+        head_dim: int,
+        max_positions: int = 2048,
+        top_k_positions: int = 256,
+        observation_window: int = 32,
+    ):
         self.n_layers = n_layers
         self.n_heads = n_heads
         self.head_dim = head_dim
@@ -33,7 +40,7 @@ class RocketKVCache:
 
     def stage1_evict(self, layer: int, k: Tensor, v: Tensor) -> tuple[Tensor, Tensor]:
         """Prefill: score positions by attention over last obs_window queries.
-        
+
         k, v: (B, n_heads, S, head_dim)
         Returns retained (k, v) with top_k positions.
         """
@@ -43,7 +50,7 @@ class RocketKVCache:
             return k, v
 
         # Use last obs_window key positions as query proxy
-        query_proxy = k[:, :, -self.obs_window:, :]  # (B, H, W, D)
+        query_proxy = k[:, :, -self.obs_window :, :]  # (B, H, W, D)
         # Attention scores from proxy over all positions
         scores = torch.matmul(query_proxy, k.transpose(-2, -1))  # (B, H, W, S)
         # Pool across query window and heads
@@ -61,13 +68,14 @@ class RocketKVCache:
         # Combine: sink + mid top-k + recent
         S = k.size(2)
         sink_idx = torch.arange(sink_size, device=k.device).unsqueeze(0).expand(k.size(0), -1)
-        recent_idx = torch.arange(S - recent_size, S, device=k.device).unsqueeze(0).expand(k.size(0), -1)
+        recent_idx = (
+            torch.arange(S - recent_size, S, device=k.device).unsqueeze(0).expand(k.size(0), -1)
+        )
         all_idx = torch.cat([sink_idx, mid_idx, recent_idx], dim=1)  # (B, top_k)
         all_idx, _ = all_idx.sort(dim=1)
 
         # Gather retained positions (expand idx for heads and head_dim)
-        idx_expanded = all_idx.unsqueeze(1).unsqueeze(-1).expand(
-            -1, k.size(1), -1, k.size(-1))
+        idx_expanded = all_idx.unsqueeze(1).unsqueeze(-1).expand(-1, k.size(1), -1, k.size(-1))
         k_ret = k.gather(2, idx_expanded)
         v_ret = v.gather(2, idx_expanded)
 

@@ -12,15 +12,18 @@ class FakeRouter(nn.Module):
         super().__init__()
         self.gate = nn.Linear(d_model, n_experts, bias=False)
 
+
 class FakeFFN(nn.Module):
     def __init__(self, d_model, n_experts):
         super().__init__()
         self.router = FakeRouter(d_model, n_experts)
 
+
 class FakeBlock(nn.Module):
     def __init__(self, d_model, n_experts):
         super().__init__()
         self.ffn = FakeFFN(d_model, n_experts)
+
 
 def make_tiny_model(d_model=16, vocab_size=64, n_layers=4):
     """Minimal mock matching AureliusTransformer's interface."""
@@ -36,19 +39,27 @@ def make_tiny_model(d_model=16, vocab_size=64, n_layers=4):
     model.train = MagicMock()
     return model
 
+
 def test_trainer_train_step_returns_metrics():
     D, V = 16, 64
-    cfg = PRAXISConfig(d_model=D, n_principles=2, mc_dropout_n=2,
-                       steer_layers=[0, 1], safety_experts=[0, 1],
-                       n_group=2, max_new_tokens=4, warp_interval=9999)
-    model   = make_tiny_model(d_model=D, vocab_size=V)
-    ref_sd  = {}
-    sft_sd  = {}
+    cfg = PRAXISConfig(
+        d_model=D,
+        n_principles=2,
+        mc_dropout_n=2,
+        steer_layers=[0, 1],
+        safety_experts=[0, 1],
+        n_group=2,
+        max_new_tokens=4,
+        warp_interval=9999,
+    )
+    model = make_tiny_model(d_model=D, vocab_size=V)
+    ref_sd = {}
+    sft_sd = {}
     trainer = PRAXISTrainer(model, cfg, ref_state_dict=ref_sd, sft_state_dict=sft_sd)
 
     batch = {
-        "input_ids":      torch.randint(0, V, (2, 8)),
-        "labels":         torch.randint(0, V, (2, 8)),
+        "input_ids": torch.randint(0, V, (2, 8)),
+        "labels": torch.randint(0, V, (2, 8)),
         "attention_mask": torch.ones(2, 8, dtype=torch.bool),
     }
     metrics = trainer.train_step(batch, step=1)

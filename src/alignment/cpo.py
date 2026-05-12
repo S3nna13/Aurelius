@@ -31,6 +31,7 @@ import torch.nn.functional as F
 _liger_cpo_available = False
 try:
     from liger_kernel.chunked_loss import LigerFusedLinearCPOLoss  # noqa: F401
+
     _liger_cpo_available = True
 except ImportError:
     pass

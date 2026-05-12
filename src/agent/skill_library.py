@@ -304,9 +304,7 @@ class VoyagerSkillLibrary:
 
         existing = self.skills.get(derived_name)
         if existing is None:
-            code = "\n".join(
-                f"# step: {step.get('content', step)}" for step in trajectory[:3]
-            )
+            code = "\n".join(f"# step: {step.get('content', step)}" for step in trajectory[:3])
             skill = self.add_skill(
                 derived_name,
                 code or "# learned from trajectory\n",
@@ -382,9 +380,7 @@ class VoyagerSkillLibrary:
             return False
 
         def _hook(step: Any, trajectory: list[dict[str, Any]]) -> None:
-            success = bool(getattr(step, "is_final", False)) and not getattr(
-                step, "error", None
-            )
+            success = bool(getattr(step, "is_final", False)) and not getattr(step, "error", None)
             if success:
                 self.record_trajectory_outcome(trajectory, success=True)
 

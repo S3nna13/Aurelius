@@ -192,14 +192,18 @@ class PRIMEReward(nn.Module):
 # ---------------------------------------------------------------------------
 
 
-def prime_loss(policy_log_probs: torch.Tensor, ref_log_probs: torch.Tensor,
-               outcome_rewards: torch.Tensor, kl_coef: float = 0.01) -> torch.Tensor:
+def prime_loss(
+    policy_log_probs: torch.Tensor,
+    ref_log_probs: torch.Tensor,
+    outcome_rewards: torch.Tensor,
+    kl_coef: float = 0.01,
+) -> torch.Tensor:
     """Full PRIME training loss using implicit process rewards."""
     implicit_r = policy_log_probs - ref_log_probs.detach()  # (B, S)
     implicit_r = implicit_r.clamp(min=-10, max=10)
     outcome_scale = outcome_rewards.unsqueeze(1)  # (B, 1)
     process_r = outcome_scale + kl_coef * implicit_r  # (B, S)
-    
+
     # Normalize process rewards per sequence
     pr_mean = process_r.mean(dim=-1, keepdim=True)
     pr_std = process_r.std(dim=-1, keepdim=True).clamp(min=1e-8)

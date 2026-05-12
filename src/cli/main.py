@@ -370,6 +370,7 @@ def _run_chat(
     model_path: str | None = None,
     max_tokens: int = 1024,
     temperature: float = 0.7,
+    react: bool = False,
 ) -> None:
     try:
         from src.serving.conversation_store import ConversationStore
@@ -665,6 +666,10 @@ def _run_serve(
     port: int = 8080,
     ui_port: int = 7860,
     model_path: str | None = None,
+    engine: str | None = None,
+    agentic: bool = False,
+    enable_tools: bool = False,
+    enable_vision: bool = False,
 ) -> None:
     import threading
     import time
@@ -713,11 +718,7 @@ def _run_serve(
                         f"{exc} — using mock[/aurelius.warn]"
                     )
                 else:
-                    print(
-                        YELLOW(
-                            f"  Failed to load model from {model_path}: {exc} -- using mock"
-                        )
-                    )
+                    print(YELLOW(f"  Failed to load model from {model_path}: {exc} -- using mock"))
                 generate_fn = make_mock_generate_fn()
         else:
             generate_fn = make_mock_generate_fn()
@@ -821,12 +822,43 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="unified persona ID (aurelius-general, aurelius-coding, aurelius-redteam, etc.)",
     )
+    chat_p.add_argument(
+        "--react",
+        action="store_true",
+        default=False,
+        help="enable ReAct agentic loop (thought-action-observation reasoning)",
+    )
     chat_p.add_argument("--model-path", metavar="PATH", help="checkpoint directory or .pt file")
     chat_p.add_argument("--max-tokens", type=int, default=1024)
     chat_p.add_argument("--temperature", type=float, default=0.7)
 
     # serve
-    serve_p = sub.add_parser("serve", help="start API server + web UI")
+    serve_p = sub.add_parser("serve", help="start agentic API server + web UI")
+    serve_p.add_argument(
+        "--agentic",
+        action="store_true",
+        default=False,
+        help="enable agentic mode with tool-use and multi-step reasoning",
+    )
+    serve_p.add_argument(
+        "--engine",
+        dest="engine",
+        default=None,
+        choices=["base", "react", "agentic"],
+        help="reasoning engine: base, react, or agentic",
+    )
+    serve_p.add_argument(
+        "--enable-tools",
+        action="store_true",
+        default=False,
+        help="enable tool-use in agentic mode",
+    )
+    serve_p.add_argument(
+        "--enable-vision",
+        action="store_true",
+        default=False,
+        help="enable vision/multimodal in agentic mode",
+    )
     serve_p.add_argument("--host", default="127.0.0.1")
     serve_p.add_argument("--port", type=int, default=8080)
     serve_p.add_argument("--ui-port", type=int, default=7860)
@@ -916,6 +948,7 @@ def main(argv: list[str] | None = None) -> int:
             model_path=getattr(args, "model_path", None),
             max_tokens=getattr(args, "max_tokens", 1024),
             temperature=getattr(args, "temperature", 0.7),
+            react=getattr(args, "react", False),
         )
 
     elif args.command == "serve":
@@ -924,6 +957,10 @@ def main(argv: list[str] | None = None) -> int:
             port=args.port,
             ui_port=args.ui_port,
             model_path=getattr(args, "model_path", None),
+            engine=getattr(args, "engine", None),
+            agentic=getattr(args, "agentic", False),
+            enable_tools=getattr(args, "enable_tools", False),
+            enable_vision=getattr(args, "enable_vision", False),
         )
 
     elif args.command == "train":

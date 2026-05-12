@@ -319,9 +319,7 @@ class PrimitiveOpNode(SkillNode):
         self.op_type = NodeOpType.PRIMITIVE_OP
 
     def execute(self, context: dict[str, Any]) -> dict[str, Any]:
-        resolved_args = {
-            dest: context.get(src, src) for dest, src in self.arg_bindings.items()
-        }
+        resolved_args = {dest: context.get(src, src) for dest, src in self.arg_bindings.items()}
         if self.action_fn is not None:
             result = self.action_fn(**resolved_args)
             self.bindings["_last_result"] = result
@@ -482,17 +480,12 @@ class SkillGraph:
             except Exception as exc:  # pragma: no cover — runtime nodes should be safe
                 execution_trace.append({"node_id": node_id, "error": str(exc)})
                 _LOGGER.warning("Node %s raised during execution: %s", node_id, exc)
-        terminal_nodes = [
-            node for node in self.nodes.values()
-            if isinstance(node, TerminalOpNode)
-        ]
+        terminal_nodes = [node for node in self.nodes.values() if isinstance(node, TerminalOpNode)]
         return {
             "execution_trace": execution_trace,
             "final_context": context,
-            "success": bool(terminal_nodes) and all(
-                node.bindings.get("_success", True)
-                for node in terminal_nodes
-            ),
+            "success": bool(terminal_nodes)
+            and all(node.bindings.get("_success", True) for node in terminal_nodes),
         }
 
     def to_dict(self) -> dict[str, Any]:
@@ -800,8 +793,7 @@ class IntraTrajectoryConsolidator:
                         for src_nodes in list(graph.edges.keys()):
                             if src in graph.edges[src_nodes]:
                                 graph.edges[src_nodes] = [
-                                    n if n != src else loop_node_id
-                                    for n in graph.edges[src_nodes]
+                                    n if n != src else loop_node_id for n in graph.edges[src_nodes]
                                 ]
                     _LOGGER.debug(
                         "Loop-folded pattern %s with %d occurrences",
@@ -868,9 +860,7 @@ class InterTrajectoryMerger:
 
     def _unify_conditional_branches(self, graph: SkillGraph) -> SkillGraph:
         check_nodes = [
-            (nid, node)
-            for nid, node in graph.nodes.items()
-            if isinstance(node, CheckOpNode)
+            (nid, node) for nid, node in graph.nodes.items() if isinstance(node, CheckOpNode)
         ]
         for i, (id1, n1) in enumerate(check_nodes):
             for id2, n2 in check_nodes[i + 1 :]:
@@ -884,10 +874,7 @@ class InterTrajectoryMerger:
                     graph.edges.setdefault(id1, [])
                     for target_id in outgoing:
                         remapped_target = id1 if target_id == id2 else target_id
-                        if (
-                            remapped_target != id1
-                            and remapped_target not in graph.edges[id1]
-                        ):
+                        if remapped_target != id1 and remapped_target not in graph.edges[id1]:
                             graph.edges[id1].append(remapped_target)
 
                     for src_id, targets in list(graph.edges.items()):

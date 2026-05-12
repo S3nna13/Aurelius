@@ -74,9 +74,7 @@ class KVCacheCompressor:
         self.sparse_threshold = sparse_threshold
         self.zero_tolerance = zero_tolerance
 
-    def _quantize(
-        self, t: torch.Tensor
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+    def _quantize(self, t: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         """Quantize a tensor to INT8 with per-row scale factors.
 
         Uses symmetric quantization: scale = max(abs(t)) / 127.
@@ -99,9 +97,7 @@ class KVCacheCompressor:
         scale = scale.view(orig_shape[0], *([1] * (len(orig_shape) - 1)))
         return quantized, scale
 
-    def _dequantize(
-        self, quantized: torch.Tensor, scale: torch.Tensor
-    ) -> torch.Tensor:
+    def _dequantize(self, quantized: torch.Tensor, scale: torch.Tensor) -> torch.Tensor:
         """Dequantize INT8 tensor back to FP16.
 
         Args:
@@ -113,9 +109,7 @@ class KVCacheCompressor:
         """
         return quantized.to(torch.float16) * scale
 
-    def _detect_sparsity(
-        self, t: torch.Tensor
-    ) -> tuple[torch.Tensor | None, float]:
+    def _detect_sparsity(self, t: torch.Tensor) -> tuple[torch.Tensor | None, float]:
         """Detect which positions are near-zero (for sparse encoding).
 
         Args:
@@ -173,9 +167,7 @@ class KVCacheCompressor:
             num_tokens=num_tokens,
         )
 
-    def decompress_block(
-        self, block: CompressedBlock
-    ) -> tuple[torch.Tensor, torch.Tensor]:
+    def decompress_block(self, block: CompressedBlock) -> tuple[torch.Tensor, torch.Tensor]:
         """Decompress a KV cache block back to FP16.
 
         Args:
@@ -282,11 +274,13 @@ class CompressedPagedKVCache:
             v_block = self._cache.v_cache[physical_id]
             num_tokens = min(
                 self._cache.block_size,
-                self._cache._seq_lengths.get(seq_id, 0)
-                - logical_idx * self._cache.block_size,
+                self._cache._seq_lengths.get(seq_id, 0) - logical_idx * self._cache.block_size,
             )
             self._compressed[physical_id] = self._compressor.compress_block(
-                k_block, v_block, physical_id, max(1, num_tokens),
+                k_block,
+                v_block,
+                physical_id,
+                max(1, num_tokens),
             )
 
     def gather(
@@ -307,10 +301,7 @@ class CompressedPagedKVCache:
         """Overall compression ratio across all compressed blocks."""
         if not self._compressed:
             return 1.0
-        ratios = [
-            self._compressor.compression_ratio(b)
-            for b in self._compressed.values()
-        ]
+        ratios = [self._compressor.compression_ratio(b) for b in self._compressed.values()]
         return sum(ratios) / len(ratios)
 
     @property

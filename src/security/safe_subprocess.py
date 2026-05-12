@@ -101,21 +101,23 @@ def _cap(data: str) -> str:
     return truncated.decode("utf-8", errors="replace") + "\n...[truncated]..."
 
 
-_BLOCKED_ENV_KEYS = frozenset({
-    "LD_PRELOAD",
-    "LD_LIBRARY_PATH",
-    "DYLD_INSERT_LIBRARIES",
-    "DYLD_LIBRARY_PATH",
-    "DYLD_FRAMEWORK_PATH",
-    "PYTHONPATH",
-    "PYTHONHOME",
-    "PATH",
-    "HOME",
-    "SHELL",
-    "TMPDIR",
-    "LD_AUDIT",
-    "LD_PROFILE",
-})
+_BLOCKED_ENV_KEYS = frozenset(
+    {
+        "LD_PRELOAD",
+        "LD_LIBRARY_PATH",
+        "DYLD_INSERT_LIBRARIES",
+        "DYLD_LIBRARY_PATH",
+        "DYLD_FRAMEWORK_PATH",
+        "PYTHONPATH",
+        "PYTHONHOME",
+        "PATH",
+        "HOME",
+        "SHELL",
+        "TMPDIR",
+        "LD_AUDIT",
+        "LD_PROFILE",
+    }
+)
 
 
 def run_safe(

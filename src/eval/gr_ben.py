@@ -6,6 +6,7 @@ knowledge-based errors while LLMs struggle with computational errors.
 
 Paper: arXiv:2605.01203 — Sun et al.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -34,8 +35,7 @@ class GRBenEvaluator:
         self.prm = prm
         self.cfg = config or GRBenConfig()
 
-    def evaluate_domain(self, domain: str,
-                       test_data: list[dict]) -> dict:
+    def evaluate_domain(self, domain: str, test_data: list[dict]) -> dict:
         """Evaluate PRM on a specific reasoning domain.
 
         Returns metrics including AUROC for error detection,
@@ -74,11 +74,7 @@ class GRBenEvaluator:
         from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 
         predictions = [s > 0.5 for s in all_scores]
-        auroc = (
-            roc_auc_score(all_labels, all_scores)
-            if len(set(all_labels)) > 1
-            else float("nan")
-        )
+        auroc = roc_auc_score(all_labels, all_scores) if len(set(all_labels)) > 1 else float("nan")
         acc = accuracy_score(all_labels, predictions)
         f1 = f1_score(all_labels, predictions, zero_division=0)
 

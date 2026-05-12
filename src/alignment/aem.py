@@ -6,6 +6,7 @@ advantage and its relative surprisal.
 
 Paper: arXiv:2605.00425 — Zhao et al.
 """
+
 from __future__ import annotations
 
 import torch
@@ -22,8 +23,7 @@ class EntropyModulator(nn.Module):
         self.surprisal_proj = nn.Linear(d_model, 1, bias=False)
         self.alpha = nn.Parameter(torch.tensor(1.0))
 
-    def forward(self, response_hidden: Tensor,
-                baseline_hidden: Tensor) -> tuple[Tensor, Tensor]:
+    def forward(self, response_hidden: Tensor, baseline_hidden: Tensor) -> tuple[Tensor, Tensor]:
         """Compute entropy modulation signal and uncertainty proxy.
 
         Args:
@@ -94,7 +94,10 @@ def aem_loss(
     metrics = {
         "aem_loss": loss.item(),
         "mean_entropy_proxy": entropy_proxy.mean().item(),
-        "clip_fraction": ((ratio < 1 - clip_ratio) | (ratio > 1 + clip_ratio)).float().mean().item(),
+        "clip_fraction": ((ratio < 1 - clip_ratio) | (ratio > 1 + clip_ratio))
+        .float()
+        .mean()
+        .item(),
     }
     return total_loss, metrics
 
@@ -106,8 +109,9 @@ class AEMCreditAssigner:
         self.model = model
         self.modulator = EntropyModulator(model.config.d_model)
 
-    def assign_credits(self, responses: list[Tensor],
-                       baseline_responses: list[Tensor]) -> list[Tensor]:
+    def assign_credits(
+        self, responses: list[Tensor], baseline_responses: list[Tensor]
+    ) -> list[Tensor]:
         """Assign entropy-modulated credits to multi-turn interaction steps."""
         credits = []
         for resp, base in zip(responses, baseline_responses):

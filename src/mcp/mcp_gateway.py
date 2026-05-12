@@ -116,9 +116,7 @@ class MCPGatewayConfig:
             role_capabilities=dict(data.get("role_capabilities", {})),
             allowed_egress_domains=list(data.get("allowed_egress_domains", [])),
             allowed_egress_ips=list(data.get("allowed_egress_ips", [])),
-            require_hitl_for_destructive=bool(
-                data.get("require_hitl_for_destructive", True)
-            ),
+            require_hitl_for_destructive=bool(data.get("require_hitl_for_destructive", True)),
             rate_limit_per_tool=int(data.get("rate_limit_per_tool", 60)),
             rate_limit_window=float(data.get("rate_limit_window", 60.0)),
             rate_limit_per_user=int(data.get("rate_limit_per_user", 120)),
@@ -176,9 +174,7 @@ class MCPGateway:
             re.compile(r"^" + re.escape(d).replace(r"\*", ".*") + r"$")
             for d in config.allowed_egress_domains
         ]
-        self._allowed_nets: list[
-            ipaddress.IPv4Network | ipaddress.IPv6Network
-        ] = []
+        self._allowed_nets: list[ipaddress.IPv4Network | ipaddress.IPv6Network] = []
         for ip in config.allowed_egress_ips:
             self._allowed_nets.append(ipaddress.ip_network(ip, strict=False))
         self._allowlist_patterns: list[re.Pattern[str]] = [
@@ -193,9 +189,7 @@ class MCPGateway:
     def register_schema(self, tool_name: str, schema: dict[str, Any]) -> None:
         """Compute and store the SHA-256 hash of a tool's schema on first load."""
         canonical = json.dumps(schema, sort_keys=True, separators=(",", ":"))
-        self._schema_hashes[tool_name] = hashlib.sha256(
-            canonical.encode("utf-8")
-        ).hexdigest()
+        self._schema_hashes[tool_name] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
     def validate_schema(self, tool_name: str, schema: dict[str, Any]) -> bool:
         """Re-validate a tool's schema hash before calling.
@@ -349,9 +343,7 @@ class MCPGateway:
     # Human-in-the-loop
     # ------------------------------------------------------------------
 
-    def request_hitl_approval(
-        self, tool_name: str, caller_id: str, params: dict[str, Any]
-    ) -> str:
+    def request_hitl_approval(self, tool_name: str, caller_id: str, params: dict[str, Any]) -> str:
         """Generate a one-time approval token for a destructive operation."""
         params_canonical = json.dumps(params, sort_keys=True, separators=(",", ":"))
         token = hashlib.sha256(
@@ -412,12 +404,8 @@ class MCPGateway:
 
         # 1. Tool allowlisting
         if not self._check_allowlist(tool_name):
-            self._log(
-                caller_id, tool_name, params, allowed=False, reason="not in allowlist"
-            )
-            raise SecurityException(
-                f"Tool {tool_name!r} is not in the allowlist"
-            )
+            self._log(caller_id, tool_name, params, allowed=False, reason="not in allowlist")
+            raise SecurityException(f"Tool {tool_name!r} is not in the allowlist")
 
         # 2. Capability scoping
         if not self._check_capabilities(tool_name, caller_role):
@@ -428,15 +416,11 @@ class MCPGateway:
                 allowed=False,
                 reason="capability denied",
             )
-            raise SecurityException(
-                f"Role {caller_role!r} lacks capability for {tool_name!r}"
-            )
+            raise SecurityException(f"Role {caller_role!r} lacks capability for {tool_name!r}")
 
         # 3. Egress filtering
         if not self._check_egress(params):
-            self._log(
-                caller_id, tool_name, params, allowed=False, reason="egress blocked"
-            )
+            self._log(caller_id, tool_name, params, allowed=False, reason="egress blocked")
             raise SecurityException("Egress filtering blocked this request")
 
         # 4. Rate limiting
@@ -459,9 +443,7 @@ class MCPGateway:
             )
 
         # 6. Human-in-the-loop for destructive operations
-        if self.config.require_hitl_for_destructive and self._is_destructive(
-            tool_name
-        ):
+        if self.config.require_hitl_for_destructive and self._is_destructive(tool_name):
             if not self._is_hitl_approved(hitl_token):
                 token = self.request_hitl_approval(tool_name, caller_id, params)
                 self._log(
@@ -471,9 +453,7 @@ class MCPGateway:
                     allowed=False,
                     reason=f"hitl required: {token}",
                 )
-                raise SecurityException(
-                    f"Human approval required. Token: {token}"
-                )
+                raise SecurityException(f"Human approval required. Token: {token}")
             # Consume the token (one-time use)
             self._hitl_approvals.discard(hitl_token)
 

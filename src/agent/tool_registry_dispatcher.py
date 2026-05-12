@@ -227,9 +227,7 @@ class ToolRegistryDispatcher:
         self._rate_buckets: dict[str, _TokenBucket] = {}
         self._audit: list[_AuditEntry] = []
         self._budget_lock = threading.Lock()
-        self._executor = concurrent.futures.ThreadPoolExecutor(
-            max_workers=4
-        )
+        self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
 
     # -- registration -------------------------------------------------------
 

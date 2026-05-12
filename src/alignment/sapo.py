@@ -178,9 +178,7 @@ class SegmentExtractor:
 
         entropies = self.compute_token_entropy(logits)  # (T,)
 
-        threshold = float(
-            torch.quantile(entropies, q=self.config.segment_entropy_threshold).item()
-        )
+        threshold = float(torch.quantile(entropies, q=self.config.segment_entropy_threshold).item())
 
         boundary_mask = torch.zeros(T, dtype=torch.bool)
         for t in range(T):
@@ -481,7 +479,7 @@ class SegmentLevelAdvantage:
         """
         for seg in segments:
             adv = seg.advantage
-            token_advantages[seg.start_idx:seg.end_idx] = adv
+            token_advantages[seg.start_idx : seg.end_idx] = adv
 
 
 # ---------------------------------------------------------------------------

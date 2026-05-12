@@ -1,4 +1,5 @@
 """Tests for REINFORCE++ alignment algorithm."""
+
 from __future__ import annotations
 
 import torch

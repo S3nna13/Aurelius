@@ -139,4 +139,4 @@ class TestAdaGC:
         expected_norm = 2.0 * math.sqrt(3)
         assert step == 1
         assert math.isclose(ema, expected_norm, rel_tol=1e-6)
-        assert math.isclose(ema_sq, expected_norm ** 2, rel_tol=1e-6)
+        assert math.isclose(ema_sq, expected_norm**2, rel_tol=1e-6)

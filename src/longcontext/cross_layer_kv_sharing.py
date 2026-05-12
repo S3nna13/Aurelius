@@ -33,6 +33,7 @@ def _apply_rope(x: Tensor, freqs_cis: Tensor) -> Tensor:
     x_rotated = torch.view_as_real(x_complex * freqs).flatten(-2)
     return x_rotated.to(x.dtype)
 
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Config
 # ──────────────────────────────────────────────────────────────────────────────

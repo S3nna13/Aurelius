@@ -9,6 +9,7 @@ The model alternates between:
 This creates a self-improving curriculum with no external data.
 Paper: arXiv:2505.03335 (Absolute Zero Reasoner, NeurIPS 2025)
 """
+
 from __future__ import annotations
 
 import logging
@@ -22,13 +23,15 @@ logger = logging.getLogger(__name__)
 @dataclass
 class AbsoluteZeroConfig:
     """Configuration for the Absolute Zero self-play loop."""
+
     n_propose_per_cycle: int = 8
     n_solve_attempts: int = 3
     difficulty_range: tuple = (1, 5)
     crystallize_threshold: float = 0.7
     max_code_exec_seconds: float = 5.0
-    task_types: list[str] = field(default_factory=lambda: [
-        "code_completion", "math_reasoning", "logic_puzzle", "debugging"])
+    task_types: list[str] = field(
+        default_factory=lambda: ["code_completion", "math_reasoning", "logic_puzzle", "debugging"]
+    )
 
 
 class AbsoluteZeroLoop:
@@ -57,19 +60,22 @@ class AbsoluteZeroLoop:
         """Execute code solution in a restricted sandbox and check correctness."""
         import os
         import subprocess
+        import sys
         import tempfile
+
         code = self._extract_code(solution)
         if not code:
             return False
         try:
-            with tempfile.NamedTemporaryFile(mode="w", suffix=".py",
-                                             delete=False) as f:
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
                 f.write(code)
                 fname = f.name
             result = subprocess.run(
-                ["python3", fname],  # noqa: S607 - intentional PATH lookup for python3
-                capture_output=True, text=True,
-                timeout=self.config.max_code_exec_seconds)
+                [sys.executable, fname],
+                capture_output=True,
+                text=True,
+                timeout=self.config.max_code_exec_seconds,
+            )
             os.unlink(fname)
             return result.returncode == 0
         except Exception as e:
@@ -91,6 +97,7 @@ class AbsoluteZeroLoop:
     def run_cycle(self) -> dict:
         """Run one full propose→solve→verify→crystallize cycle."""
         import random
+
         stats = {"proposed": 0, "solved": 0, "crystallized": 0}
 
         for _ in range(self.config.n_propose_per_cycle):

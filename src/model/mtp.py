@@ -155,9 +155,7 @@ class MTPModule(nn.Module):
             token = torch.multinomial(probs.view(B, -1), 1)
             drafts.append(token)
 
-            token_embed = (
-                layer.head.weight[token] if layer.head.weight.ndim == 2 else None
-            )
+            token_embed = layer.head.weight[token] if layer.head.weight.ndim == 2 else None
             if token_embed is None:
                 break
             draft_embeds = token_embed

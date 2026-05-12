@@ -6,6 +6,7 @@ utility, and topology quality into a calibrated uncertainty signal.
 
 Paper: arXiv:2605.00224 (ICML 2026) — Abdullah et al.
 """
+
 from __future__ import annotations
 
 import torch
@@ -76,15 +77,13 @@ def tur_dpo_loss(
     """
     pi_logratio = chosen_log_probs.sum(-1) - rejected_log_probs.sum(-1)
     if ref_chosen_log_probs is not None and ref_rejected_log_probs is not None:
-        ref_logratio = (
-            ref_chosen_log_probs.sum(-1) - ref_rejected_log_probs.sum(-1)
-        ).detach()
+        ref_logratio = (ref_chosen_log_probs.sum(-1) - ref_rejected_log_probs.sum(-1)).detach()
     else:
         ref_logratio = torch.zeros_like(pi_logratio)
 
-    uncertainty_weight = torch.sigmoid(torch.stack([
-        chosen_uncertainty, rejected_uncertainty
-    ], dim=1)).mean(dim=1)
+    uncertainty_weight = torch.sigmoid(
+        torch.stack([chosen_uncertainty, rejected_uncertainty], dim=1)
+    ).mean(dim=1)
 
     delta = pi_logratio - ref_logratio
     r_clamped = delta.clamp(-20, 20)
@@ -104,8 +103,7 @@ def tur_dpo_loss(
 class TURDPOTrainer:
     """TUR-DPO training loop."""
 
-    def __init__(self, model: nn.Module, ref_model: nn.Module,
-                 config: dict | None = None) -> None:
+    def __init__(self, model: nn.Module, ref_model: nn.Module, config: dict | None = None) -> None:
         self.model = model
         self.ref_model = ref_model
         self.cfg = config or {}

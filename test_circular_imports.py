@@ -6,7 +6,7 @@ import traceback
 
 # Clear all agent-related modules
 for mod_name in list(sys.modules.keys()):
-    if 'agent' in mod_name:
+    if "agent" in mod_name:
         del sys.modules[mod_name]
 
 print("=== GREEN TEST: Verify circular imports are fixed ===\n")
@@ -25,8 +25,7 @@ try:
 
     # Check TOOL_REGISTRY has code_execution
     assert "code_execution" in agent.TOOL_REGISTRY, (
-        f"Missing 'code_execution' in TOOL_REGISTRY. "
-        f"Keys: {list(agent.TOOL_REGISTRY.keys())}"
+        f"Missing 'code_execution' in TOOL_REGISTRY. Keys: {list(agent.TOOL_REGISTRY.keys())}"
     )
     print("[OK] code_execution registered in TOOL_REGISTRY")
 
@@ -49,6 +48,7 @@ print()
 print("Test 2: from agent.plan_and_execute import PlanAndExecuteAgent...")
 try:
     from agent.plan_and_execute import PlanAndExecuteAgent
+
     print(f"[OK] PlanAndExecuteAgent imported successfully: {PlanAndExecuteAgent}")
 except Exception as e:
     print(f"[FAIL] {type(e).__name__}: {e}")
@@ -58,6 +58,7 @@ except Exception as e:
 print("Test 3: from agent.code_execution_tool import CodeExecutionTool...")
 try:
     from agent.code_execution_tool import CodeExecutionTool
+
     print(f"[OK] CodeExecutionTool imported successfully: {CodeExecutionTool}")
 except Exception as e:
     print(f"[FAIL] {type(e).__name__}: {e}")
@@ -78,15 +79,20 @@ print()
 # Test 5: Import via src.agent shim (backward compat)
 print("Test 5: Import via src.agent shim (backward compat)...")
 for mod_name in list(sys.modules.keys()):
-    if 'agent' in mod_name:
+    if "agent" in mod_name:
         del sys.modules[mod_name]
 
 try:
     import src.agent
+
     assert hasattr(src.agent, "PlanAndExecuteAgent"), "PlanAndExecuteAgent not in src.agent"
     assert hasattr(src.agent, "CodeExecutionTool"), "CodeExecutionTool not in src.agent"
-    assert "plan_and_execute" in src.agent.AGENT_LOOP_REGISTRY, "plan_and_execute not in AGENT_LOOP_REGISTRY via src.agent"
-    assert "code_execution" in src.agent.TOOL_REGISTRY, "code_execution not in TOOL_REGISTRY via src.agent"
+    assert "plan_and_execute" in src.agent.AGENT_LOOP_REGISTRY, (
+        "plan_and_execute not in AGENT_LOOP_REGISTRY via src.agent"
+    )
+    assert "code_execution" in src.agent.TOOL_REGISTRY, (
+        "code_execution not in TOOL_REGISTRY via src.agent"
+    )
     print("[OK] All registrations available through src.agent shim")
 except Exception as e:
     print(f"[FAIL] {type(e).__name__}: {e}")

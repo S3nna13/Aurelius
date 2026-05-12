@@ -32,7 +32,7 @@ def _compute_grad_norm(params: list[nn.Parameter]) -> float:
 def test_zclip_warmup_clips_to_fallback():
     """During warmup, a huge gradient norm is clipped to <= fallback_clip * 1.01."""
     fallback = 1.0
-    zclip = ZClip(fallback_clip=fallback, min_warmup_steps=100)
+    zclip = ZClip(fallback_clip=fallback, warmup_steps=100)
 
     params = _params_with_norm(100.0)
     pre_norm = zclip.clip_grad_norm_(params)
@@ -57,7 +57,7 @@ def test_zclip_no_clip_normal_gradient():
     (not merely that z-score of the mean is 0).
     """
     warmup = 20
-    zclip = ZClip(z_threshold=2.5, ema_alpha=0.5, min_warmup_steps=warmup, fallback_clip=1.0)
+    zclip = ZClip(z_threshold=2.5, ema_alpha=0.5, warmup_steps=warmup, fallback_clip=1.0)
 
     # Converge the EMA with consistent norm=1.0
     for _ in range(warmup):
@@ -88,7 +88,7 @@ def test_zclip_no_clip_normal_gradient():
 def test_zclip_clips_spike():
     """After warmup, a spike (mean + 10*std) is clipped down to mean + z_threshold*std."""
     warmup = 20
-    zclip = ZClip(z_threshold=2.5, ema_alpha=0.1, min_warmup_steps=warmup, fallback_clip=1.0)
+    zclip = ZClip(z_threshold=2.5, ema_alpha=0.1, warmup_steps=warmup, fallback_clip=1.0)
 
     for _ in range(warmup):
         ps = _params_with_norm(1.0)
@@ -117,7 +117,7 @@ def test_zclip_clips_spike():
 
 def test_zclip_ema_updates():
     """After several steps, _ema_mean is > 0 and _step is incremented."""
-    zclip = ZClip(ema_alpha=0.1, min_warmup_steps=5)
+    zclip = ZClip(ema_alpha=0.1, warmup_steps=5)
 
     for _ in range(10):
         ps = _params_with_norm(1.0)
@@ -134,7 +134,7 @@ def test_zclip_ema_updates():
 
 def test_zclip_returns_prenorm():
     """The return value is the pre-clip norm, not the post-clip norm."""
-    zclip = ZClip(fallback_clip=1.0, min_warmup_steps=100)
+    zclip = ZClip(fallback_clip=1.0, warmup_steps=100)
 
     target_norm = 50.0
     params = _params_with_norm(target_norm)

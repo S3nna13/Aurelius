@@ -4,8 +4,10 @@
 def __getattr__(name: str):
     if name == "ProcessRewardModel":
         from src.training.process_reward_model import ProcessRewardModel
+
         return ProcessRewardModel
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 __all__ = [
     "ALIGNMENT_REGISTRY",
@@ -131,10 +133,8 @@ from .step_dpo import step_dpo_loss as step_dpo_loss
 
 # Alignment component registry: maps string keys -> class
 ALIGNMENT_REGISTRY: dict = {}
-try:
-    ALIGNMENT_REGISTRY["prm"] = ProcessRewardModel
-except NameError:
-    pass
+ProcessRewardModel = __getattr__("ProcessRewardModel")  # type: ignore[assignment]
+ALIGNMENT_REGISTRY["prm"] = ProcessRewardModel
 ALIGNMENT_REGISTRY["adversarial_code_battle"] = AdversarialCodeBattle
 
 from .constitution_dimensions import (

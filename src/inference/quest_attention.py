@@ -43,7 +43,9 @@ class QuestAttention:
             raise ValueError(f"page_budget must be positive, got {page_budget}")
         self.paged_kv = paged_kv
         self.page_budget = page_budget
-        self.device = device or (torch.cuda.current_device() if torch.cuda.is_available() else "cpu")
+        self.device = device or (
+            torch.cuda.current_device() if torch.cuda.is_available() else "cpu"
+        )
 
         # page_stats[physical_page_id] -> {"k_min": Tensor, "k_max": Tensor}
         self.page_stats: dict[int, dict[str, Tensor]] = {}
@@ -64,9 +66,7 @@ class QuestAttention:
             raise ValueError(f"k_page must be 3-D, got shape {tuple(k_page.shape)}")
         expected_page_size = self.paged_kv.page_size
         if k_page.shape[0] != expected_page_size:
-            raise ValueError(
-                f"k_page page_size {k_page.shape[0]} != expected {expected_page_size}"
-            )
+            raise ValueError(f"k_page page_size {k_page.shape[0]} != expected {expected_page_size}")
 
         k_min = k_page.amin(dim=0)  # (n_heads, head_dim)
         k_max = k_page.amax(dim=0)  # (n_heads, head_dim)
@@ -104,7 +104,9 @@ class QuestAttention:
             heads).
         """
         if query.dim() != 2:
-            raise ValueError(f"query must be 2-D (n_heads, head_dim), got shape {tuple(query.shape)}")
+            raise ValueError(
+                f"query must be 2-D (n_heads, head_dim), got shape {tuple(query.shape)}"
+            )
 
         scores: dict[int, float] = {}
         q_abs = query.abs().to(device=self.device)  # (n_heads, head_dim)

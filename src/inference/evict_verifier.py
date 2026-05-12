@@ -6,6 +6,7 @@ and combines with offline-profiled verification cost.
 
 Paper: arXiv:2605.00342
 """
+
 from __future__ import annotations
 
 from typing import NamedTuple
@@ -53,8 +54,7 @@ class EVICTVerifier:
         target_budget: int,
     ) -> list[DraftCandidate]:
         benefit_scores = [
-            self.score_candidate(cand, draft_logits[i])
-            for i, cand in enumerate(candidates)
+            self.score_candidate(cand, draft_logits[i]) for i, cand in enumerate(candidates)
         ]
 
         sorted_candidates = sorted(

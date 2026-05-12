@@ -21,8 +21,8 @@ class PrecisionFusion:
         Returns:
             (B,) fused reward.
         """
-        means_stack = torch.stack(means, dim=0)                          # (n_signals, B)
-        stds_stack  = torch.stack(stds, dim=0).clamp(min=self.eps)       # (n_signals, B)
-        precision   = 1.0 / (stds_stack ** 2 + self.eps)                 # (n_signals, B)
-        weights     = precision / precision.sum(dim=0, keepdim=True)     # (n_signals, B) normalized
-        return (weights * means_stack).sum(dim=0)                        # (B,)
+        means_stack = torch.stack(means, dim=0)  # (n_signals, B)
+        stds_stack = torch.stack(stds, dim=0).clamp(min=self.eps)  # (n_signals, B)
+        precision = 1.0 / (stds_stack**2 + self.eps)  # (n_signals, B)
+        weights = precision / precision.sum(dim=0, keepdim=True)  # (n_signals, B) normalized
+        return (weights * means_stack).sum(dim=0)  # (B,)

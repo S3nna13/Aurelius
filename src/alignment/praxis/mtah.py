@@ -38,7 +38,7 @@ class MultiTokenAlignmentHorizon:
             if step >= T:
                 break
             future = torch.zeros_like(advantages)
-            future[:, :T - step] = advantages[:, step:]
-            result = result + (self.gamma ** step) * future
+            future[:, : T - step] = advantages[:, step:]
+            result = result + (self.gamma**step) * future
 
         return result

@@ -4,6 +4,7 @@ Updates one transformer layer block per optimizer step. Requires optimizer
 state for only one block at a time → LoRA-level memory with full-param quality.
 Paper: arXiv:2404.02827 (NeurIPS 2024)
 """
+
 from __future__ import annotations
 
 from torch import nn

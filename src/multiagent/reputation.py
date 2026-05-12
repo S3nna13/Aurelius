@@ -108,7 +108,7 @@ class VerificationRegime:
     def _evaluate_automated(self, data: dict[str, Any]) -> tuple[bool, float]:
         passed = data.get("tests_passed", False)
         coverage = data.get("coverage_percent", 0.0) / 100.0
-        confidence = (0.7 * int(passed) + 0.3 * coverage)
+        confidence = 0.7 * int(passed) + 0.3 * coverage
         coverage_threshold = self._threshold("coverage_threshold", 0.0)
         required_passed = bool(self.success_conditions.get("tests_passed", True))
         success = bool(passed) == required_passed and coverage >= coverage_threshold
@@ -254,11 +254,7 @@ class ReputationCard:
             age_days = max(0.0, float((now - _as_utc(event.timestamp)).days))
             recency_factor = min(1.0, max(0.0, 1.0 - (age_days / 365.0)))
 
-            weight = (
-                event.strength.value
-                * recency_factor
-                * event.confidence
-            )
+            weight = event.strength.value * recency_factor * event.confidence
 
             base_value = 1.0 if event.success else 0.0
             weighted_sum += base_value * weight
@@ -365,8 +361,7 @@ class PolicyEngine:
             TaskAllocation with approval decision and reasoning.
         """
         applicable_rules = [
-            r for r in self.rules.values()
-            if r.context == task_context or r.context == "*"
+            r for r in self.rules.values() if r.context == task_context or r.context == "*"
         ]
 
         if not applicable_rules:
@@ -609,10 +604,7 @@ class ReputationService:
         if not pending:
             return None
 
-        context_evidence = [
-            e for e in pending
-            if e.context == context
-        ]
+        context_evidence = [e for e in pending if e.context == context]
 
         if not context_evidence:
             return None
@@ -631,9 +623,7 @@ class ReputationService:
                 all_evidence.append(latest)
                 card.compute_score(all_evidence)
 
-        self.pending_evidence[agent_id] = [
-            e for e in pending if e.event_id != latest.event_id
-        ]
+        self.pending_evidence[agent_id] = [e for e in pending if e.event_id != latest.event_id]
 
         return latest
 
@@ -918,8 +908,7 @@ class DecentralizedReputationFramework:
     ) -> str:
         """Generate unique event ID from components."""
         content = (
-            f"{agent_id}:{regime_id}:{context}:"
-            f"{json.dumps(raw_data, sort_keys=True)}:{time.time()}"
+            f"{agent_id}:{regime_id}:{context}:{json.dumps(raw_data, sort_keys=True)}:{time.time()}"
         )
         return hashlib.sha256(content.encode()).hexdigest()[:24]
 
@@ -968,9 +957,7 @@ class DecentralizedReputationFramework:
         if card.is_cold_start:
             risk_level = min(1.0, risk_level + 0.2)
 
-        regime = self.policy_engine.determine_verification_escalation(
-            risk_level, card, task_value
-        )
+        regime = self.policy_engine.determine_verification_escalation(risk_level, card, task_value)
 
         allocation = self.policy_engine.evaluate_task_allocation(
             agent_id, card, task_value, task_context
@@ -1058,7 +1045,7 @@ class DecentralizedReputationFramework:
 
         commitment = self.on_chain.commit(
             f"reputation:{agent_id}:{context}",
-            f"{card.score}:{card.evidence_count}:{card.confidence_level}"
+            f"{card.score}:{card.evidence_count}:{card.confidence_level}",
         )
 
         return {
