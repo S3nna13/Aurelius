@@ -90,6 +90,7 @@ def _invoke(
 
     socket = _MemorySocket(request_bytes)
     server = SimpleNamespace(
+        server_address=("127.0.0.1", 12345),
         generate_fn=generate_fn or make_mock_generate_fn(),
         auth_middleware=auth_middleware,
         rate_limiter=rate_limiter,

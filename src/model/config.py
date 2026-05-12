@@ -185,6 +185,59 @@ class AureliusConfig:
     fp8_weight_quant_block: int = 128
     fp8_accumulation_promotion_interval: int = 128
 
+    # Efficiency features
+    kv_quantization: str = "none"
+    kv_sharing_factor: int = 1
+    teal_sparsity: float = 0.0
+
+    # KIVI KV cache quantization
+    kivi_bits: int = 0
+    kivi_residual_length: int = 128
+
+    # DuoAttention head masking
+    duo_attention: bool = False
+
+    # CPU KV offloading (InfLLM-style)
+    cpu_kv_offload: bool = False
+    cpu_kv_sink_size: int = 4
+    cpu_kv_recent_size: int = 512
+    cpu_kv_topk_blocks: int = 32
+
+    # Quest page-level sparse attention
+    quest_page_budget: int = 0
+    page_size: int = 16
+
+    # === Liger Kernels ===
+    use_liger_kernels: bool = True
+
+    # === Attention variants ===
+    use_sage_attention: bool = False
+    use_mla: bool = False
+    kv_lora_rank: int = 512
+    q_lora_rank: int = 1536
+    use_diff_transformer: bool = False
+
+    # === Multi-Token Prediction ===
+    mtp_heads: int = 3
+    mtp_weight: float = 0.1
+
+    # === AMC Memory ===
+    use_ttt_episodic: bool = False
+    ttt_inner_dim: int = 256
+    ttt_inner_lr: float = 1e-3
+
+    # === nGPT ===
+    use_ngpt: bool = False
+
+    # === Training ===
+    optimizer: str = "muon"
+    muon_lr: float = 0.02
+    synthetic_data_ratio: float = 0.30
+
+    # === Safety ===
+    safety_geometry_preservation: bool = True
+    safety_geo_coeff: float = 0.001
+
     # --- Backward-compatible feature-flag aliases -------------------------
     # These delegate to FeatureFlagRegistry. Do NOT add new ones here;
     # add them to src/runtime/surface_flags.py instead.

@@ -1,10 +1,13 @@
 """Benchmark runner: execute multiple benchmarks, collect results, report."""
 
 import json
+import logging
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -46,7 +49,7 @@ class BenchmarkRunner:
         result = {}
         if benchmark is not None:
             if config.use_ilr:
-                from src.eval.ilr_harness import ILRHarness, ILRConfig
+                from src.eval.ilr_harness import ILRConfig, ILRHarness
 
                 ilr_seed = config.ilr_seed if config.ilr_seed is not None else config.seed
                 benchmark = ILRHarness(

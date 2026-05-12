@@ -1,6 +1,8 @@
 import torch
+
 from src.alignment.praxis.config import PRAXISConfig
 from src.alignment.praxis.praxis_loss import PRAXISLoss
+
 
 def make_loss(B=2, T=6, cfg=None):
     cfg = cfg or PRAXISConfig(d_model=8)

@@ -6,14 +6,13 @@ Connects to the Node.js BFF which proxies to the frontend.
 
 from __future__ import annotations
 
-import json
 from typing import Any
 
 try:
     from aurelius.agent_registry import (
-        ALL_AGENTS,
         AGENT_REGISTRY,
         AGENTS_BY_CATEGORY,
+        ALL_AGENTS,
         agent_to_dict,
     )
     from aurelius.skills_registry import (

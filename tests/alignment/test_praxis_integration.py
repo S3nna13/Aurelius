@@ -20,9 +20,9 @@ def test_precision_fusion_import():
     assert PrecisionFusion is not None
 
 def test_all_novel_components_import():
-    from src.alignment.praxis.steering_reward import SteeringRewardCorrespondence
     from src.alignment.praxis.expert_safety_affinity import ExpertSafetyAffinity
     from src.alignment.praxis.mtah import MultiTokenAlignmentHorizon
+    from src.alignment.praxis.steering_reward import SteeringRewardCorrespondence
     assert SteeringRewardCorrespondence is not None
     assert ExpertSafetyAffinity is not None
     assert MultiTokenAlignmentHorizon is not None

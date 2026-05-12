@@ -1,6 +1,8 @@
 import torch
+
 from src.alignment.praxis.config import PRAXISConfig
 from src.alignment.praxis.mtah import MultiTokenAlignmentHorizon
+
 
 def test_mtah_extends_advantages_forward():
     cfg = PRAXISConfig(gamma_mtah=0.9, k_mtah=2)
@@ -12,7 +14,7 @@ def test_mtah_extends_advantages_forward():
     # Positions 1 and 2 should receive discounted credit from position 3
     assert extended[0, 1].item() > 0.0, "position 1 gets credit from future spike"
     assert extended[0, 2].item() > extended[0, 1].item(), "closer = more credit"
-    assert extended[0, 3].item() == 1.0, "original spike preserved"
+    assert torch.isclose(extended[0, 3], adv[0, 3], atol=1e-6), "original spike preserved"
 
 def test_mtah_shape_preserved():
     cfg = PRAXISConfig(gamma_mtah=0.95, k_mtah=3)

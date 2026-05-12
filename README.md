@@ -49,15 +49,45 @@ The frontend **never** talks directly to Python. All API calls route through the
 - **1.395B decoder-only transformer** — GQA, RoPE/YaRN, SwiGLU, RMSNorm
 - **150+ architecture modules** — MoE, SSMs (Mamba, RWKV, Griffin), diffusion LM head
 - **Full training pipeline** — pretrain → SFT → DPO → RLHF, all from scratch
+- **Liger kernel integration** — fused RMSNorm, SwiGLU, cross-entropy for ~30% throughput uplift
+- **Forward replay** — activation checkpointing with selective replay for memory-efficient backprop
+- **OOD pathway** — out-of-distribution detection and routing for robustness
 - **No HF Transformers / flash-attn / bitsandbytes / DeepSpeed at runtime**
+
+### Alignment (MOSAIC v2 — PRAXIS System)
+- **PRAXIS trainer** — 6-signal MOSAIC v2 architecture-aware alignment framework
+  - SteeringRewardCorrespondence (SRC), ExpertSafetyAffinity (ESA), MultiTokenAlignmentHorizon (MTAH)
+  - PrecisionFusion (Bayesian inverse-variance weighting), PRAXISLoss (DAPO + KL + constitutional gate)
+- **REINFORCE++** — variance-reduced policy gradient with baseline correction
+- **SAPO** — Self-Adaptive Policy Optimization with dynamic KL weighting
+- **TUR-DPO** — Trust-Uncertainty-Regularized DPO for distribution-aware preference learning
+- **AEM** — Adaptive Entropy Masking trainer for controlled generation diversity
+- **Full alignment suite** — DPO, GRPO, CPO, ORPO, PPO, SimPO, SPIN, KTO, constitutional AI
+
+### Inference & KV Cache
+- **8 KV cache strategies** — DuoAttention, EVICT (H2O-style), KIVI quantization, QUEST attention,
+  RMR (Retrieval-based Memory Reduction), Rocket KV, SAGE attention, TEAL sparsity
+- **DuoAttention head classification** — auto-detects retrieval vs. streaming heads; JSON config export
+- **Speculative decoding** — Eagle / Medusa heads for 2-3x throughput
+- **Continuous batching** and paged KV cache
 
 ### Agent System
 - **ReAct loop** with tool-call parsing, argument validation, budget-bounded termination
+- **AbsoluteZero loop** — self-play curriculum: task proposer + solver in a closed feedback loop
+- **Neuro-symbolic skill** — LLM reasoning grafted onto symbolic rule engines
+- **Reputation system** — multi-agent trust scoring with Bayesian update and Sybil resistance
 - **13 unified personas** across 5 domains (GENERAL, CODING, SECURITY, THREAT_INTEL, AGENT)
 - **7 composable facets** — security, threat_intel, agent_mode, constitution, harm_filter, personality, dialogue
-- **Multi-step chaining** with timeout controls
+
+### Memory & Retrieval
+- **MemCoE** — Memory-Conditioned Expert gating: routes tokens through memory-specialized MoE experts
+- **Unified memory orchestrator** — semantic + episodic + working memory with coherent recall
+- **Retrieval pipeline** — end-to-end BM25 + dense hybrid retrieval with re-ranking
 
 ### Security & Safety
+- **Topology safety** — persistent-homology invariant checking across activation manifolds
+- **Superposition geometry** — polysemanticity detection via interference-angle analysis
+- **Geometry preservation** — layer-wise representation drift bounds during fine-tuning
 - **24 security modules** — gradient inversion defense, GCG adversarial search, prompt injection detector, STRIP backdoor scan
 - **Jailbreak detection** and output filtering
 - **PII scanner** and harm taxonomy (9 categories)
@@ -146,13 +176,22 @@ docker compose --profile inference up   # with LLM inference
 
 ```python
 import openai
-client = openai.OpenAI(base_url="http://localhost:7870/v1", api_key="none")
+client = openai.OpenAI(base_url="http://localhost:8080/v1", api_key="none")
 response = client.chat.completions.create(
     model="aurelius",
     messages=[{"role": "user", "content": "Hello!"}],
 )
 print(response.choices[0].message.content)
 ```
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `AURELIUS_API_KEY` | — | Single API key for server authentication |
+| `AURELIUS_API_KEYS` | — | Multi-key store: `id:key:scope1,scope2;...` |
+| `AURELIUS_VERSION` | `0.1.0` | Server version string (visible at `/health`) |
+| `AURELIUS_AUTH_ENABLED` | `true` | Require API key on non-loopback interfaces |
 
 ---
 
@@ -238,25 +277,25 @@ Aurelius/
 +-- src/                          # Python backend (~1,720 modules)
 |   +-- model/                    # Transformer core (GQA, RoPE, SwiGLU, MoE, SSMs)
 |   +-- training/                 # Muon, ZClip, curriculum, RLHF trainers
-|   +-- alignment/                # DPO, GRPO, SimPO, ORPO, KTO, SPIN, constitutional AI
-|   +-- inference/                # Speculative decoding, batching, paged KV cache
+|   +-- alignment/                # PRAXIS/MOSAIC v2, DPO, GRPO, REINFORCE++, SAPO, TUR-DPO, AEM, constitutional AI
+|   +-- inference/                # Speculative decoding, KV cache (DuoAttention, EVICT, KIVI, QUEST, RMR, Rocket KV, SAGE, TEAL)
 |   +-- persona/                  # 13 personas, 7 facets, routing, prompt composition
-|   +-- agent/                    # ReAct loop, tool parser, planner, memory writer
+|   +-- agent/                    # ReAct loop, AbsoluteZero, neuro-symbolic, tool parser, planner, memory writer
 |   +-- chat/                     # ChatML, Llama-3 templates, conversation management
 |   +-- cli/                      # CLI entry points (aurelius, aurelius-cli, aurelius-shell)
 |   +-- serving/                  # OpenAI-compatible API, streaming, metrics
-|   +-- safety/                   # Jailbreak detector, output filter, PII scanner
+|   +-- safety/                   # Jailbreak detector, topology safety, superposition geometry, geometry preservation, PII scanner
 |   +-- security/                 # Adversarial defense, backdoor scan, MITRE ATT&CK
 |   +-- interpretability/         # Activation patching, SAEs, probing, circuit discovery
 |   +-- eval/                     # Benchmarks, scorers, calibration
 |   +-- data/                     # Data processing, tokenization, curriculum
 |   +-- longcontext/              # KV quantization, StreamingLLM, attention sinks
-|   +-- retrieval/                # BM25, hybrid search, dense retriever
+|   +-- retrieval/                # End-to-end pipeline, BM25, hybrid search, dense retriever, re-ranking
 |   +-- reasoning/                # MCTS, chain-of-thought, structured reasoning
-|   +-- memory/                   # Semantic memory, episodic memory, recall
+|   +-- memory/                   # MemCoE, semantic memory, episodic memory, unified orchestrator
 |   +-- tools/                    # Tool definitions, schemas, execution
 |   +-- workflow/                 # Workflow engine, DAG execution
-|   +-- multiagent/               # Multi-agent coordination, delegation
+|   +-- multiagent/               # Multi-agent coordination, Bayesian reputation system, delegation
 |   +-- multimodal/               # Vision, audio, multimodal integration
 |   +-- quantization/             # AWQ, GPTQ, SmoothQuant, NF4, FP8
 |   +-- runtime/                  # Hot reload, compile manager, compute scheduler
@@ -269,7 +308,7 @@ Aurelius/
 |   +-- profiling/                # Performance profiling tools
 |   +-- optimizers/               # Custom optimizers (Muon, SOAP, etc.)
 |   +-- simulation/               # Simulation environments
-|   +-- compression/              # Model compression utilities
+|   +-- compression/              # AGOQ (Adaptive Group Quantization), model compression utilities
 |   +-- federation/               # Federated learning
 |   +-- backends/                 # Backend abstractions
 |   +-- deployment/               # Deployment utilities
@@ -306,7 +345,7 @@ Aurelius/
 |   +-- usage-store/              # PyO3 usage/cost tracking
 +-- configs/                      # Training configs (1.4B, 2.7B, 3B, MoE-5B)
 +-- scripts/                      # Benchmark, bootstrap, export, profile
-+-- tests/                        # 32,400+ tests across all surfaces
++-- tests/                        # 33,000+ tests across all surfaces
 +-- deployment/                   # Docker, Docker Compose, Helm charts
 +-- docs/                         # Documentation
 +-- tools/                        # Rust CLI tools (data-cli, jsonl-merge)

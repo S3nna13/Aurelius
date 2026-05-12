@@ -80,7 +80,7 @@ def register_backend_adapter_pytorch() -> None:
 # registry. The registration is idempotent.
 try:
     register_backend_adapter_pytorch()
-except Exception:
+except Exception:  # noqa: S110  # additive registration — silently skip if unavailable
     pass
 
 # --- Ollama adapter (additive, cycle-146) --------------------------------------

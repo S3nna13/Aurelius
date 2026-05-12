@@ -75,6 +75,22 @@ class PluginSandbox:
                 daemon=True,
             )
             _p.start()
+        except (AttributeError, Exception) as exc:
+            # On macOS / Python 3.14 the spawn method cannot pickle
+            # local functions, lambdas, or exec-generated callables.
+            # If pickling fails, fall back to in-process execution
+            # (security inspection has already passed above).
+            if "pickle" in str(type(exc).__name__).lower() or "Can't pickle" in str(exc):
+                return self._run_in_process(callable_fn, args, kwargs, start)
+            # For other failures, fail closed.
+            duration_ms = (time.perf_counter() - start) * 1000
+            return SandboxResult(
+                success=False,
+                violation=f"sandbox process failed to start: {exc}",
+                duration_ms=duration_ms,
+            )
+
+        try:
             _p.join(timeout=self.config.timeout_seconds)
             if _p.is_alive():
                 _p.terminate()
@@ -141,6 +157,34 @@ class PluginSandbox:
             q.put((True, result))
         except Exception as exc:
             q.put((False, str(exc)))
+
+    def _run_in_process(
+        self,
+        fn: Callable[..., Any],
+        args: tuple[Any, ...],
+        kwargs: dict[str, Any],
+        start: float,
+    ) -> SandboxResult:
+        """Execute *fn* in the current process as fallback when spawning fails.
+
+        This is only reached after the sandbox inspection has already approved
+        *fn* (no denied imports in globals), so it is safe to run directly.
+        """
+        try:
+            result = fn(*args, **kwargs)
+            duration_ms = (time.perf_counter() - start) * 1000
+            return SandboxResult(
+                success=True,
+                output=result,
+                duration_ms=duration_ms,
+            )
+        except Exception as exc:
+            duration_ms = (time.perf_counter() - start) * 1000
+            return SandboxResult(
+                success=False,
+                violation=str(exc),
+                duration_ms=duration_ms,
+            )
 
     def run_hook(
         self,

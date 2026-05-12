@@ -6,7 +6,7 @@ import math
 
 import torch
 
-from src.optimizers.adaptive_clipper import AdaptiveGradientClipper, AdaGC, ZClip
+from src.optimizers.adaptive_clipper import AdaGC, AdaptiveGradientClipper, ZClip
 
 
 class TestAdaptiveGradientClipper:

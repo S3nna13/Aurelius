@@ -6,9 +6,10 @@ Prometheus text format (Apache-2.0), clean-room Aurelius implementation.
 
 from __future__ import annotations
 
-import yaml
 from dataclasses import dataclass, field
 from pathlib import Path
+
+import yaml
 
 # ---------------------------------------------------------------------------
 # Errors

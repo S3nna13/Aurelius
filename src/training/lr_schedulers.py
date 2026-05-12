@@ -111,7 +111,6 @@ def wsd_schedule(
     """
     stable_start = warmup_steps
     decay_start = warmup_steps + stable_steps
-    decay_end = decay_start + decay_steps
 
     if step < stable_start:
         # Warmup

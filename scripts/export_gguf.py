@@ -20,14 +20,12 @@ import argparse
 import json
 import logging
 import struct
-import sys
 from pathlib import Path
 from typing import Any
 
 import torch
 
 from src.model.config import AureliusConfig
-from src.model.transformer import AureliusTransformer
 
 logger = logging.getLogger(__name__)
 

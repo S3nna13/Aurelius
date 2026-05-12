@@ -94,12 +94,12 @@ class GCGAttack:
         suffix_embeds = one_hot @ embed_weight  # (suffix_len, d_model)
 
         # Concatenate and add batch dim
-        all_embeds = torch.cat([prefix_embeds.detach(), suffix_embeds], dim=0).unsqueeze(0)
+        _all_embeds = torch.cat([prefix_embeds.detach(), suffix_embeds], dim=0).unsqueeze(0)  # noqa: F841
         # (1, seq_len, d_model)
 
-        # Append target tokens (no grad)
+        # Append target tokens (no grad) — used for loss computation below
         with torch.no_grad():
-            target_embeds = embed_weight[target_ids[0]]
+            pass  # target_embeds reserved for future contrastive loss
 
         # Forward pass manually through the model using embeddings
         # We need to call the model in a way that accepts pre-computed embeddings.

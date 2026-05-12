@@ -9,6 +9,8 @@ Tests:
   6. Constitutional gate: partial gating zeroes advantages for unsafe seqs only
   7. WARP merge: anchor_merge called at correct step interval
   8. Public __all__ exports: all PRAXIS symbols importable via star import
+  9. Gradient flow: loss.backward() produces non-zero parameter gradients
+  10. No-NaN signals: all reward signals stay finite under full signal paths
 """
 from __future__ import annotations
 
@@ -99,7 +101,7 @@ class FakeAureliusModel(nn.Module):
 # Helpers
 # ---------------------------------------------------------------------------
 
-def make_cfg(**kwargs) -> "PRAXISConfig":
+def make_cfg(**kwargs) -> "PRAXISConfig":  # noqa: UP037, F821
     from src.alignment.praxis.config import PRAXISConfig
     defaults = dict(
         d_model=16, n_principles=2, mc_dropout_n=3,
@@ -239,7 +241,11 @@ def test_e2e_per_sample_think_weights():
     """Verifies that think_weights are computed per sample, not just from input_ids[0].
     Two sequences with different <think> token positions should produce different weights.
     """
-    from src.alignment.thinking_tokens import ThinkingLossWeights, THINK_START_TOKEN_ID, THINK_END_TOKEN_ID
+    from src.alignment.thinking_tokens import (
+        THINK_END_TOKEN_ID,
+        THINK_START_TOKEN_ID,
+        ThinkingLossWeights,
+    )
 
     think_wts = ThinkingLossWeights(think_weight=0.5, answer_weight=1.0)
 
@@ -311,7 +317,6 @@ def test_e2e_constitutional_gate_partial():
 def test_e2e_warp_merge_fires_at_interval():
     """Confirms anchor_merge is called when step % warp_interval == 0."""
     from src.alignment.praxis.trainer import PRAXISTrainer
-    from src.alignment.warp import anchor_merge as real_anchor_merge
 
     cfg   = make_cfg(warp_interval=5)
     model = FakeAureliusModel(vocab_size=128, d_model=cfg.d_model, n_layers=4)
@@ -323,7 +328,7 @@ def test_e2e_warp_merge_fires_at_interval():
     batch   = make_batch(B=2, T=12)
 
     merge_calls = []
-    original_anchor_merge = __import__("src.alignment.warp", fromlist=["anchor_merge"]).anchor_merge
+    _original_anchor_merge = __import__("src.alignment.warp", fromlist=["anchor_merge"]).anchor_merge  # noqa: F841
 
     import src.alignment.praxis.trainer as trainer_mod
     original_fn = trainer_mod.anchor_merge
@@ -389,7 +394,6 @@ def test_e2e_gradient_flows_through_loss():
     optimizer.zero_grad()
 
     # We need the loss tensor itself, not just metrics — run components directly
-    cfg = trainer.config
     input_ids = batch["input_ids"]
     labels    = batch["labels"]
     mask      = batch["attention_mask"]
@@ -422,10 +426,10 @@ def test_e2e_gradient_flows_through_loss():
 
 def test_e2e_no_nan_signals():
     """Runs a full train_step and checks every individual reward signal for NaN/Inf."""
-    from src.alignment.praxis.reward_signals import RewardSignalBundle
-    from src.alignment.praxis.precision_fusion import PrecisionFusion
-    from src.alignment.prime import PRIMEReward, PRIMEConfig
     from src.alignment.constitutional_ai_v3 import CritiqueHead
+    from src.alignment.praxis.precision_fusion import PrecisionFusion
+    from src.alignment.praxis.reward_signals import RewardSignalBundle
+    from src.alignment.prime import PRIMEConfig, PRIMEReward
     from src.alignment.reward_uncertainty import MCDropoutReward
 
     cfg = make_cfg(mc_dropout_n=3, n_principles=2)

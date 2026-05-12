@@ -128,10 +128,6 @@ from src.safety.refusal_classifier import (
     RefusalClassifier,
     RefusalScore,
 )
-from src.safety.safety_token_regularization import (
-    DEFAULT_SAFETY_TEMPLATES,
-    SafetyTokenRegularizer,
-)
 from src.safety.reward_hack_detector import (
     PATTERN_DETECTORS as REWARD_HACK_PATTERN_DETECTORS,
 )
@@ -150,6 +146,10 @@ from src.safety.rule_engine import (
     RuleEvaluationReport,
     RuleSeverity,
     RuleViolation,
+)
+from src.safety.safety_token_regularization import (
+    DEFAULT_SAFETY_TEMPLATES,
+    SafetyTokenRegularizer,
 )
 from src.safety.skill_scanner import (
     Finding as SkillFinding,

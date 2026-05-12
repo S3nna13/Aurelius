@@ -13,6 +13,8 @@ Usage:
 
 from __future__ import annotations
 
+import math
+import random
 from dataclasses import dataclass
 
 import torch
@@ -433,7 +435,6 @@ class SoftMoELayer:
 
         # Dispatch weights: softmax over tokens for each slot
         # Combine weights: softmax over slots for each token
-        import random
 
         logits = [[random.gauss(0, 0.1) for _ in range(n_slots_total)] for _ in range(n_tokens)]
 
@@ -495,7 +496,6 @@ class ExpertChoiceLayer:
         capacity = max(1, int(math.ceil(self.capacity_factor * n_tokens / self.n_experts)))
 
         # Each expert scores all tokens
-        import random
 
         scores: list[list[float]] = [
             [random.gauss(0, 1) for _ in range(n_tokens)] for _ in range(self.n_experts)

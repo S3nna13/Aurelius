@@ -76,18 +76,18 @@ from .progressive_search import (  # noqa: F401
 
 MEMORY_REGISTRY["progressive_search"] = DEFAULT_PROGRESSIVE_SEARCHER
 
+from .composite import (  # noqa: E402
+    ArchitectureDecomposer,
+    CompositeInferenceEngine,
+    CompositeResult,
+    SubTask,
+)
 from .manager import MemoryManager, MemoryQueryResult  # noqa: E402
 from .unified_orchestrator import (  # noqa: E402
     InferenceDecision,
     InferenceResult,
     InferenceTier,
     UnifiedInferenceOrchestrator,
-)
-from .composite import (  # noqa: E402
-    ArchitectureDecomposer,
-    CompositeInferenceEngine,
-    CompositeResult,
-    SubTask,
 )
 
 __all__ += [

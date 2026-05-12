@@ -1,6 +1,8 @@
-"""Generative AI: VAE, GAN, DDPM, DDIM, Score-SDE, LDM, Normalizing Flow, WaveNet.
+"""Generative AI: VAE, GAN, DDPM, DDIM, Score-SDE, LDM,
+Normalizing Flow, WaveNet.
 
-Papers: Kingma 2013, Goodfellow 2014, Ho 2020, Song 2020, Rombach 2021, Dinh 2016, van den Oord 2016.
+Papers: Kingma 2013, Goodfellow 2014, Ho 2020, Song 2020,
+Rombach 2021, Dinh 2016, van den Oord 2016.
 """
 
 from __future__ import annotations

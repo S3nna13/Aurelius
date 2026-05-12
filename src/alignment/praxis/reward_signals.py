@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 import torch
 from torch import Tensor
+
 from src.alignment.praxis.config import PRAXISConfig
 
 
@@ -38,7 +40,7 @@ class RewardSignalBundle:
         dense_r, _ = self.prime(log_probs, ref_log_probs, outcome_rewards, mask.float())
         valid_len   = mask.float().sum(dim=1).clamp(min=1.0)
         r_prime     = (dense_r * mask.float()).sum(dim=1) / valid_len
-        r_prime_std = torch.ones_like(r_prime) * (r_prime.std() + eps)
+        r_prime_std = torch.ones_like(r_prime) * (r_prime.std(correction=0) + eps)
 
         # --- R_const: Constitutional critique score ---
         critique_scores = self.critique(hidden)           # (B, n_principles)
@@ -47,11 +49,11 @@ class RewardSignalBundle:
 
         # --- R_ccot: CCoT quality approximated as outcome * log(1 + valid_len/T) ---
         r_ccot     = outcome_rewards * torch.log1p(valid_len / T)
-        r_ccot_std = torch.ones_like(r_ccot) * (r_ccot.std() + eps)
+        r_ccot_std = torch.ones_like(r_ccot) * (r_ccot.std(correction=0) + eps)
 
         # --- R_odin: Length-normalized outcome reward ---
         r_odin     = outcome_rewards / valid_len.sqrt()
-        r_odin_std = torch.ones_like(r_odin) * (r_odin.std() + eps)
+        r_odin_std = torch.ones_like(r_odin) * (r_odin.std(correction=0) + eps)
 
         # --- R_hier: Hierarchical reward model (expects (B, D) input) ---
         h_pooled    = hidden[:, -1, :]                             # (B, D)

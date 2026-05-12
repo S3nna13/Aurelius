@@ -11,6 +11,7 @@ import argparse
 import ipaddress
 import json
 import logging
+import os
 import socket
 import webbrowser
 from collections.abc import Callable
@@ -59,6 +60,8 @@ def _validate_upstream_url(url: str) -> None:
     enforce http/https scheme allowlist and block private / loopback / link-
     local IP addresses to prevent access to internal services.
     """
+    if os.environ.get("AURELIUS_ALLOW_PRIVATE_URLS") == "1":
+        return
     try:
         parsed = urlparse(url)
     except Exception as exc:  # pragma: no cover

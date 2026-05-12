@@ -1,8 +1,11 @@
+from unittest.mock import MagicMock
+
 import torch
 import torch.nn as nn
-from unittest.mock import MagicMock, patch
+
 from src.alignment.praxis.config import PRAXISConfig
 from src.alignment.praxis.trainer import PRAXISTrainer
+
 
 class FakeRouter(nn.Module):
     def __init__(self, d_model, n_experts):

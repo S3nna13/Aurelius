@@ -148,7 +148,6 @@ from src.security.provenance_attestation import (
     ProvenanceError,
     build_file_attestation,
 )
-from src.security.sbom_generator import SBOM_REGISTRY  # noqa: F401
 
 SECURITY_REGISTRY: dict = {
     "rate_abuse_detector": RATE_ABUSE_DETECTOR_REGISTRY,

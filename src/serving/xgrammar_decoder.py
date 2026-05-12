@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-from functools import lru_cache
 from typing import Any
 
 import torch
@@ -140,8 +139,7 @@ if _XGRAMMAR_AVAILABLE:
                 pos += best_len
             return token_ids
 
-        @staticmethod
-        def _bitmask_to_bool_mask(bitmask: torch.Tensor, vocab_size: int) -> torch.Tensor:
+        def _bitmask_to_bool_mask(self, bitmask: torch.Tensor, vocab_size: int) -> torch.Tensor:
             """Convert an xgrammar int32 bitmask to a 1-D bool tensor.
 
             Parameters

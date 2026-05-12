@@ -943,18 +943,22 @@ __all__ += [
 # --- agent runtime, memory, and registry surface (additive) ------------------
 from .agent_memory import AgentMemory, MemoryEntry  # noqa: E402
 from .agent_persistence import AgentPersistence  # noqa: E402
+from .agent_registry import AGENT_REGISTRY, AgentType  # noqa: E402
 from .agent_runtime import AgentMessage, AgentRuntime, AgentSpec, AgentStatus  # noqa: E402
+from .auto_dev import AutoDevAgent, DevGuardrail, DevOperation, DevPlan, DevSandbox  # noqa: E402
 from .multi_agent import DebateCoordinator, SupervisorCoordinator, SwarmCoordinator  # noqa: E402
-from .skill_library import Skill as VoyagerSkill, VoyagerSkillLibrary  # noqa: E402
-from .skill_registry import SkillRegistry, SkillSpec  # noqa: E402
-from .tool_registry import ToolRegistry  # noqa: E402
-
 from .neural_brain import BrainContext, BrainState, NeuralBrain  # noqa: E402
+from .plugin_system import PluginManager  # noqa: E402
 from .self_upgrade import (
     MetricSnapshot,
     SelfUpgradeSystem,
     UpgradeProposal,
 )  # noqa: E402
+from .skill_library import Skill as VoyagerSkill  # noqa: E402
+from .skill_library import VoyagerSkillLibrary
+from .skill_registry import SkillRegistry, SkillSpec  # noqa: E402
+from .skills_registry import SKILLS_REGISTRY  # noqa: E402
+from .skills_registry import Skill as RegistrySkill
 from .specialist_agents import (  # noqa: E402
     ApeOrchestrator,
     BaseSpecialist,
@@ -971,10 +975,7 @@ from .specialist_agents import (  # noqa: E402
     ToolEngineer,
     TrainingEngineer,
 )
-from .agent_registry import AGENT_REGISTRY, AgentType  # noqa: E402
-from .plugin_system import PluginManager  # noqa: E402
-from .skills_registry import SKILLS_REGISTRY, Skill as RegistrySkill  # noqa: E402
-from .auto_dev import AutoDevAgent, DevGuardrail, DevOperation, DevPlan, DevSandbox  # noqa: E402
+from .tool_registry import ToolRegistry  # noqa: E402
 from .tool_sandbox import ToolSandbox  # noqa: E402
 
 __all__ += [

@@ -27,8 +27,41 @@ import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from typing import Any
 
 from .auth_middleware import DEFAULT_AUTH_MIDDLEWARE, AuthConfig, AuthMiddleware
+
+try:
+    from src.longcontext.paged_kv_cache import PagedKVCache
+except Exception:  # pragma: no cover
+    PagedKVCache = None  # type: ignore[misc,assignment]
+
+try:
+    from src.longcontext.prefix_cache import PrefixCache
+except Exception:  # pragma: no cover
+    PrefixCache = None  # type: ignore[misc,assignment]
+
+try:
+    from src.longcontext.chunk_prefill import ChunkPrefillScheduler
+except Exception:  # pragma: no cover
+    ChunkPrefillScheduler = None  # type: ignore[misc,assignment]
+
+try:
+    from src.routing.model_router import ModelRouter, TaskProfile
+except Exception:  # pragma: no cover
+    ModelRouter = None  # type: ignore[misc,assignment]
+    TaskProfile = None  # type: ignore[misc,assignment]
+
+try:
+    from src.inference.slora import SLoRARegistry
+except Exception:  # pragma: no cover
+    SLoRARegistry = None  # type: ignore[misc,assignment]
+
+try:
+    from src.retrieval.pipeline import RetrievalPipeline
+except Exception:  # pragma: no cover
+    RetrievalPipeline = None  # type: ignore[misc,assignment]
+
 from .cors_middleware import CORS
 from .metrics_middleware import METRICS
 from .openapi_spec import openapi_spec, render_docs_page
@@ -36,6 +69,46 @@ from .rate_limiter import RateLimiterChain, TokenBucketLimiter
 from .request_coalescer import RequestCoalescer
 
 logger = logging.getLogger(__name__)
+
+
+def _merge_lora_into_model(model: Any, adapter_id: str, registry: Any) -> bool:
+    """Temporarily merge a LoRA adapter's delta into matching linear layers.
+
+    Uses additive weight merge (W += B @ A * scaling) so standard nn.Linear
+    forward calls benefit from the adapter without any code change downstream.
+    Returns True if at least one layer was updated.
+    """
+    try:
+        import torch
+        import torch.nn as nn
+        adapter = registry.get(adapter_id)
+        with torch.no_grad():
+            delta = (adapter.B @ adapter.A) * adapter.scaling  # (d_out, d_in)
+        applied = False
+        for module in model.modules():
+            if isinstance(module, nn.Linear) and module.weight.shape == delta.shape:
+                module.weight.data.add_(delta.to(module.weight.device, non_blocking=True))
+                applied = True
+        return applied
+    except Exception:
+        logger.debug("LoRA merge failed for %s", adapter_id, exc_info=True)
+        return False
+
+
+def _unmerge_lora_from_model(model: Any, adapter_id: str, registry: Any) -> None:
+    """Undo the weight merge applied by _merge_lora_into_model."""
+    try:
+        import torch
+        import torch.nn as nn
+        adapter = registry.get(adapter_id)
+        with torch.no_grad():
+            delta = (adapter.B @ adapter.A) * adapter.scaling
+        for module in model.modules():
+            if isinstance(module, nn.Linear) and module.weight.shape == delta.shape:
+                module.weight.data.sub_(delta.to(module.weight.device, non_blocking=True))
+    except Exception:
+        logger.debug("LoRA unmerge failed for %s", adapter_id, exc_info=True)
+
 
 #: Maximum allowed request body size (1 MiB) to prevent memory-exhaustion DoS.
 _MAX_CONTENT_LENGTH = 1_048_576
@@ -162,8 +235,24 @@ def _validate_chat_request(body: dict) -> ChatRequest:
     if not (1 <= max_tokens <= 32_768):
         raise ValueError("max_tokens must be between 1 and 32768")
 
+    model_name = str(body.get("model", "")).strip()
+    if not model_name:
+        raise ValueError("model field cannot be empty")
+
+    stop = body.get("stop")
+    if stop is not None:
+        if isinstance(stop, str) and stop:
+            pass  # single stop sequence — allowed
+        elif isinstance(stop, list):
+            if not all(isinstance(s, str) and s for s in stop):
+                raise ValueError("stop must be a list of non-empty strings")
+            if len(stop) > 4:
+                raise ValueError("stop list cannot exceed 4 entries")
+        else:
+            raise ValueError("stop must be a string or list of strings")
+
     return ChatRequest(
-        model=str(body.get("model", "aurelius")),
+        model=model_name,
         messages=messages,
         temperature=temperature,
         max_tokens=max_tokens,
@@ -246,6 +335,105 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
             "uptime": round(uptime, 2),
             "memory": {"rss": rss},
         }
+
+    def _generate_with_chunks(self, request, token_ids):
+        """Chunked prefill with KV forwarding, then decode."""
+        model = getattr(self.server, "model", None)
+        tokenizer_decode = getattr(self.server, "tokenizer_decode", None)
+        scheduler = getattr(self.server, "chunk_scheduler", None)
+        if model is None or scheduler is None or len(token_ids) <= 512:
+            return self.server.generate_fn(request)
+
+        import torch
+
+        from src.longcontext.chunk_prefill import ChunkPrefillConfig
+
+        config = ChunkPrefillConfig(chunk_size=512, overlap=64, max_chunks=32)
+        chunks = scheduler.split(token_ids, config)
+        device = next(model.parameters()).device
+        past_key_values = None
+        logits = None
+
+        for i, chunk_result in enumerate(chunks):
+            chunk_ids = chunk_result.token_ids
+            if i > 0:
+                chunk_ids = chunk_ids[config.overlap:]
+            if not chunk_ids:
+                continue
+            chunk_tensor = torch.tensor([chunk_ids], dtype=torch.long, device=device)
+            with torch.no_grad():
+                _, logits, past_key_values = model(chunk_tensor, past_key_values=past_key_values)
+
+        if logits is None:
+            return self.server.generate_fn(request)
+
+        max_new_tokens = request.max_tokens
+        temperature = request.temperature
+        generated_ids = []
+
+        def _sample_next_token(next_logits):
+            if temperature <= 0.01:
+                return torch.argmax(next_logits, dim=-1, keepdim=True)
+            next_logits = next_logits / temperature
+            sorted_logits, sorted_indices = torch.sort(next_logits, descending=False)
+            cumulative_probs = sorted_logits.softmax(dim=-1).cumsum(dim=-1)
+            sorted_mask = cumulative_probs <= (1.0 - 0.9)
+            sorted_mask[..., -1:] = False
+            mask = sorted_mask.scatter(1, sorted_indices, sorted_mask)
+            next_logits = next_logits.masked_fill(mask, float("-inf"))
+            return torch.multinomial(next_logits.softmax(dim=-1), num_samples=1)
+
+        next_token = _sample_next_token(logits[:, -1, :])
+        generated_ids.append(next_token.item())
+        cur_ids = next_token
+        for _ in range(max_new_tokens - 1):
+            with torch.no_grad():
+                _, logits, past_key_values = model(cur_ids, past_key_values=past_key_values)
+            next_token = _sample_next_token(logits[:, -1, :])
+            generated_ids.append(next_token.item())
+            cur_ids = next_token
+
+        if tokenizer_decode is not None:
+            return tokenizer_decode(generated_ids)
+        return "".join(str(i) for i in generated_ids)
+
+    def _generate_via_model(self, request, token_ids):
+        """Generate text using the attached AureliusTransformer model."""
+        model = getattr(self.server, "model", None)
+        tokenizer_decode = getattr(self.server, "tokenizer_decode", None)
+        paged_kv = getattr(self.server, "paged_kv", None)
+        if model is None:
+            raise RuntimeError("Model not available")
+        import torch
+        device = next(model.parameters()).device
+        input_ids = torch.tensor([token_ids], dtype=torch.long, device=device)
+        # Quest page-level sparse attention takes priority when enabled.
+        if hasattr(model, "quest_attention"):
+            with torch.no_grad():
+                output_ids = model.generate_with_quest(
+                    input_ids,
+                    max_new_tokens=request.max_tokens,
+                    temperature=request.temperature,
+                )
+        elif paged_kv is not None and hasattr(model, "generate_paged"):
+            with torch.no_grad():
+                output_ids = model.generate_paged(
+                    input_ids,
+                    paged_kv=paged_kv,
+                    max_new_tokens=request.max_tokens,
+                    temperature=request.temperature,
+                )
+        else:
+            with torch.no_grad():
+                output_ids = model.generate(
+                    input_ids,
+                    max_new_tokens=request.max_tokens,
+                    temperature=request.temperature,
+                )
+        generated_ids = output_ids[0, len(token_ids):].tolist()
+        if tokenizer_decode is not None:
+            return tokenizer_decode(generated_ids)
+        return "".join(str(i) for i in generated_ids)
 
     def do_GET(self):
         start = time.perf_counter()
@@ -364,31 +552,196 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
             self._record_metrics(start, 400)
             return
 
+        content: str | None = None
+
+        # S-LoRA adapter handling
+        adapter_id = body.get("adapter_id")
+        slora_registry = getattr(self.server, "slora_registry", None)
+        _lora_merged = False
+        if adapter_id and slora_registry is not None:
+            if adapter_id not in slora_registry:
+                adapter_dir = self.server.config.get("serving", {}).get("adapter_dir", "adapters")
+                adapter_path = os.path.join(adapter_dir, adapter_id)
+                a_path = os.path.join(adapter_path, "A.pt")
+                b_path = os.path.join(adapter_path, "B.pt")
+                if os.path.exists(a_path) and os.path.exists(b_path):
+                    try:
+                        import torch
+                        A = torch.load(a_path, map_location="cpu", weights_only=True)
+                        B = torch.load(b_path, map_location="cpu", weights_only=True)
+                        rank = A.shape[0]
+                        # LRU eviction: evict oldest if at capacity before loading new adapter.
+                        if len(slora_registry) >= slora_registry.max_adapters:
+                            oldest = slora_registry.active_ids()[0]
+                            model_obj = getattr(self.server, "model", None)
+                            if model_obj is not None:
+                                _unmerge_lora_from_model(model_obj, oldest, slora_registry)
+                            slora_registry.swap_out(oldest)
+                        slora_registry.swap_in(adapter_id, A, B, rank)
+                    except Exception as exc:
+                        logger.warning("Failed to load S-LoRA adapter %s: %s", adapter_id, exc)
+            # Merge the adapter weights into the model for this request.
+            model_obj = getattr(self.server, "model", None)
+            if model_obj is not None and adapter_id in slora_registry:
+                _lora_merged = _merge_lora_into_model(model_obj, adapter_id, slora_registry)
+
+        # Build prompt text for routing and prefix caching
+        prompt_parts: list[str] = []
+        for msg in request.messages:
+            role = msg.get("role", "user")
+            msg_content = msg.get("content", "")
+            tok = (
+                "<|system|>"
+                if role == "system"
+                else "<|user|>"
+                if role == "user"
+                else "<|assistant|>"
+            )
+            prompt_parts.append(f"{tok}\n{msg_content}<|end|>\n")
+        prompt_parts.append("<|assistant|>\n")
+        prompt_text = "".join(prompt_parts)
+
+        # Model routing
+        router = getattr(self.server, "model_router", None)
+        if router is not None and TaskProfile is not None:
+            try:
+                decision = router.route(TaskProfile(user_id="anonymous", content=prompt_text))
+            except Exception:
+                logger.debug("ModelRouter.route failed", exc_info=True)
+                decision = None
+            else:
+                if decision is not None:
+                    if getattr(decision, "requires_retrieval", False):
+                        pipeline = getattr(self.server, "retrieval_pipeline", None)
+                        if pipeline is not None:
+                            try:
+                                # Use the raw user message text, not the chat-formatted prompt.
+                                raw_query = ""
+                                for msg in reversed(request.messages):
+                                    if msg.get("role") == "user":
+                                        raw_query = msg.get("content", "")
+                                        break
+                                rag_result = pipeline.run(raw_query or prompt_text)
+                                retrieved = getattr(rag_result, "compressed_context", "") or ""
+                                if retrieved:
+                                    request.messages.insert(0, {
+                                        "role": "system",
+                                        "content": f"Retrieved context:\n{retrieved}",
+                                    })
+                            except Exception:
+                                logger.debug("Retrieval pipeline failed", exc_info=True)
+                    if getattr(decision, "requires_tools", False):
+                        try:
+                            from src.agent.react_loop import ReActLoop
+
+                            def _llm_generate(messages: list[dict]) -> str:
+                                req = ChatRequest(
+                                    model=request.model,
+                                    messages=messages,
+                                    temperature=request.temperature,
+                                    max_tokens=request.max_tokens,
+                                )
+                                return self.server.generate_fn(req)
+
+                            def _safe_calc(expression: str) -> str:
+                                allowed = set("0123456789.+-*/() ")
+                                if not all(c in allowed for c in expression):
+                                    return "Error: invalid characters in expression"
+                                try:
+                                    # B307 suppress: arithmetic-only eval; input pre-validated to digit/dot/dash/slash/parens/space
+                                    return str(eval(expression, {"__builtins__": {}}, {}))  # nosec B307  # noqa: S307
+                                except Exception as e:
+                                    return f"Error: {e}"
+
+                            tools = {
+                                "calculator": _safe_calc,
+                                "datetime": lambda: __import__("datetime").datetime.now().isoformat(),
+                                "uppercase": lambda text: text.upper(),
+                                "lowercase": lambda text: text.lower(),
+                            }
+                            loop = ReActLoop(
+                                generate_fn=_llm_generate,
+                                tool_registry=tools,
+                                max_steps=8,
+                                max_tool_seconds=5.0,
+                            )
+                            result = loop.run(prompt_text)
+                            if result.final_answer is not None:
+                                content = result.final_answer
+                        except Exception as exc:
+                            logger.warning("ReActLoop failed, falling back to normal generation: %s", exc)
+
+        # Prefix cache + tokenization
+        tokenizer_encode = getattr(self.server, "tokenizer_encode", None)
+        prefix_cache = getattr(self.server, "prefix_cache", None)
+        token_ids: list[int] = []
+        if tokenizer_encode is not None:
+            try:
+                token_ids = tokenizer_encode(prompt_text)
+            except Exception:
+                logger.debug("tokenizer_encode failed", exc_info=True)
+
+        if prefix_cache is not None and token_ids:
+            try:
+                matched_len, entry = prefix_cache.find_longest_prefix(token_ids)
+                if entry is not None and matched_len == len(token_ids):
+                    cached = entry.get("content") if isinstance(entry, dict) else None
+                    if cached:
+                        logger.debug("PrefixCache exact hit: %d tokens", matched_len)
+                        content = cached
+                elif entry is not None:
+                    logger.debug("PrefixCache partial hit: %d/%d tokens", matched_len, len(token_ids))
+            except Exception:
+                logger.debug("PrefixCache lookup failed", exc_info=True)
+
         def _generate() -> str:
+            if content is not None:
+                return content
+            chunk_scheduler = getattr(self.server, "chunk_scheduler", None)
+            model = getattr(self.server, "model", None)
+            if model is not None:
+                if chunk_scheduler is not None and len(token_ids) > 512:
+                    try:
+                        return self._generate_with_chunks(request, token_ids)
+                    except Exception:
+                        logger.debug("Chunked prefill failed, falling back", exc_info=True)
+                try:
+                    return self._generate_via_model(request, token_ids)
+                except Exception:
+                    logger.debug("Model generation failed, falling back", exc_info=True)
             return self.server.generate_fn(request)
 
-        coalescer = getattr(self.server, "coalescer", None)
-        if coalescer is not None:
-            # Only coalesce reasonably-sized bodies to avoid CPU-DoS from
-            # sorting huge JSON objects for the hash key.
-            try:
-                if len(raw_body) <= 10_240:
-                    coalesce_key = hashlib.sha256(
-                        json.dumps(body, sort_keys=True).encode("utf-8")
-                    ).hexdigest()
-                else:
-                    coalesce_key = None
-            except Exception:
-                logger.debug("Failed to compute coalesce key", exc_info=True)
-                coalesce_key = None
-            if coalesce_key is not None:
+        try:
+            coalescer = getattr(self.server, "coalescer", None)
+            if coalescer is not None:
+                # Only coalesce reasonably-sized bodies to avoid CPU-DoS from
+                # sorting huge JSON objects for the hash key.
                 try:
-                    content = coalescer.coalesce(coalesce_key, _generate)
+                    if len(raw_body) <= 10_240:
+                        coalesce_key = hashlib.sha256(
+                            json.dumps(body, sort_keys=True).encode("utf-8")
+                        ).hexdigest()
+                    else:
+                        coalesce_key = None
                 except Exception:
-                    logger.exception("generate_fn raised an exception")
-                    self._send_error(500, "Internal server error")
-                    self._record_metrics(start, 500, "generation_error")
-                    return
+                    logger.debug("Failed to compute coalesce key", exc_info=True)
+                    coalesce_key = None
+                if coalesce_key is not None:
+                    try:
+                        content = coalescer.coalesce(coalesce_key, _generate)
+                    except Exception:
+                        logger.exception("generate_fn raised an exception")
+                        self._send_error(500, "Internal server error")
+                        self._record_metrics(start, 500, "generation_error")
+                        return
+                else:
+                    try:
+                        content = _generate()
+                    except Exception:
+                        logger.exception("generate_fn raised an exception")
+                        self._send_error(500, "Internal server error")
+                        self._record_metrics(start, 500, "generation_error")
+                        return
             else:
                 try:
                     content = _generate()
@@ -397,16 +750,20 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
                     self._send_error(500, "Internal server error")
                     self._record_metrics(start, 500, "generation_error")
                     return
-        else:
-            try:
-                content = _generate()
-            except Exception:
-                logger.exception("generate_fn raised an exception")
-                self._send_error(500, "Internal server error")
-                self._record_metrics(start, 500, "generation_error")
-                return
+        finally:
+            # Unmerge LoRA adapter weights — runs even if an exception caused an early return.
+            if _lora_merged and adapter_id and slora_registry is not None:
+                model_obj = getattr(self.server, "model", None)
+                if model_obj is not None:
+                    _unmerge_lora_from_model(model_obj, adapter_id, slora_registry)
 
-        tokenizer_encode = getattr(self.server, "tokenizer_encode", None)
+        # Update prefix cache with the generated content so exact-match hits skip generation.
+        if prefix_cache is not None and token_ids and content:
+            try:
+                prefix_cache.insert(token_ids, {"content": content})
+            except Exception:
+                logger.debug("PrefixCache insert failed", exc_info=True)
+
         if tokenizer_encode is not None:
             prompt_tokens = sum(len(tokenizer_encode(m.get("content") or "")) for m in request.messages)
             completion_tokens = len(tokenizer_encode(content))
@@ -454,6 +811,16 @@ class AureliusServer(HTTPServer):
         auth_middleware: AuthMiddleware | None = None,
         rate_limiter: TokenBucketLimiter | RateLimiterChain | None = None,
         coalescer: RequestCoalescer | None = None,
+        paged_kv: Any | None = None,
+        prefix_cache: Any | None = None,
+        chunk_scheduler: Any | None = None,
+        model_router: Any | None = None,
+        slora_registry: Any | None = None,
+        retrieval_pipeline: Any | None = None,
+        tokenizer_encode: Callable[[str], list[int]] | None = None,
+        tokenizer_decode: Callable[[list[int]], str] | None = None,
+        model: Any | None = None,
+        config: dict[str, Any] | None = None,
         bind_and_activate: bool = True,
     ):
         super().__init__(
@@ -466,6 +833,16 @@ class AureliusServer(HTTPServer):
         self.auth_middleware = auth_middleware
         self.rate_limiter = rate_limiter
         self.coalescer = coalescer
+        self.paged_kv = paged_kv
+        self.prefix_cache = prefix_cache
+        self.chunk_scheduler = chunk_scheduler
+        self.model_router = model_router
+        self.slora_registry = slora_registry
+        self.retrieval_pipeline = retrieval_pipeline
+        self.tokenizer_encode = tokenizer_encode
+        self.tokenizer_decode = tokenizer_decode
+        self.model = model
+        self.config = config or {}
 
 
 def create_server(
@@ -477,6 +854,16 @@ def create_server(
     auth_middleware: AuthMiddleware | None = None,
     rate_limiter: TokenBucketLimiter | RateLimiterChain | None = None,
     coalescer: RequestCoalescer | None = None,
+    paged_kv: Any | None = None,
+    prefix_cache: Any | None = None,
+    chunk_scheduler: Any | None = None,
+    model_router: Any | None = None,
+    slora_registry: Any | None = None,
+    retrieval_pipeline: Any | None = None,
+    tokenizer_encode: Callable[[str], list[int]] | None = None,
+    tokenizer_decode: Callable[[list[int]], str] | None = None,
+    model: Any | None = None,
+    config: dict[str, Any] | None = None,
     bind_and_activate: bool = True,
 ) -> AureliusServer:
     try:
@@ -491,6 +878,38 @@ def create_server(
             f"Non-loopback host {host} requires at least one configured API key "
             f"(set AURELIUS_API_KEYS or AURELIUS_API_KEY env var)."
         )
+    if paged_kv is None and PagedKVCache is not None:
+        try:
+            paged_kv = PagedKVCache(n_heads=16, head_dim=128, page_size=16, num_pages=4096)
+        except Exception:
+            logger.debug("Failed to instantiate PagedKVCache", exc_info=True)
+    if prefix_cache is None and PrefixCache is not None:
+        try:
+            prefix_cache = PrefixCache(max_entries=2048, min_prefix_tokens=16, block_size=16)
+        except Exception:
+            logger.debug("Failed to instantiate PrefixCache", exc_info=True)
+    if chunk_scheduler is None and ChunkPrefillScheduler is not None:
+        try:
+            chunk_scheduler = ChunkPrefillScheduler()
+        except Exception:
+            logger.debug("Failed to instantiate ChunkPrefillScheduler", exc_info=True)
+    if model_router is None and ModelRouter is not None:
+        try:
+            model_router = ModelRouter()
+        except Exception:
+            logger.debug("Failed to instantiate ModelRouter", exc_info=True)
+    cfg = config or {}
+    if slora_registry is None and SLoRARegistry is not None:
+        if cfg.get("serving", {}).get("slora_enabled", False):
+            try:
+                slora_registry = SLoRARegistry(max_adapters=4)
+            except Exception:
+                logger.debug("Failed to instantiate SLoRARegistry", exc_info=True)
+    if retrieval_pipeline is None and RetrievalPipeline is not None:
+        try:
+            retrieval_pipeline = RetrievalPipeline.from_defaults()
+        except Exception:
+            logger.debug("Failed to instantiate RetrievalPipeline", exc_info=True)
     return AureliusServer(
         host,
         port,
@@ -499,6 +918,16 @@ def create_server(
         auth_middleware=auth_middleware,
         rate_limiter=rate_limiter,
         coalescer=coalescer,
+        paged_kv=paged_kv,
+        prefix_cache=prefix_cache,
+        chunk_scheduler=chunk_scheduler,
+        model_router=model_router,
+        slora_registry=slora_registry,
+        retrieval_pipeline=retrieval_pipeline,
+        tokenizer_encode=tokenizer_encode,
+        tokenizer_decode=tokenizer_decode,
+        model=model,
+        config=cfg,
         bind_and_activate=bind_and_activate,
     )
 
@@ -579,7 +1008,45 @@ if __name__ == "__main__":
             sys.exit(1)
 
     generate_fn = make_mock_generate_fn()
-    server = create_server(args.host, args.port, generate_fn, auth_middleware=auth_mw)
+
+    paged_kv = None
+    if PagedKVCache is not None:
+        try:
+            paged_kv = PagedKVCache(n_heads=16, head_dim=128, page_size=16, num_pages=4096)
+        except Exception:
+            logger.debug("Failed to instantiate PagedKVCache", exc_info=True)
+
+    prefix_cache = None
+    if PrefixCache is not None:
+        try:
+            prefix_cache = PrefixCache(max_entries=2048, min_prefix_tokens=16, block_size=16)
+        except Exception:
+            logger.debug("Failed to instantiate PrefixCache", exc_info=True)
+
+    chunk_scheduler = None
+    if ChunkPrefillScheduler is not None:
+        try:
+            chunk_scheduler = ChunkPrefillScheduler()
+        except Exception:
+            logger.debug("Failed to instantiate ChunkPrefillScheduler", exc_info=True)
+
+    model_router = None
+    if ModelRouter is not None:
+        try:
+            model_router = ModelRouter()
+        except Exception:
+            logger.debug("Failed to instantiate ModelRouter", exc_info=True)
+
+    server = create_server(
+        args.host,
+        args.port,
+        generate_fn,
+        auth_middleware=auth_mw,
+        paged_kv=paged_kv,
+        prefix_cache=prefix_cache,
+        chunk_scheduler=chunk_scheduler,
+        model_router=model_router,
+    )
     server._is_mock = True
     server._started_at = time.time()
     logger.info("Aurelius API server listening on http://%s:%d", args.host, args.port)

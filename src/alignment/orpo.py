@@ -15,6 +15,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+_liger_orpo_available = False
+try:
+    from liger_kernel.chunked_loss import LigerFusedLinearORPOLoss  # noqa: F401
+    _liger_orpo_available = True
+except ImportError:
+    pass
+
 # ---------------------------------------------------------------------------
 # ORPO Loss
 # ---------------------------------------------------------------------------

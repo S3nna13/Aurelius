@@ -1,5 +1,7 @@
 import torch
+
 from src.alignment.praxis.precision_fusion import PrecisionFusion
+
 
 def test_equal_uncertainty_gives_uniform_weights():
     fuser = PrecisionFusion(n_signals=3)

@@ -29,6 +29,18 @@ class TrainingConfig:
     beta1: float = 0.9
     beta2: float = 0.95
 
+    # Data
+    synthetic_data_ratio: float = 0.30
+    use_fineweb2: bool = False
+    fineweb2_use_hq: bool = True
+    fineweb2_languages: list[str] | None = None
+
+    # Optimizer
+    optimizer: str = "muon"  # "muon" or "adamw"
+    muon_lr: float = 0.02
+    use_badam: bool = False
+    badam_cycle_length: int = 1
+
     # Eval
     eval_interval: int = 2_000
     eval_iters: int = 200

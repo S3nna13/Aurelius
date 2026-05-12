@@ -43,8 +43,6 @@ from .reasoning_chain_manager import (
     ReasoningChainManager,
 )
 from .scratchpad import SCRATCHPAD, Scratchpad
-from .tot_planner import TOT_PLANNER, ThoughtNode, ToTPlanner
-
 from .toolgt_reasoner import (  # noqa: F401
     TOOLGT_REASONER,
     TOOLGT_REGISTRY,
@@ -53,6 +51,7 @@ from .toolgt_reasoner import (  # noqa: F401
     ToolGTSchema,
     ToolGTTemplate,
 )
+from .tot_planner import TOT_PLANNER, ThoughtNode, ToTPlanner
 
 REASONING_REGISTRY: dict[str, object] = {
     "cot": COT_REGISTRY,

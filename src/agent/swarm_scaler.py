@@ -258,9 +258,10 @@ class SwarmScaler:
         batch_completed: list[WorkItem] = []
 
         # Track which items each worker "owns" to compute tasks_stolen.
-        # Items originally assigned to worker wid are worker_queues[wid].
-        original_ids: list[set[int]] = [
-            {item.task_id for item in worker_queues[wid]} for wid in range(effective)
+        # Items originally assigned to worker wid are worker_queues[wid] —
+        # use ordered lists (not sets) so priority order is preserved.
+        original_ids: list[list[int]] = [
+            [item.task_id for item in worker_queues[wid]] for wid in range(effective)
         ]
 
         for wid in range(effective):

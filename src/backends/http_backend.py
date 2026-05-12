@@ -3,6 +3,7 @@ from __future__ import annotations
 import ipaddress
 import json
 import logging
+import os
 import socket
 import urllib.error
 import urllib.request
@@ -35,6 +36,8 @@ def _is_private_or_reserved(host: str) -> bool:
 
 
 def _validate_backend_url(url: str) -> None:
+    if os.environ.get("AURELIUS_ALLOW_PRIVATE_URLS") == "1":
+        return
     try:
         parsed = urlparse(url)
     except Exception as exc:

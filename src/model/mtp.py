@@ -156,7 +156,7 @@ class MTPModule(nn.Module):
             drafts.append(token)
 
             token_embed = (
-                layer.head.weight[token].unsqueeze(0) if layer.head.weight.ndim == 2 else None
+                layer.head.weight[token] if layer.head.weight.ndim == 2 else None
             )
             if token_embed is None:
                 break

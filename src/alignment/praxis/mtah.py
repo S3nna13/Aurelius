@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 import torch
 from torch import Tensor
+
 from src.alignment.praxis.config import PRAXISConfig
 
 

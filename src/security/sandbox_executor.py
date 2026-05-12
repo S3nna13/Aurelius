@@ -217,7 +217,7 @@ class SandboxExecutor:
             # the caller is not blocked on a runaway sandbox thread.
             try:
                 future.cancel()
-            except Exception:
+            except Exception:  # noqa: S110  # cancel() returns False if already done
                 pass
             old_pool = _SANDBOX_POOL
             _SANDBOX_POOL = concurrent.futures.ThreadPoolExecutor(

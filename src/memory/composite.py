@@ -26,8 +26,6 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
-from ..model.architectures import get_architecture
-
 logger = logging.getLogger("ark.composite")
 
 

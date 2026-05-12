@@ -1,8 +1,10 @@
-import torch
-import torch.nn as nn
 from unittest.mock import MagicMock
+
+import torch
+
 from src.alignment.praxis.config import PRAXISConfig
 from src.alignment.praxis.reward_signals import RewardSignalBundle
+
 
 def make_bundle(d_model=16, B=2):
     cfg = PRAXISConfig(d_model=d_model, n_principles=4, mc_dropout_n=5)

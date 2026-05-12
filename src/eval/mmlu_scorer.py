@@ -284,18 +284,17 @@ class MMLUScorer:
         if self.generate_fn is None:
             raise ValueError("MMLUScorer.run requires generate_fn to be provided at construction")
 
-        if self.n_shots > 0:
-            if few_shot_pool is None:
-                shots = CANONICAL_EXEMPLARS[: self.n_shots]
-            else:
-                shots = [ex for ex in few_shot_pool if ex.subject == p.subject][: self.n_shots]
-                if len(shots) < self.n_shots:
-                    shots += CANONICAL_EXEMPLARS[: self.n_shots - len(shots)]
-        else:
-            shots = None
-
         out: list[MMLUResult] = []
         for p in problems:
+            if self.n_shots > 0:
+                if few_shot_pool is None:
+                    shots = CANONICAL_EXEMPLARS[: self.n_shots]
+                else:
+                    shots = [ex for ex in few_shot_pool if ex.subject == p.subject][: self.n_shots]
+                    if len(shots) < self.n_shots:
+                        shots += CANONICAL_EXEMPLARS[: self.n_shots - len(shots)]
+            else:
+                shots = None
             prompt = format_prompt(p, shots, cot=self.cot)
             resp = self.generate_fn(prompt)
             if not isinstance(resp, str):

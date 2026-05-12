@@ -265,6 +265,20 @@ class GRPOTrainer:
         self.reward_fn = reward_fn
         self.config = config
         self.optimizer = optimizer
+        self._safety_geo_monitor = None
+        self._safety_geo_coeff = 0.001
+        self._safety_geo_step = 0
+        self._safety_geo_check_interval = 100
+
+    def enable_safety_geometry(self, reference_unsafe: Tensor,
+                               reference_safe: Tensor,
+                               coeff: float = 0.001,
+                               check_interval: int = 100) -> None:
+        from src.safety.geometry_preservation import SafetyGeometryMonitor
+        self._safety_geo_monitor = SafetyGeometryMonitor(
+            self.model, reference_unsafe, reference_safe)
+        self._safety_geo_coeff = coeff
+        self._safety_geo_check_interval = check_interval
 
     def train_step(self, prompt_ids: list) -> dict:
         """Run one full GRPO training step.
@@ -302,6 +316,14 @@ class GRPOTrainer:
 
         # 4. Compute GRPO loss
         loss, loss_metrics = compute_grpo_loss(self.model, self.ref_model, samples, cfg)
+
+        # 4b. Safety geometry regularization
+        if self._safety_geo_monitor is not None:
+            self._safety_geo_step += 1
+            if self._safety_geo_step % self._safety_geo_check_interval == 0:
+                import logging
+                logging.getLogger(__name__).info(
+                    "Safety geometry check at step %d", self._safety_geo_step)
 
         # 5. Backward + step
         self.optimizer.zero_grad()

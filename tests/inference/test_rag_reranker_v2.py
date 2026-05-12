@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import pytest
 import torch
+
 from src.inference.rag_reranker_v2 import (
     BiEncoderRetriever,
     CrossEncoderScorer,

@@ -17,9 +17,18 @@ Registries protected:
 from __future__ import annotations
 
 import importlib
+import os
 from typing import Any
 
 import pytest
+
+
+def pytest_configure(config):
+    """Set required env vars before any test modules are collected."""
+    os.environ.setdefault(
+        "AURELIUS_ENCRYPTION_KEY",
+        "eraA96t0Jt605u3a6it1Z58dZXraqjM22HCNv4RYb7U=",
+    )
 
 
 def _snapshot(obj: Any) -> Any:

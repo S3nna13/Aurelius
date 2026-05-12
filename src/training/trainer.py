@@ -26,7 +26,7 @@ from torch.utils.data import DataLoader
 
 from src.data.tokenized_loader import TokenizedShardDataset
 from src.safety.safety_token_regularization import SafetyTokenRegularizer
-from src.training.muon import Muon
+from src.training.muon import Muon, build_muon_optimizer
 from src.training.zclip import ZClip
 
 logger = logging.getLogger(__name__)
@@ -281,6 +281,10 @@ class TrainConfig:
     muon_lr: float = 0.02  # Muon learning rate (much higher than AdamW's 3e-4)
     muon_momentum: float = 0.95
 
+    # BAdam (block-coordinate Adam)
+    use_badam: bool = False
+    badam_cycle_length: int = 1
+
     # ZClip (adaptive gradient clipping)
     use_zclip: bool = False
     zclip_z_threshold: float = 2.5
@@ -294,6 +298,8 @@ class TrainConfig:
     deepspeed_config: str | None = None
 
     # Training
+    fp8: bool = False
+    activation_checkpoint: str = "full"
     seed: int = 42
     total_tokens: int = 300_000_000_000
 
@@ -379,6 +385,14 @@ class TrainConfig:
             optimizer_offload_dir=raw.get("optimizer", {}).get(
                 "optimizer_offload_dir", cls.optimizer_offload_dir
             ),
+            use_badam=raw.get("optimizer", {}).get("use_badam", cls.use_badam),
+            badam_cycle_length=raw.get("optimizer", {}).get(
+                "badam_cycle_length", cls.badam_cycle_length
+            ),
+            fp8=raw.get("training", {}).get("fp8", cls.fp8),
+            activation_checkpoint=raw.get("training", {}).get(
+                "activation_checkpoint", cls.activation_checkpoint
+            ),
         )
 
 
@@ -438,6 +452,7 @@ class CheckpointManager:
         loss: float,
         accelerator: Any,
         muon_optimizer: Any | None = None,
+        badam_scheduler: Any | None = None,
     ) -> Path:
         """Save checkpoint as safetensors + metadata JSON."""
         ckpt_dir = self.save_dir / f"step-{step:07d}"
@@ -463,6 +478,11 @@ class CheckpointManager:
         }
         if muon_optimizer is not None:
             optim_state["muon"] = muon_optimizer.state_dict()
+        if badam_scheduler is not None:
+            optim_state["badam"] = {
+                "current": badam_scheduler.current,
+                "step_count": badam_scheduler.step_count,
+            }
         torch.save(optim_state, ckpt_dir / "optim_state.pt")
 
         # Save metadata
@@ -495,6 +515,7 @@ class CheckpointManager:
         optimizer: AdamW | None = None,
         scheduler: LambdaLR | None = None,
         muon_optimizer: Any | None = None,
+        badam_scheduler: Any | None = None,
     ) -> dict[str, Any]:
         """Load checkpoint from safetensors + metadata."""
         ckpt_dir = Path(ckpt_dir)
@@ -516,6 +537,10 @@ class CheckpointManager:
                 scheduler.load_state_dict(optim_state["scheduler"])
             if muon_optimizer is not None and "muon" in optim_state:
                 muon_optimizer.load_state_dict(optim_state["muon"])
+            if badam_scheduler is not None and "badam" in optim_state:
+                badam_scheduler.current = optim_state["badam"]["current"]
+                badam_scheduler.step_count = optim_state["badam"]["step_count"]
+                badam_scheduler._set_active(badam_scheduler.current)
 
         # Load metadata
         with open(ckpt_dir / "metadata.json") as f:
@@ -559,6 +584,19 @@ class AureliusTrainer:
             f"{self.n_params:,}",
             self.n_params / 1e9,
         )
+
+        # FP8 training via torchao
+        if getattr(self.cfg, "fp8", False):
+            try:
+                import torchao
+
+                torchao.float8.convert_to_float8_training(
+                    self.model,
+                    module_filter_fn=lambda mod, fqn: isinstance(mod, torch.nn.Linear),
+                )
+                logger.info("FP8 training enabled via torchao")
+            except Exception as exc:
+                logger.warning("Failed to enable FP8 training: %s", exc)
 
         # Optimizer
         self.optimizer = self._build_optimizer()
@@ -637,6 +675,20 @@ class AureliusTrainer:
                 cfg.zclip_ema_alpha,
             )
 
+        # BAdam scheduler (block-coordinate Adam)
+        self.badam_scheduler = None
+        if getattr(self.cfg, "use_badam", False):
+            from src.training.badam import BAdamScheduler
+
+            self.badam_scheduler = BAdamScheduler(
+                self.model, cycle_length=getattr(self.cfg, "badam_cycle_length", 1)
+            )
+            logger.info(
+                "BAdam enabled: %d blocks, cycle_length=%d",
+                len(self.badam_scheduler.blocks),
+                self.badam_scheduler.cycle_length,
+            )
+
         # Optimizer SSD offloading (opt-in for tight-memory runs)
         self.optimizer_offloader: Any | None = None
         if cfg.use_optimizer_offload:
@@ -660,11 +712,13 @@ class AureliusTrainer:
     def _build_optimizer(self) -> AdamW | list:
         """Build optimizer(s).
 
-        When use_muon=True: returns a list [Muon, AdamW] — Muon for 2D weight
-        matrices in transformer layers, AdamW for embeddings and 1D params.
-        When use_muon=False: returns a single AdamW.
+        When optimizer=='muon' or use_muon=True: returns a list [Muon, AdamW]
+        — Muon for 2D weight matrices in transformer layers, AdamW for
+        embeddings and 1D params. Otherwise returns a single AdamW.
         """
-        if self.cfg.use_muon:
+        if getattr(self.cfg, "optimizer", "adamw") == "muon" or getattr(
+            self.cfg, "use_muon", False
+        ):
             return self._build_muon_adamw()
         return self._build_adamw()
 
@@ -706,29 +760,27 @@ class AureliusTrainer:
     def _build_muon_adamw(self) -> list:
         """Build [Muon, AdamW] optimizer pair.
 
-        Muon: all 2D weight matrices in transformer projection layers.
-        AdamW (optionally 8-bit): embeddings, normalization weights, lm_head, 1D params.
+        Uses ``build_muon_optimizer`` for param splitting, then enhances AdamW
+        with decay/no-decay param groups and optional 8-bit compression.
         """
-        muon_params: list[torch.nn.Parameter] = []
+        # Use build_muon_optimizer for canonical param splitting
+        _muon_tmp, _adam_tmp = build_muon_optimizer(
+            self.model,
+            muon_lr=self.cfg.muon_lr,
+            adam_lr=self.cfg.lr,
+            weight_decay=self.cfg.weight_decay,
+        )
+        muon_params = _muon_tmp.param_groups[0]["params"]
+        adam_params = _adam_tmp.param_groups[0]["params"]
+        adam_param_ids = {id(p) for p in adam_params}
+
+        # Further split AdamW params into decay / no-decay groups
         adamw_decay: list[torch.nn.Parameter] = []
         adamw_no_decay: list[torch.nn.Parameter] = []
-
-        muon_target_suffixes = (
-            "q_proj.weight",
-            "k_proj.weight",
-            "v_proj.weight",
-            "o_proj.weight",
-            "gate_proj.weight",
-            "up_proj.weight",
-            "down_proj.weight",
-        )
-
         for name, param in self.model.named_parameters():
-            if not param.requires_grad:
+            if id(param) not in adam_param_ids:
                 continue
-            if param.ndim >= 2 and any(name.endswith(s) for s in muon_target_suffixes):
-                muon_params.append(param)
-            elif "bias" in name or "norm" in name or "ln" in name or param.ndim < 2:
+            if "bias" in name or "norm" in name or "ln" in name or param.ndim < 2:
                 adamw_no_decay.append(param)
             else:
                 adamw_decay.append(param)
@@ -814,6 +866,7 @@ class AureliusTrainer:
                 resume_adamw,
                 self.scheduler,
                 muon_optimizer=self.muon_optimizer,
+                badam_scheduler=self.badam_scheduler,
             )
             self.global_step = metadata["step"]
             self.tokens_seen = metadata["tokens_seen"]
@@ -866,6 +919,9 @@ class AureliusTrainer:
                     self.adamw_optimizer.step()
                     self.scheduler.step()
                     self.adamw_optimizer.zero_grad()
+
+                    if self.badam_scheduler is not None:
+                        self.badam_scheduler.step()
 
             step_loss_accum += loss.detach().float().item()
             micro_steps_in_accum += 1
@@ -945,6 +1001,7 @@ class AureliusTrainer:
                 loss=current_loss,
                 accelerator=self.accelerator,
                 muon_optimizer=self.muon_optimizer,
+                badam_scheduler=self.badam_scheduler,
             )
 
     @torch.no_grad()

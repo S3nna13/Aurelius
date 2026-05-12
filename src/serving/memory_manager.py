@@ -6,7 +6,6 @@ import os
 import uuid
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
-from pathlib import Path
 
 try:
     from torch import Tensor
@@ -30,7 +29,10 @@ class MemoryStore:
     def __init__(self, storage_path: str = "~/.aurelius/memory.json") -> None:
         expanded = os.path.expanduser(storage_path)
         resolved = os.path.realpath(expanded)
-        base_dir = os.path.realpath(os.path.join(os.path.expanduser("~"), ".aurelius"))
+        memory_dir = os.environ.get("AURELIUS_MEMORY_DIR")
+        base_dir = os.path.realpath(
+            memory_dir or os.path.join(os.path.expanduser("~"), ".aurelius")
+        )
         if not resolved.startswith(base_dir + os.sep) and resolved != base_dir:
             raise ValueError(f"storage_path resolves outside allowed directory: {resolved}")
         self.storage_path = resolved

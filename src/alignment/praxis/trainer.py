@@ -1,17 +1,19 @@
 from __future__ import annotations
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
+
+from src.alignment.constitutional_ai_v3 import CritiqueHead
 from src.alignment.praxis.config import PRAXISConfig
-from src.alignment.praxis.precision_fusion import PrecisionFusion
-from src.alignment.praxis.steering_reward import SteeringRewardCorrespondence
 from src.alignment.praxis.expert_safety_affinity import ExpertSafetyAffinity
 from src.alignment.praxis.mtah import MultiTokenAlignmentHorizon
-from src.alignment.praxis.reward_signals import RewardSignalBundle
 from src.alignment.praxis.praxis_loss import PRAXISLoss
-from src.alignment.prime import PRIMEReward, PRIMEConfig
-from src.alignment.constitutional_ai_v3 import CritiqueHead
+from src.alignment.praxis.precision_fusion import PrecisionFusion
+from src.alignment.praxis.reward_signals import RewardSignalBundle
+from src.alignment.praxis.steering_reward import SteeringRewardCorrespondence
+from src.alignment.prime import PRIMEConfig, PRIMEReward
 from src.alignment.reward_uncertainty import MCDropoutReward
 from src.alignment.thinking_tokens import ThinkingLossWeights
 from src.alignment.warp import anchor_merge

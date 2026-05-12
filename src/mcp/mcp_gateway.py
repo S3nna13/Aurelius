@@ -108,7 +108,7 @@ class MCPGatewayConfig:
     audit_log_path: str | None = None
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "MCPGatewayConfig":
+    def from_dict(cls, data: dict[str, Any]) -> MCPGatewayConfig:
         """Build a config from a plain dict (e.g. parsed YAML)."""
         return cls(
             enabled=bool(data.get("enabled", False)),
@@ -355,9 +355,7 @@ class MCPGateway:
         """Generate a one-time approval token for a destructive operation."""
         params_canonical = json.dumps(params, sort_keys=True, separators=(",", ":"))
         token = hashlib.sha256(
-            f"{caller_id}:{tool_name}:{params_canonical}:{time.time()}".encode(
-                "utf-8"
-            )
+            f"{caller_id}:{tool_name}:{params_canonical}:{time.time()}".encode()
         ).hexdigest()
         logger.warning(
             "HITL_APPROVAL_REQUIRED caller=%s tool=%s token=%s",

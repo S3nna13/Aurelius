@@ -19,7 +19,6 @@ import torch.nn.functional as F
 from .config import AureliusConfig
 from .rms_norm import RMSNorm
 
-
 # ---------------------------------------------------------------------------
 # MTPConfig
 # ---------------------------------------------------------------------------

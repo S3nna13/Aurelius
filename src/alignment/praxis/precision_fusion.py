@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 import torch
 from torch import Tensor
+
 
 class PrecisionFusion:
     """Bayesian inverse-variance weighting over multiple reward signals."""

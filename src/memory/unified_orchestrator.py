@@ -20,14 +20,14 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any
 
 from ..cache import CacheService
-from .manager import MemoryManager
+from ..longcontext.memory_manager import MemoryManager as KVCacheMemoryManager
 from ..routing.intent import IntentClassifier
 from ..routing.model_router import ModelRouter, TaskProfile
+from .manager import MemoryManager
 
 logger = logging.getLogger("ark.orchestrator")
 
@@ -84,6 +84,10 @@ class UnifiedInferenceOrchestrator:
         enable_speculative: bool = True,
         enable_ensemble: bool = False,
         vram_gb: float = 16.0,
+        cpu_kv_offload: bool = False,
+        cpu_kv_sink_size: int = 4,
+        cpu_kv_recent_size: int = 512,
+        cpu_kv_topk_blocks: int = 32,
     ) -> None:
         self.cache = cache or CacheService()
         self.memory = memory or MemoryManager()
@@ -94,6 +98,17 @@ class UnifiedInferenceOrchestrator:
         self.enable_speculative = enable_speculative
         self.enable_ensemble = enable_ensemble
         self.vram_gb = vram_gb
+
+        # InfLLM-style CPU-offloaded KV tiering (Phase 3)
+        self.cpu_kv_offload = cpu_kv_offload
+        self.kv_memory_manager: KVCacheMemoryManager | None = None
+        if self.cpu_kv_offload:
+            self.kv_memory_manager = KVCacheMemoryManager(
+                cpu_kv_offload=True,
+                cpu_kv_sink_size=cpu_kv_sink_size,
+                cpu_kv_recent_size=cpu_kv_recent_size,
+                cpu_kv_topk_blocks=cpu_kv_topk_blocks,
+            )
 
     def infer(self, prompt: str, user_id: str = "anonymous", tier: str = "free") -> InferenceResult:
         start = time.monotonic()
@@ -123,10 +138,18 @@ class UnifiedInferenceOrchestrator:
         )
         decision = self.router.route(profile)
 
-        # 4. Select generation path
+        # 4. KV tiering — if CPU offloading is enabled, prepare GPU/CPU tiers
+        if self.kv_memory_manager is not None:
+            # TODO: wire real sequence length and gpu budget from model state
+            # seq_len = estimate_sequence_length(prompt, memory_context)
+            # if self.kv_memory_manager.should_offload(seq_len, gpu_budget=...):
+            #     self.kv_memory_manager.enforce_gpu_budget(...)
+            logger.debug("KV tiering active (InfLLM-style); GPU/CPU mask will be applied during inference")
+
+        # 5. Select generation path
         content, tier_used, model_name = self._select_path(prompt, decision, memory_context)
 
-        # 5. Store in cache + memory
+        # 6. Store in cache + memory
         self.cache.set(prompt, content)
         self.memory.remember(
             f"User: {prompt}\nAssistant: {content}",

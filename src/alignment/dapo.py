@@ -234,3 +234,71 @@ class DAPOTrainer:
             entropy=entropy,
         )
         return loss
+
+
+# ---------------------------------------------------------------------------
+# 4. Token-level Policy Gradient (Section 3.3) — standalone function
+# ---------------------------------------------------------------------------
+
+
+def dapo_token_level_loss(log_probs: torch.Tensor, ref_log_probs: torch.Tensor,
+                          advantages: torch.Tensor, eps_low: float = 0.2,
+                          eps_high: float = 0.28,
+                          token_mask: torch.Tensor | None = None) -> torch.Tensor:
+    """DAPO token-level policy gradient with asymmetric clipping.
+    
+    Critical for long-chain-of-thought: each token gets its own advantage
+    weighting rather than the sequence-level average. Prevents length bias.
+    
+    Args:
+        log_probs:     (B, S) current policy log-probs
+        ref_log_probs: (B, S) reference policy log-probs
+        advantages:    (B,) sequence-level advantages (broadcast to tokens)
+        token_mask:    (B, S) bool mask — True for valid (non-padding) tokens
+    """
+    ratio = (log_probs - ref_log_probs).exp()  # (B, S)
+    adv = advantages.unsqueeze(1).expand_as(ratio)  # (B, S)
+
+    # Asymmetric per-token clipping
+    r_clipped = torch.where(
+        adv >= 0,
+        ratio.clamp(1 - eps_low, 1 + eps_high),
+        ratio.clamp(1 - eps_low, 1 + eps_low),
+    )
+    pg = torch.min(ratio * adv, r_clipped * adv)  # (B, S)
+
+    if token_mask is not None:
+        pg = pg * token_mask.float()
+        return -pg.sum() / token_mask.float().sum().clamp(min=1)
+    return -pg.mean()
+
+
+# ---------------------------------------------------------------------------
+# 5. Dynamic Sampling Filter — standalone function
+# ---------------------------------------------------------------------------
+
+
+def dynamic_sampling_filter(prompts: list, rewards_per_group: torch.Tensor,
+                             group_size: int) -> list[bool]:
+    """Remove prompts where all group responses are correct or all wrong.
+    
+    DAPO dynamic sampling: avoid training on trivially solved or unsolvable
+    prompts, which waste compute and cause entropy collapse.
+    Returns list of bool: True = keep this prompt group.
+    """
+    keep = []
+    for i in range(0, len(rewards_per_group), group_size):
+        group = rewards_per_group[i:i + group_size]
+        all_correct = (group > 0.99).all()
+        all_wrong = (group < 0.01).all()
+        keep.append(not (all_correct or all_wrong))
+    return keep
+
+
+__all__ = [
+    "DAPOLoss",
+    "DAPOFilter",
+    "DAPOTrainer",
+    "dapo_token_level_loss",
+    "dynamic_sampling_filter",
+]

@@ -5,14 +5,15 @@ from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from typing import Any
 
-from .episodic_memory import EpisodicMemory, MemoryEntry as EpisodicEntry
-from .layered_memory import LayeredMemory, LayeredMemoryEntry, MemoryLayer
-from .long_term_memory import LTMEntry as LongTermEntry, LongTermMemory
+from .episodic_memory import EpisodicMemory
+from .episodic_memory import MemoryEntry as EpisodicEntry
+from .layered_memory import LayeredMemory, LayeredMemoryEntry
+from .long_term_memory import LongTermMemory
 from .memory_consolidation import ConsolidationPolicy, MemoryConsolidator
 from .memory_snapshot import MemorySnapshot
 from .semantic_memory import SemanticMemory
 from .working_memory import WorkingMemory
-from .zettelkasten_memory import ZettelkastenMemory, ZettelNote as ZettelEntry
+from .zettelkasten_memory import ZettelkastenMemory
 
 
 @dataclass

@@ -55,7 +55,7 @@ class Blackboard:
         for cb in self._subscribers.get(entry.key, []):
             try:
                 cb(entry)
-            except Exception:
+            except Exception:  # noqa: S110  # don't let one subscriber break others
                 pass
 
     def keys(self) -> list[str]:

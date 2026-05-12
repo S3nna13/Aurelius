@@ -1,7 +1,9 @@
 import torch
 import torch.nn as nn
+
 from src.alignment.praxis.config import PRAXISConfig
 from src.alignment.praxis.steering_reward import SteeringRewardCorrespondence
+
 
 class TinyModel(nn.Module):
     def __init__(self):

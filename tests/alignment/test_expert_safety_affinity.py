@@ -1,7 +1,9 @@
 import torch
 import torch.nn as nn
+
 from src.alignment.praxis.config import PRAXISConfig
 from src.alignment.praxis.expert_safety_affinity import ExpertSafetyAffinity
+
 
 class FakeTopKRouter(nn.Module):
     def __init__(self, d_model, n_experts):

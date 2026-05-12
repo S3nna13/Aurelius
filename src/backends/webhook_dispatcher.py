@@ -7,8 +7,8 @@ import json
 import time
 from dataclasses import dataclass
 from enum import StrEnum
-from urllib.request import Request, urlopen
 from urllib.error import URLError
+from urllib.request import Request, urlopen
 
 
 class CircuitState(StrEnum):
@@ -115,8 +115,8 @@ class WebhookDispatcher:
                 headers = {"Content-Type": "application/json"}
                 if endpoint.secret_header:
                     headers["X-Webhook-Signature"] = self._sign_payload(raw_body, endpoint.secret_header)
-                req = Request(url, data=raw_body, headers=headers, method="POST")
-                resp = urlopen(req, timeout=10)
+                req = Request(url, data=raw_body, headers=headers, method="POST")  # noqa: S310
+                resp = urlopen(req, timeout=10)  # nosec B310  # noqa: S310
                 breaker.record_success()
                 return DispatchResult(url=url, success=True, status_code=resp.status, attempts=attempts)
             except (URLError, OSError, Exception) as exc:

@@ -18,6 +18,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+_liger_dpo_available = False
+try:
+    from liger_kernel.chunked_loss import LigerFusedLinearDPOLoss  # noqa: F401
+    _liger_dpo_available = True
+except ImportError:
+    pass
+
 logger = logging.getLogger(__name__)
 
 

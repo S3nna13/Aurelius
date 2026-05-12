@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 MODEL_ROUTER_REGISTRY: dict[str, type] = {}
-from src.routing.intent import Intent, IntentClassifier
-from src.runtime.ark_config import ArkConfig
+
+if TYPE_CHECKING:
+    from src.routing.intent import Intent, IntentClassifier
+    from src.runtime.ark_config import ArkConfig
 
 
 class RouteAction(Enum):

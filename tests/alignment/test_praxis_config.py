@@ -1,5 +1,6 @@
 from src.alignment.praxis.config import PRAXISConfig
 
+
 def test_praxis_config_defaults():
     cfg = PRAXISConfig()
     assert cfg.n_group == 8
@@ -14,4 +15,5 @@ def test_praxis_config_defaults():
 def test_praxis_config_custom():
     cfg = PRAXISConfig(n_group=4, eps_low=0.1, steer_layers=[8, 12])
     assert cfg.n_group == 4
+    assert cfg.eps_low == 0.1
     assert cfg.steer_layers == [8, 12]

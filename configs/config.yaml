@@ -12,6 +12,40 @@ aurelius_150m:
   graph_threshold: 0.65
   dropout: 0.0
 
+data:
+  pretrain_corpus: 10B_tokens
+  memory_curriculum: 2B_tokens
+  eval_interval: 500
+  save_interval: 2000
+
+inference:
+  paged_kv: true
+  page_size: 16
+  prefix_cache: true
+  prefix_cache_max_pages: 2048
+  kv_quantization: "int8"
+  kivi_bits: 0
+  kivi_residual_length: 128
+  duo_attention: false
+  teal_sparsity: 0.0
+  quest_page_budget: 0
+  chunked_prefill: true
+  chunk_size: 512
+  cpu_kv_offload: false
+  cpu_kv_sink_size: 4
+  cpu_kv_recent_size: 512
+  cpu_kv_topk_blocks: 32
+  kv_sharing_factor: 1
+  use_sage_attention: False
+  use_mla: False
+  use_diff_transformer: False
+  mtp_heads: 3
+  mtp_weight: 0.1
+
+serving:
+  slora_enabled: false
+  max_adapters_in_memory: 4
+
 training:
   batch_size: 16
   micro_batch_size: 4
@@ -23,16 +57,25 @@ training:
   warmup_steps: 1000
   total_steps: 100000
   grad_clip: 1.0
-  optimizer: "adamw"
   scheduler: "cosine"
   memory_loss_weight: 0.1
   consolidation_loss_weight: 0.05
+  fp8: false
+  activation_checkpoint: "full"
+  use_liger_kernels: True
+  optimizer: muon
+  muon_lr: 0.02
+  synthetic_data_ratio: 0.30
+  safety_geometry_preservation: True
+  safety_geo_coeff: 0.001
 
-data:
-  pretrain_corpus: 10B_tokens
-  memory_curriculum: 2B_tokens
-  eval_interval: 500
-  save_interval: 2000
+memory:
+  use_ttt_episodic: False
+  ttt_inner_dim: 256
+  ttt_inner_lr: 1e-3
+
+model:
+  use_ngpt: False
 
 mcp_gateway:
   enabled: false

@@ -90,7 +90,8 @@ class MRKLSystem:
 
     def __init__(self) -> None:
         self.modules: dict[str, Callable] = {
-            "calculator": lambda x: str(eval(x, {"__builtins__": {}})),  # noqa: S307
+            # B307 suppress: arithmetic-only eval; empty globals, no __builtins__ bypass
+            "calculator": lambda x: str(eval(x, {"__builtins__": {}}, {})),  # nosec B307  # noqa: S307
             "search": lambda x: f"[search results for: {x}]",
             "translate": lambda x: f"[translation of: {x}]",
         }

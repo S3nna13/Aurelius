@@ -1,9 +1,9 @@
 from __future__ import annotations
-import torch
-import torch.nn.functional as F
+
 from torch import Tensor
-from src.alignment.praxis.config import PRAXISConfig
+
 from src.alignment.dapo import DAPOLoss
+from src.alignment.praxis.config import PRAXISConfig
 
 
 class PRAXISLoss:
@@ -40,8 +40,11 @@ class PRAXISLoss:
         if const_scores is not None:
             gate_mask = (const_scores >= cfg.tau_gate).float()  # (B,)
             if gate_mask.sum() == 0:
-                zero = log_probs.new_zeros(())
-                return zero, {"dapo_loss": 0.0, "kl_penalty": 0.0, "const_gate_ratio": 0.0}
+                esa_term = esa_loss if esa_loss is not None else log_probs.new_zeros(())
+                return esa_term, {
+                    "dapo_loss": 0.0, "kl_penalty": 0.0, "const_gate_ratio": 0.0,
+                    "esa_loss": esa_term.item() if hasattr(esa_term, "item") else 0.0,
+                }
             advantages = advantages * gate_mask.unsqueeze(1)
 
         # 2. DAPO policy gradient loss

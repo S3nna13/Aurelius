@@ -9,6 +9,7 @@ wrapped TransformerBlock; the rest pass through via a residual connection.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import torch
 import torch.nn as nn

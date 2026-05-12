@@ -156,7 +156,7 @@ def run_safe(
     for arg in argv_list[1:]:
         if "/" in arg or "\\" in arg:
             try:
-                resolved = PurePath(arg).resolve()
+                _resolved = PurePath(arg).resolve()  # noqa: F841
                 if ".." in PurePath(arg).parts:
                     raise UnsafeSubprocessError(f"argv contains path traversal: {arg!r}")
             except (ValueError, OSError):

@@ -59,13 +59,13 @@ class AsyncFixedWindowRateLimiter:
     async def acquire(self, key: str = "default") -> bool:
         async with self._lock:
             state = self._maybe_reset(self._get_or_create(key))
-            if state.count < self._config.burst_limit:
+            if state.count < self._config.requests_per_window:
                 state.count += 1
                 return True
             raise RateLimitExceeded(
-            f"Rate limit exceeded for key '{key}': "
-            f"{self._config.burst_limit} req/{self._config.window_seconds}s"
-        )
+                f"Rate limit exceeded for key '{key}': "
+                f"{self._config.requests_per_window} req/{self._config.window_seconds}s"
+            )
 
     async def try_acquire(self, key: str = "default") -> bool:
         try:

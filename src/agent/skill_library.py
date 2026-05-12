@@ -13,8 +13,19 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+# Optional cross-link to the categorical SKILLS_REGISTRY so VoyagerSkillLibrary
+# stays in sync with the dissertation's 32-skill taxonomy.
+try:  # pragma: no cover - import guarded for stand-alone use
+    from src.agent.skills_registry import SKILLS_REGISTRY as _SKILLS_REGISTRY
+except Exception:  # pragma: no cover
+    _SKILLS_REGISTRY = {}  # type: ignore[assignment]
+
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
 _LOGGER = logging.getLogger(__name__)
+
+# Momentum-encoder coefficient (Voyager / MoCo style). The dissertation
+# specifies tau=0.99 for slowly-updated skill embedding statistics.
+_SKILL_MOMENTUM_TAU: float = 0.99
 
 
 @dataclass
@@ -237,3 +248,150 @@ class VoyagerSkillLibrary:
         p = self.path / "skills.json"
         if p.exists():
             self.update_from_dict(json.loads(p.read_text()))
+
+    # ------------------------------------------------------------------
+    # Trajectory-based skill acquisition (dissertation §Skills, tau=0.99)
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _embed_trajectory(trajectory: list[dict[str, Any]]) -> list[float]:
+        """Cheap stdlib-only embedding for a trajectory.
+
+        Hashes the concatenation of step contents into a fixed-width
+        float vector so we can compute cosine similarity downstream
+        without pulling in torch.
+        """
+        text = " ".join(str(step.get("content", step)) for step in trajectory)
+        tokens = _TOKEN_RE.findall(text.lower())
+        dim = 32
+        vec = [0.0] * dim
+        for tok in tokens:
+            vec[hash(tok) % dim] += 1.0
+        norm = sum(v * v for v in vec) ** 0.5
+        if norm == 0.0:
+            return vec
+        return [v / norm for v in vec]
+
+    def _momentum_update(
+        self,
+        old: list[float] | None,
+        new: list[float],
+        tau: float = _SKILL_MOMENTUM_TAU,
+    ) -> list[float]:
+        if old is None or len(old) != len(new):
+            return list(new)
+        return [tau * o + (1.0 - tau) * n for o, n in zip(old, new, strict=False)]
+
+    def record_trajectory_outcome(
+        self,
+        trajectory: list[dict[str, Any]],
+        success: bool,
+        skill_name: str | None = None,
+    ) -> Skill | None:
+        """Record the outcome of an agent trajectory.
+
+        On success, extracts a skill embedding and either adds a new skill or
+        momentum-updates an existing one's embedding (tau=0.99). On failure,
+        returns ``None`` and does not alter the library — failed trajectories
+        do not become skills.
+        """
+        if not success:
+            return None
+        if not trajectory:
+            return None
+
+        derived_name = skill_name or f"trajectory_skill_{len(self.skills)}"
+        embedding = self._embed_trajectory(trajectory)
+
+        existing = self.skills.get(derived_name)
+        if existing is None:
+            code = "\n".join(
+                f"# step: {step.get('content', step)}" for step in trajectory[:3]
+            )
+            skill = self.add_skill(
+                derived_name,
+                code or "# learned from trajectory\n",
+                description="Skill learned from successful trajectory",
+                embedding=embedding,
+            )
+            skill.success_count += 1
+            return skill
+
+        existing.embedding = self._momentum_update(existing.embedding, embedding)
+        existing.success_count += 1
+        return existing
+
+    @staticmethod
+    def _cosine(a: list[float], b: list[float]) -> float:
+        if not a or not b or len(a) != len(b):
+            return 0.0
+        dot = sum(x * y for x, y in zip(a, b, strict=False))
+        na = sum(x * x for x in a) ** 0.5
+        nb = sum(y * y for y in b) ** 0.5
+        if na == 0.0 or nb == 0.0:
+            return 0.0
+        return dot / (na * nb)
+
+    def retrieve_skills(
+        self,
+        query_embedding: list[float],
+        top_k: int = 3,
+    ) -> list[Skill]:
+        """Retrieve top-k skills by cosine similarity to *query_embedding*.
+
+        Skills without an embedding are ranked by reliability * success_count
+        as a fallback. An empty library returns ``[]``.
+        """
+        if not self.skills:
+            return []
+        scored: list[tuple[float, Skill]] = []
+        for skill in self.skills.values():
+            if skill.embedding is not None and query_embedding:
+                score = self._cosine(query_embedding, skill.embedding)
+            else:
+                score = skill.reliability * (skill.success_count / 10.0)
+            scored.append((score, skill))
+        scored.sort(
+            key=lambda x: (x[0], x[1].success_count, x[1].reliability),
+            reverse=True,
+        )
+        return [s for _, s in scored[:top_k]]
+
+    def get_top_skills(self, top_k: int = 3) -> list[Skill]:
+        """Return the top-k skills ordered by success_count then reliability."""
+        ordered = sorted(
+            self.skills.values(),
+            key=lambda s: (s.success_count, s.reliability),
+            reverse=True,
+        )
+        return ordered[:top_k]
+
+    # ------------------------------------------------------------------
+    # ReAct loop integration
+    # ------------------------------------------------------------------
+    def integrate_with_react_loop(self, react_loop: Any) -> bool:
+        """Hook this skill library into a ReActLoop's Reflect phase.
+
+        Patches ``react_loop._post_step_hooks`` with a callback that records
+        successful trajectories as skills. Returns True if a hook was
+        installed; False if the loop does not expose a hook list (in which
+        case the caller can wire ``record_trajectory_outcome`` manually after
+        each step).
+        """
+        hooks = getattr(react_loop, "_post_step_hooks", None)
+        if hooks is None or not isinstance(hooks, list):
+            return False
+
+        def _hook(step: Any, trajectory: list[dict[str, Any]]) -> None:
+            success = bool(getattr(step, "is_final", False)) and not getattr(
+                step, "error", None
+            )
+            if success:
+                self.record_trajectory_outcome(trajectory, success=True)
+
+        hooks.append(_hook)
+        return True
+
+    @property
+    def categorical_registry(self) -> dict[str, Any]:
+        """Expose the 32-skill categorical registry for cross-reference."""
+        return dict(_SKILLS_REGISTRY)

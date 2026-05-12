@@ -22,6 +22,7 @@ import contextlib
 import io
 import multiprocessing
 import re
+import threading
 import time
 from dataclasses import dataclass, field
 from typing import Any
@@ -258,7 +259,7 @@ def execute_python(code: str, config: ExecutionConfig) -> ExecutionResult:
         try:
             compiled = compile(code, "<sandbox>", "exec")
             with contextlib.redirect_stdout(stdout_buf), contextlib.redirect_stderr(stderr_buf):
-                exec(compiled, restricted_globals)  # noqa: S102
+                exec(compiled, restricted_globals)  # nosec B102  # noqa: S102
         except Exception as exc:
             exc_holder.append(exc)
 
@@ -383,7 +384,7 @@ class CodeInterpreterSession:
             except Exception as exc:
                 exc_holder.append(exc)
 
-        thread = threading.Thread(target=_run, daemon=True)
+        thread = threading.Thread(target=_run, daemon=True)  # noqa: S110
         thread.start()
         thread.join(timeout=self._config.timeout_seconds)
 

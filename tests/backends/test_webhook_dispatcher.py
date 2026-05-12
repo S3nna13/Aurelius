@@ -1,4 +1,5 @@
 import asyncio
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -89,7 +90,15 @@ def test_dispatch_unknown_url_returns_error():
 
 def test_dispatch_success():
     d = WebhookDispatcher([make_ep("http://c.com/hook")])
-    result = asyncio.run(d.dispatch("http://c.com/hook", {"event": "test"}))
+
+    mock_resp = MagicMock()
+    mock_resp.status = 200
+    mock_resp.read.return_value = b"{}"
+    mock_resp.__enter__.return_value = mock_resp
+    mock_resp.__exit__.return_value = None
+
+    with patch("src.backends.webhook_dispatcher.urlopen", return_value=mock_resp):
+        result = asyncio.run(d.dispatch("http://c.com/hook", {"event": "test"}))
     assert result.success is True
     assert result.status_code == 200
     assert result.attempts >= 1
@@ -110,7 +119,15 @@ def test_broadcast_all_endpoints():
             make_ep("http://e3.com/hook"),
         ]
     )
-    results = asyncio.run(d.broadcast({"event": "broadcast"}))
+
+    mock_resp = MagicMock()
+    mock_resp.status = 200
+    mock_resp.read.return_value = b"{}"
+    mock_resp.__enter__.return_value = mock_resp
+    mock_resp.__exit__.return_value = None
+
+    with patch("src.backends.webhook_dispatcher.urlopen", return_value=mock_resp):
+        results = asyncio.run(d.broadcast({"event": "broadcast"}))
     assert len(results) == 3
     assert all(r.success for r in results)
 
