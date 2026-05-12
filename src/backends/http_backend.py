@@ -41,8 +41,6 @@ def _is_private_or_reserved(host: str) -> bool:
 
 
 def _validate_backend_url(url: str) -> None:
-    if os.environ.get("AURELIUS_ALLOW_PRIVATE_URLS") == "1":
-        return
     try:
         parsed = urlparse(url)
     except Exception as exc:
@@ -51,6 +49,8 @@ def _validate_backend_url(url: str) -> None:
         raise ValueError(f"backend URL scheme {parsed.scheme!r} not allowed; must be http or https")
     if not parsed.hostname:
         raise ValueError(f"backend URL missing host: {url!r}")
+    if os.environ.get("AURELIUS_ALLOW_PRIVATE_URLS") == "1":
+        return
     if _is_private_or_reserved(parsed.hostname):
         raise ValueError(
             f"backend URL host {parsed.hostname!r} resolves to a private/reserved address"
