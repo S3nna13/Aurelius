@@ -7,10 +7,10 @@ help: ## Show this help
 # --- Python Backend ---
 
 dev: ## Start the API server in development mode
-	python -m src.serving.api_server --host 127.0.0.1 --port 8080
+	python -m gateway.aurelius_api --host 127.0.0.1 --port 8080
 
 serve: ## Start the API server with mock generator
-	python -m src.serving.api_server --host 0.0.0.0 --port 8080
+	python -m gateway.aurelius_api --host 0.0.0.0 --port 8080
 
 # --- Node.js Middle Layer ---
 
@@ -122,24 +122,24 @@ frontend-lint: ## Lint the frontend
 # --- Python ---
 
 lint: ## Run Ruff linter and formatter
-	ruff check src/ tests/
-	ruff format --check src/ tests/
+	ruff check src/ tests/ agent/ aurelius_cli/ gateway/ acp_adapter/ cron/ plugins/ tools/
+	ruff format --check src/ tests/ agent/ aurelius_cli/ gateway/ acp_adapter/ cron/ plugins/ tools/
 
 lint-fix: ## Fix lint issues automatically
-	ruff check --fix src/ tests/
-	ruff format src/ tests/
+	ruff check --fix src/ tests/ agent/ aurelius_cli/ gateway/ acp_adapter/ cron/ plugins/ tools/
+	ruff format src/ tests/ agent/ aurelius_cli/ gateway/ acp_adapter/ cron/ plugins/ tools/
 
 test: ## Run Python tests
 	python -m pytest --tb=short -q
 
 test-cov: ## Run tests with coverage
-	python -m pytest --cov=src --cov-report=term --cov-report=html
+	python -m pytest --cov=src --cov=agent --cov=aurelius_cli --cov=gateway --cov=acp_adapter --cov=cron --cov=plugins --cov=tools --cov-report=term --cov-report=html
 
 typecheck: ## Run mypy type checker
-	mypy src/ --ignore-missing-imports
+	mypy src/ agent/ aurelius_cli/ gateway/ acp_adapter/ cron/ plugins/ tools/ --ignore-missing-imports
 
 security: ## Run security scans
-	bandit -r src/ -ll
+	bandit -r src/ agent/ aurelius_cli/ gateway/ acp_adapter/ cron/ plugins/ tools/ -ll
 	pip-audit --desc
 
 # --- All Tests ---
@@ -205,3 +205,23 @@ clean: ## Clean build artifacts
 	rm -rf middle/dist/ middle/node_modules/
 	rm -rf crates/data-engine/node_modules/
 	rm -rf crates/token-counter/node_modules/
+
+.PHONY: clean-all audit-deps ci
+
+clean-all: clean ## Clean ALL build artifacts (including Rust target dirs)
+	rm -rf target/
+	rm -rf crates/*/target/
+	rm -rf tools/*/target/
+	rm -rf rust_memory/target/
+
+audit-deps: ## Audit all dependencies for vulnerabilities
+	@echo "=== Python ==="
+	pip-audit --desc || true
+	@echo "=== Rust ==="
+	cargo audit || true
+	@echo "=== Node.js (middle) ==="
+	cd middle && npm audit --audit-level=high || true
+	@echo "=== Node.js (frontend) ==="
+	cd frontend && npm audit --audit-level=high || true
+
+ci: lint typecheck security test frontend-lint frontend-test middle-test ## Run all CI checks locally

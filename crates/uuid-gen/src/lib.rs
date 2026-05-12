@@ -58,7 +58,7 @@ pub fn uuid_short() -> String {
         .to_string()
         .split('-')
         .next()
-        .unwrap()
+        .expect("UUID short part missing")
         .to_string()
 }
 

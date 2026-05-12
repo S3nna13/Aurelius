@@ -28,4 +28,4 @@ repos:
       - id: mypy
         additional_dependencies: [tokenizers>=0.20, numpy>=1.26]
         args: [--ignore-missing-imports]
-        files: ^src/
+        files: ^(src|agent|aurelius_cli|gateway|acp_adapter|cron|plugins|tools)/

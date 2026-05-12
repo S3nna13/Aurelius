@@ -183,7 +183,11 @@ class SandboxExecutor:
         ):
             safe_builtins.pop(blocked, None)
         globs: dict[str, Any] = {"__builtins__": safe_builtins}
-        for attr in ("__class__", "__bases__", "__subclasses__", "__mro__", "__globals__", "__code__", "__closure__", "__dict__"):
+        for attr in (
+            "__class__", "__bases__", "__subclasses__",
+            "__mro__", "__globals__", "__code__",
+            "__closure__", "__dict__",
+        ):
             globs[attr] = None
         return globs
 

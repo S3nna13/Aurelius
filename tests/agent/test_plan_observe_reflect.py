@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import pytest
 
+from agent.plan_observe_reflect import _parse_steps
 from src.agent.plan_observe_reflect import (
     PLAN_OBSERVE_REFLECT_REGISTRY,
     LoopResult,
     LoopStep,
     PlanObserveReflect,
     StepStatus,
-    _parse_steps,
 )
 
 # ---------------------------------------------------------------- _parse_steps

@@ -1,11 +1,13 @@
+import logging
+import math
+import sys
+from contextlib import contextmanager
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import math
-from typing import Optional, Dict, List, Generator, Tuple
-from contextlib import contextmanager
-from nn_utils import sample_with_top_p_top_k, validate_input_ids
-import logging
+from aurelius.nn_utils import sample_with_top_p_top_k
+
 logger = logging.getLogger(__name__)
 
 
@@ -128,7 +130,7 @@ class SpeculativeDecoder:
         except (RuntimeError, TypeError) as e:
             if "out of memory" in str(e).lower() or "cuda error" in str(e).lower():
                 raise
-            pass
+            logger.warning("Model forward failed with %s: %s", type(e).__name__, e)
         if hasattr(model, 'blocks'):
             h = model.token_embedding(input_ids)
             cos, sin = model.rotary(h)
@@ -411,10 +413,12 @@ class MemoryEfficientInference:
             result['gpu_allocated_mb'] = torch.cuda.memory_allocated() / (1024 * 1024)
             result['gpu_reserved_mb'] = torch.cuda.memory_reserved() / (1024 * 1024)
 
-        import psutil
-        import os
-        process = psutil.Process(os.getpid())
-        result['cpu_rss_mb'] = process.memory_info().rss / (1024 * 1024)
+        try:
+            import psutil
+            process = psutil.Process(os.getpid())
+            result['cpu_rss_mb'] = process.memory_info().rss / (1024 * 1024)
+        except ImportError:
+            result['cpu_rss_mb'] = 0.0
 
         return result
 
@@ -427,7 +431,7 @@ class MemoryEfficientInference:
         except (RuntimeError, TypeError) as e:
             if "out of memory" in str(e).lower() or "cuda error" in str(e).lower():
                 raise
-            pass
+            logger.warning("Model forward failed with %s: %s", type(e).__name__, e)
         if hasattr(model, 'blocks') and hasattr(model, 'rotary'):
             h = model.token_embedding(input_ids)
             cos, sin = model.rotary(h)
@@ -609,3 +613,8 @@ class PagedAttention:
 
         self.k_cache[new_block_count:].zero_()
         self.v_cache[new_block_count:].zero_()
+
+
+_module = sys.modules[__name__]
+sys.modules.setdefault("inference", _module)
+sys.modules.setdefault("aurelius.inference", _module)

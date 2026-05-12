@@ -15,6 +15,7 @@ members = [
     "crates/api-gateway",
     "tools/data-cli",
     "tools/jsonl_merge",
+    "rust_memory",
 ]
 
 [workspace.package]

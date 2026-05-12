@@ -31,18 +31,29 @@ const CONVERSATIONS = new Map<string, { messages: Array<{ role: string; content:
 
 // POST /api/chat/completions — unified chat completions (Aurelius → OpenAI fallback)
 router.post('/completions', async (req: Request, res: Response) => {
-  const { model, messages, max_tokens, temperature, top_p, stream } = req.body;
+  const { model, messages, max_tokens, temperature, top_p, stream, backend } = req.body;
 
   try {
-    const result = await provider.complete({ model, messages, max_tokens, temperature, top_p, stream: Boolean(stream) });
+    const result = await provider.complete({
+      model,
+      messages,
+      max_tokens,
+      temperature,
+      top_p,
+      stream: Boolean(stream),
+      backend,
+    });
+    const { resolved_backend: _resolvedBackend, ...response } =
+      result as typeof result & { resolved_backend?: string };
 
     if (stream) {
       res.writeHead(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
-        Connection: 'keep-alive',
+        'Connection': 'keep-alive',
+        'X-Resolved-Backend': _resolvedBackend || backend || 'auto',
       });
-      const content = result?.choices?.[0]?.message?.content || '';
+      const content = response?.choices?.[0]?.message?.content || '';
       for (let i = 0; i < content.length; i += 5) {
         const chunk = content.slice(i, i + 5);
         res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: chunk }, index: 0 }] })}\n\n`);
@@ -53,7 +64,7 @@ router.post('/completions', async (req: Request, res: Response) => {
       return;
     }
 
-    res.json(result || { error: 'No provider available' });
+    res.json(response);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Failed to complete request'
     res.status(502).json({

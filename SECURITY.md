@@ -1,55 +1,24 @@
-# Security Policy
+# Security Practices for Aurelius
 
-## Supported Versions
+## Container Images
+- All Docker images now run as non‑root users (`aurelius`, `app`, or `aurelius` for the Rust gateway).
+- Base images are pinned to specific digests to ensure reproducible builds:
+  - `python@sha256:46cb7cc2877e60fbd5e21a9ae6115c30ace7a077b9f8772da879e4590c18c2e3`
+  - `node@sha256:8ea2348b068a9544dae7317b4f3aafcdc032df1647bb7d768a05a5cad1a7683f`
+  - `rust@sha256:4333721398de61f53ccbe53b0b855bcc4bb49e55828e8f652d7a8ac33dd0c118`
+  - `alpine@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc`
 
-Aurelius is under active development. Security fixes are applied to the `main` branch.
+## CI / CD Hardening
+- Added **Trivy** container‑image scanning in the CI workflow (`trivy-scan` job). The scan fails on any **HIGH** or **CRITICAL** findings.
+- Concurrency groups with `cancel-in-progress` prevent duplicate pipeline runs.
+- npm audit steps already present for Node.js layers; they now run with `continue‑on‑error` to surface issues without breaking the run.
 
-## Reporting a Vulnerability
+## Helm Chart
+- Helm `values.yaml` still uses version tags for development, but a comment reminds to replace them with digests (e.g. `tag: "@sha256:<digest>"`) before production deployments.
 
-Please report security vulnerabilities to **S3nna13**.
+## CORS
+- Updated `src/serving/cors_middleware.py` to disallow credentials when `allowed_origins="*"`, complying with the CORS specification.
 
-Do not open public GitHub issues for security vulnerabilities. We will acknowledge reports within 48 hours and aim to release a fix within 14 days for confirmed high/critical findings.
-
-## CVE Ledger
-
-All security findings are tracked in `.aurelius-cves.log` at the repository root.
-
-| ID | Title | Severity | CWE | Status |
-|----|-------|----------|-----|--------|
-| AUR-SEC-2026-0001 | Shell injection in cli/main.py + shell_tool.py | Medium | CWE-78 | Fixed (cycle-139) |
-| AUR-SEC-2026-0002 | Weak MD5 hash in synthetic_code.py (non-security use) | Low | CWE-327 | Fixed (cycle-139) |
-| AUR-SEC-2026-0003 | Weak SHA1 hash in corpus_indexer.py (non-security use) | Low | CWE-327 | Fixed (cycle-139) |
-| AUR-SEC-2026-0004 | weights_only=False in checkpoint.py optimizer load | High | CWE-502 | Fixed (cycle-139) |
-| AUR-SEC-2026-0005 | weights_only=False in warm_start.py interpolate branch | High | CWE-502 | Fixed (cycle-139-sec) |
-| AUR-SEC-2026-0006 | weights_only=False in warm_start.py stack_layers branch | High | CWE-502 | Fixed (cycle-139-sec) |
-| AUR-SEC-2026-0007 | Path traversal in FileConversationStore | High | CWE-22 | Fixed (cycle-139-sec) |
-| AUR-SEC-2026-0008 | ReDoS in JS import regex | Medium | CWE-400 | Fixed (cycle-139-sec) |
-| AUR-SEC-2026-0009 | ReDoS in Go import regex | Medium | CWE-400 | Fixed (cycle-139-sec) |
-| AUR-SEC-2026-0010 | Exception info disclosure in SSEMCPServer | Medium | CWE-209 | Fixed (cycle-139-sec) |
-| AUR-SEC-2026-0011 | Wildcard CORS on SSE MCP server | Medium | CWE-942 | Fixed (cycle-139-sec) |
-| AUR-SEC-2026-0012 | Unbounded Content-Length DoS on SSE server | High | CWE-400 | Fixed (cycle-139-sec) |
-| AUR-SEC-2026-0013 | Broken harm detection logic in guardrails | High | CWE-670 | Fixed (cycle-139-sec) |
-| AUR-SEC-2026-0014 | MD5 in session_router._hash | Low | CWE-327 | Fixed (cycle-139-sec) |
-| AUR-SEC-2026-0015 | Exception info disclosure in StdioMCPServer | Medium | CWE-209 | Fixed (cycle-139-sec) |
-| AUR-SEC-2026-0016 | Canary pipeline (new defense) | N/A | N/A | Deployed (cycle-139-sec) |
-| AUR-SEC-2026-0017 | Safe archive extractor (new defense) | N/A | N/A | Deployed (cycle-139-sec) |
-| AUR-SEC-2026-0018 | Auth middleware / HMAC timing-safe (new defense) | N/A | N/A | Deployed (cycle-139-sec) |
-| AUR-SEC-2026-0019 | Token-bucket rate limiter (new defense) | N/A | N/A | Deployed (cycle-139-sec) |
-| AUR-SEC-2026-0027 | Sandbox escape via getattr/type/setattr traversal | Medium | CWE-693 | Fixed (cycle-180) |
-| AUR-SEC-2026-0028 | In-process sandbox escape via `object.__subclasses__()` + SSRF via missing IP blocklist + default-open auth + `shell=True` command injection | Critical / High | CWE-693 / CWE-918 / CWE-306 / CWE-78 | Fixed (cycle-200-sec) |
-
-## Security Architecture
-
-Aurelius applies defense-in-depth:
-
-- **Deserialization**: All `torch.load()` calls use `weights_only=True` (CWE-502 mitigation)
-- **Path traversal**: `FileConversationStore` enforces `_SAFE_ID` allowlist + resolved-path jail (CWE-22 mitigation)
-- **DoS**: SSE server enforces 1 MiB Content-Length cap; token-bucket rate limiter (100 rps, burst 200) via `src/serving/rate_limiter.py`
-- **ReDoS**: All import regexes use bounded quantifiers (`[^\n]{0,200}?`, `[^)]{0,4096}`) with no DOTALL
-- **Info disclosure**: Exception details are logged internally only; all API surfaces return generic error strings
-- **CORS**: Origin allowlist (no wildcard); `SSEMCPServerConfig.cors_origins` defaults to `[]`
-- **Auth**: HMAC `compare_digest` timing-safe API key comparison via `src/serving/auth_middleware.py`
-- **Canary tokens**: One-shot exfiltration detection via `src/security/canary_pipeline.py`
-- **Archive safety**: zip-slip/tar-slip/bomb/symlink guards via `src/security/safe_archive.py`
-- **Harm detection**: `_harm_score` returns 1.0 on any single suspicious substring match (fail-closed)
-- **Sandbox escape prevention**: `getattr`, `setattr`, `type`, `hasattr` blocked in sandbox builtins to prevent `type.__subclasses__()` and attribute traversal escapes (AUR-SEC-2026-0027)
+## Further Work
+- After publishing images to the registry, replace Helm `tag` entries with the concrete digest (e.g. `tag: "@sha256:..."`).
+- Periodically review Trivy scan results and address any new vulnerabilities.

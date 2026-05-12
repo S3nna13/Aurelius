@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import pytest
 
+from plugins.memory.memory_retriever import _MAX_QUERY_LEN, _MAX_TOP_K
 from src.memory.memory_retriever import (
-    _MAX_QUERY_LEN,
-    _MAX_TOP_K,
     MEMORY_RETRIEVER,
     MemoryRetriever,
     RetrievalResult,

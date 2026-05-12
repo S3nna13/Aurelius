@@ -21,22 +21,22 @@ async fn main() {
         + &config::Config::from_env()
             .log_level
             .parse::<LevelFilter>()
-            .unwrap_or(LevelFilter::INFO)
+            .expect("Invalid log level")
             .to_string()
             .to_lowercase();
 
     tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_default_env().add_directive(log_level.parse().unwrap()))
+        .with_env_filter(
+            EnvFilter::from_default_env()
+                .add_directive(log_level.parse().expect("Invalid log level directive")),
+        )
         .init();
 
     let cfg = config::Config::from_env();
     let proxy_client = proxy::ProxyClient::new(&cfg.upstream_url);
     let rate_limiter = rate_limit::RateLimiter::new(cfg.rate_limit_rps, cfg.rate_limit_burst);
     let metrics = metrics::Metrics::new();
-    let auth_service = Arc::new(auth::AuthService::new(
-        &cfg.jwt_secret,
-        cfg.jwt_expiry_hours,
-    ));
+    let auth_service = Arc::new(auth::AuthService::new(&cfg.jwt_secret));
 
     let cors = if cfg.allowed_origins.is_empty() {
         CorsLayer::new()
@@ -75,14 +75,16 @@ async fn main() {
         .expect("Invalid address");
     tracing::info!("Gateway listening on {addr}");
 
-    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(addr)
+        .await
+        .expect("Failed to bind TCP listener");
     axum::serve(
         listener,
         app.into_make_service_with_connect_info::<SocketAddr>(),
     )
     .with_graceful_shutdown(shutdown_signal())
     .await
-    .unwrap();
+    .expect("Failed to serve");
 }
 
 async fn shutdown_signal() {

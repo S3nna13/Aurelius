@@ -1,12 +1,16 @@
+import logging
+import math
+import sys
+from collections import deque
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from typing import Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import math
-from dataclasses import dataclass, field
-from typing import Optional, Callable
-from collections import deque
-from nn_utils import RMSNorm
-import logging
+from aurelius.nn_utils import RMSNorm
+
 logger = logging.getLogger(__name__)
 
 
@@ -826,3 +830,8 @@ The self-improvement loop maintains 1000 recent trajectories regardless of scale
 """
 
 # Neural brain layer complete. Proceeding to the next AI layer.
+
+
+_module = sys.modules[__name__]
+sys.modules.setdefault("brain_layer", _module)
+sys.modules.setdefault("aurelius.brain_layer", _module)

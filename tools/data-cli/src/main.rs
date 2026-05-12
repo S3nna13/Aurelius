@@ -141,11 +141,12 @@ fn main() {
         Commands::Export { output, pretty } => {
             let json = engine.export_json();
             if *pretty {
-                let val: serde_json::Value = serde_json::from_str(&json).unwrap();
-                let formatted = serde_json::to_string_pretty(&val).unwrap();
-                std::fs::write(output, &formatted).unwrap();
+                let val: serde_json::Value =
+                    serde_json::from_str(&json).expect("Failed to parse JSON");
+                let formatted = serde_json::to_string_pretty(&val).expect("Failed to format JSON");
+                std::fs::write(output, &formatted).expect("Failed to write formatted JSON");
             } else {
-                std::fs::write(output, &json).unwrap();
+                std::fs::write(output, &json).expect("Failed to write JSON output");
             }
             println!("Exported to {output}");
         }

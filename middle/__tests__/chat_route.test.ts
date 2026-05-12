@@ -1,7 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { request } from 'http';
-import type { Server } from 'http';
 import { buildApp } from '../src/server.js';
+import { invokeApp } from './request-app.js';
 
 const mockCompletion = {
   id: 'chatcmpl-test',
@@ -17,36 +16,17 @@ const mockCompletion = {
   ],
 };
 
-let server: Server;
-const BASE = 'http://127.0.0.1:3097';
+let app: ReturnType<typeof buildApp>;
 
 function sendJson(path: string, body: unknown) {
-  return new Promise<{ status: number; text: string }>((resolve, reject) => {
-    const payload = JSON.stringify(body);
-    const req = request(
-      `${BASE}${path}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(payload),
-          'X-API-Key': 'test-admin-key',
-        },
-      },
-      (res) => {
-        const chunks: Buffer[] = [];
-        res.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
-        res.on('end', () => {
-          resolve({
-            status: res.statusCode ?? 0,
-            text: Buffer.concat(chunks).toString('utf8'),
-          });
-        });
-      },
-    );
-    req.on('error', reject);
-    req.write(payload);
-    req.end();
+  return invokeApp(app, {
+    method: 'POST',
+    path,
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': 'test-admin-key',
+    },
+    body,
   });
 }
 
@@ -59,9 +39,7 @@ beforeAll(async () => {
     })),
   );
 
-  const app = buildApp();
-  server = app.listen(3097, '127.0.0.1');
-  await new Promise((resolve) => server.on('listening', resolve));
+  app = buildApp();
 });
 
 afterEach(() => {
@@ -70,7 +48,6 @@ afterEach(() => {
 
 afterAll(() => {
   vi.unstubAllGlobals();
-  server?.close();
 });
 
 describe('chat route', () => {
@@ -86,37 +63,18 @@ describe('chat route', () => {
   });
 
   it('streams upstream completion content as SSE', async () => {
-    const payload = JSON.stringify({
-      model: 'aurelius-1.3b',
-      messages: [{ role: 'user', content: 'hello' }],
-      stream: true,
-    });
-
-    const streamResult = await new Promise<{ status: number; text: string }>((resolve, reject) => {
-      const req = request(
-        `${BASE}/api/chat/completions`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Content-Length': Buffer.byteLength(payload),
-            'X-API-Key': 'test-admin-key',
-          },
-        },
-        (res) => {
-          const chunks: Buffer[] = [];
-          res.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
-          res.on('end', () => {
-            resolve({
-              status: res.statusCode ?? 0,
-              text: Buffer.concat(chunks).toString('utf8'),
-            });
-          });
-        },
-      );
-      req.on('error', reject);
-      req.write(payload);
-      req.end();
+    const streamResult = await invokeApp(app, {
+      method: 'POST',
+      path: '/api/chat/completions',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': 'test-admin-key',
+      },
+      body: {
+        model: 'aurelius-1.3b',
+        messages: [{ role: 'user', content: 'hello' }],
+        stream: true,
+      },
     });
 
     expect(streamResult.status).toBe(200);

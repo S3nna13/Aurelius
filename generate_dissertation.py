@@ -1,6 +1,7 @@
 """Generate Aurelius dissertation PDF — updated May 2026."""
 from __future__ import annotations
 import datetime
+
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
 from reportlab.lib.pagesizes import letter

@@ -6,12 +6,11 @@ Live path: skills.SkillRegistry → torch tensor operations.
 """
 
 from __future__ import annotations
-from dataclasses import dataclass, field
-from typing import Any
+
+from dataclasses import dataclass
 
 import torch
-
-from skills import SkillRegistry as _SkillRegistry
+from aurelius.skills import SkillRegistry as _SkillRegistry
 
 
 @dataclass

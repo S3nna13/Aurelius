@@ -119,23 +119,11 @@ pub struct InternalTrainingRun {
     pub source: String,
 }
 
-#[allow(dead_code)]
-#[derive(Clone)]
-pub struct InternalTrainingMetricsEntry {
-    pub id: String,
-    pub title: String,
-    pub run_type: String,
-    pub model_name: String,
-    pub status: String,
-    pub started_at: f64,
-}
-
-#[allow(dead_code)]
 pub struct DataEngineInner {
     pub agents: DashMap<String, InternalAgent>,
     pub activity: RwLock<VecDeque<InternalActivity>>,
     pub notifications: RwLock<VecDeque<InternalNotification>>,
-    pub notif_prefs: RwLock<std::collections::HashMap<String, bool>>,
+    pub _notif_prefs: RwLock<std::collections::HashMap<String, bool>>,
     pub memory_layers: RwLock<std::collections::HashMap<String, VecDeque<InternalMemoryEntry>>>,
     pub config: RwLock<std::collections::HashMap<String, String>>,
     pub logs: RwLock<VecDeque<InternalLog>>,
@@ -395,7 +383,7 @@ impl DataEngineInner {
             agents: DashMap::new(),
             activity: RwLock::new(VecDeque::new()),
             notifications: RwLock::new(VecDeque::new()),
-            notif_prefs: RwLock::new(std::collections::HashMap::new()),
+            _notif_prefs: RwLock::new(std::collections::HashMap::new()),
             memory_layers: RwLock::new(memory),
             config: RwLock::new(config),
             logs: RwLock::new(VecDeque::new()),
@@ -480,7 +468,7 @@ impl DataEngineInner {
             success,
             output: output.to_string(),
         };
-        let mut log = self.activity.write().unwrap();
+        let mut log = self.activity.write().expect("Failed to acquire write lock");
         log.push_back(InternalActivity {
             id: entry.id.clone(),
             timestamp: entry.timestamp,
@@ -495,7 +483,7 @@ impl DataEngineInner {
     }
 
     pub fn get_activity(&self, limit: Option<u32>) -> Vec<crate::ActivityEntry> {
-        let log = self.activity.read().unwrap();
+        let log = self.activity.read().expect("Failed to acquire read lock");
         let limit = limit.unwrap_or(100).min(MAX_ACTIVITY as u32) as usize;
         log.iter()
             .rev()
@@ -511,7 +499,7 @@ impl DataEngineInner {
     }
 
     pub fn search_activity(&self, query: &str, limit: Option<u32>) -> Vec<crate::ActivityEntry> {
-        let log = self.activity.read().unwrap();
+        let log = self.activity.read().expect("Failed to acquire read lock");
         let limit = limit.unwrap_or(100).min(MAX_ACTIVITY as u32) as usize;
         let q = query.to_lowercase();
         log.iter()
@@ -531,7 +519,7 @@ impl DataEngineInner {
     }
 
     pub fn clear_activity(&self) -> u32 {
-        let mut log = self.activity.write().unwrap();
+        let mut log = self.activity.write().expect("Failed to acquire write lock");
         let count = log.len() as u32;
         log.clear();
         count
@@ -558,7 +546,10 @@ impl DataEngineInner {
             read: false,
             delivered: false,
         };
-        let mut list = self.notifications.write().unwrap();
+        let mut list = self
+            .notifications
+            .write()
+            .expect("Failed to acquire write lock");
         list.push_back(InternalNotification {
             id: n.id.clone(),
             timestamp: n.timestamp,
@@ -583,7 +574,10 @@ impl DataEngineInner {
         read: Option<bool>,
         limit: Option<u32>,
     ) -> Vec<crate::Notification> {
-        let list = self.notifications.read().unwrap();
+        let list = self
+            .notifications
+            .read()
+            .expect("Failed to acquire read lock");
         let limit = limit.unwrap_or(100).min(MAX_NOTIFICATIONS as u32) as usize;
         list.iter()
             .rev()
@@ -621,7 +615,10 @@ impl DataEngineInner {
     }
 
     pub fn mark_notification_read(&self, id: &str) -> bool {
-        let mut list = self.notifications.write().unwrap();
+        let mut list = self
+            .notifications
+            .write()
+            .expect("Failed to acquire write lock");
         for n in list.iter_mut() {
             if n.id == id {
                 n.read = true;
@@ -632,7 +629,10 @@ impl DataEngineInner {
     }
 
     pub fn mark_all_notifications_read(&self, category: Option<&str>) -> u32 {
-        let mut list = self.notifications.write().unwrap();
+        let mut list = self
+            .notifications
+            .write()
+            .expect("Failed to acquire write lock");
         let mut count = 0;
         for n in list.iter_mut() {
             if let Some(c) = category {
@@ -649,14 +649,20 @@ impl DataEngineInner {
     }
 
     pub fn get_notification_stats(&self) -> crate::NotificationStats {
-        let list = self.notifications.read().unwrap();
+        let list = self
+            .notifications
+            .read()
+            .expect("Failed to acquire read lock");
         let total = list.len() as u32;
         let unread = list.iter().filter(|n| !n.read).count() as u32;
         crate::NotificationStats { unread, total }
     }
 
     pub fn clear_notifications(&self) -> u32 {
-        let mut list = self.notifications.write().unwrap();
+        let mut list = self
+            .notifications
+            .write()
+            .expect("Failed to acquire write lock");
         let count = list.len() as u32;
         list.clear();
         count
@@ -665,7 +671,10 @@ impl DataEngineInner {
     // -- Memory --
 
     pub fn get_memory_layers(&self) -> Vec<crate::MemoryLayer> {
-        let layers = self.memory_layers.read().unwrap();
+        let layers = self
+            .memory_layers
+            .read()
+            .expect("Failed to acquire read lock");
         layers
             .iter()
             .map(|(name, entries)| crate::MemoryLayer {
@@ -676,7 +685,10 @@ impl DataEngineInner {
     }
 
     pub fn add_memory_entry(&self, layer_name: &str, content: &str) {
-        let mut layers = self.memory_layers.write().unwrap();
+        let mut layers = self
+            .memory_layers
+            .write()
+            .expect("Failed to acquire write lock");
         let entry = InternalMemoryEntry {
             id: Self::gen_id(),
             content: content.to_string(),
@@ -697,7 +709,10 @@ impl DataEngineInner {
         query: Option<&str>,
         limit: Option<u32>,
     ) -> Vec<crate::MemoryEntry> {
-        let layers = self.memory_layers.read().unwrap();
+        let layers = self
+            .memory_layers
+            .read()
+            .expect("Failed to acquire read lock");
         const MAX_LIMIT: u32 = 1000;
         let limit = limit.unwrap_or(50).min(MAX_LIMIT) as usize;
         let mut results = Vec::new();
@@ -729,7 +744,10 @@ impl DataEngineInner {
     }
 
     pub fn delete_memory_entry(&self, id: &str) -> bool {
-        let mut layers = self.memory_layers.write().unwrap();
+        let mut layers = self
+            .memory_layers
+            .write()
+            .expect("Failed to acquire write lock");
         for entries in layers.values_mut() {
             if let Some(pos) = entries.iter().position(|e| e.id == id) {
                 entries.remove(pos);
@@ -742,24 +760,31 @@ impl DataEngineInner {
     // -- Config --
 
     pub fn get_config(&self, key: &str) -> Option<String> {
-        self.config.read().unwrap().get(key).cloned()
+        self.config
+            .read()
+            .expect("Failed to acquire read lock")
+            .get(key)
+            .cloned()
     }
 
     pub fn get_all_config(&self) -> std::collections::HashMap<String, String> {
-        self.config.read().unwrap().clone()
+        self.config
+            .read()
+            .expect("Failed to acquire read lock")
+            .clone()
     }
 
     pub fn set_config(&self, key: &str, value: &str) {
         self.config
             .write()
-            .unwrap()
+            .expect("Failed to acquire write lock")
             .insert(key.to_string(), value.to_string());
     }
 
     // -- Logs --
 
     pub fn append_log(&self, level: &str, logger: &str, message: &str) {
-        let mut logs = self.logs.write().unwrap();
+        let mut logs = self.logs.write().expect("Failed to acquire write lock");
         logs.push_back(InternalLog {
             timestamp: Utc::now().format("%Y-%m-%dT%H:%M:%S").to_string(),
             level: level.to_string(),
@@ -777,7 +802,7 @@ impl DataEngineInner {
         query: Option<&str>,
         limit: Option<u32>,
     ) -> Vec<crate::LogRecord> {
-        let logs = self.logs.read().unwrap();
+        let logs = self.logs.read().expect("Failed to acquire read lock");
         let limit = limit.unwrap_or(100).min(MAX_LOGS as u32) as usize;
         logs.iter()
             .rev()
@@ -813,7 +838,7 @@ impl DataEngineInner {
         level: Option<&str>,
         limit: Option<u32>,
     ) -> Vec<crate::LogRecord> {
-        let logs = self.logs.read().unwrap();
+        let logs = self.logs.read().expect("Failed to acquire read lock");
         let limit = limit.unwrap_or(100).min(MAX_LOGS as u32) as usize;
         let q = query.to_lowercase();
         logs.iter()
@@ -837,7 +862,7 @@ impl DataEngineInner {
     }
 
     pub fn clear_logs(&self) -> u32 {
-        let mut logs = self.logs.write().unwrap();
+        let mut logs = self.logs.write().expect("Failed to acquire write lock");
         let count = logs.len() as u32;
         logs.clear();
         count
@@ -848,7 +873,7 @@ impl DataEngineInner {
     pub fn list_skills(&self) -> Vec<crate::SkillEntry> {
         self.skills
             .read()
-            .unwrap()
+            .expect("Failed to acquire read lock")
             .iter()
             .map(|s| crate::SkillEntry {
                 id: s.id.clone(),
@@ -867,7 +892,7 @@ impl DataEngineInner {
     pub fn get_skill(&self, id: &str) -> Option<crate::SkillEntry> {
         self.skills
             .read()
-            .unwrap()
+            .expect("Failed to acquire read lock")
             .iter()
             .find(|s| s.id == id)
             .map(|s| crate::SkillEntry {
@@ -888,7 +913,7 @@ impl DataEngineInner {
     pub fn list_workflows(&self) -> Vec<crate::WorkflowEntry> {
         self.workflows
             .read()
-            .unwrap()
+            .expect("Failed to acquire read lock")
             .iter()
             .map(|w| crate::WorkflowEntry {
                 id: w.id.clone(),
@@ -905,7 +930,7 @@ impl DataEngineInner {
     pub fn get_workflow(&self, id: &str) -> Option<crate::WorkflowEntry> {
         self.workflows
             .read()
-            .unwrap()
+            .expect("Failed to acquire read lock")
             .iter()
             .find(|w| w.id == id)
             .map(|w| crate::WorkflowEntry {
@@ -920,7 +945,10 @@ impl DataEngineInner {
     }
 
     pub fn update_workflow_status(&self, id: &str, status: &str) -> bool {
-        let mut wf = self.workflows.write().unwrap();
+        let mut wf = self
+            .workflows
+            .write()
+            .expect("Failed to acquire write lock");
         for w in wf.iter_mut() {
             if w.id == id {
                 w.status = status.to_string();
@@ -937,7 +965,7 @@ impl DataEngineInner {
     pub fn list_models(&self) -> Vec<crate::ModelInfo> {
         self.models
             .read()
-            .unwrap()
+            .expect("Failed to acquire read lock")
             .iter()
             .map(|m| crate::ModelInfo {
                 id: m.id.clone(),
@@ -955,7 +983,7 @@ impl DataEngineInner {
     pub fn get_model(&self, id: &str) -> Option<crate::ModelInfo> {
         self.models
             .read()
-            .unwrap()
+            .expect("Failed to acquire read lock")
             .iter()
             .find(|m| m.id == id)
             .map(|m| crate::ModelInfo {
@@ -971,7 +999,7 @@ impl DataEngineInner {
     }
 
     pub fn set_model_state(&self, id: &str, state: &str) -> bool {
-        let mut models = self.models.write().unwrap();
+        let mut models = self.models.write().expect("Failed to acquire write lock");
         for m in models.iter_mut() {
             if m.id == id {
                 m.state = state.to_string();
@@ -987,7 +1015,7 @@ impl DataEngineInner {
     pub fn list_training_runs(&self) -> Vec<crate::TrainingRunSummary> {
         self.training_runs
             .read()
-            .unwrap()
+            .expect("Failed to acquire read lock")
             .iter()
             .map(|r| crate::TrainingRunSummary {
                 id: r.id.clone(),
@@ -1009,7 +1037,7 @@ impl DataEngineInner {
     pub fn get_training_run(&self, id: &str) -> Option<crate::TrainingRunDetail> {
         self.training_runs
             .read()
-            .unwrap()
+            .expect("Failed to acquire read lock")
             .iter()
             .find(|r| r.id == id)
             .map(|r| {
@@ -1053,7 +1081,10 @@ impl DataEngineInner {
         model_id: &str,
         total_epochs: u32,
     ) -> crate::TrainingRunSummary {
-        let mut runs = self.training_runs.write().unwrap();
+        let mut runs = self
+            .training_runs
+            .write()
+            .expect("Failed to acquire write lock");
         let run = InternalTrainingRun {
             id: Self::gen_id(),
             name: name.into(),
@@ -1093,10 +1124,16 @@ impl DataEngineInner {
     // -- Stats --
 
     pub fn get_stats(&self) -> crate::SystemStats {
-        let activity = self.activity.read().unwrap();
-        let notifications = self.notifications.read().unwrap();
-        let logs = self.logs.read().unwrap();
-        let memory = self.memory_layers.read().unwrap();
+        let activity = self.activity.read().expect("Failed to acquire read lock");
+        let notifications = self
+            .notifications
+            .read()
+            .expect("Failed to acquire read lock");
+        let logs = self.logs.read().expect("Failed to acquire read lock");
+        let memory = self
+            .memory_layers
+            .read()
+            .expect("Failed to acquire read lock");
 
         crate::SystemStats {
             agent_count: self.agents.len() as u32,
@@ -1129,7 +1166,13 @@ mod tests {
 
         let run = engine.create_training_run("Live Run", "model-x", 4);
         assert_eq!(run.source, "live");
-        assert_eq!(engine.get_training_run(&run.id).unwrap().source, "live");
+        assert_eq!(
+            engine
+                .get_training_run(&run.id)
+                .expect("Training run not found")
+                .source,
+            "live"
+        );
     }
 
     #[test]
@@ -1138,7 +1181,9 @@ mod tests {
         let path = format!("{}.json", DataEngineInner::gen_id());
         let persistence = Persistence::new(&path, 0);
 
-        persistence.save(&engine).unwrap();
+        persistence
+            .save(&engine)
+            .expect("Failed to save engine state");
 
         let restored = DataEngineInner::new_with_demo_mode(false);
         assert!(restored.list_skills().is_empty());
@@ -1146,7 +1191,9 @@ mod tests {
         assert!(restored.list_models().is_empty());
         assert!(restored.list_training_runs().is_empty());
 
-        persistence.load(&restored).unwrap();
+        persistence
+            .load(&restored)
+            .expect("Failed to load engine state");
 
         assert_eq!(restored.get_config("engine_mode").as_deref(), Some("demo"));
 
@@ -1166,7 +1213,7 @@ mod tests {
         assert_eq!(runs.len(), 3);
         assert!(runs.iter().all(|run| run.source == "demo"));
 
-        let resolved = resolve_data_path(&path).unwrap();
+        let resolved = resolve_data_path(&path).expect("Failed to resolve data path");
         let _ = std::fs::remove_file(resolved);
     }
 }

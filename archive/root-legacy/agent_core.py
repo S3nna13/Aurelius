@@ -1,8 +1,11 @@
+import logging
+import math
+import sys
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import math
-import logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -201,3 +204,8 @@ class PlanningModule(nn.Module):
         plan_tensor = torch.cat(plans, dim=0) if plans else root_state
         value_tensor = torch.stack([v.flatten() for v in value_tensors]).squeeze(-1) if value_tensors else torch.zeros(b, device=h.device)
         return plan_tensor, value_tensor, root
+
+
+_module = sys.modules[__name__]
+sys.modules.setdefault("agent_core", _module)
+sys.modules.setdefault("aurelius.agent_core", _module)

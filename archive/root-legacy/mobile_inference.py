@@ -1,10 +1,11 @@
+import os
+import sys
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.quantization
-import math
-import os
-from nn_utils import RMSNorm
+from aurelius.nn_utils import RMSNorm
 
 
 class MobileQuantizer(nn.Module):
@@ -146,3 +147,8 @@ class PrunedHead(nn.Module):
         out = out * self.S
         out = out @ self.U.T
         return out + self.bias
+
+
+_module = sys.modules[__name__]
+sys.modules.setdefault("mobile_inference", _module)
+sys.modules.setdefault("aurelius.mobile_inference", _module)

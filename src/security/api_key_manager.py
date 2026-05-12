@@ -4,10 +4,14 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import os
 import secrets
 from dataclasses import dataclass, field
 
-_SCRYPT_N = 2**15
+# Keep the default scrypt cost strong in production. Tests can override this
+# via `AURELIUS_SCRYPT_N` so local CI and lightweight containers stay within
+# their memory budget.
+_SCRYPT_N = int(os.environ.get("AURELIUS_SCRYPT_N", str(2**15)))
 _SCRYPT_R = 8
 _SCRYPT_P = 1
 

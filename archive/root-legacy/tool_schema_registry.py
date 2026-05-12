@@ -8,11 +8,11 @@ Live path: tool.* — tool-specific torch.nn.Module subclasses.
 """
 
 from __future__ import annotations
+
 import importlib
 import os
 import sys
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
 
 
 @dataclass
@@ -111,7 +111,7 @@ def verify_imports() -> dict[str, bool]:
     results: dict[str, bool] = {}
     _archive_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'archive')
     if os.path.isdir(_archive_path) and _archive_path not in sys.path:
-        sys.path.insert(0, _archive_path)
+        sys.path.insert(1, _archive_path)
     for key, entry in TOOL_SCHEMA_REGISTRY.items():
         try:
             importlib.import_module(entry.path)

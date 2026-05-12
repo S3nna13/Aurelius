@@ -88,7 +88,7 @@ impl MmapCheckpointWriter {
             std::slice::from_raw_parts(data.as_ptr() as *const u8, data.len() * 4)
         };
 
-        let mut file_mut = self.file.as_ref().unwrap();
+        let mut file_mut = self.file.as_ref().expect("File not opened for finalization");
         file_mut.seek(SeekFrom::End(0))
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{}", e)))?;
 
@@ -125,7 +125,7 @@ impl MmapCheckpointWriter {
         let header_bytes: &[u8] =
             unsafe { std::slice::from_raw_parts(&header as *const _ as *const u8, size_of::<CheckpointHeader>()) };
 
-        let mut file_mut = self.file.as_ref().unwrap();
+        let mut file_mut = self.file.as_ref().expect("File not opened for finalization");
         file_mut.seek(SeekFrom::Start(0))
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{}", e)))?;
         file_mut.write_all(header_bytes)

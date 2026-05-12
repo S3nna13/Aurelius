@@ -252,7 +252,10 @@ class GCGAttack:
         vocab_size = self._vocab_size()
 
         # Initialise suffix with random tokens
-        current_suffix = torch.randint(0, vocab_size, (cfg.suffix_len,), device=device, generator=gen)
+        current_suffix = torch.randint(
+            0, vocab_size, (cfg.suffix_len,),
+            device=device, generator=gen,
+        )
 
         best_suffix = current_suffix.clone()
         best_loss = float("inf")

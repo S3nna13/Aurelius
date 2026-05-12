@@ -1,12 +1,10 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import yaml
-
-from aurelius_model_3b import AureliusModel3B
-from agent_train import AgentTrainer, ImitationDataset
-from memory_optimizer import MixedPrecisionTrainer
 import logging
+
+import torch.nn as nn
+import yaml
+from aurelius.aurelius_model_3b import AureliusModel3B
+from memory_optimizer import MixedPrecisionTrainer
+
 logger = logging.getLogger("train_3b")
 
 

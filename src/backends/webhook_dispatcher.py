@@ -118,7 +118,12 @@ class WebhookDispatcher:
                 req = Request(url, data=raw_body, headers=headers, method="POST")  # noqa: S310
                 resp = urlopen(req, timeout=10)  # nosec B310  # noqa: S310
                 breaker.record_success()
-                return DispatchResult(url=url, success=True, status_code=resp.status, attempts=attempts)
+                return DispatchResult(
+                    url=url,
+                    success=True,
+                    status_code=resp.status,
+                    attempts=attempts,
+                )
             except (URLError, OSError, Exception) as exc:
                 last_error = str(exc)
                 breaker.record_failure()

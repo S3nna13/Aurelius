@@ -17,9 +17,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from src.agent.background_executor import BackgroundTask, TaskStatus
-from src.agent.mcp_client import MCP_PROTOCOL_VERSION
-
 from .family import get_variant_by_id
 from .interface_contract import (
     InterfaceContractBundle,
@@ -610,6 +607,11 @@ class AureliusInterfaceFramework:
 
     def describe(self) -> dict[str, Any]:
         """Return a JSON-safe summary of the loaded framework envelope."""
+        # Lazy imports to break circular dependency:
+        # interface_framework → agent → interface_runtime → interface_framework
+        from src.agent.background_executor import BackgroundTask, TaskStatus  # noqa: E402
+        from src.agent.mcp_client import MCP_PROTOCOL_VERSION  # noqa: E402
+
         return {
             "title": self.contract["metadata"]["title"],
             "schema_version": self.contract["metadata"]["schema_version"],

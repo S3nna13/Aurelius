@@ -23,12 +23,12 @@ from __future__ import annotations
 import pytest
 import torch
 
+from agent.toolformer_data_gen import _CharLM
 from src.agent.toolformer_data_gen import (
     Tool,
     ToolCallAnnotation,
     ToolformerConfig,
     ToolformerDataGenerator,
-    _CharLM,
 )
 
 # ---------------------------------------------------------------------------

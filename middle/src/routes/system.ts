@@ -42,6 +42,14 @@ function getGitInfo(): Record<string, string> {
   }
 }
 
+function getOSUptime(): number {
+  try {
+    return uptime()
+  } catch {
+    return 0
+  }
+}
+
 router.get('/', (_req, res) => {
   const node = getNodeInfo()
   const cpu = getCPUInfo()
@@ -71,7 +79,7 @@ router.get('/', (_req, res) => {
     node: node.version,
     pid: node.pid,
     processUptime: node.uptime,
-    osUptime: uptime(),
+    osUptime: getOSUptime(),
     memoryUsage: node.memoryUsage,
     git: getGitInfo(),
   })

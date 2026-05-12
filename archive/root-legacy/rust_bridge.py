@@ -1,6 +1,7 @@
+import logging
 import os
 import sys
-import logging
+
 logger = logging.getLogger("rust_bridge")
 
 
@@ -87,6 +88,18 @@ def _py_estimate_memory(d_model, d_ff, n_heads, seq_len, batch_size, precision_b
     return f"layer: {total_params//1000000}M params, {total_mb:.1f}MB weights (py estimate)"
 
 
+# WARNING: The shared library produced by build_rust_crate() is loaded
+# via Python's ctypes / PyO3 import mechanism. If a malicious artifact
+# is substituted at the build path, it could lead to arbitrary code
+# execution in the Python process.
+#
+# Before loading, verify the built artifact against a trusted
+# SHA-256 hash recorded at build time. The verification flow:
+#   1. Compute sha256sum of the .so / .dylib file
+#   2. Compare against hash stored in a signed manifest (build_manifest.json)
+#   3. Reject loading if the hash does not match
+#
+# TODO: Implement hash verification before returning the artifact path.
 def build_rust_crate():
     import subprocess
     crate_dir = os.path.join(os.path.dirname(__file__), 'rust_memory')
@@ -106,3 +119,8 @@ def build_rust_crate():
     else:
         print(f"Rust build failed: {result.stderr[:500]}")
         return []
+
+
+_module = sys.modules[__name__]
+sys.modules.setdefault("rust_bridge", _module)
+sys.modules.setdefault("aurelius.rust_bridge", _module)

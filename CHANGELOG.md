@@ -52,3 +52,13 @@ All notable changes to Aurelius are documented in this file.
 - Path-traversal hardening in `FileConversationStore`
 - ReDoS-bounded regexes
 - Canary pipeline, safe archive extractor, HMAC auth middleware
+## Cycle 140-sec — 2026-05-03
+
+- Fixed malformed f‑strings and missing quotes in `distributed.py`.
+- Re‑indented `_require_auth` in `src/serving/aurelius_server.py`.
+- Hardened checkpoint loading (`GradScaler` ctor) in `train_7b.py`.
+- Fixed KV‑cache eviction shape mismatch.
+- Updated all production `torch.load(..., weights_only=True)` calls, including `generate_jsonl.py`.
+- Added pre‑commit hook to forbid `weights_only=False` outside tests.
+- Added CI step to run pre‑commit checks.
+- Added benchmark scripts for KV‑cache eviction and GradScaler performance.

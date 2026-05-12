@@ -4,16 +4,23 @@ import pytest
 pytest.skip("legacy test: modules moved to archive/ during reorganization", allow_module_level=True)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from nn_utils import (
-    RMSNorm, RotaryEmbedding, apply_rotary, FeedForward,
-    sample_with_top_p_top_k, validate_input_ids, create_causal_mask, CausalMaskCache,
-)
-from agent_loop import ExperienceReplayBuffer
-import memory_core
+sys.path.insert(1, os.path.dirname(os.path.abspath(__file__)))
+
 import agent_core
-import skills
+import memory_core
+from agent_loop import ExperienceReplayBuffer
+from nn_utils import (
+    CausalMaskCache,
+    FeedForward,
+    RMSNorm,
+    RotaryEmbedding,
+    apply_rotary,
+    sample_with_top_p_top_k,
+    validate_input_ids,
+)
+
 import inference
-from aurelius_model_1b import AureliusModel1B
+import skills
 
 
 def test_nn_utils_rmsnorm_consistency():

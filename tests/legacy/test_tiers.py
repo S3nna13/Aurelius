@@ -4,14 +4,7 @@ import pytest
 pytest.skip("legacy test: modules moved to archive/ during reorganization", allow_module_level=True)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from aurelius_model_7b import AureliusModel7B, BrainBridge as BrainBridge7B
-from aurelius_model_14b import AureliusModel14B, BrainBridge as BrainBridge14B
-from aurelius_model_32b import AureliusModel32B, BrainBridge as BrainBridge32B
-from memory_core import AurelianMemoryCore, SurpriseGate, LTSMemory, GraphConsolidator
-from agent_core import ToolFormerAdapter, PlanningModule, CriticHead, ValueHead, MCTSNode
-from agent_loop import AgentLoopController, AgentMemoryBridge, ExperienceReplayBuffer
 from skills import SkillLibrary, SkillRegistry
-from brain_integrated import IntegratedNeuralBrain
 
 
 def make_small_config(overrides=None):

@@ -163,9 +163,9 @@ pub struct SystemStats {
 }
 
 #[napi]
-#[allow(dead_code)]
 pub struct DataEngine {
     inner: DataEngineInner,
+    #[allow(dead_code)]
     persistence: std::sync::Mutex<Option<persistence::Persistence>>,
 }
 

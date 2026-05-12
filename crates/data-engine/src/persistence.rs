@@ -190,10 +190,9 @@ struct SerializedTrainingRun {
     source: String,
 }
 
-#[allow(dead_code)]
 pub struct Persistence {
     save_path: String,
-    auto_save_interval_secs: u64,
+    _auto_save_interval_secs: u64,
     dirty: Mutex<bool>,
 }
 
@@ -201,7 +200,7 @@ impl Persistence {
     pub fn new(save_path: &str, auto_save_interval_secs: u64) -> Self {
         Persistence {
             save_path: save_path.to_string(),
-            auto_save_interval_secs,
+            _auto_save_interval_secs: auto_save_interval_secs,
             dirty: Mutex::new(false),
         }
     }
@@ -230,7 +229,7 @@ impl Persistence {
             activity: engine
                 .activity
                 .read()
-                .unwrap()
+                .expect("Failed to acquire read lock")
                 .iter()
                 .map(|a| SerializedActivity {
                     id: a.id.clone(),
@@ -244,7 +243,7 @@ impl Persistence {
             notifications: engine
                 .notifications
                 .read()
-                .unwrap()
+                .expect("Failed to acquire read lock")
                 .iter()
                 .map(|n| SerializedNotification {
                     id: n.id.clone(),
@@ -262,7 +261,7 @@ impl Persistence {
             skills: engine
                 .skills
                 .read()
-                .unwrap()
+                .expect("Failed to acquire read lock")
                 .iter()
                 .map(|s| SerializedSkill {
                     id: s.id.clone(),
@@ -281,7 +280,7 @@ impl Persistence {
             workflows: engine
                 .workflows
                 .read()
-                .unwrap()
+                .expect("Failed to acquire read lock")
                 .iter()
                 .map(|w| SerializedWorkflow {
                     id: w.id.clone(),
@@ -297,7 +296,7 @@ impl Persistence {
             models: engine
                 .models
                 .read()
-                .unwrap()
+                .expect("Failed to acquire read lock")
                 .iter()
                 .map(|m| SerializedModelInfo {
                     id: m.id.clone(),
@@ -314,7 +313,7 @@ impl Persistence {
             training_runs: engine
                 .training_runs
                 .read()
-                .unwrap()
+                .expect("Failed to acquire read lock")
                 .iter()
                 .map(|r| SerializedTrainingRun {
                     id: r.id.clone(),
@@ -348,7 +347,11 @@ impl Persistence {
             } else {
                 "production".to_string()
             },
-            config: engine.config.read().unwrap().clone(),
+            config: engine
+                .config
+                .read()
+                .expect("Failed to acquire read lock")
+                .clone(),
             timestamp: chrono::Utc::now().to_rfc3339(),
         };
 
@@ -392,7 +395,10 @@ impl Persistence {
 
         // Restore activity
         {
-            let mut activity = engine.activity.write().unwrap();
+            let mut activity = engine
+                .activity
+                .write()
+                .expect("Failed to acquire write lock");
             activity.clear();
             for a in &snapshot.activity {
                 activity.push_back(crate::engine::InternalActivity {
@@ -407,7 +413,10 @@ impl Persistence {
 
         // Restore notifications
         {
-            let mut notifications = engine.notifications.write().unwrap();
+            let mut notifications = engine
+                .notifications
+                .write()
+                .expect("Failed to acquire write lock");
             notifications.clear();
             for n in &snapshot.notifications {
                 notifications.push_back(crate::engine::InternalNotification {
@@ -426,7 +435,7 @@ impl Persistence {
 
         // Restore demo/live catalogs
         {
-            let mut skills = engine.skills.write().unwrap();
+            let mut skills = engine.skills.write().expect("Failed to acquire write lock");
             skills.clear();
             for s in &snapshot.skills {
                 skills.push_back(crate::engine::InternalSkill {
@@ -445,7 +454,10 @@ impl Persistence {
         }
 
         {
-            let mut workflows = engine.workflows.write().unwrap();
+            let mut workflows = engine
+                .workflows
+                .write()
+                .expect("Failed to acquire write lock");
             workflows.clear();
             for w in &snapshot.workflows {
                 workflows.push_back(crate::engine::InternalWorkflow {
@@ -461,7 +473,7 @@ impl Persistence {
         }
 
         {
-            let mut models = engine.models.write().unwrap();
+            let mut models = engine.models.write().expect("Failed to acquire write lock");
             models.clear();
             for m in &snapshot.models {
                 models.push_back(crate::engine::InternalModelInfo {
@@ -478,7 +490,10 @@ impl Persistence {
         }
 
         {
-            let mut training_runs = engine.training_runs.write().unwrap();
+            let mut training_runs = engine
+                .training_runs
+                .write()
+                .expect("Failed to acquire write lock");
             training_runs.clear();
             for run in &snapshot.training_runs {
                 training_runs.push(crate::engine::InternalTrainingRun {
@@ -511,7 +526,7 @@ impl Persistence {
 
         // Restore config
         {
-            let mut config = engine.config.write().unwrap();
+            let mut config = engine.config.write().expect("Failed to acquire write lock");
             config.clear();
             for (key, value) in &snapshot.config {
                 config.insert(key.clone(), value.clone());
@@ -538,7 +553,7 @@ impl Persistence {
             activity: engine
                 .activity
                 .read()
-                .unwrap()
+                .expect("Failed to acquire read lock")
                 .iter()
                 .map(|a| SerializedActivity {
                     id: a.id.clone(),
@@ -552,7 +567,7 @@ impl Persistence {
             notifications: engine
                 .notifications
                 .read()
-                .unwrap()
+                .expect("Failed to acquire read lock")
                 .iter()
                 .map(|n| SerializedNotification {
                     id: n.id.clone(),
@@ -570,7 +585,7 @@ impl Persistence {
             skills: engine
                 .skills
                 .read()
-                .unwrap()
+                .expect("Failed to acquire read lock")
                 .iter()
                 .map(|s| SerializedSkill {
                     id: s.id.clone(),
@@ -589,7 +604,7 @@ impl Persistence {
             workflows: engine
                 .workflows
                 .read()
-                .unwrap()
+                .expect("Failed to acquire read lock")
                 .iter()
                 .map(|w| SerializedWorkflow {
                     id: w.id.clone(),
@@ -605,7 +620,7 @@ impl Persistence {
             models: engine
                 .models
                 .read()
-                .unwrap()
+                .expect("Failed to acquire read lock")
                 .iter()
                 .map(|m| SerializedModelInfo {
                     id: m.id.clone(),
@@ -622,7 +637,7 @@ impl Persistence {
             training_runs: engine
                 .training_runs
                 .read()
-                .unwrap()
+                .expect("Failed to acquire read lock")
                 .iter()
                 .map(|r| SerializedTrainingRun {
                     id: r.id.clone(),
@@ -656,7 +671,11 @@ impl Persistence {
             } else {
                 "production".to_string()
             },
-            config: engine.config.read().unwrap().clone(),
+            config: engine
+                .config
+                .read()
+                .expect("Failed to acquire read lock")
+                .clone(),
             timestamp: chrono::Utc::now().to_rfc3339(),
         };
 
@@ -957,43 +976,55 @@ impl Persistence {
         }
 
         {
-            let mut w = engine.activity.write().unwrap();
+            let mut w = engine
+                .activity
+                .write()
+                .expect("Failed to acquire write lock");
             w.clear();
             *w = activity;
         }
 
         {
-            let mut w = engine.notifications.write().unwrap();
+            let mut w = engine
+                .notifications
+                .write()
+                .expect("Failed to acquire write lock");
             w.clear();
             *w = notifications;
         }
 
         {
-            let mut w = engine.skills.write().unwrap();
+            let mut w = engine.skills.write().expect("Failed to acquire write lock");
             w.clear();
             *w = skills;
         }
 
         {
-            let mut w = engine.workflows.write().unwrap();
+            let mut w = engine
+                .workflows
+                .write()
+                .expect("Failed to acquire write lock");
             w.clear();
             *w = workflows;
         }
 
         {
-            let mut w = engine.models.write().unwrap();
+            let mut w = engine.models.write().expect("Failed to acquire write lock");
             w.clear();
             *w = models;
         }
 
         {
-            let mut w = engine.training_runs.write().unwrap();
+            let mut w = engine
+                .training_runs
+                .write()
+                .expect("Failed to acquire write lock");
             w.clear();
             *w = training_runs;
         }
 
         {
-            let mut w = engine.config.write().unwrap();
+            let mut w = engine.config.write().expect("Failed to acquire write lock");
             w.clear();
             for (key, value) in &snapshot.config {
                 w.insert(key.clone(), value.clone());

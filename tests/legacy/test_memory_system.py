@@ -5,8 +5,11 @@ pytest.skip("legacy test: modules moved to archive/ during reorganization", allo
 sys.path.insert(0, '/Users/christienantonio/aurelius')
 from async_memory import AsyncConsolidationPipeline, ConsolidationTask, PagedLTSMemory
 from deduplication import CosineDeduplicator, L2Deduplicator, PriorityProportionalAllocator
-from prefetch_router import PredictiveMemoryPrefetcher, SparseLTSRouter, PredictiveAttentionRouter, LTSIndexCompressor
-from adaptive_precision import AdaptivePrecisionManager, FP8LTSMemory, TieredMemoryBank
+from prefetch_router import (
+    PredictiveAttentionRouter,
+    PredictiveMemoryPrefetcher,
+    SparseLTSRouter,
+)
 
 B, D = 2, 64
 

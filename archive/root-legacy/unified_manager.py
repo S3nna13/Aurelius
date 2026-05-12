@@ -1,14 +1,21 @@
-import torch
+import logging
+import sys
 import threading
 import time
 from threading import Lock
 
-from async_memory import AsyncConsolidationPipeline, PagedLTSMemory, ConsolidationTask
-from adaptive_precision import AdaptivePrecisionManager, TieredMemoryBank
-from prefetch_router import PredictiveMemoryPrefetcher, SparseLTSRouter
-from deduplication import (CosineDeduplicator, PriorityProportionalAllocator,
-                           MemoryAwareGradientAccumulator, LZ4MemoryCompressor)
-import logging
+import torch
+from adaptive_precision import AdaptivePrecisionManager
+from async_memory import AsyncConsolidationPipeline, ConsolidationTask, PagedLTSMemory
+from deduplication import (
+    CosineDeduplicator,
+    LZ4MemoryCompressor,
+    MemoryAwareGradientAccumulator,
+    PriorityProportionalAllocator,
+)
+from prefetch_router import PredictiveMemoryPrefetcher
+from rust_bridge import get_page_table
+
 logger = logging.getLogger(__name__)
 
 
@@ -48,6 +55,8 @@ class UnifiedMemoryManager:
 
         self._lock = Lock()
         self.running = False
+        self.page_table = get_page_table(lts_capacity, gpu_budget_mb)
+        self._page_table_registered: set[int] = set()
         self.metrics = {
             'total_reads': 0, 'total_writes': 0,
             'gpu_hits': 0, 'cpu_fallbacks': 0,
@@ -93,6 +102,15 @@ class UnifiedMemoryManager:
             self.allocator.update_priority(layer, surprise.mean().item())
             self.precision.auto_tune('long_term_store', torch.abs(surprise).mean().item())
 
+            page_id = int(layer)
+            page_size_bytes = int(h.numel() * h.element_size())
+            page_priority = float(surprise.mean().item())
+            if page_id not in self._page_table_registered:
+                self.page_table.register_page(page_id, page_priority, page_size_bytes, torch.cuda.is_available())
+                self._page_table_registered.add(page_id)
+            else:
+                self.page_table.access(page_id)
+
             self._consolidation_counter = getattr(self, '_consolidation_counter', 0) + 1
             if self._consolidation_counter % 10 == 0:
                 task = ConsolidationTask(
@@ -124,6 +142,8 @@ class UnifiedMemoryManager:
         lines.append(self.precision.report())
         lines.append("")
         lines.append(self.allocator.report())
+        lines.append("")
+        lines.append(self.page_table.stats())
         return "\n".join(lines)
 
 
@@ -192,3 +212,8 @@ class DistributedMemoryBalancer:
                     'action': 'load_from_cpu',
                 })
         return suggestions
+
+
+_module = sys.modules[__name__]
+sys.modules.setdefault("unified_manager", _module)
+sys.modules.setdefault("aurelius.unified_manager", _module)

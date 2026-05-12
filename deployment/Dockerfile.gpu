@@ -1,0 +1,91 @@
+# syntax=docker/dockerfile:1
+# =============================================================================
+# Aurelius Production GPU Dockerfile
+# =============================================================================
+# Stage 1: Build Rust data engine + tools
+# Stage 2: Final image with vLLM + Python serving stack
+# =============================================================================
+
+# ---- Stage 1: Rust build ---------------------------------------------------
+# TODO: ghcr.io/rust-lang/rust:1.85-nollvm does not exist publicly on ghcr.io.
+# Only nightly and version-tagged (1.90) images are available there.
+# Either build locally or switch to docker.io/rust:1.85-slim.
+FROM ghcr.io/rust-lang/rust:1.85-nollvm AS rust-build
+
+WORKDIR /build
+
+# Install protobuf, SSL, and build essentials
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    protobuf-compiler \
+    pkg-config \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy Cargo workspace
+COPY Cargo.toml .
+COPY Cargo.lock .
+COPY crates/ crates/
+COPY tools/ tools/
+
+# Build all Rust crates in release mode
+ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
+RUN cargo build --release --workspace --bins && \
+    cargo build --release --workspace --lib
+
+# ---- Stage 2: vLLM + Python serving stack ----------------------------------
+FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04@sha256:517da2300c184c9999ec203c2665244bdebd3578d12fcc7065e83667932643d9 AS final
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    UV_SYSTEM_PYTHON=1
+
+WORKDIR /app
+
+# Install Python 3.12, uv, and runtime essentials
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.12 \
+    python3.12-dev \
+    python3-pip \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -sf /usr/bin/python3.12 /usr/local/bin/python
+
+RUN pip install --no-cache-dir uv
+
+# Copy pre-built Rust binaries from Stage 1
+COPY --from=rust-build /build/target/release/api-gateway /usr/local/bin/
+COPY --from=rust-build /build/target/release/data-cli /usr/local/bin/
+COPY --from=rust-build /build/target/release/jsonl-merge /usr/local/bin/
+COPY --from=rust-build /build/target/release/data-engine /usr/local/bin/
+
+# Copy package metadata
+COPY pyproject.toml README.md ./
+
+# Install all serve dependencies (including vLLM, transformers)
+RUN uv sync --no-dev --all-extras
+
+# Copy application source
+COPY src/ src/
+COPY deployment/ deployment/
+COPY tests/ tests/
+
+# Verify Rust binaries are executable
+RUN ls -la /usr/local/bin/api-gateway /usr/local/bin/data-engine
+
+EXPOSE 8080
+
+# Auth required for non-loopback; bind loopback by default
+ENV AURELIUS_AUTH_REQUIRED=true
+ENV AURELIUS_DEVICE=cuda
+ENV AURELIUS_DTYPE=bfloat16
+ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+RUN useradd -r -s /bin/false aurelius
+USER aurelius
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')" || exit 1
+
+ENTRYPOINT ["python", "-m", "src.serving.api_server", "--host", "127.0.0.1", "--port", "8080"]

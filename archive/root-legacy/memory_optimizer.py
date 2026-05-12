@@ -1,7 +1,8 @@
+from collections.abc import Iterator
+from contextlib import contextmanager
+
 import torch
 import torch.nn as nn
-from contextlib import contextmanager
-from typing import Iterator
 
 
 class GradientCheckpointing:
@@ -48,6 +49,8 @@ class CpuOffloadManager:
                         'data': param.data.to('cpu', non_blocking=True),
                         'shape': orig_shape,
                     }
+                    # preserve original shape — replacing with scalar 0.0 would
+                    # corrupt optimizer state (exp_avg / exp_avg_sq shapes)
                     param.data = torch.empty(orig_shape, device='cpu', dtype=param.dtype)
 
     def restore(self):

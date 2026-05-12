@@ -2,7 +2,15 @@
 
 from src.serving.system_prompts import SYSTEM_PROMPTS, SystemPromptLibrary
 
-REQUIRED_KEYS = {"default", "coding", "security", "researcher", "concise", "creative"}
+REQUIRED_KEYS = {
+    "default",
+    "coding",
+    "security",
+    "researcher",
+    "agentic",
+    "concise",
+    "creative",
+}
 
 
 def test_system_prompts_has_all_required_keys():

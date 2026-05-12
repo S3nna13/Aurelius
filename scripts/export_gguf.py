@@ -200,7 +200,12 @@ def export_gguf(
                     t = t.to(torch.float32)
                     f.write(t.numpy().tobytes())
 
-    logger.info("Exported GGUF to %s (%d tensors, %.2f GB)", output_path, len(tensor_keys), output_path.stat().st_size / (1024**3))
+    logger.info(
+        "Exported GGUF to %s (%d tensors, %.2f GB)",
+        output_path,
+        len(tensor_keys),
+        output_path.stat().st_size / (1024**3),
+    )
 
 
 def main() -> None:

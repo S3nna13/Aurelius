@@ -30,7 +30,7 @@ pub struct PromptPartial {
 }
 
 fn extract_variables(template: &str) -> Vec<String> {
-    let re = Regex::new(r"\{\{(\w+)\}\}").unwrap();
+    let re = Regex::new(r"\{\{(\w+)\}\}").expect("Invalid template regex");
     let mut vars: Vec<String> = re
         .captures_iter(template)
         .map(|c| c[1].to_string())
@@ -128,7 +128,7 @@ impl PromptEngine {
         let mut missing = Vec::new();
 
         // First pass: resolve partials: {{>partial_name}}
-        let partial_re = Regex::new(r"\{\{>(\w+)\}\}").unwrap();
+        let partial_re = Regex::new(r"\{\{>(\w+)\}\}").expect("Invalid partial regex");
         let with_partials = partial_re
             .replace_all(&template, |caps: &regex::Captures| {
                 let partial_name = &caps[1];
@@ -140,7 +140,7 @@ impl PromptEngine {
             .to_string();
 
         // Second pass: replace variables
-        let var_re = Regex::new(r"\{\{(\w+)\}\}").unwrap();
+        let var_re = Regex::new(r"\{\{(\w+)\}\}").expect("Invalid variable regex");
         let rendered = var_re
             .replace_all(&with_partials, |caps: &regex::Captures| {
                 let var_name = &caps[1];

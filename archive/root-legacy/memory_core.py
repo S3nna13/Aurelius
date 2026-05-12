@@ -1,8 +1,11 @@
+import logging
+import math
+import sys
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import math
-import logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -137,3 +140,8 @@ class AurelianMemoryCore(nn.Module):
         if return_mem_state:
             return output, mem_state
         return output
+
+
+_module = sys.modules[__name__]
+sys.modules.setdefault("memory_core", _module)
+sys.modules.setdefault("aurelius.memory_core", _module)

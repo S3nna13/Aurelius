@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.tools.web_tool import _MAX_URL_LEN, WebTool, _is_safe_url
+from tools.web_tool import _MAX_URL_LEN, WebTool, _is_safe_url
 
 
 @pytest.fixture

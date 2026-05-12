@@ -7,11 +7,14 @@ from rust_bridge import _PyFallbackPageTable, _py_estimate_memory, _py_save_chec
 from train_3b import count_parameters
 from generate_report import make_style, PRIMARY, SECONDARY, DARK_BG
 from agent_train import ImitationDataset
-from kv_cache_quant import KVCacheQuantizer
 from fused_kernels import FlashAttention3Wrapper
-from reportlab.lib.styles import ParagraphStyle
+from generate_report import DARK_BG, PRIMARY, SECONDARY, make_style
+from kv_cache_quant import KVCacheQuantizer
 from reportlab.lib.colors import Color
-import tempfile, os
+from reportlab.lib.styles import ParagraphStyle
+from rust_bridge import _py_estimate_memory, _py_save_checkpoint, _PyFallbackPageTable
+from train_3b import count_parameters
+
 
 def test_py_fallback_page_table():
     pt = _PyFallbackPageTable(capacity=3)
@@ -35,7 +38,7 @@ def test_py_save_checkpoint():
         path = os.path.join(tmp, "test.pt")
         tensors = {"w": torch.randn(3, 3), "b": torch.zeros(3)}
         _py_save_checkpoint(path, tensors)
-        loaded = torch.load(path)
+        loaded = torch.load(path, weights_only=True)
         assert "w" in loaded and "b" in loaded
         assert loaded["w"].shape == (3, 3)
 

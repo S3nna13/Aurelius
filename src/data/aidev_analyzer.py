@@ -20,7 +20,12 @@ class AIDevAnalyzer:
         self.prs: list[AgenticPR] = []
 
     def load(self, data: list[dict]) -> list[AgenticPR]:
-        self.prs = [AgenticPR(**{k: v for k, v in d.items() if k in AgenticPR.__annotations__}) for d in data]
+        self.prs = [
+            AgenticPR(
+                **{k: v for k, v in d.items() if k in AgenticPR.__annotations__}
+            )
+            for d in data
+        ]
         return self.prs
 
     def merge_rate(self) -> float:

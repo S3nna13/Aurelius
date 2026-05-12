@@ -6,8 +6,8 @@ Tests for src/workflow/workflow_visualizer.py
 import dataclasses
 import unittest
 
+from cron.workflow_visualizer import _FILLCOLOR
 from src.workflow.workflow_visualizer import (
-    _FILLCOLOR,
     WORKFLOW_VISUALIZER_REGISTRY,
     NodeStyle,
     VisualizerConfig,

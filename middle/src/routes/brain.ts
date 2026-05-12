@@ -54,7 +54,7 @@ router.post('/think', requireScope('brain:execute'), (req: Request, res: Respons
 
   const cmd = `
 import json, sys
-sys.path.insert(0, '.')
+sys.path.insert(1, '.')
 from aurelius.neural_brain import NeuralBrain
 brain = NeuralBrain()
 ctx = brain.run(${JSON.stringify(input)})
@@ -75,7 +75,7 @@ print(json.dumps({
 router.get('/stats', requireScope('brain:execute'), (_req: Request, res: Response) => {
   const cmd = `
 import json, sys
-sys.path.insert(0, '.')
+sys.path.insert(1, '.')
 from aurelius.neural_brain import NeuralBrain
 brain = NeuralBrain()
 print(json.dumps({"stats": brain.get_stats(), "message": "Brain initialized. Run POST /api/brain/think with input."}))`
@@ -86,7 +86,7 @@ print(json.dumps({"stats": brain.get_stats(), "message": "Brain initialized. Run
 router.post('/upgrade/run', requireScope('brain:execute'), (_req: Request, res: Response) => {
   const cmd = `
 import json, sys
-sys.path.insert(0, '.')
+sys.path.insert(1, '.')
 from aurelius.self_upgrade import SelfUpgradeSystem
 upgrader = SelfUpgradeSystem()
 upgrader.record_metric("eval_accuracy", 0.72, target=0.90)

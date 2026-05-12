@@ -6,29 +6,30 @@ Live path: agent_core.* and agent_loop.* → torch tensor operations.
 """
 
 from __future__ import annotations
-from dataclasses import dataclass, field
-from typing import Any
+
+from dataclasses import dataclass
 
 import torch
-
-from agent_core import (
-    ToolEmbedding as _ToolEmbedding,
-    ToolFormerAdapter as _ToolFormerAdapter,
-    PlanningModule as _PlanningModule,
+from aurelius.agent_core import (
     CriticHead as _CriticHead,
+)
+from aurelius.agent_core import (
+    PlanningModule as _PlanningModule,
+)
+from aurelius.agent_core import (
+    ToolEmbedding as _ToolEmbedding,
+)
+from aurelius.agent_core import (
+    ToolFormerAdapter as _ToolFormerAdapter,
+)
+from aurelius.agent_core import (
     ValueHead as _ValueHead,
-    MCTSNode as _MCTSNode,
 )
-from agent_loop import (
+from aurelius.agent_loop import (
     AgentLoopController as _AgentLoopController,
-    AgentMemoryBridge as _AgentMemoryBridge,
-    AgentContextManager as _AgentContextManager,
-    ExperienceReplayBuffer as _ExperienceReplayBuffer,
 )
-from recursive_mas import (
-    RecursiveLink as _RecursiveLink,
-    RecursiveAgentWrapper as _RecursiveAgentWrapper,
-    InnerOuterOptimizer as _InnerOuterOptimizer,
+from aurelius.agent_loop import (
+    AgentMemoryBridge as _AgentMemoryBridge,
 )
 
 

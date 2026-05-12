@@ -188,11 +188,17 @@ class GRPOTrainer:
         with torch.no_grad():
             if self.ref_model is not None:
                 for c in completions:
-                    lp = compute_sequence_log_probs(self.ref_model, c, response_start=prompt_ids.shape[1])
+                    lp = compute_sequence_log_probs(
+                        self.ref_model, c,
+                        response_start=prompt_ids.shape[1],
+                    )
                     old_log_probs_list.append(lp.detach())
             else:
                 for c in completions:
-                    lp = compute_sequence_log_probs(self.model, c, response_start=prompt_ids.shape[1])
+                    lp = compute_sequence_log_probs(
+                        self.model, c,
+                        response_start=prompt_ids.shape[1],
+                    )
                     old_log_probs_list.append(lp.detach())
         old_log_probs = torch.stack(old_log_probs_list)
 
@@ -200,7 +206,10 @@ class GRPOTrainer:
         self.model.train()
         new_log_probs_list = []
         for c in completions:
-            lp = compute_sequence_log_probs(self.model, c, response_start=prompt_ids.shape[1])
+            lp = compute_sequence_log_probs(
+                self.model, c,
+                response_start=prompt_ids.shape[1],
+            )
             new_log_probs_list.append(lp)
         new_log_probs = torch.stack(new_log_probs_list)
 
@@ -212,7 +221,10 @@ class GRPOTrainer:
             ref_log_probs_list = []
             with torch.no_grad():
                 for c in completions:
-                    lp = compute_sequence_log_probs(self.ref_model, c, response_start=prompt_ids.shape[1])
+                    lp = compute_sequence_log_probs(
+                        self.ref_model, c,
+                        response_start=prompt_ids.shape[1],
+                    )
                     ref_log_probs_list.append(lp.detach())
             ref_log_probs = torch.stack(ref_log_probs_list)
             # Clamp to 0: unclipped mean log-ratio can be negative (acting as divergence bonus).

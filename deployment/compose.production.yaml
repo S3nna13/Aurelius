@@ -1,5 +1,4 @@
-version: "3.9"
-
+name: aurelius
 x-logging: &default-logging
   driver: "json-file"
   options:

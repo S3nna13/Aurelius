@@ -1,6 +1,6 @@
 use pyo3::prelude::*;
 use std::fs::{File, OpenOptions};
-use std::io::{Write, Seek, SeekFrom};
+use std::io::{Seek, SeekFrom, Write};
 
 type PageId = u64;
 
@@ -43,7 +43,13 @@ impl MemoryPageTable {
         }
     }
 
-    pub fn register_page(&mut self, id: u64, priority: f32, size_bytes: u64, on_gpu: bool) -> String {
+    pub fn register_page(
+        &mut self,
+        id: u64,
+        priority: f32,
+        size_bytes: u64,
+        on_gpu: bool,
+    ) -> String {
         self.clock += 1;
         if self.pages.len() >= self.capacity {
             return format!("full:{}", self.capacity);
@@ -51,13 +57,21 @@ impl MemoryPageTable {
         if self.pages.iter().any(|p| p.id == id) {
             return format!("exists:{}", id);
         }
-        let location = if on_gpu { MemoryLocation::Gpu } else { MemoryLocation::Cpu };
+        let location = if on_gpu {
+            MemoryLocation::Gpu
+        } else {
+            MemoryLocation::Cpu
+        };
         if on_gpu {
             self.total_gpu_bytes = self.total_gpu_bytes.saturating_add(size_bytes);
         }
         self.pages.push(MemoryPage {
-            id, access_count: 0, last_access: self.clock,
-            priority, size_bytes, location,
+            id,
+            access_count: 0,
+            last_access: self.clock,
+            priority,
+            size_bytes,
+            location,
         });
         "ok".to_string()
     }
@@ -71,7 +85,8 @@ impl MemoryPageTable {
                 return match page.location {
                     MemoryLocation::Gpu => "gpu",
                     MemoryLocation::Cpu => "cpu",
-                }.to_string();
+                }
+                .to_string();
             }
         }
         "absent".to_string()
@@ -115,8 +130,11 @@ impl MemoryPageTable {
     }
 
     pub fn get_best_candidates(&self, n: usize) -> Vec<u64> {
-        let mut candidates: Vec<&MemoryPage> = self.pages.iter()
-            .filter(|p| p.location == MemoryLocation::Gpu).collect();
+        let mut candidates: Vec<&MemoryPage> = self
+            .pages
+            .iter()
+            .filter(|p| p.location == MemoryLocation::Gpu)
+            .collect();
         candidates.sort_by(|a, b| {
             let sa = score_for_eviction(a, self.clock);
             let sb = score_for_eviction(b, self.clock);
@@ -126,12 +144,24 @@ impl MemoryPageTable {
     }
 
     pub fn stats(&self) -> String {
-        let gpu_pages = self.pages.iter().filter(|p| p.location == MemoryLocation::Gpu).count();
-        let cpu_pages = self.pages.iter().filter(|p| p.location == MemoryLocation::Cpu).count();
+        let gpu_pages = self
+            .pages
+            .iter()
+            .filter(|p| p.location == MemoryLocation::Gpu)
+            .count();
+        let cpu_pages = self
+            .pages
+            .iter()
+            .filter(|p| p.location == MemoryLocation::Cpu)
+            .count();
         format!(
             "pages={} gpu={} cpu={} gpu_bytes={} budget={} capacity={}",
-            self.pages.len(), gpu_pages, cpu_pages,
-            self.total_gpu_bytes, self.gpu_budget, self.capacity,
+            self.pages.len(),
+            gpu_pages,
+            cpu_pages,
+            self.total_gpu_bytes,
+            self.gpu_budget,
+            self.capacity,
         )
     }
 
@@ -170,9 +200,13 @@ impl MemoryPageTable {
             sb.partial_cmp(&sa).unwrap_or(std::cmp::Ordering::Equal)
         });
         for &idx in &indices {
-            if freed >= needed_bytes { break; }
+            if freed >= needed_bytes {
+                break;
+            }
             let page = &self.pages[idx];
-            if page.location != MemoryLocation::Gpu { continue; }
+            if page.location != MemoryLocation::Gpu {
+                continue;
+            }
             freed += page.size_bytes;
             to_evict.push(idx);
         }
@@ -209,7 +243,7 @@ const HEADER_SIZE: u64 = std::mem::size_of::<CheckpointHeader>() as u64;
 #[pyclass]
 pub struct MmapCheckpointWriter {
     path: String,
-    index: Vec<(String, u64, u64)>,  // (name, offset, size)
+    index: Vec<(String, u64, u64)>, // (name, offset, size)
     file: Option<File>,
     step: u64,
 }
@@ -218,23 +252,38 @@ pub struct MmapCheckpointWriter {
 impl MmapCheckpointWriter {
     #[new]
     pub fn new(path: String) -> Self {
-        MmapCheckpointWriter { path, index: Vec::new(), file: None, step: 0 }
+        MmapCheckpointWriter {
+            path,
+            index: Vec::new(),
+            file: None,
+            step: 0,
+        }
     }
 
     pub fn open(&mut self) -> PyResult<()> {
         let file = OpenOptions::new()
-            .create(true).read(true).write(true).truncate(true)
+            .create(true)
+            .read(true)
+            .write(true)
+            .truncate(true)
             .open(&self.path)
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{}", e)))?;
         let header = CheckpointHeader {
-            magic: MAGIC, version: 1, num_tensors: 0,
-            total_bytes: HEADER_SIZE, step: 0,
+            magic: MAGIC,
+            version: 1,
+            num_tensors: 0,
+            total_bytes: HEADER_SIZE,
+            step: 0,
             timestamp: std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs(),
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs(),
         };
         let hp: *const CheckpointHeader = &header;
-        let hb: &[u8] = unsafe { std::slice::from_raw_parts(hp as *const u8, HEADER_SIZE as usize) };
-        (&file).write_all(hb)
+        let hb: &[u8] =
+            unsafe { std::slice::from_raw_parts(hp as *const u8, HEADER_SIZE as usize) };
+        (&file)
+            .write_all(hb)
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{}", e)))?;
         file.set_len(HEADER_SIZE)
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{}", e)))?;
@@ -243,39 +292,57 @@ impl MmapCheckpointWriter {
     }
 
     pub fn write_tensor(&mut self, name: &str, data: Vec<f32>) -> PyResult<()> {
-        let f = self.file.as_ref().ok_or_else(|| {
-            PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("File not opened")
-        })?;
-        let offset = f.metadata()
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{}", e)))?.len();
-        let bytes: &[u8] = unsafe {
-            std::slice::from_raw_parts(data.as_ptr() as *const u8, data.len() * 4)
-        };
-        let mut f = self.file.as_ref().unwrap();
+        let f = self
+            .file
+            .as_ref()
+            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("File not opened"))?;
+        let offset = f
+            .metadata()
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{}", e)))?
+            .len();
+        let bytes: &[u8] =
+            unsafe { std::slice::from_raw_parts(data.as_ptr() as *const u8, data.len() * 4) };
+        let mut f = self
+            .file
+            .as_ref()
+            .expect("File not opened for finalization");
         f.seek(SeekFrom::End(0))
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{}", e)))?;
         f.write_all(bytes)
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{}", e)))?;
-        self.index.push((name.to_string(), offset, (data.len() * 4) as u64));
+        self.index
+            .push((name.to_string(), offset, (data.len() * 4) as u64));
         self.step += 1;
         Ok(())
     }
 
     pub fn finalize(&mut self) -> PyResult<()> {
-        let f = self.file.as_ref().ok_or_else(|| {
-            PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("File not opened")
-        })?;
-        let total_bytes = f.metadata()
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{}", e)))?.len();
+        let f = self
+            .file
+            .as_ref()
+            .ok_or_else(|| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("File not opened"))?;
+        let total_bytes = f
+            .metadata()
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{}", e)))?
+            .len();
         let header = CheckpointHeader {
-            magic: MAGIC, version: 1, num_tensors: self.index.len() as u32,
-            total_bytes, step: self.step,
+            magic: MAGIC,
+            version: 1,
+            num_tensors: self.index.len() as u32,
+            total_bytes,
+            step: self.step,
             timestamp: std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs(),
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs(),
         };
         let hp: *const CheckpointHeader = &header;
-        let hb: &[u8] = unsafe { std::slice::from_raw_parts(hp as *const u8, HEADER_SIZE as usize) };
-        let mut f = self.file.as_ref().unwrap();
+        let hb: &[u8] =
+            unsafe { std::slice::from_raw_parts(hp as *const u8, HEADER_SIZE as usize) };
+        let mut f = self
+            .file
+            .as_ref()
+            .expect("File not opened for finalization");
         f.seek(SeekFrom::Start(0))
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{}", e)))?;
         f.write_all(hb)
@@ -287,7 +354,8 @@ impl MmapCheckpointWriter {
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{}", e)))?;
         f.write_all(&index_bytes)
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{}", e)))?;
-        f.flush().map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{}", e)))?;
+        f.flush()
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{}", e)))?;
         Ok(())
     }
 
@@ -319,7 +387,10 @@ pub struct DifferentialCheckpointer {
 impl DifferentialCheckpointer {
     #[new]
     pub fn new(base_path: String) -> Self {
-        DifferentialCheckpointer { base_path, dirty: Vec::new() }
+        DifferentialCheckpointer {
+            base_path,
+            dirty: Vec::new(),
+        }
     }
 
     pub fn mark_dirty(&mut self, name: &str) {
@@ -331,12 +402,16 @@ impl DifferentialCheckpointer {
     pub fn save_differential(&self, data: Vec<(String, Vec<f32>)>) -> PyResult<String> {
         let diff_path = format!("{}.diff", self.base_path);
         let file = OpenOptions::new()
-            .create(true).write(true).truncate(true)
+            .create(true)
+            .write(true)
+            .truncate(true)
             .open(&diff_path)
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{}", e)))?;
         let mut written = 0u32;
         for (name, tensor) in &data {
-            if !self.dirty.contains(name) { continue; }
+            if !self.dirty.contains(name) {
+                continue;
+            }
             let nb = name.as_bytes();
             let mut f = &file;
             f.write_all(&(nb.len() as u32).to_le_bytes())
@@ -352,14 +427,21 @@ impl DifferentialCheckpointer {
                 .map_err(|e| PyErr::new::<pyo3::exceptions::PyIOError, _>(format!("{}", e)))?;
             written += 1;
         }
-        Ok(format!("Diff ckpt: {} dirty tensors -> {}", written, diff_path))
+        Ok(format!(
+            "Diff ckpt: {} dirty tensors -> {}",
+            written, diff_path
+        ))
     }
 }
 
 #[pyfunction]
 pub fn estimate_layer_memory(
-    d_model: usize, d_ff: usize, n_heads: usize,
-    seq_len: usize, batch_size: usize, precision_bytes: usize,
+    d_model: usize,
+    d_ff: usize,
+    n_heads: usize,
+    seq_len: usize,
+    batch_size: usize,
+    precision_bytes: usize,
 ) -> String {
     let attn_params = 4 * d_model * d_model;
     let ffn_params = 3 * d_model * d_ff;

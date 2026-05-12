@@ -6,7 +6,7 @@ Smoke tests for the aurelius CLI entry point.
 
 import pytest
 
-from src.cli.main import DEFAULT_SYSTEM, __version__, _build_parser, main
+from aurelius_cli.main import DEFAULT_SYSTEM, __version__, _build_parser, main
 
 
 def test_version_string():

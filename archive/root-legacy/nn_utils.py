@@ -1,8 +1,9 @@
+import logging
+import sys
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import math
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,20 @@ def apply_rotary(x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor) -> torch
     x1, x2 = x[..., :d], x[..., d:]
     return torch.cat([x1 * cos[..., :d] - x2 * sin[..., :d],
                       x1 * sin[..., :d] + x2 * cos[..., :d]], dim=-1)
+
+
+class SwiGLUFFN(nn.Module):
+    def __init__(self, dim: int, hidden_dim: int | None = None, multiple_of: int = 256):
+        super().__init__()
+        if hidden_dim is None:
+            hidden_dim = 4 * dim
+        hidden_dim = multiple_of * ((hidden_dim + multiple_of - 1) // multiple_of)
+        self.gate = nn.Linear(dim, hidden_dim, bias=False)
+        self.up = nn.Linear(dim, hidden_dim, bias=False)
+        self.down = nn.Linear(hidden_dim, dim, bias=False)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.down(F.silu(self.gate(x)) * self.up(x))
 
 
 class FeedForward(nn.Module):
@@ -106,3 +121,8 @@ def validate_input_ids(input_ids: torch.Tensor, vocab_size: int) -> None:
         raise ValueError("input_ids must not be empty")
     if input_ids.max() >= vocab_size or input_ids.min() < 0:
         raise ValueError(f"input_ids values out of range [0, {vocab_size})")
+
+
+_module = sys.modules[__name__]
+sys.modules.setdefault("nn_utils", _module)
+sys.modules.setdefault("aurelius.nn_utils", _module)

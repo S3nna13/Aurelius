@@ -21,7 +21,7 @@ import sys
 import pytest
 import torch
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.insert(1, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from src.training.rloo_trainer import RLOOBatch, RLOOConfig, RLOOTrainer
 

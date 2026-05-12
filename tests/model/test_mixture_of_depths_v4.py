@@ -11,7 +11,7 @@ import sys
 import torch
 
 # Ensure src is importable
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
+sys.path.insert(1, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 
 from model.mixture_of_depths_v4 import (
     CapacityAnalyzer,

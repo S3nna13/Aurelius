@@ -2,18 +2,22 @@
 """Generate AURELIUS_REPORT.pdf — 2-page project report."""
 
 import os
+
+from reportlab.lib.colors import HexColor, white
+from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import mm, cm
-from reportlab.lib.colors import HexColor, white, black, Color
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import mm
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
-    PageBreak, Frame, PageTemplate, BaseDocTemplate, FrameBreak
+    BaseDocTemplate,
+    Frame,
+    PageBreak,
+    PageTemplate,
+    Paragraph,
+    Spacer,
+    Table,
+    TableStyle,
 )
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
-from reportlab.platypus.doctemplate import PageTemplate, BaseDocTemplate
-from reportlab.platypus.frames import Frame
-from reportlab.lib import colors
 
 # ── colours ──────────────────────────────────────────────────────────
 PRIMARY   = HexColor("#6C63FF")
@@ -93,7 +97,7 @@ header_tbl.setStyle(TableStyle([
 story.append(header_tbl)
 story.append(Spacer(1, 4*mm))
 
-story.append(Paragraph("Memory-Augmented Transformer with Agent Capabilities and Learned Skills", s_subtitle))
+story.append(Paragraph("Memory-Augmented Transformer with AMC and ReAct Agent Loop", s_subtitle))
 
 # ── DAIES badge ─────────────────────────────────────────────────────
 badge_data = [[Paragraph("◆  DAIES: 4 Iterations Complete  ◆", s_badge)]]
@@ -172,18 +176,18 @@ story.append(Paragraph(arch_text, s_body))
 story.append(Spacer(1, 2*mm))
 
 arch_text2 = (
-    "An <b>autonomous agent loop</b> orchestrates the model's interaction with its environment: perceive "
-    "→ reason → act → observe → store. The loop leverages Monte Carlo Tree Search (MCTS) for multi-step "
-    "planning and a learned skill library that grows through surprise-gated memory consolidation. "
-    "Communication between layers uses quantized KV caches and FP8 all-reduce gradients."
+    "A <b>ReAct agent loop</b> orchestrates the model's interaction with its environment using the "
+    "Observe → Think → Act → Reflect cycle described in the dissertation. The loop leverages Monte Carlo "
+    "Tree Search (MCTS) for multi-step planning and a learned skill library that grows through surprise-gated "
+    "memory consolidation. Communication between layers uses quantized KV caches and FP8 all-reduce gradients."
 )
 story.append(Paragraph(arch_text2, s_body))
 story.append(Spacer(1, 3*mm))
 
 # ── Stack diagram ────────────────────────────────────────────────────
 stack = [
-    [Paragraph("<b>Agent Loop</b>", s_cell_header),
-     Paragraph("Perceive → Reason → Act → Observe → Store", s_cell)],
+    [Paragraph("<b>ReAct Agent Loop</b>", s_cell_header),
+     Paragraph("Observe → Think → Act → Reflect; MCTS planning and skill reflection", s_cell)],
     [Paragraph("<b>Semantic Memory</b>", s_cell_header),
      Paragraph("Learned skills, factual knowledge (NTM + embeddings)", s_cell)],
     [Paragraph("<b>Episodic Memory</b>", s_cell_header),

@@ -15,6 +15,8 @@ export default function Models() {
   const filtered = filter === 'all' ? models : models.filter(m => m.provider === filter);
   const providers = [...new Set(models.map(m => m.provider))];
 
+  const maxContext = models.length > 0 ? Math.max(...models.map(m => m.max_context)) : 0;
+
   return (
     <div className="space-y-6">
       <h2 className="text-lg font-bold text-[#e0e0e0] flex items-center gap-2"><Bot size={20} className="text-[#4fc3f7]" />Model Hub</h2>
@@ -24,7 +26,7 @@ export default function Models() {
         <StatsCard label="Aurelius" value={models.filter(m => m.provider === 'aurelius').length} icon={Server} color="text-emerald-400" />
         <StatsCard label="OpenAI" value={models.filter(m => m.provider === 'openai').length} icon={Globe} color="text-amber-400" />
         <StatsCard label="Loaded" value={models.filter(m => m.loaded).length} icon={Cpu} color="text-violet-400" />
-        <StatsCard label="Max Context" value={`${Math.max(...models.map(m => m.max_context))}`} icon={CheckCircle} color="text-cyan-400" />
+        <StatsCard label="Max Context" value={models.length > 0 ? `${maxContext.toLocaleString()}` : 'N/A'} icon={CheckCircle} color="text-cyan-400" />
       </div>
 
       <div className="flex gap-2">

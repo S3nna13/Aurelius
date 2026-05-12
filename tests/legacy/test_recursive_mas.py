@@ -2,18 +2,17 @@ from __future__ import annotations
 
 import torch
 import torch.nn as nn
-import sys
-import os
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+sys.path.insert(1, os.path.dirname(os.path.abspath(__file__)))
 
 import pytest
 pytest.skip("legacy test: modules moved to archive/ during reorganization", allow_module_level=True)
 
 from recursive_mas import (
-    RecursiveLink,
-    RecursiveAgentWrapper,
-    RecursiveMASConfig,
     InnerOuterOptimizer,
+    RecursiveAgentWrapper,
+    RecursiveLink,
+    RecursiveMASConfig,
 )
 
 

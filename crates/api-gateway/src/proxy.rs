@@ -45,7 +45,7 @@ impl ProxyClient {
         let mut upstream_req = self
             .client
             .request(method.clone(), &upstream_uri)
-            .body(body.to_vec());
+            .body(body);
 
         for (key, value) in headers.iter() {
             if key.as_str() != "host" {
@@ -78,7 +78,7 @@ impl ProxyClient {
         let mut response = Response::builder()
             .status(status)
             .body(Body::from(up_body.to_vec()))
-            .unwrap();
+            .expect("Failed to build response");
 
         *response.headers_mut() = response_headers;
 

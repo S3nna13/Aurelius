@@ -15,7 +15,7 @@ import torch
 import torch.nn as nn
 
 # Make sure the src package is importable
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.insert(1, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from src.training.grpo_trainer import (
     GroupRewardNormalizer,

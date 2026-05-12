@@ -10,7 +10,7 @@ import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if ROOT not in sys.path:
-    sys.path.insert(0, ROOT)
+    sys.path.insert(1, ROOT)
 
 from src.eval import humaneval_scorer as _hm_scorer  # noqa: E402
 from src.eval.humaneval_plus_scorer import (  # noqa: E402

@@ -207,11 +207,13 @@ def test_run_few_shot_pool_shorter_than_n_shots_uses_all_available():
 
     scorer = MMLUScorer(generate_fn=gen, n_shots=5)
     pool = CANONICAL_EXEMPLARS[:2]  # only 2 exemplars available
-    scorer.run([_mk()], few_shot_pool=pool)
-    # Should use 2 exemplars (all available), not error.
+    # Use a problem whose subject matches the first pool exemplar
+    prob = _mk(subject=pool[0].subject)
+    scorer.run([prob], few_shot_pool=pool)
+    # Uses 1 matching pool exemplar + 4 canonical fill = 5 total
     prompt = captured[0]
     answer_lines = [line for line in prompt.splitlines() if line.startswith("Answer: ")]
-    assert len(answer_lines) == 2
+    assert len(answer_lines) == 5
 
 
 # -- determinism ------------------------------------------------------------

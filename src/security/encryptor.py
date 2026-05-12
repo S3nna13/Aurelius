@@ -30,7 +30,9 @@ class SimpleEncryptor:
             if not key:
                 raise RuntimeError(
                     "AURELIUS_ENCRYPTION_KEY environment variable must be set. "
-                    "Generate one with: python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'"
+                    "Generate one with: python -c "
+                    "'from cryptography.fernet import Fernet; "
+                    "print(Fernet.generate_key().decode())'"
                 )
             self.key = key.encode() if isinstance(key, str) else key
 

@@ -39,7 +39,11 @@ def upgrade() -> None:
         sa.Column("command", sa.String(512), nullable=False),
         sa.Column("success", sa.Boolean, nullable=False, server_default=sa.text("1")),
         sa.Column("output", sa.Text, nullable=False, server_default=""),
-        sa.Column("agent_id", sa.String(64), sa.ForeignKey("agents.id", ondelete="SET NULL"), nullable=True),
+        sa.Column(
+            "agent_id", sa.String(64),
+            sa.ForeignKey("agents.id", ondelete="SET NULL"),
+            nullable=True,
+        ),
     )
     op.create_index("idx_activity_timestamp", "activity", ["timestamp"])
     op.create_index("idx_activity_command", "activity", ["command"])

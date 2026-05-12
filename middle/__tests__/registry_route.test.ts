@@ -1,49 +1,23 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { request } from 'http';
-import type { Server } from 'http';
+import { describe, expect, it } from 'vitest';
 import { buildApp } from '../src/server.js';
 import { loadRegistrySnapshot } from '../src/registry_bridge.js';
+import { invokeApp } from './request-app.js';
 
-let server: Server;
-const BASE = 'http://127.0.0.1:3096';
+const app = buildApp();
 const snapshot = await loadRegistrySnapshot();
 
 function requestJson(path: string) {
-  return new Promise<{ status: number; body: any }>((resolve, reject) => {
-    const req = request(
-      `${BASE}${path}`,
-      {
-        method: 'GET',
-        headers: {
-          'X-API-Key': 'test-admin-key',
-        },
-      },
-      (res) => {
-        const chunks: Buffer[] = [];
-        res.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
-        res.on('end', () => {
-          const text = Buffer.concat(chunks).toString('utf8');
-          resolve({
-            status: res.statusCode ?? 0,
-            body: text ? JSON.parse(text) : {},
-          });
-        });
-      },
-    );
-    req.on('error', reject);
-    req.end();
-  });
+  return invokeApp(app, {
+    method: 'GET',
+    path,
+    headers: {
+      'X-API-Key': 'test-admin-key',
+    },
+  }).then(async (res) => ({
+    status: res.status,
+    body: res.text ? JSON.parse(res.text) : {},
+  }));
 }
-
-beforeAll(async () => {
-  const app = buildApp();
-  server = app.listen(3096, '127.0.0.1');
-  await new Promise((resolve) => server.on('listening', resolve));
-});
-
-afterAll(() => {
-  server?.close();
-});
 
 describe('registry routes', () => {
   it('serves the live agent registry', async () => {

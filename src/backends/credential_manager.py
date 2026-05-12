@@ -59,7 +59,8 @@ class CredentialManager:
                 return self.refresh(provider)
             except NotImplementedError:
                 raise ProviderAuthError(
-                    f"credential for provider '{provider}' is expired and refresh is not implemented"
+                    f"credential for provider '{provider}' is expired "
+                    "and refresh is not implemented"
                 )
         return self.get(provider)
 

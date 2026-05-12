@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -380,7 +382,8 @@ class AureliusTransformer(nn.Module):
 
         x = self.embed(input_ids)
         assert past_len + S <= self.config.max_seq_len, (  # noqa: S101
-            f"past_len({past_len}) + S({S}) = {past_len + S} exceeds max_seq_len {self.config.max_seq_len}"
+            f"past_len({past_len}) + S({S}) = {past_len + S} "
+            f"exceeds max_seq_len {self.config.max_seq_len}"
         )
         freqs_cis = self.freqs_cis[past_len : past_len + S]
 
@@ -691,7 +694,7 @@ class AureliusTransformer(nn.Module):
         eos_token_id: int | None = None,
         reasoning_budget: int | None = None,
         think_token_id: int = 50400,
-    ) -> Iterator[torch.Tensor]:  # noqa: F821
+    ) -> Iterator[torch.Tensor]:
         """Autoregressive generation yielding one token at a time.
 
         Same algorithm as generate(), but yields each new token as it is
