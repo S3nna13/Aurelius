@@ -9,8 +9,6 @@ import logging
 from dataclasses import dataclass
 from enum import StrEnum
 
-logger = logging.getLogger(__name__)
-
 from src.persona import (
     AURELIUS_ANALYST,
     AURELIUS_CODING,
@@ -21,6 +19,8 @@ from src.persona import (
     UnifiedPersona,
     UnifiedPersonaRegistry,
 )
+
+logger = logging.getLogger(__name__)
 
 _LEGACY_TO_UNIFIED: dict[str, str] = {
     "assistant": "aurelius-general",
@@ -147,7 +147,12 @@ class PersonaRegistry:
         try:
             unified = self._unified.get(unified_id)
         except Exception as exc:  # noqa: BLE001
-            logger.debug("PersonaRegistry.apply_persona failed to resolve unified persona %r: %s", unified_id, exc)
+            logger.debug(
+                "PersonaRegistry.apply_persona failed to resolve "
+                "unified persona %r: %s",
+                unified_id,
+                exc,
+            )
             unified = None
 
         if unified is not None:

@@ -244,8 +244,8 @@ print(response.choices[0].message.content)
 
 | Command | Module | Description |
 |---------|--------|-------------|
-| `aurelius` | `src/cli/main.py` | Interactive chat CLI with persona support |
-| `aurelius-cli` | `src/cli/terminal_cli.py` | Terminal chat with full conversation management |
+| `aurelius` | `aurelius_cli/main.py` | Interactive chat CLI with persona support |
+| `aurelius-cli` | `aurelius_cli/terminal_cli.py` | Terminal chat with full conversation management |
 | `aurelius-shell` | `aurelius_cli/aurelius_shell.py` | REPL shell with slash commands |
 | `aurelius-api` | `src/backend.py` | Python API server (model inference) |
 | `aurelius-server` | `gateway/aurelius_api.py` | Production serving stack |
