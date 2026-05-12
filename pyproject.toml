@@ -75,11 +75,11 @@ dev = [
 ]
 
 [project.scripts]
-aurelius = "src.cli.main:main"
-aurelius-cli = "src.cli.terminal_cli:main"
-aurelius-shell = "src.cli.aurelius_shell:run"
+aurelius = "aurelius_cli.main:main"
+aurelius-cli = "aurelius_cli.terminal_cli:main"
+aurelius-shell = "aurelius_cli.aurelius_shell:run"
 aurelius-api = "src.backend:start_api"
-aurelius-server = "src.serving.aurelius_api:start"
+aurelius-server = "gateway.aurelius_api:start"
 
 [build-system]
 requires = ["setuptools>=68"]

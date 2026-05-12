@@ -176,7 +176,7 @@ class ReActLoop:
         if not isinstance(system_prompt, str):
             raise TypeError("system_prompt must be a str")
 
-        trace = AgentTrace()
+        trace = AgentTrace(task=task, system_prompt=system_prompt)
 
         # Handle empty task upfront: we still make one call so callers
         # relying on system_prompt-only flows are supported, but if the
@@ -343,20 +343,20 @@ class ReActLoop:
                     )
                     return step
 
-        # Execute with wall-clock timeout using threads (avoids serialization issues with closures).
+        # Execute with wall-clock timeout.
         try:
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                future = pool.submit(fn, **kwargs)
+                future = pool.submit(lambda: fn(**kwargs))
                 try:
                     result = future.result(timeout=self._tool_timeout)
                 except concurrent.futures.TimeoutError:
+                    # The worker thread cannot be killed, but the loop
+                    # moves on; the daemon-ish cleanup at executor exit
+                    # lets the thread finish in the background.
                     future.cancel()
                     step.error = f"tool_error: timeout after {self._tool_timeout:.3f}s"
                     return step
-        except (SystemExit, KeyboardInterrupt) as exc:
-            step.error = f"tool_error: process terminated by {type(exc).__name__}: {exc}"
-            return step
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - tool code is untrusted
             step.error = f"tool_error: {type(exc).__name__}: {exc}"
             return step
 
@@ -373,111 +373,4 @@ class ReActLoop:
         return step
 
 
-__all__ = [
-    "AgentStep",
-    "AgentTrace",
-    "ReActLoop",
-    "create_wired_loop",
-]
-
-
-# ---------------------------------------------------------------------------
-# Wiring helpers — bridge ToolRegistryDispatcher into ReActLoop's tool dict
-# ---------------------------------------------------------------------------
-
-
-def _make_dispatcher_callable(dispatcher: Any, name: str) -> Callable[..., Any]:
-    """Return a callable for ``name`` that routes through *dispatcher*.
-
-    The returned callable accepts keyword arguments (matching how
-    :meth:`ReActLoop._dispatch_tool` invokes tools) and surfaces the
-    dispatcher's structured envelope as either the raw value (on success)
-    or a raised :class:`RuntimeError` whose message carries the error
-    code (so the loop records it on ``AgentStep.error``).
-    """
-
-    def _call(**kwargs: Any) -> Any:
-        result = dispatcher.dispatch(name, kwargs)
-        if not result.ok:
-            raise RuntimeError(result.error or "tool_failed")
-        return result.value
-
-    _call.__name__ = f"dispatch_{name}"
-    return _call
-
-
-def create_wired_loop(
-    tools: list,
-    config: Any = None,
-    *,
-    generate_fn: Callable[[list[dict]], str] | None = None,
-    max_steps: int = 8,
-    max_tool_seconds: float = 5.0,
-) -> ReActLoop:
-    """Construct a :class:`ReActLoop` whose tools route through a dispatcher.
-
-    Parameters
-    ----------
-    tools:
-        Iterable of :class:`ToolSpec` instances (or anything accepted by
-        :meth:`ToolRegistryDispatcher.register`). Each spec is registered
-        into a freshly-created dispatcher.
-    config:
-        Optional :class:`SessionBudget`-like object. If supplied and it
-        looks like a budget, it is forwarded to the dispatcher.
-    generate_fn:
-        The model-callable supplied to :class:`ReActLoop`. If omitted, a
-        stub returning a final-answer marker is used so the loop can be
-        smoke-tested end-to-end.
-    """
-    # Local imports to keep the module import-light at top level.
-    from .tool_registry_dispatcher import (
-        SessionBudget,
-        ToolRegistryDispatcher,
-    )
-
-    budget = config if isinstance(config, SessionBudget) else None
-    dispatcher = ToolRegistryDispatcher(budget=budget)
-
-    for spec in tools or []:
-        dispatcher.register(spec)
-
-    return ReActLoop.from_dispatcher(
-        dispatcher,
-        generate_fn=generate_fn,
-        max_steps=max_steps,
-        max_tool_seconds=max_tool_seconds,
-    )
-
-
-def _from_dispatcher(
-    cls,
-    dispatcher: Any,
-    config: Any = None,
-    *,
-    generate_fn: Callable[[list[dict]], str] | None = None,
-    max_steps: int = 8,
-    max_tool_seconds: float = 5.0,
-) -> ReActLoop:
-    """Build a :class:`ReActLoop` from an already-populated dispatcher."""
-    # Build the {name: callable} registry expected by ReActLoop.
-    tool_registry: dict[str, Callable[..., Any]] = {}
-    for entry in dispatcher.list_tools():
-        name = entry["name"]
-        tool_registry[name] = _make_dispatcher_callable(dispatcher, name)
-
-    if generate_fn is None:
-
-        def generate_fn(messages: list[dict]) -> str:  # type: ignore[misc]
-            return "<final_answer>agent runtime online</final_answer>"
-
-    return cls(
-        generate_fn=generate_fn,
-        tool_registry=tool_registry,
-        max_steps=max_steps,
-        max_tool_seconds=max_tool_seconds,
-    )
-
-
-# Attach as a classmethod without re-defining the class body.
-ReActLoop.from_dispatcher = classmethod(_from_dispatcher)  # type: ignore[attr-defined]
+__all__ = ["AgentStep", "AgentTrace", "ReActLoop"]

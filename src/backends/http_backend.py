@@ -100,10 +100,13 @@ class HTTPBackend:
             except (urllib.error.URLError, urllib.error.HTTPError, OSError, TimeoutError) as exc:
                 last_exc = exc
                 if attempt < cfg.max_retries - 1:
-                    sleep_s = min(2.0 ** attempt + 0.1, 8.0)
+                    sleep_s = min(2.0**attempt + 0.1, 8.0)
                     logging.getLogger(__name__).debug(
                         "Request attempt %d/%d failed (%s); retrying in %.1fs",
-                        attempt + 1, cfg.max_retries, exc.__class__.__name__, sleep_s,
+                        attempt + 1,
+                        cfg.max_retries,
+                        exc.__class__.__name__,
+                        sleep_s,
                     )
                     time.sleep(sleep_s)
             except Exception as exc:

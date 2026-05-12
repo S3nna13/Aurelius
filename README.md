@@ -75,6 +75,7 @@ The frontend **never** talks directly to Python. All API calls route through the
 - **Continuous batching** and paged KV cache
 
 ### Agent System
+- **Frontier-model orchestration** — GPT/Claude-style behavior with OpenClaw/Hermes-compatible tool use and workflows.
 - **ReAct loop** with tool-call parsing, argument validation, budget-bounded termination
 - **AbsoluteZero loop** — self-play curriculum: task proposer + solver in a closed feedback loop
 - **Neuro-symbolic skill** — LLM reasoning grafted onto symbolic rule engines
@@ -245,9 +246,9 @@ print(response.choices[0].message.content)
 |---------|--------|-------------|
 | `aurelius` | `src/cli/main.py` | Interactive chat CLI with persona support |
 | `aurelius-cli` | `src/cli/terminal_cli.py` | Terminal chat with full conversation management |
-| `aurelius-shell` | `src/cli/aurelius_shell.py` | REPL shell with slash commands |
+| `aurelius-shell` | `aurelius_cli/aurelius_shell.py` | REPL shell with slash commands |
 | `aurelius-api` | `src/backend.py` | Python API server (model inference) |
-| `aurelius-server` | `src/serving/aurelius_api.py` | Production serving stack |
+| `aurelius-server` | `gateway/aurelius_api.py` | Production serving stack |
 
 ---
 
