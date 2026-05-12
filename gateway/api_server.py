@@ -213,7 +213,7 @@ class AureliusRequestHandler(BaseHTTPRequestHandler):
         while pos < len(content):
             end = min(pos + chunk_size, len(content))
             chunk_text = content[pos:end]
-            completion_tokens += 1
+            completion_tokens += len(chunk_text.split()) or 1
             data = json.dumps(
                 {
                     "id": f"chatcmpl-{uuid.uuid4().hex}",
