@@ -44,6 +44,10 @@ def _resolve_db_path(db_path: str | None) -> Path:
 
     candidate = Path(db_path).expanduser()
     if candidate.is_absolute():
+        # Absolute paths are used as-is (e.g. temp directories in tests).
+        # Caller is responsible for ensuring the location is appropriate.
+        return candidate.resolve()
+    if candidate.is_absolute():
         candidate = Path(*candidate.parts[1:])
     if not candidate.parts:
         raise ValueError("db_path must not be empty")
