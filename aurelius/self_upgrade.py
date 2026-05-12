@@ -1,1 +1,1 @@
-from self_upgrade import *  # noqa: F401, F403
+from aurelius._self_upgrade_impl import *  # noqa: F401, F403

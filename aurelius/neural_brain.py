@@ -1,1 +1,1 @@
-from neural_brain import *  # noqa: F401, F403
+from aurelius._neural_brain_impl import *  # noqa: F401, F403

@@ -5,10 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from registry_snapshot import (
+from aurelius._registry_snapshot import (
     SKILL_CATALOG,
 )
-from registry_snapshot import (
+from aurelius._registry_snapshot import (
     SKILL_CATEGORIES as SNAPSHOT_SKILL_CATEGORIES,
 )
 

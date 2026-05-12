@@ -81,8 +81,12 @@ class AureliusProfiler:
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         if self._profiler is None:
             return
-        self._profiler.__exit__(exc_type, exc_val, exc_tb)
-        self._key_averages = self._profiler.key_averages()
+        profiler = self._profiler
+        profiler.__exit__(exc_type, exc_val, exc_tb)
+        self._key_averages = profiler.key_averages()
+        # Release the profiler eagerly so torch's background kineto/config
+        # threads can shut down before interpreter finalization.
+        self._profiler = None
 
     # ------------------------------------------------------------------
     # Summary

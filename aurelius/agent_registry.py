@@ -5,10 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from registry_snapshot import (
+from aurelius._registry_snapshot import (
     AGENT_CATALOG,
 )
-from registry_snapshot import (
+from aurelius._registry_snapshot import (
     AGENT_CATEGORIES as SNAPSHOT_AGENT_CATEGORIES,
 )
 

@@ -75,7 +75,7 @@ The frontend **never** talks directly to Python. All API calls route through the
 - **Continuous batching** and paged KV cache
 
 ### Agent System
-- **Frontier-model orchestration** — GPT/Claude-style behavior with OpenClaw/Hermes-compatible tool use and workflows.
+- **Aurelius-native frontier model orchestration** — Aurelius is its own model, with OpenClaw/Hermes-compatible tool use and workflows.
 - **ReAct loop** with tool-call parsing, argument validation, budget-bounded termination
 - **AbsoluteZero loop** — self-play curriculum: task proposer + solver in a closed feedback loop
 - **Neuro-symbolic skill** — LLM reasoning grafted onto symbolic rule engines
@@ -108,7 +108,7 @@ The frontend **never** talks directly to Python. All API calls route through the
 - **Backend switcher** — Mission Control Playground and Chat can target `Auto`, `mock`, `vLLM`, or `agentic`; Settings stores the default backend and upstream URLs used by `Auto`
   - **Agent Chat** (default mode) — Routes requests through `/api/chat/agent`, which dispatches to the best-fit agent (Coding, Research, or General) based on message content
   - **Model Chat** — Sends requests directly to `/api/chat/completions`; when backend is `Auto`, the BFF resolves it to the **Default Backend** saved in Settings; explicit backends (`mock`, `vLLM`, `agentic`) override the default
-  - **Auto resolution** — When `Auto` is selected, the BFF reads `chat.backend` from config (defaults to `vllm`); invalid backend values are normalized to the config default
+  - **Auto resolution** — When `Auto` is selected, the BFF reads `chat.backend` from config (defaults to `mock`); invalid backend values are normalized to the config default
   - Backend and mode choices persist in `localStorage` across page refreshes
 
 ### Serving & Deployment
@@ -409,13 +409,13 @@ Aurelius/
 |----------|-------------|
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Technical architecture, data flow, agent design, scaling philosophy, security model |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Code style, testing, branch strategy |
-| [CONFIDENTIAL.md](CONFIDENTIAL.md) | Confidential materials policy |
+| [CONFIDENTIAL.md](docs/CONFIDENTIAL.md) | Confidential materials policy |
 | [SECURITY.md](SECURITY.md) | Security policy and vulnerability reporting |
 | [CHANGELOG.md](CHANGELOG.md) | Release history |
-| [FEATURE_AUDIT.md](FEATURE_AUDIT.md) | Feature audit and tracking |
-| [EULA.md](EULA.md) | End User License Agreement |
+| [FEATURE_AUDIT.md](docs/FEATURE_AUDIT.md) | Feature audit and tracking |
+| [EULA.md](docs/EULA.md) | End User License Agreement |
 | [LICENSE](LICENSE) | Aurelius Open License |
-| [model_card.md](docs/model_card.md) | Model architecture card |
+| [MODEL_CARD.md](docs/MODEL_CARD.md) | Model architecture card |
 | [dataset_card.md](docs/dataset_card.md) | Dataset documentation |
 | [eval_card.md](docs/eval_card.md) | Evaluation methodology |
 | [threat_model.md](docs/threat_model.md) | Security threat model |

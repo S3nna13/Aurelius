@@ -305,9 +305,10 @@ class AureliusShell:
             self.stream_event(AgentEvent(type="done", content="Task complete"))
             self._history.append({"role": "assistant", "content": prompt, "time": time.time()})
 
-__all__ = ['AureliusShell', 'AgentEvent', 'run']
+
+__all__ = ["AureliusShell", "AgentEvent", "run"]
+
 
 def run() -> None:
     """CLI entry point exposed for the 'aurelius-shell' console script."""
     AureliusShell().run()
-
