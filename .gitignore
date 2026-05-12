@@ -108,5 +108,8 @@ rust_memory/target/
 # Nested git repos
 tools/jsonl-merge/
 
+# pytest temp directories (macOS: var/folders/, Linux: /tmp/pytest-*)
+var/
+
 # Agent loop artifacts
 .serena/
