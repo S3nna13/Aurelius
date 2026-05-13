@@ -16,7 +16,7 @@ from typing import Any
 # Optional cross-link to the categorical SKILLS_REGISTRY so VoyagerSkillLibrary
 # stays in sync with the dissertation's 32-skill taxonomy.
 try:  # pragma: no cover - import guarded for stand-alone use
-    from src.agent.skills_registry import SKILLS_REGISTRY as _SKILLS_REGISTRY
+    from agent.skills_registry import SKILLS_REGISTRY as _SKILLS_REGISTRY
 except Exception:  # pragma: no cover
     _SKILLS_REGISTRY = {}  # type: ignore[assignment]
 

@@ -609,8 +609,8 @@ class AureliusInterfaceFramework:
         """Return a JSON-safe summary of the loaded framework envelope."""
         # Lazy imports to break circular dependency:
         # interface_framework → agent → interface_runtime → interface_framework
-        from src.agent.background_executor import BackgroundTask, TaskStatus  # noqa: E402
-        from src.agent.mcp_client import MCP_PROTOCOL_VERSION  # noqa: E402
+        from agent.background_executor import BackgroundTask, TaskStatus  # noqa: E402
+        from agent.mcp_client import MCP_PROTOCOL_VERSION  # noqa: E402
 
         return {
             "title": self.contract["metadata"]["title"],

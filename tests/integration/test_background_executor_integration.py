@@ -5,9 +5,8 @@ from __future__ import annotations
 
 def test_background_executor_registered():
     """BackgroundExecutor must appear in AGENT_LOOP_REGISTRY."""
-    from src.agent.background_executor import BackgroundExecutor
-
-    import src.agent as agent
+    import agent as agent
+    from agent.background_executor import BackgroundExecutor
 
     assert "background_executor" in agent.AGENT_LOOP_REGISTRY
     assert agent.AGENT_LOOP_REGISTRY["background_executor"] is BackgroundExecutor
@@ -15,7 +14,7 @@ def test_background_executor_registered():
 
 def test_prior_registries_still_intact():
     """Existing registry entries must not be clobbered by the new module."""
-    import src.agent as agent
+    import agent as agent
 
     assert "react" in agent.AGENT_LOOP_REGISTRY
     assert "dispatch_task" in agent.AGENT_LOOP_REGISTRY
@@ -24,7 +23,7 @@ def test_prior_registries_still_intact():
 
 def test_full_lifecycle_priority_order():
     """Submit 3 tasks with different priorities, run all, verify completion order."""
-    from src.agent.background_executor import BackgroundExecutor, TaskStatus
+    from agent.background_executor import BackgroundExecutor, TaskStatus
 
     execution_order: list[str] = []
 
@@ -65,7 +64,7 @@ def test_full_lifecycle_priority_order():
 
 def test_registry_class_is_instantiable():
     """The registered class can be instantiated via the registry key."""
-    import src.agent as agent
+    import agent as agent
 
     cls = agent.AGENT_LOOP_REGISTRY["background_executor"]
     instance = cls()

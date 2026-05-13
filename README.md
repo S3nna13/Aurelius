@@ -204,7 +204,16 @@ All `torch.load` calls use `weights_only=True`. Container images use non-root us
 - `GET /metrics` — Prometheus scrape
 - `WebSocket /ws` — real-time streaming
 
-**Gateway features:** CSP / HSTS / X-Frame-Options headers, per-IP rate limiting (memory or Redis), 1 MiB / 10 MiB request size limits, `X-Request-ID` tracing, host allow-listing.
+**Gateway features:** CSP / HSTS / X-Frame-Options headers, per-IP rate limiting (memory or Redis), 1 MiB / 10 MiB request size limits, `X-Request-ID` tracing, host allow-listing, input parameter validation and response sanitization.
+
+**Health & readiness:**
+- `GET /health` — liveness (returns `engine_loaded` flag; 200 only when UP)
+- `GET /health/ready` — readiness (waits for model engine initialization)
+- Docker `HEALTHCHECK` uses `/health`; Kubernetes probes configure both liveness and readiness.
+
+**Rate limiting backends:**
+- **Memory** (default) — in-process token bucket; suitable for single‑instance deployments
+- **Redis** (set `AURELIUS_RATE_LIMIT_REDIS_URL`) — distributed Lua‑script token bucket; consistent limits across multiple API replicas
 
 **Deployment targets:** Docker Compose (`deployment/compose.yaml`), Kubernetes (`k8s/`), Helm charts.
 
@@ -262,6 +271,7 @@ docker compose up --profile cache    # with Redis
 | `AURELIUS_RATE_LIMIT` | `60` | Max requests per window per IP |
 | `AURELIUS_RATE_WINDOW` | `60` | Rate limit window (seconds) |
 | `AURELIUS_RATE_LIMIT_REDIS_URL` | — | Redis URL for distributed rate limiting |
+| `AURELIUS_RATE_LIMIT_PREFIX` | `rl:` | Redis key prefix for rate-limit tokens |
 | `AURELIUS_MODEL_PATH` | — | Path to checkpoint directory |
 | `AURELIUS_VERSION` | `0.1.0` | Version string (visible at `/health`) |
 

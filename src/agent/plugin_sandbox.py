@@ -12,7 +12,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
-from src.agent.plugin_hook import PluginHookRegistry
+from agent.plugin_hook import PluginHookRegistry
 
 
 class SandboxViolationError(Exception):

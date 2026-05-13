@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from src.agent.absolute_zero import AbsoluteZeroConfig, AbsoluteZeroLoop
+from agent.absolute_zero import AbsoluteZeroConfig, AbsoluteZeroLoop
 
 
 class DummySkillEvolver:
