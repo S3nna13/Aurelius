@@ -148,8 +148,7 @@ class PersonaRegistry:
             unified = self._unified.get(unified_id)
         except Exception as exc:  # noqa: BLE001
             logger.debug(
-                "PersonaRegistry.apply_persona failed to resolve "
-                "unified persona %r: %s",
+                "PersonaRegistry.apply_persona failed to resolve unified persona %r: %s",
                 unified_id,
                 exc,
             )

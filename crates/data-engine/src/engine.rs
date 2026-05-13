@@ -276,8 +276,8 @@ impl DataEngineInner {
                     + (Self::rand_simple(step * 3) * 0.05 - 0.025);
                 points.push(InternalDataPoint {
                     step: (step + 1) as u32,
-                    train_loss: ((train_loss * 100.0) as f64).round() / 100.0,
-                    val_loss: ((val_loss * 100.0) as f64).round() / 100.0,
+                    train_loss: (train_loss * 100.0).round() / 100.0,
+                    val_loss: (val_loss * 100.0).round() / 100.0,
                     learning_rate: if step < 10 {
                         1e-4 + step as f64 * 9e-5
                     } else {
@@ -314,8 +314,8 @@ impl DataEngineInner {
                     + (Self::rand_simple(step * 3 + 100) * 0.04 - 0.02);
                 points2.push(InternalDataPoint {
                     step: (step + 1) as u32,
-                    train_loss: ((train_loss * 100.0) as f64).round() / 100.0,
-                    val_loss: ((val_loss2 * 100.0) as f64).round() / 100.0,
+                    train_loss: (train_loss * 100.0).round() / 100.0,
+                    val_loss: (val_loss2 * 100.0).round() / 100.0,
                     learning_rate: if step < 8 {
                         2e-5 + step as f64 * 2.5e-5
                     } else {
@@ -352,8 +352,8 @@ impl DataEngineInner {
                     + (Self::rand_simple(step * 3 + 200) * 0.06 - 0.03);
                 points3.push(InternalDataPoint {
                     step: (step + 1) as u32,
-                    train_loss: ((train_loss * 100.0) as f64).round() / 100.0,
-                    val_loss: ((val_loss3 * 100.0) as f64).round() / 100.0,
+                    train_loss: (train_loss * 100.0).round() / 100.0,
+                    val_loss: (val_loss3 * 100.0).round() / 100.0,
                     learning_rate: 3e-4 - step as f64 * 5e-6,
                     accuracy: if step > 8 {
                         f64::min((step as f64 - 8.0) * 1.5 + 8.0, 85.0)
@@ -582,20 +582,20 @@ impl DataEngineInner {
         list.iter()
             .rev()
             .filter(|n| {
-                if let Some(c) = category {
-                    if n.category != c {
-                        return false;
-                    }
+                if let Some(c) = category
+                    && n.category != c
+                {
+                    return false;
                 }
-                if let Some(p) = priority {
-                    if n.priority != p {
-                        return false;
-                    }
+                if let Some(p) = priority
+                    && n.priority != p
+                {
+                    return false;
                 }
-                if let Some(r) = read {
-                    if n.read != r {
-                        return false;
-                    }
+                if let Some(r) = read
+                    && n.read != r
+                {
+                    return false;
                 }
                 true
             })
@@ -635,10 +635,10 @@ impl DataEngineInner {
             .expect("Failed to acquire write lock");
         let mut count = 0;
         for n in list.iter_mut() {
-            if let Some(c) = category {
-                if n.category != c {
-                    continue;
-                }
+            if let Some(c) = category
+                && n.category != c
+            {
+                continue;
             }
             if !n.read {
                 n.read = true;
@@ -717,16 +717,17 @@ impl DataEngineInner {
         let limit = limit.unwrap_or(50).min(MAX_LIMIT) as usize;
         let mut results = Vec::new();
         for (name, entries) in layers.iter() {
-            if let Some(l) = layer {
-                if name != l {
-                    continue;
-                }
+            if let Some(l) = layer
+                && name != l
+            {
+                continue;
             }
             for e in entries.iter() {
-                if let Some(q) = query {
-                    if !q.is_empty() && !e.content.to_lowercase().contains(&q.to_lowercase()) {
-                        continue;
-                    }
+                if let Some(q) = query
+                    && !q.is_empty()
+                    && !e.content.to_lowercase().contains(&q.to_lowercase())
+                {
+                    continue;
                 }
                 results.push(crate::MemoryEntry {
                     id: e.id.clone(),
@@ -807,18 +808,17 @@ impl DataEngineInner {
         logs.iter()
             .rev()
             .filter(|l| {
-                if let Some(lv) = level {
-                    if l.level.to_lowercase() != lv.to_lowercase() {
-                        return false;
-                    }
+                if let Some(lv) = level
+                    && l.level.to_lowercase() != lv.to_lowercase()
+                {
+                    return false;
                 }
-                if let Some(q) = query {
-                    if !q.is_empty()
-                        && !l.message.to_lowercase().contains(&q.to_lowercase())
-                        && !l.logger.to_lowercase().contains(&q.to_lowercase())
-                    {
-                        return false;
-                    }
+                if let Some(q) = query
+                    && !q.is_empty()
+                    && !l.message.to_lowercase().contains(&q.to_lowercase())
+                    && !l.logger.to_lowercase().contains(&q.to_lowercase())
+                {
+                    return false;
                 }
                 true
             })
@@ -844,10 +844,10 @@ impl DataEngineInner {
         logs.iter()
             .rev()
             .filter(|l| {
-                if let Some(lv) = level {
-                    if l.level.to_lowercase() != lv.to_lowercase() {
-                        return false;
-                    }
+                if let Some(lv) = level
+                    && l.level.to_lowercase() != lv.to_lowercase()
+                {
+                    return false;
                 }
                 l.message.to_lowercase().contains(&q) || l.logger.to_lowercase().contains(&q)
             })

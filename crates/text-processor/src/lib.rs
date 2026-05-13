@@ -85,17 +85,23 @@ fn chunk_by_chars(
         let mut end = (start + max).min(chars.len());
 
         let slice: String = chars[start..end].iter().collect();
-        if respect_paragraphs && end < chars.len() {
-            if let Some(para_end) = slice.rfind("\n\n") {
-                end = start + para_end + 2;
-            }
+        if respect_paragraphs
+            && end < chars.len()
+            && let Some(para_end) = slice.rfind(
+                "
+
+",
+            )
+        {
+            end = start + para_end + 2;
         }
 
         let slice: String = chars[start..end].iter().collect();
-        if respect_sentences && end < chars.len() {
-            if let Some(sent_end) = slice.rfind(|c| c == '.' || c == '!' || c == '?') {
-                end = start + sent_end + 1;
-            }
+        if respect_sentences
+            && end < chars.len()
+            && let Some(sent_end) = slice.rfind(|c| ['.', '!', '?'].contains(&c))
+        {
+            end = start + sent_end + 1;
         }
 
         let chunk: String = chars[start..end].iter().collect();
@@ -360,10 +366,10 @@ impl TextProcessor {
         }
 
         // Last sentence (usually the conclusion)
-        if let Some(last) = sentences.last() {
-            if !selected.contains(&last.text) {
-                selected.push(last.text.clone());
-            }
+        if let Some(last) = sentences.last()
+            && !selected.contains(&last.text)
+        {
+            selected.push(last.text.clone());
         }
 
         selected.join(" ")
@@ -388,7 +394,7 @@ impl TextProcessor {
         // Last window if we didn't land exactly
         if start < words.len() && start + ws > words.len() {
             let window = words[words.len().saturating_sub(ws)..].join(" ");
-            if !windows.last().map_or(false, |w| *w == window) {
+            if windows.last().is_none_or(|w| *w != window) {
                 windows.push(window);
             }
         }
@@ -417,5 +423,11 @@ impl TextProcessor {
             .collect::<String>();
         truncated.push_str(&ell);
         truncated
+    }
+}
+
+impl Default for TextProcessor {
+    fn default() -> Self {
+        Self::new()
     }
 }

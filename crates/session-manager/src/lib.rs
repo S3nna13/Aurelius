@@ -182,11 +182,11 @@ impl SessionManager {
             .sessions
             .lock()
             .expect("Failed to lock sessions for mutation");
-        if let Some(entry) = sessions.get_mut(&session_id) {
-            if Utc::now() < entry.expires_at {
-                entry.session.last_activity = Utc::now().to_rfc3339();
-                return true;
-            }
+        if let Some(entry) = sessions.get_mut(&session_id)
+            && Utc::now() < entry.expires_at
+        {
+            entry.session.last_activity = Utc::now().to_rfc3339();
+            return true;
         }
         false
     }
@@ -254,5 +254,11 @@ impl SessionManager {
         let before = sessions.len() as u32;
         self.cleanup_expired(&mut sessions);
         before - sessions.len() as u32
+    }
+}
+
+impl Default for SessionManager {
+    fn default() -> Self {
+        Self::new()
     }
 }

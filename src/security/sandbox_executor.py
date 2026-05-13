@@ -287,9 +287,7 @@ class SandboxExecutor:
             except Exception:  # noqa: S110  # cancel() returns False if already done
                 pass
             old_pool = _SANDBOX_POOL
-            _SANDBOX_POOL = _DaemonThreadPoolExecutor(
-                max_workers=4, thread_name_prefix="sandbox"
-            )
+            _SANDBOX_POOL = _DaemonThreadPoolExecutor(max_workers=4, thread_name_prefix="sandbox")
             old_pool.shutdown(wait=False)
             return SandboxResult(
                 stdout="",

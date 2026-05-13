@@ -816,10 +816,10 @@ impl Persistence {
             {
                 return Err("Model field exceeds maximum length".to_string());
             }
-            if let Some(loaded_at) = &m.loaded_at {
-                if loaded_at.len() > MAX_FIELD_LENGTH {
-                    return Err("Model loaded_at exceeds maximum length".to_string());
-                }
+            if let Some(loaded_at) = &m.loaded_at
+                && loaded_at.len() > MAX_FIELD_LENGTH
+            {
+                return Err("Model loaded_at exceeds maximum length".to_string());
             }
         }
 

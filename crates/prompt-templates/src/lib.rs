@@ -373,3 +373,9 @@ pub struct ChatMLMessage {
     pub role: String,
     pub content: String,
 }
+
+impl Default for PromptEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}

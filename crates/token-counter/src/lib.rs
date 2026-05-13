@@ -35,7 +35,7 @@ pub fn count_tokens(text: String, options: Option<TokenCountOptions>) -> TokenCo
     let characters = text.chars().count() as u32;
     let words = text.split_whitespace().count() as u32;
     let sentences = text
-        .split(|c: char| c == '.' || c == '!' || c == '?')
+        .split(['.', '!', '?'])
         .filter(|s| !s.trim().is_empty())
         .count() as u32;
     let lines = text.lines().count() as u32;

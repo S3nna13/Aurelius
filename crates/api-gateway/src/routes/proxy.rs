@@ -68,7 +68,11 @@ async fn proxy_handler(
             state
                 .metrics
                 .record_request("/error", status.as_u16(), latency);
-            (status, format!("{{ \"error\": \"Upstream unavailable\" }}")).into_response()
+            (
+                status,
+                "{ \"error\": \"Upstream unavailable\" }".to_string(),
+            )
+                .into_response()
         }
     }
 }

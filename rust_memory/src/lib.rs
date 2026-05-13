@@ -222,7 +222,7 @@ fn score_for_eviction(page: &MemoryPage, clock: u64) -> f32 {
     let clock_f = clock.max(1) as f32;
     let recency = page.last_access as f32 / clock_f;
     let freq = page.access_count as f32 / clock_f;
-    let priority_norm = page.priority.max(0.0).min(1.0);
+    let priority_norm = page.priority.clamp(0.0, 1.0);
     0.5 * recency + 0.3 * freq + 0.2 * (1.0 - priority_norm)
 }
 

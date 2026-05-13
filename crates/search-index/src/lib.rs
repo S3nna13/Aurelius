@@ -51,10 +51,7 @@ fn generate_snippet(text: &str, query: &str, window: usize) -> String {
     if let Some(pos) = lower.find(&q_lower) {
         let start = pos.saturating_sub(window);
         let end = (pos + q_lower.len() + window).min(text.len());
-        let mut snippet = &text[start..end];
-        if start > 0 {
-            snippet = &snippet[..];
-        }
+        let snippet = &text[start..end];
         let prefix = if start > 0 { "..." } else { "" };
         let suffix = if end < text.len() { "..." } else { "" };
         format!("{}{}{}", prefix, snippet, suffix)
@@ -141,7 +138,7 @@ impl SearchIndex {
                 .inverted_index
                 .get_mut(&field_key)
                 .expect("Failed to get mutable inverted index");
-            idx.entry(term.clone()).or_insert_with(Vec::new).push(tf);
+            idx.entry(term.clone()).or_default().push(tf);
 
             // Update autocomplete trie
             if let Some(mut trie) = self.autocomplete_trie.get_mut(&field_key) {
@@ -270,10 +267,10 @@ impl SearchIndex {
         let field_key = field;
         let mut removed = false;
 
-        if let Some(mut docs) = self.doc_store.get_mut(&field_key) {
-            if docs.remove(&id).is_some() {
-                removed = true;
-            }
+        if let Some(mut docs) = self.doc_store.get_mut(&field_key)
+            && docs.remove(&id).is_some()
+        {
+            removed = true;
         }
 
         if let Some(mut lengths) = self.doc_lengths.get_mut(&field_key) {
@@ -283,7 +280,7 @@ impl SearchIndex {
         if removed {
             // Recalculate avg doc length
             if let Some(lengths) = self.doc_lengths.get(&field_key) {
-                let total: u32 = lengths.iter().map(|(_, l)| l).sum();
+                let total: u32 = lengths.values().copied().sum();
                 let count = lengths.len() as f64;
                 if count > 0.0 {
                     self.avg_doc_length
@@ -342,5 +339,11 @@ impl SearchIndex {
         }
 
         stats
+    }
+}
+
+impl Default for SearchIndex {
+    fn default() -> Self {
+        Self::new()
     }
 }

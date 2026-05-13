@@ -39,9 +39,7 @@ class SimpleEncryptor:
         try:
             Fernet(self.key)
         except Exception as exc:
-            raise ValueError(
-                f"AURELIUS_ENCRYPTION_KEY is not a valid Fernet key: {exc}"
-            ) from exc
+            raise ValueError(f"AURELIUS_ENCRYPTION_KEY is not a valid Fernet key: {exc}") from exc
 
     def encrypt(self, plaintext: str) -> str:
         Fernet = _get_fernet()
