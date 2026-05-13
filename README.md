@@ -140,7 +140,25 @@ Full production observability stack (`src/observability/`):
 | `TraceContext` | W3C-compatible distributed trace propagation |
 
 **SRE metrics** (`src/monitoring/`) — golden signals: latency (p50/p99), error rate, traffic, saturation.
-**Prometheus** — `/metrics` endpoint: request counts, latency percentiles, active connections.
+**Prometheus** — `/metrics` endpoint: request counts, latency percentiles, active connecti
+
+### Prometheus Metrics
+
+The `/metrics` endpoint exposes the following counters and gauges:
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `aurelius_requests_total` | counter | Total HTTP requests received |
+| `aurelius_requests_per_second` | gauge | Current request rate |
+| `aurelius_active_connections` | gauge | Concurrent active connections |
+| `aurelius_request_duration_ms` | gauge | Request latency p50/p95/p99 |
+| `aurelius_uptime_seconds` | gauge | Server uptime |
+| `aurelius_http_status_total` | counter | Requests by HTTP status code (label `code`) |
+| `aurelius_rate_limit_rejected_total` | counter | Requests rejected by rate limiter |
+| `aurelius_validation_failures_total` | counter | Parameter validation failures (out‑of‑range) |
+| `aurelius_rate_limiter_backend` | gauge | Rate‑limiter backend (`0`=memory, `1`=redis) |
+
+ons.
 
 ---
 
