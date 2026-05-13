@@ -1,81 +1,89 @@
 #!/usr/bin/env python3
 """Train BPE tokenizer on jsonl_corpus.txt and shard into train/val .npy files."""
 
+import argparse
 import random
 from pathlib import Path
-
 import numpy as np
 from tokenizers import Tokenizer, models, pre_tokenizers, trainers
 
-CORPUS = Path("/Users/christienantonio/Desktop/Aurelius/data/reference_corpus/jsonl_corpus.txt")
-OUT_DIR = Path("/Users/christienantonio/Desktop/Aurelius/data/pretrain/jsonl")
-OUT_DIR.mkdir(parents=True, exist_ok=True)
-VOCAB_SIZE = 8192
 
-random.seed(42)
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Train BPE tokenizer and encode corpus")
+    parser.add_argument("--corpus", type=Path, required=True, help="Path to jsonl_corpus.txt")
+    parser.add_argument("--out-dir", type=Path, default=Path("data/pretrain/jsonl"), help="Output directory")
+    parser.add_argument("--vocab-size", type=int, default=8192, help="Tokenizer vocabulary size")
+    args = parser.parse_args()
 
-# ── 1. Train tokenizer ──────────────────────────────────────────────────────
-print("Training tokenizer...")
-tokenizer = Tokenizer(models.BPE(unk_token="<unk>"))  # noqa: S106
-tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)
-trainer = trainers.BpeTrainer(
-    vocab_size=VOCAB_SIZE,
-    special_tokens=["<pad>", "<unk>", "<s>", "</s>"],
-    min_frequency=2,
-)
-tokenizer.train([str(CORPUS)], trainer)
-tokenizer.save(str(OUT_DIR / "tokenizer.json"))
-print(f"Tokenizer saved -> {OUT_DIR / 'tokenizer.json'}  (vocab={VOCAB_SIZE})")
+    CORPUS = args.corpus.expanduser().resolve()
+    OUT_DIR = args.out_dir.expanduser().resolve()
+    VOCAB_SIZE = args.vocab_size
 
-# ── 2. Encode full corpus ───────────────────────────────────────────────────
-print("Encoding corpus...")
-with open(CORPUS, encoding="utf-8") as f:
-    text = f.read()
-encoding = tokenizer.encode(text)
-all_ids = np.array(encoding.ids, dtype=np.uint16)
-print(f"Total tokens: {len(all_ids):,}")
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    random.seed(42)
+    np.random.seed(42)
 
-# ── 3. Shuffle & split ──────────────────────────────────────────────────────
-np.random.seed(42)
-np.random.shuffle(all_ids)  # shuffle token-level for maximum randomness
+    # ── 1. Train tokenizer ──────────────────────────────────────────────────────
+    print("Training tokenizer...")
+    tokenizer = Tokenizer(models.BPE(unk_token="<unk>"))  # noqa: S106
+    tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)
+    trainer = trainers.BpeTrainer(
+        vocab_size=VOCAB_SIZE,
+        special_tokens=["<pad>", "<unk>", "<s>", "</s>"],
+        min_frequency=2,
+    )
+    tokenizer.train([str(CORPUS)], trainer)
+    tokenizer.save(str(OUT_DIR / "tokenizer.json"))
+    print(f"Tokenizer saved -> {OUT_DIR / 'tokenizer.json'}  (vocab={VOCAB_SIZE})")
 
-# Actually, better to shuffle at conversation level. Let's re-read and encode per-conversation.
-print("Re-encoding per-conversation for proper train/val split...")
-conversations = []
-with open(CORPUS, encoding="utf-8") as f:
-    current = []
-    for line in f:
-        if line.strip() == "---":
-            if current:
-                conversations.append("\n".join(current))
-                current = []
-        else:
-            current.append(line)
-    if current:
-        conversations.append("\n".join(current))
+    # ── 2. Encode full corpus ───────────────────────────────────────────────────
+    print("Encoding corpus...")
+    with open(CORPUS, encoding="utf-8") as f:
+        text = f.read()
+    encoding = tokenizer.encode(text)
+    all_ids = np.array(encoding.ids, dtype=np.uint16)
+    print(f"Total tokens: {len(all_ids):,}")
 
-random.shuffle(conversations)
-split = int(0.9 * len(conversations))
-train_convs = conversations[:split]
-val_convs = conversations[split:]
+    # ── 3. Shuffle & split ──────────────────────────────────────────────────────
+    # Re-encode per-conversation for proper train/val split
+    print("Re-encoding per-conversation for proper train/val split...")
+    conversations = []
+    with open(CORPUS, encoding="utf-8") as f:
+        current = []
+        for line in f:
+            if line.strip() == "---":
+                if current:
+                    conversations.append("\n".join(current))
+                    current = []
+            else:
+                current.append(line)
+        if current:
+            conversations.append("\n".join(current))
 
+    random.shuffle(conversations)
+    split = int(0.9 * len(conversations))
+    train_convs = conversations[:split]
+    val_convs = conversations[split:]
 
-def encode_conversations(convs):
-    all_ids = []
-    for conv in convs:
+    # Encode each conversation and concatenate
+    train_ids_list = []
+    for conv in train_convs:
         ids = tokenizer.encode(conv).ids
-        all_ids.extend(ids)
-    return np.array(all_ids, dtype=np.uint16)
+        train_ids_list.extend(ids)
+    val_ids_list = []
+    for conv in val_convs:
+        ids = tokenizer.encode(conv).ids
+        val_ids_list.extend(ids)
+
+    train_arr = np.array(train_ids_list, dtype=np.uint16)
+    val_arr = np.array(val_ids_list, dtype=np.uint16)
+
+    np.save(OUT_DIR / "train.npy", train_arr)
+    np.save(OUT_DIR / "val.npy", val_arr)
+
+    print(f"Train tokens: {len(train_arr):,} | Val tokens: {len(val_arr):,}")
+    print(f"Saved to {OUT_DIR}/{{train.npy, val.npy}}")
 
 
-train_ids = encode_conversations(train_convs)
-val_ids = encode_conversations(val_convs)
-
-print(f"Train conversations: {len(train_convs):,}  ->  {len(train_ids):,} tokens")
-print(f"Val   conversations: {len(val_convs):,}  ->  {len(val_ids):,} tokens")
-
-# ── 4. Save shards ──────────────────────────────────────────────────────────
-OUT_DIR.mkdir(parents=True, exist_ok=True)
-np.save(OUT_DIR / "train_0.npy", train_ids)
-np.save(OUT_DIR / "val_0.npy", val_ids)
-print(f"Saved -> {OUT_DIR}")
+if __name__ == "__main__":
+    main()

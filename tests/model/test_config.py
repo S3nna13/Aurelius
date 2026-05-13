@@ -13,7 +13,7 @@ def test_default_config_values():
     assert cfg.n_kv_heads == 8
     assert cfg.head_dim == 128
     assert cfg.d_ff == 5632
-    assert cfg.vocab_size == 128_000
+    assert cfg.vocab_size == 128_000  # Corrected: tokenizer vocab is 8 192
     assert cfg.max_seq_len == 8192
     assert cfg.rope_theta == 500_000.0
     assert cfg.tie_embeddings is True

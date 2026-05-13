@@ -223,7 +223,7 @@ class TrainConfig:
     model_n_kv_heads: int = 8
     model_head_dim: int = 128
     model_d_ff: int = 5632
-    model_vocab_size: int = 128_000
+    model_vocab_size: int = 8_192
     model_max_seq_len: int = 8192
     model_rope_theta: float = 500_000.0
     model_tie_embeddings: bool = True
@@ -520,8 +520,35 @@ class CheckpointManager:
         """Load checkpoint from safetensors + metadata."""
         ckpt_dir = Path(ckpt_dir)
 
-        # Load model weights
-        state_dict = _load_safetensors(ckpt_dir / "model.safetensors")
+        # Load model weights — support new (safetensors) and legacy (.pt) formats
+        safetensors_path = ckpt_dir / "model.safetensors"
+        if safetensors_path.exists():
+            state_dict = _load_safetensors(safetensors_path)
+        else:
+            # Legacy fallback: single .pt file (either ckpt_dir/model.pt or
+    # ckpt_dir itself if it's a file)
+            legacy_pt = ckpt_dir / "model.pt"
+            if not legacy_pt.exists() and ckpt_dir.is_file():
+                legacy_pt = ckpt_dir  # the ckpt_dir is actually a .pt file path
+            import warnings
+            warnings.warn(
+                f"Loading legacy .pt checkpoint from {legacy_pt}. "
+                "This format is deprecated; convert to safetensors.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            import warnings
+            warnings.warn(
+    "Legacy .pt checkpoint detected. Safetensors is the recommended format. "
+    "Consider converting via: python -m src.training.checkpoint_converter "
+    "--input legacy.pt --output model.safetensors",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+            state_dict = torch.load(legacy_pt, map_location="cpu", weights_only=True)
+            # If the .pt stored a dict with 'model_state_dict', unwrap
+            if isinstance(state_dict, dict) and "model_state_dict" in state_dict:
+                state_dict = state_dict["model_state_dict"]
         model.load_state_dict(state_dict, strict=True)
 
         # Load optimizer + scheduler

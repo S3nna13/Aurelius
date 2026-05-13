@@ -21,6 +21,12 @@ class RouterConfig:
     router_type: RouterType = RouterType.TOP_K
     aux_loss_coef: float = 0.01
     jitter_noise: float = 0.0
+    # Dynamic load-balancing flags (DeepSeek Step 3.5 Flash §3.3)
+    use_temperature: bool = False   # learnable per-expert temperature scaling
+    use_bias: bool = False         # EMA load-proportional bias
+    bias_ema_decay: float = 0.9  # decay for load EMA (higher → slower)
+    bias_max: float = 1.0
+    capacity_factor: float = 1.25  # Legacy compatibility; unused by MoERouter
 
 
 @dataclass
@@ -29,6 +35,12 @@ class RouterOutput:
     router_probs: torch.Tensor
     aux_loss: torch.Tensor
     load_distribution: torch.Tensor
+
+    def __iter__(self):
+        """Return a 3-tuple (probs, indices, loss) for backward compatibility."""
+        yield self.router_probs
+        yield self.expert_indices
+        yield self.aux_loss
 
 
 class MoERouter(nn.Module):
@@ -39,6 +51,17 @@ class MoERouter(nn.Module):
         self.config = config
         self.gate = nn.Linear(d_model, config.n_experts, bias=False)
 
+        # Dynamic load-balancing state
+        if self.config.use_temperature:
+            # log-space parameter for positivity
+            self.log_temperature = nn.Parameter(torch.zeros(()))
+        else:
+            self.register_buffer("log_temperature", torch.zeros(()))
+        # Bias buffer (broadcastable to n_experts)
+        self.register_buffer("load_bias", torch.zeros(config.n_experts))
+        # EMA of expert load (no grad)
+        self.register_buffer("load_ema", torch.full((config.n_experts,), 1.0 / config.n_experts))
+
     def _top_k_route(self, hidden: torch.Tensor) -> RouterOutput:
         logits = self.gate(hidden)
         if self.training and self.config.jitter_noise > 0.0:
@@ -47,6 +70,14 @@ class MoERouter(nn.Module):
                 1.0 + self.config.jitter_noise,
             )
             logits = logits * noise
+
+        # Dynamic temperature scaling (applied before softmax)
+        if self.config.use_temperature and self.training:
+            logits = logits / torch.exp(self.log_temperature)
+
+        # Dynamic load-balancing bias (applied before softmax)
+        if self.config.use_bias and self.training:
+            logits = logits + self.load_bias
 
         probs = F.softmax(logits, dim=-1)
         top_probs, top_indices = torch.topk(probs, self.config.top_k, dim=-1)
@@ -66,6 +97,18 @@ class MoERouter(nn.Module):
         cv_sq = variance / (mean_load**2 + 1e-9)
         aux_loss = self.config.aux_loss_coef * cv_sq
 
+        # Update load EMA and bias during training
+        if self.config.use_bias and self.training:
+            with torch.no_grad():
+                self.load_ema.mul_(self.config.bias_ema_decay).add_(
+                    load, alpha=1.0 - self.config.bias_ema_decay
+                )
+                bias = -self.load_ema
+                self.load_bias.mul_(self.config.bias_ema_decay).add_(
+                    bias, alpha=1.0 - self.config.bias_ema_decay
+                )
+                self.load_bias.clamp_(-self.config.bias_max, self.config.bias_max)
+
         return RouterOutput(
             expert_indices=top_indices,
             router_probs=top_probs,
@@ -76,6 +119,10 @@ class MoERouter(nn.Module):
     def _expert_choice_route(self, hidden: torch.Tensor) -> RouterOutput:
         n_tokens = hidden.shape[0]
         logits = self.gate(hidden)
+        if self.config.use_temperature and self.training:
+            logits = logits / torch.exp(self.log_temperature)
+        if self.config.use_bias and self.training:
+            logits = logits + self.load_bias
         probs = F.softmax(logits, dim=-1)
 
         capacity = max(1, int(n_tokens * self.config.top_k / self.config.n_experts))
@@ -116,6 +163,18 @@ class MoERouter(nn.Module):
         variance = ((load - mean_load) ** 2).mean()
         cv_sq = variance / (mean_load**2 + 1e-9)
         aux_loss = self.config.aux_loss_coef * cv_sq
+
+        # Update load EMA and bias during training
+        if self.config.use_bias and self.training:
+            with torch.no_grad():
+                self.load_ema.mul_(self.config.bias_ema_decay).add_(
+                    load, alpha=1.0 - self.config.bias_ema_decay
+                )
+                bias = -self.load_ema
+                self.load_bias.mul_(self.config.bias_ema_decay).add_(
+                    bias, alpha=1.0 - self.config.bias_ema_decay
+                )
+                self.load_bias.clamp_(-self.config.bias_max, self.config.bias_max)
 
         return RouterOutput(
             expert_indices=expert_indices,

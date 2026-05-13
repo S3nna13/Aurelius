@@ -2,6 +2,7 @@
 
 At each step, a lightweight quality scorer evaluates the partial sequence.
 Tokens are rejected (and resampled) if the quality score drops below threshold.
+# ruff: isort: skip_file
 
 This maintains the target distribution approximately while filtering toxic/
 low-quality prefixes before they can cascade into full bad responses.
@@ -16,6 +17,8 @@ from dataclasses import dataclass
 
 import torch
 import torch.nn.functional as F
+from src.model.logits_processor import UnifiedLogitsProcessor
+# ruff: isort: skip_file
 
 
 @dataclass
@@ -55,8 +58,8 @@ def log_prob_quality_score(
     Higher = the model was more confident = higher quality token.
     Normalized to [0, 1] using sigmoid.
     """
-    if temperature != 1.0:
-        logits = logits / temperature
+    processor = UnifiedLogitsProcessor(temperature=temperature)
+    logits = processor(logits)
     log_probs = F.log_softmax(logits, dim=-1)
     log_p = log_probs[sampled_token].item()
     # sigmoid maps (-inf, 0] -> (0, 0.5] for low-prob tokens,
@@ -70,8 +73,15 @@ def nucleus_sample_with_logit(
     temperature: float,
 ) -> tuple[int, float]:
     """Top-p nucleus sampling. Returns (token_id, log_prob_of_token)."""
-    if temperature != 1.0:
-        logits = logits / temperature
+    processor = UnifiedLogitsProcessor(temperature=temperature, top_p=top_p)
+    logits = processor(logits)
+    log_probs = F.log_softmax(logits, dim=-1)
+    probs = log_probs.exp()
+    token_id = torch.multinomial(probs, 1).squeeze(-1).item()
+    log_p = log_probs[token_id].item()
+    return int(token_id), float(log_p)
+
+
 
     log_probs = F.log_softmax(logits, dim=-1)
     probs = log_probs.exp()

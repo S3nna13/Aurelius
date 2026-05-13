@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aurelius-api
+  labels:
+    app: aurelius
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aurelius-api
+  template:
+    metadata:
+      labels:
+        app: aurelius-api
+    spec:
+      containers:
+      - name: api
+        image: aurelius-api:latest
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: AURELIUS_MODEL_PATH
+          value: "/app/checkpoints/aurelius_1.3b"
+        - name: AURELIUS_BACKEND
+          value: "vllm"
+        - name: AURELIUS_RATE_LIMIT
+          value: "120"
+        - name: AURELIUS_RATE_WINDOW
+          value: "60"
+        # Uncomment to enable distributed rate limiting:
+        # - name: AURELIUS_RATE_LIMIT_REDIS_URL
+        #   value: "redis://redis-service:6379/0"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 5
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 2
+          failureThreshold: 3
+        resources:
+          requests:
+            memory: "4Gi"
+            cpu: "2"
+          limits:
+            memory: "8Gi"
+            cpu: "4"

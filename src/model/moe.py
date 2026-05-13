@@ -6,11 +6,13 @@ Implements Switch Transformer / Mixtral-style sparse MoE:
   - ExpertFFN: single 2-layer MLP expert (d_model -> d_ff -> d_model, SiLU)
   - SparseMoELayer: routes tokens to top-K experts, aggregates weighted outputs
   - MoEBlock: full transformer block (MHA + RMSNorm + SparseMoELayer)
+# ruff: isort: skip_file
 
 Usage:
     from aurelius.model.moe import RouterConfig, TopKRouter, ExpertFFN, SparseMoELayer, MoEBlock
 """
 
+# ruff: isort: skip_file
 from __future__ import annotations
 
 import math
@@ -21,6 +23,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
+from src.model.moe_router import RouterConfig, MoERouter  # noqa: I001
 
 # ---------------------------------------------------------------------------
 # RouterConfig
@@ -28,7 +31,7 @@ from torch import Tensor
 
 
 @dataclass
-class RouterConfig:
+class TopKRouterConfig:
     """Configuration for the top-K sparse router."""
 
     n_experts: int
@@ -64,11 +67,21 @@ class TopKRouter(nn.Module):
         n_experts: int,
         top_k: int,
         jitter_noise: float = 0.0,
+        *,
+        aux_loss_coef: float | None = None,
+        load_balance_alpha: float | None = None,
     ) -> None:
         super().__init__()
         self.n_experts = n_experts
         self.top_k = top_k
         self.jitter_noise = jitter_noise
+        # Backward compatibility: prefer load_balance_alpha if provided
+        if load_balance_alpha is not None:
+            self.aux_loss_coef = load_balance_alpha
+        elif aux_loss_coef is not None:
+            self.aux_loss_coef = aux_loss_coef
+        else:
+            self.aux_loss_coef = 1.0
 
         self.gate = nn.Linear(d_model, n_experts, bias=False)
         nn.init.normal_(self.gate.weight, std=0.01)
@@ -114,7 +127,7 @@ class TopKRouter(nn.Module):
         # p_i = mean gate probability to expert i across all tokens
         p_i = probs.reshape(N, self.n_experts).mean(dim=0)  # (n_experts,)
 
-        router_loss = self.n_experts * (f_i * p_i).mean()
+        router_loss = self.aux_loss_coef * self.n_experts * (f_i * p_i).mean()
 
         return top_k_vals, top_k_idx, router_loss
 
@@ -171,7 +184,14 @@ class SparseMoELayer(nn.Module):
         self.n_experts = n_experts
         self.top_k = top_k
 
-        self.router = TopKRouter(d_model, n_experts, top_k)
+        config = RouterConfig(
+            n_experts=n_experts,
+            top_k=top_k,
+            router_type="top_k",
+            use_temperature=False,  # Set True to enable dynamic per-expert temperature
+            use_bias=False,  # Set True to enable EMA load bias
+        )
+        self.router = MoERouter(config, d_model=d_model)
         self.experts = nn.ModuleList([ExpertFFN(d_model, d_ff) for _ in range(n_experts)])
 
     def forward(self, x: Tensor) -> tuple[Tensor, Tensor]:
@@ -185,9 +205,11 @@ class SparseMoELayer(nn.Module):
             router_loss: scalar
         """
         B, T, D = x.shape
-        dispatch_weights, dispatch_indices, router_loss = self.router(x)
-        # dispatch_weights:  (B, T, top_k)
-        # dispatch_indices:  (B, T, top_k)
+        router_out = self.router(x)
+        # MoERouter returns a RouterOutput
+        dispatch_weights = router_out.router_probs   # (B, T, top_k)
+        dispatch_indices = router_out.expert_indices  # (B, T, top_k)
+        router_loss = router_out.aux_loss
 
         x_flat = x.reshape(B * T, D)  # (N, D)
         w_flat = dispatch_weights.reshape(B * T, self.top_k)  # (N, top_k)

@@ -1,17 +1,18 @@
+# ruff: noqa: I001
 #!/usr/bin/env python3
 """
-Extract all readable text from /Users/christienantonio/Desktop/Reference Models
+
+# isort: skip_file
+
+Extract all readable text from a reference models directory (--ref-dir)
 into a single flat corpus file suitable for tokenizer training and LM pretraining.
 Skips binaries, images, model weights, and known non-text formats.
 """
 
+import argparse
 import json
 from pathlib import Path
 
-REF_DIR = Path("/Users/christienantonio/Desktop/Reference Models")
-OUTPUT_DIR = Path("data/reference_corpus")
-CORPUS_FILE = OUTPUT_DIR / "corpus.txt"
-MANIFEST_FILE = OUTPUT_DIR / "manifest.jsonl"
 
 TEXT_EXTENSIONS = {
     ".txt",
@@ -177,7 +178,18 @@ def is_text_file(path: Path) -> bool:
         return False
 
 
-def main():
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Extract text from reference corpus directory")
+    parser.add_argument("--ref-dir", type=Path, required=True, help="Reference models directory")
+    parser.add_argument(
+        "--output-dir", type=Path, default=Path("data/reference_corpus"), help="Output directory"
+    )
+    args = parser.parse_args()
+
+    REF_DIR = args.ref_dir.expanduser().resolve()
+    OUTPUT_DIR = args.output_dir.expanduser().resolve()
+    CORPUS_FILE = OUTPUT_DIR / "corpus.txt"
+    MANIFEST_FILE = OUTPUT_DIR / "manifest.jsonl"
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     total_chars = 0
     total_files = 0

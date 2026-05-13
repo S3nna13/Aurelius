@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import random
@@ -8,12 +9,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-ROOT = Path("/Users/christienantonio/Desktop/Aurelius")
-RUST = ROOT / "tools/jsonl_merge/target/release/jsonl-merge"
-DESKTOP = Path.home() / "Desktop/Aurelius_Training_Data.jsonl"
 SYSTEM = "You are Aurelius, a helpful AI assistant."
-
-
 def msg(r, c):
     return {"role": r, "content": c}
 
@@ -110,19 +106,35 @@ def collect(src, tmp, limit=2000):
     print(f"  {hf_id.split('/')[-1]}: +{count}", flush=True)
     return out if count > 0 else None
 
+def run_collection_loop(root: Path, rust: Path, desktop: Path) -> None:
+    for r in range(1000):
+        random.shuffle(SOURCES)
+        src = SOURCES[0]
+        print(f"Round {r + 1} — {src[0].split('/')[-1]}", flush=True)
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            out = collect(src, tmp)
+            if out is None or not out.exists():
+                print("  no data, skip", flush=True)
+                continue
+            merged = tmp / "m.jsonl"
+            subprocess.run([str(rust), str(merged), str(desktop), str(out)], capture_output=True)
+            shutil.copy2(merged, desktop)
+            lines = sum(1 for _ in open(desktop))
+            print(f"  Desktop: {lines} ex, {desktop.stat().st_size / 1024 / 1024:.1f} MB", flush=True)
 
-for r in range(1000):
-    random.shuffle(SOURCES)
-    src = SOURCES[0]
-    print(f"Round {r + 1} — {src[0].split('/')[-1]}", flush=True)
-    with tempfile.TemporaryDirectory() as d:
-        tmp = Path(d)
-        out = collect(src, tmp)
-        if out is None or not out.exists():
-            print("  no data, skip", flush=True)
-            continue
-        merged = tmp / "m.jsonl"
-        subprocess.run([str(RUST), str(merged), str(DESKTOP), str(out)], capture_output=True)
-        shutil.copy2(merged, DESKTOP)
-        lines = sum(1 for _ in open(DESKTOP))
-        print(f"  Desktop: {lines} ex, {DESKTOP.stat().st_size / 1024 / 1024:.1f} MB", flush=True)
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Collect & convert training data from HuggingFace datasets")
+    parser.add_argument("--root", type=Path, default=Path.cwd(), help="Aurelius project root")
+    parser.add_argument("--output", type=Path, default=Path.home() / "Desktop/Aurelius_Training_Data.jsonl", help="Final merged JSONL output")
+    args = parser.parse_args()
+
+    ROOT = args.root.expanduser().resolve()
+    RUST = ROOT / "tools/jsonl_merge/target/release/jsonl-merge"
+    DESKTOP = args.output.expanduser().resolve()
+    run_collection_loop(ROOT, RUST, DESKTOP)
+
+
+if __name__ == "__main__":
+    main()

@@ -1,15 +1,19 @@
 #!/usr/bin/env python3
 """Convert Aurelius_Training_Data.jsonl (chat format) to flat text corpus for LM training."""
 
+import argparse
 import json
 from pathlib import Path
 
 
-def main():
-    jsonl_path = Path("/Users/christienantonio/Desktop/Aurelius_Training_Data.jsonl")
-    out_path = Path(
-        "/Users/christienantonio/Desktop/Aurelius/data/reference_corpus/jsonl_corpus.txt"
-    )
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Convert JSONL chat data to flat text corpus")
+    parser.add_argument("--jsonl", type=Path, required=True, help="Input JSONL file")
+    parser.add_argument("--output", type=Path, default=Path("data/reference_corpus/jsonl_corpus.txt"), help="Output text file")
+    args = parser.parse_args()
+
+    jsonl_path = args.jsonl.expanduser().resolve()
+    out_path = args.output.expanduser().resolve()
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     total_lines = 0

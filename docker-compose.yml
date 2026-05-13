@@ -1,0 +1,52 @@
+version: "3.9"
+
+services:
+  aurelius-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aurelius-api
+    ports:
+      - "8080:8080"   # FastAPI inference
+    environment:
+      AURELIUS_MODEL_PATH: /app/checkpoints/aurelius_1.3b
+      AURELIUS_BACKEND: vllm
+      TENSOR_PARALLEL_SIZE: "1"
+      CORS_ORIGINS: "*"
+    volumes:
+      # Mount checkpoint directory (read-only) to avoid baking large files into image
+      - ./checkpoints:/app/checkpoints:ro
+      # Optional: mount a data directory for memory-mapped corpora
+      - ./data:/app/data:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+# Optional: Prometheus stack to scrape /metrics
+#  prometheus:
+#    image: prom/prometheus:latest
+#    ports:
+#      - "9090:9090"
+#    volumes:
+#      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+#    depends_on:
+#      - aurelius-api
+
+# Optional: Grafana dashboard for metrics visualization
+#  grafana:
+#    image: grafana/grafana:latest
+#    ports:
+#      - "3000:3000"
+#    depends_on:
+#      - prometheus

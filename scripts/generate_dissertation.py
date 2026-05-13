@@ -1,5 +1,6 @@
 """Generate Aurelius dissertation PDF — updated May 2026."""
 from __future__ import annotations
+import argparse
 import datetime
 
 from reportlab.lib import colors
@@ -23,6 +24,10 @@ BLACK = colors.black
 GRAY  = HexColor("#555555")
 LGRAY = HexColor("#AAAAAA")
 PAGE_W, PAGE_H = letter
+
+# Repository root path (fallback: current working directory)
+import os
+REPO_ROOT = os.getenv("AURELIUS_ROOT", str(Path.cwd()))
 
 
 # ── Styles ───────────────────────────────────────────────────────────────────
@@ -143,8 +148,8 @@ def on_page(canvas, doc):
 
 
 # ── Build ─────────────────────────────────────────────────────────────────────
-def build():
-    path = "/Users/christienantonio/Desktop/Aurelius_Dissertation.pdf"
+def build(output_path: str | Path) -> str:
+    path = str(Path(output_path).expanduser().resolve())
     doc = SimpleDocTemplate(path, pagesize=letter,
         leftMargin=0.85*inch, rightMargin=0.85*inch,
         topMargin=0.72*inch, bottomMargin=0.58*inch,
@@ -910,11 +915,11 @@ def build():
 
     story.append(Paragraph("12.3  Working Copy Discrepancy", st["section"]))
     story.append(Paragraph(
-        "The branch audit identified a divergence between <code>/Users/christienantonio/aurelius/</code> "
+        f"The branch audit identified a divergence between <code>{REPO_ROOT}/</code> "
         "(55+ Python files with model improvements, 262 passing tests, FastAPI server, recursive MAS) "
         "and the remote repository. Recommended action: create a "
         "<code>feat/model-core-improvements</code> branch, copy updated files, and push. "
-        "The Desktop repo at <code>/Users/christienantonio/Desktop/Aurelius/</code> has the latest commits.",
+        f"The Desktop repo at <code>{REPO_ROOT}/</code> has the latest commits.",
         st["body"]))
     story.append(PageBreak())
 
@@ -1134,5 +1139,8 @@ def build():
 
 
 if __name__ == "__main__":
-    out = build()
+    parser = argparse.ArgumentParser(description="Generate Aurelius dissertation PDF")
+    parser.add_argument("--output", type=Path, default=Path("Aurelius_Dissertation.pdf"), help="Output PDF path")
+    args = parser.parse_args()
+    out = build(args.output)
     print(f"PDF generated: {out}")

@@ -914,12 +914,18 @@ def _build_parser() -> argparse.ArgumentParser:
     from aurelius_cli.backend_commands import build_backend_parser
     from aurelius_cli.family_commands import build_family_parser
     from aurelius_cli.interface_commands import build_interface_parser
+    from aurelius_cli.metrics_commands import build_metrics_parser
+    from aurelius_cli.pipeline_commands import build_pipeline_parser
+    from aurelius_cli.scheduler_commands import build_schedule_parser
     from aurelius_cli.session_commands import build_session_parser
 
     build_family_parser(sub)
     build_interface_parser(sub)
     build_backend_parser(sub)
     build_session_parser(sub)
+    build_schedule_parser(sub)
+    build_metrics_parser(sub)
+    build_pipeline_parser(sub)
 
     # config
     config_p = sub.add_parser("config", help="manage runtime configuration")
@@ -1090,6 +1096,21 @@ def main(argv: list[str] | None = None) -> int:
 
     elif args.command == "config":
         return _run_config(args)
+
+    elif args.command == "schedule":
+        from .scheduler_commands import handle_schedule
+
+        return handle_schedule(args)
+
+    elif args.command == "metrics":
+        from .metrics_commands import handle_metrics
+
+        return handle_metrics(args)
+
+    elif args.command == "pipeline":
+        from .pipeline_commands import handle_pipeline
+
+        return handle_pipeline(args)
 
     elif args.command == "health":
         from aurelius_cli.debug_commands import health_check
