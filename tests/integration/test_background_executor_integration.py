@@ -5,8 +5,9 @@ from __future__ import annotations
 
 def test_background_executor_registered():
     """BackgroundExecutor must appear in AGENT_LOOP_REGISTRY."""
-    import src.agent as agent
     from src.agent.background_executor import BackgroundExecutor
+
+    import src.agent as agent
 
     assert "background_executor" in agent.AGENT_LOOP_REGISTRY
     assert agent.AGENT_LOOP_REGISTRY["background_executor"] is BackgroundExecutor

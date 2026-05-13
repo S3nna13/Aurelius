@@ -265,12 +265,12 @@ A full-stack security, correctness, and CI/CD audit was performed against this c
 | C3 | `aurelius/plugin_system.py` | `from src.agent.plugin_system import *` star-import | Replaced with explicit named imports + `__all__` |
 | C4 | `aurelius/skills_registry.py` | `from src.agent.skills_registry import *` star-import | Replaced with explicit named imports + `__all__` |
 | C5 | `src/backends/credential_manager.py` | Credential stuck in `REFRESHING` state on error | Removed premature status mutation; wrapped `NotImplementedError` |
-| C6 | `src/agent/react_loop.py` | Lambda passed to `ProcessPoolExecutor` — not picklable, silent crash | Switched to `ThreadPoolExecutor` with direct function reference |
-| C7 | `src/agent/tool_registry_dispatcher.py` | `_wall_start` race condition (TOCTOU) | Moved assignment inside `_budget_lock` |
-| C8 | `src/alignment/ppo_trainer.py` | `prompt_ids` `NameError` made PPO trainer non-functional | Threaded `prompt_ids` through rollout dict |
+| C6 | `agent/react_loop.py` | Lambda passed to `ProcessPoolExecutor` — not picklable, silent crash | Switched to `ThreadPoolExecutor` with direct function reference |
+| C7 | `agent/tool_registry_dispatcher.py` | `_wall_start` race condition (TOCTOU) | Moved assignment inside `_budget_lock` |
+| C11 | `agent/plugin_sandbox.py` | Sandbox fail-open: exception triggered unsandboxed plugin execution | Fail-closed: exception returns `SandboxResult(success=False)` |
 | C9 | `src/alignment/ppo_trainer.py` | Off-by-one in logit gather skipped first token's log-prob | Fixed causal slice: `logits[:, prompt_len-1 : prompt_len-1+T, :]` |
 | C10 | `src/alignment/constitutional_ai.py` | KL divergence arguments swapped — alignment signal silenced | Corrected to `F.kl_div(log_policy, ref_probs.detach().exp())` |
-| C11 | `src/agent/plugin_sandbox.py` | Sandbox fail-open: exception triggered unsandboxed plugin execution | Fail-closed: exception returns `SandboxResult(success=False)` |
+| C11 | `agent/plugin_sandbox.py` | Sandbox fail-open: exception triggered unsandboxed plugin execution | Fail-closed: exception returns `SandboxResult(success=False)` |
 
 ### High-Severity Remediations
 

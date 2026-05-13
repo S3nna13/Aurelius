@@ -6,8 +6,8 @@ import json
 from pathlib import Path
 
 import src.cli.main as cli_main
-from src.agent.interface_runtime import AureliusInterfaceRuntime
-from src.agent.session_manager import SessionManager
+from agent.interface_runtime import AureliusInterfaceRuntime
+from agent.session_manager import SessionManager
 from src.model import AureliusInterfaceFramework
 
 

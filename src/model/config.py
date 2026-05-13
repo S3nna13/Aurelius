@@ -669,7 +669,7 @@ class AureliusConfig:
             mhc_sinkhorn_iterations=20,
         )
 
-# ── Variant factory classmethods ─────────────────────────────────
+    # ── Variant factory classmethods ─────────────────────────────────
 
     @classmethod
     def aurelius_2_7b(cls) -> "AureliusConfig":

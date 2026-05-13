@@ -66,18 +66,35 @@ _legacy_root = _os.path.join(
 if _os.path.isdir(_legacy_root) and _legacy_root not in sys.path:
     sys.path.append(_legacy_root)
 
-for _mod_name in ("nn_utils", "memory_core", "rust_bridge", "kv_cache_quant",
-                  "adaptive_precision", "hierarchical_kv_cache", "fp8_allreduce",
-                  "unified_manager", "async_memory", "speculative_decoding",
-                  "skills", "agent_core", "agent_loop", "moe_memory",
-                  "ntm_memory", "brain_layer", "brain_integrated",
-                  "reasoning_paper_impl", "memory_moe_impl", "alignment_impl",
-                  "efficiency_impl"):
+for _mod_name in (
+    "nn_utils",
+    "memory_core",
+    "rust_bridge",
+    "kv_cache_quant",
+    "adaptive_precision",
+    "hierarchical_kv_cache",
+    "fp8_allreduce",
+    "unified_manager",
+    "async_memory",
+    "speculative_decoding",
+    "skills",
+    "agent_core",
+    "agent_loop",
+    "moe_memory",
+    "ntm_memory",
+    "brain_layer",
+    "brain_integrated",
+    "reasoning_paper_impl",
+    "memory_moe_impl",
+    "alignment_impl",
+    "efficiency_impl",
+):
     _alias_name = f"aurelius.{_mod_name}"
     if _alias_name not in sys.modules:
         _legacy_path = _os.path.join(_legacy_root, f"{_mod_name}.py")
         if _os.path.isfile(_legacy_path):
             import importlib.util as _ilu
+
             try:
                 _spec = _ilu.spec_from_file_location(_mod_name, _legacy_path)
                 _mod = _ilu.module_from_spec(_spec)
