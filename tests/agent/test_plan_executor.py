@@ -1,6 +1,6 @@
-"""Tests for src/agent/plan_executor.py."""
+"""Tests for agent/plan_executor.py."""
 
-from src.agent.plan_executor import (
+from agent.plan_executor import (
     PLAN_EXECUTOR_REGISTRY,
     PlanExecutor,
     PlanStep,

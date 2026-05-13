@@ -1,4 +1,4 @@
-"""Unit tests for ``src.agent.dispatch_task``."""
+"""Unit tests for ``agent.dispatch_task``."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import time
 
 import pytest
 
-from src.agent.dispatch_task import (
+from agent.dispatch_task import (
     Dispatcher,
     DispatchOutcome,
     DispatchTask,

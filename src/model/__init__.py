@@ -394,7 +394,7 @@ except ImportError:
     pass
 
 _LAZY_EXPORTS = {
-    "SessionRecord": ("src.agent.session_manager", "SessionRecord"),
+    "SessionRecord": ("agent.session_manager", "SessionRecord"),
 }
 
 

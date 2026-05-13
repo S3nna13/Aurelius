@@ -1,4 +1,4 @@
-"""Unit tests for :mod:`src.agent.code_execution_sandbox`."""
+"""Unit tests for :mod:`agent.code_execution_sandbox`."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import sys
 
 import pytest
 
-from src.agent.code_execution_sandbox import (
+from agent.code_execution_sandbox import (
     TRUNCATION_MARKER,
     CodeExecutionSandbox,
     ExecutionResult,
@@ -127,7 +127,7 @@ def test_scrub_env_strips_pythonpath(monkeypatch) -> None:
     code = (
         "import sys\n"
         "try:\n"
-        "    import src.agent  # noqa: F401\n"
+        "    import agent  # noqa: F401\n"
         "    print('OK')\n"
         "except Exception as e:\n"
         "    print('NOPKG', type(e).__name__)\n"

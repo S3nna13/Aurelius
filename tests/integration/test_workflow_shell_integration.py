@@ -1,11 +1,11 @@
-"""Integration tests for ``src.agent.workflow_shell``."""
+"""Integration tests for ``agent.workflow_shell``."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-from src.agent import AureliusInterfaceRuntime, SessionManager, SkillCatalog, WorkflowShell
+from agent import AureliusInterfaceRuntime, SessionManager, SkillCatalog, WorkflowShell
 from src.model import AureliusInterfaceFramework
 
 

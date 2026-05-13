@@ -343,7 +343,7 @@ CODE_EXECUTION_TOOL_REGISTRY: dict[str, type[CodeExecutionTool]] = {
 }
 
 # ---------------------------------------------------------------------------
-# Wire into TOOL_REGISTRY from src.agent
+# Wire into TOOL_REGISTRY from agent
 # ---------------------------------------------------------------------------
 # Registration is deferred to agent/__init__.py (right after TOOL_REGISTRY
-# is defined) to avoid circular imports through the src.agent shim.
+# is defined) to avoid circular imports through the agent shim.

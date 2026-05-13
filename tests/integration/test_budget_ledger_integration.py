@@ -1,4 +1,4 @@
-"""Integration tests for src/agent/budget_ledger.
+"""Integration tests for agent/budget_ledger.
 
 Covers public re-exports, default-factory wiring, registry round-trip, a
 full-loop spending scenario, and deterministic severity escalation using
@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.agent import (
+from agent import (
     BUDGET_LEDGER_REGISTRY,
     BudgetExhaustedError,
     BudgetLedger,
@@ -46,7 +46,7 @@ def _clear_registry():
 
 
 # ---------------------------------------------------------------------------
-# 1. Public re-exports are reachable from src.agent
+# 1. Public re-exports are reachable from agent
 # ---------------------------------------------------------------------------
 
 

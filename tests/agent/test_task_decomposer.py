@@ -1,4 +1,4 @@
-"""Unit tests for :mod:`src.agent.task_decomposer`."""
+"""Unit tests for :mod:`agent.task_decomposer`."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import json
 
 import pytest
 
-from src.agent.task_decomposer import (
+from agent.task_decomposer import (
     SubTask,
     TaskDAG,
     TaskDecomposer,

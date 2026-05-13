@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.agent.supervisor import (
+from agent.supervisor import (
     DEFAULT_SUPERVISOR,
     SUPERVISOR_REGISTRY,
     AgentState,

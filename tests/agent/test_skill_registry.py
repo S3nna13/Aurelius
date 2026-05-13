@@ -1,9 +1,9 @@
-"""Tests for src.agent.skill_registry and skill persistence round-trips."""
+"""Tests for agent.skill_registry and skill persistence round-trips."""
 
 from __future__ import annotations
 
-from src.agent.agent_persistence import AgentPersistence
-from src.agent.skill_registry import SkillRegistry, SkillSpec
+from agent.agent_persistence import AgentPersistence
+from agent.skill_registry import SkillRegistry, SkillSpec
 
 
 def _make_skill(

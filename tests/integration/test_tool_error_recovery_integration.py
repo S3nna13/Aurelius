@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from src.agent import (
+from agent import (
     RecoveringDispatcher,
     RecoveryPolicy,
     RecoveryStrategy,
@@ -15,7 +15,7 @@ from src.agent import (
 
 def test_public_exports_present():
     # Symbols flow through the agent surface's __init__.
-    import src.agent as agent
+    import agent as agent
 
     for name in (
         "RecoveringDispatcher",

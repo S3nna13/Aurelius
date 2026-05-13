@@ -7,7 +7,7 @@ import random
 
 import pytest
 
-from src.agent.agent_planner import BeamPlanner, PlanNode
+from agent.agent_planner import BeamPlanner, PlanNode
 
 # ---------------------------------------------------------------------------
 # Fakes

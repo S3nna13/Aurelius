@@ -1,6 +1,6 @@
 """Execution trace analyzer.
 
-Reads :class:`~src.agent.execution_tracer.ExecutionEvent` streams and
+Reads :class:`~agent.execution_tracer.ExecutionEvent` streams and
 produces actionable insights: failure patterns, performance bottlenecks,
 tool-success rates, and repeated-hammer detection.  Pure stdlib.
 """

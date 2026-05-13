@@ -13,8 +13,8 @@ pytestmark = pytest.mark.skipif(
     reason="Python 3.14 + torch multiprocessing spawn is broken (compression._common)",
 )
 
-from src.agent.plugin_hook import PluginHookRegistry  # noqa: E402
-from src.agent.plugin_sandbox import (  # noqa: E402
+from agent.plugin_hook import PluginHookRegistry  # noqa: E402
+from agent.plugin_sandbox import (  # noqa: E402
     PLUGIN_SANDBOX_REGISTRY,
     PluginSandbox,
     SandboxConfig,

@@ -7,8 +7,8 @@ import io
 import json
 from pathlib import Path
 
-from src.agent.interface_runtime import AureliusInterfaceRuntime
-from src.agent.session_manager import SessionManager
+from agent.interface_runtime import AureliusInterfaceRuntime
+from agent.session_manager import SessionManager
 from src.cli.session_commands import build_session_parser, dispatch_session_command
 from src.model import AureliusInterfaceFramework
 

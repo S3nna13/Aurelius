@@ -1,10 +1,10 @@
-"""Tests for src/agent/personality_router.py."""
+"""Tests for agent/personality_router.py."""
 
 from __future__ import annotations
 
 import pytest
 
-from src.agent.personality_router import (
+from agent.personality_router import (
     PERSONALITY_KEYWORDS,
     PERSONALITY_ROUTER_REGISTRY,
     PersonalityRouter,

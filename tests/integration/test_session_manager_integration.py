@@ -1,11 +1,11 @@
-"""Integration tests for ``src.agent.session_manager``."""
+"""Integration tests for ``agent.session_manager``."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
-from src.agent import SessionManager
+from agent import SessionManager
 from src.model import (
     AureliusInterfaceFramework,
     MessageEnvelope,
@@ -46,7 +46,7 @@ def test_session_manager_persists_session_workstream_and_queue_state(tmp_path):
         thread,
         category="file write",
         action_summary="touch session state",
-        affected_resources=["src/agent/session_manager.py"],
+        affected_resources=["agent/session_manager.py"],
         reason="The integration test needs an approval record.",
         reversible=True,
         minimum_scope="allow_once",

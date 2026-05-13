@@ -1,10 +1,10 @@
 """
-Tests for src/agent/task_planner.py  (≥28 tests)
+Tests for agent/task_planner.py  (≥28 tests)
 """
 
 import pytest
 
-from src.agent.task_planner import (
+from agent.task_planner import (
     TASK_PLANNER_REGISTRY,
     TaskPlanner,
 )

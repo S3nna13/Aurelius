@@ -1,4 +1,4 @@
-"""Unit tests for :mod:`src.agent.repo_context_packer`."""
+"""Unit tests for :mod:`agent.repo_context_packer`."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import time
 
 import pytest
 
-from src.agent.repo_context_packer import (
+from agent.repo_context_packer import (
     FileSnippet,
     RepoContext,
     RepoContextPacker,

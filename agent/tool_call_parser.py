@@ -27,7 +27,7 @@ Design notes
   of ValueError) carrying the byte offset of the failure.
 
 This module is intentionally side-effect free at import beyond
-populating the shared registries in ``src.agent.__init__``.
+populating the shared registries in ``agent.__init__``.
 """
 
 from __future__ import annotations

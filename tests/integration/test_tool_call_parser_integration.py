@@ -13,28 +13,28 @@ import sys
 
 
 def test_registry_contains_xml_and_json_keys() -> None:
-    from src.agent import TOOL_CALL_PARSER_REGISTRY
+    from agent import TOOL_CALL_PARSER_REGISTRY
 
     assert "xml" in TOOL_CALL_PARSER_REGISTRY
     assert "json" in TOOL_CALL_PARSER_REGISTRY
 
 
 def test_registry_entries_are_callable() -> None:
-    from src.agent import TOOL_CALL_PARSER_REGISTRY
+    from agent import TOOL_CALL_PARSER_REGISTRY
 
     for key in ("xml", "json"):
         assert callable(TOOL_CALL_PARSER_REGISTRY[key])
 
 
 def test_agent_loop_registry_exists_and_is_empty_by_default() -> None:
-    from src.agent import AGENT_LOOP_REGISTRY
+    from agent import AGENT_LOOP_REGISTRY
 
     assert isinstance(AGENT_LOOP_REGISTRY, dict)
 
 
 def test_round_trip_xml() -> None:
-    from src.agent import TOOL_CALL_PARSER_REGISTRY, format_xml
-    from src.agent.tool_call_parser import ParsedToolCall
+    from agent import TOOL_CALL_PARSER_REGISTRY, format_xml
+    from agent.tool_call_parser import ParsedToolCall
 
     original = ParsedToolCall(
         name="search",
@@ -51,8 +51,8 @@ def test_round_trip_xml() -> None:
 
 
 def test_round_trip_json() -> None:
-    from src.agent import TOOL_CALL_PARSER_REGISTRY, format_json
-    from src.agent.tool_call_parser import ParsedToolCall
+    from agent import TOOL_CALL_PARSER_REGISTRY, format_json
+    from agent.tool_call_parser import ParsedToolCall
 
     original = ParsedToolCall(
         name="fetch",
@@ -72,7 +72,7 @@ def test_import_has_no_unexpected_side_effects() -> None:
     # Re-import the module and ensure the registry still contains both
     # keys (no duplicate registration errors, no mutation of foreign
     # module state). We also confirm no provider SDKs were pulled in.
-    import src.agent as agent_mod
+    import agent as agent_mod
 
     importlib.reload(agent_mod)
     assert set(["xml", "json"]).issubset(agent_mod.TOOL_CALL_PARSER_REGISTRY.keys())
@@ -80,13 +80,13 @@ def test_import_has_no_unexpected_side_effects() -> None:
     forbidden = {"torch", "transformers", "einops"}
     set(sys.modules.keys())
     # Any of these being present is a side-effect we must not introduce
-    # ourselves. We only assert that importing src.agent did not newly
+    # ourselves. We only assert that importing agent did not newly
     # *pull them in*; we cannot control an already-imported environment,
     # so we merely assert agent_mod does not depend on them directly.
     for name in forbidden:
         mod_file = getattr(sys.modules.get(name, None), "__file__", None)
         # It's okay if unrelated test runner imported them; what matters is
-        # src.agent itself doesn't reference them. Checked via attribute.
-        assert not hasattr(agent_mod, name), f"src.agent leaked {name}"
+        # agent itself doesn't reference them. Checked via attribute.
+        assert not hasattr(agent_mod, name), f"agent leaked {name}"
         # silence unused var
         del mod_file

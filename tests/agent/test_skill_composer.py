@@ -1,4 +1,4 @@
-"""Tests for src.agent.skill_composer."""
+"""Tests for agent.skill_composer."""
 
 from __future__ import annotations
 
@@ -6,13 +6,13 @@ import re
 
 import pytest
 
-from src.agent.skill_composer import (
+from agent.skill_composer import (
     SKILL_COMPOSER_REGISTRY,
     CompositionStep,
     SkillComposer,
     SkillCompositionError,
 )
-from src.agent.skill_executor import (
+from agent.skill_executor import (
     ExecutionResult,
     SkillContext,
     SkillExecutionError,

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from src.agent.ast_fim import ASTAnalyzer, FIMFormat, FIMSpan, FIMTokenizer
-from src.agent.patch_synthesis import PatchSynthesizer
+from agent.ast_fim import ASTAnalyzer, FIMFormat, FIMSpan, FIMTokenizer
+from agent.patch_synthesis import PatchSynthesizer
 
 _SAMPLE_SOURCE = """\
 import os
@@ -97,7 +97,7 @@ def test_patch_synthesis_roundtrip():
 # Code execution: Inspired by Gemini 2.5 code execution tool (Google DeepMind 2025).
 # ---------------------------------------------------------------------------
 
-from src.agent.code_execution_tool import CodeExecutionTool, ExecutionRequest  # noqa: E402
+from agent.code_execution_tool import CodeExecutionTool, ExecutionRequest  # noqa: E402
 
 
 def test_code_execution_safe() -> None:

@@ -1,6 +1,6 @@
 """Integration tests for the code execution sandbox.
 
-Confirm public exposure via :mod:`src.agent` and basic end-to-end
+Confirm public exposure via :mod:`agent` and basic end-to-end
 ``execute`` / ``execute_file`` behaviour. Also sanity-checks that prior
 agent-surface registry entries remain intact.
 """
@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import pytest
 
-import src.agent as agent_pkg
-from src.agent import CodeExecutionSandbox, ExecutionResult
+import agent as agent_pkg
+from agent import CodeExecutionSandbox, ExecutionResult
 
 
 def test_exposed_via_src_agent() -> None:

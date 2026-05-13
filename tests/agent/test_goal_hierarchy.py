@@ -1,10 +1,10 @@
-"""Tests for src/agent/goal_hierarchy.py."""
+"""Tests for agent/goal_hierarchy.py."""
 
 from __future__ import annotations
 
 import pytest
 
-from src.agent.goal_hierarchy import (
+from agent.goal_hierarchy import (
     GOAL_HIERARCHY_REGISTRY,
     Goal,
     GoalHierarchy,

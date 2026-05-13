@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from .tool_call_parser import (
+from agent.tool_call_parser import (
     JSONToolCallParser,
     ParsedToolCall,
     ParseResult,
@@ -40,7 +40,7 @@ TOOL_CALL_PARSER_REGISTRY["json"] = parse_json
 
 # Register the ReAct loop under its canonical key. Import is deferred
 # until after the registries exist so that cycles cannot form.
-from .react_loop import AgentStep, AgentTrace, ReActLoop  # noqa: E402
+from agent.react_loop import AgentStep, AgentTrace, ReActLoop  # noqa: E402
 
 AGENT_LOOP_REGISTRY["react"] = ReActLoop
 
@@ -66,7 +66,7 @@ __all__ = [
 
 
 # --- safe tool dispatcher (additive) ----------------------------------------
-from .tool_registry_dispatcher import (  # noqa: E402
+from agent.tool_registry_dispatcher import (  # noqa: E402
     SessionBudget,
     ToolInvocationResult,
     ToolRegistryDispatcher,
@@ -84,7 +84,7 @@ __all__ += [
 
 
 # --- tree-of-thoughts beam planner (additive) -------------------------------
-from .agent_planner import BeamPlanner, PlanNode  # noqa: E402
+from agent.agent_planner import BeamPlanner, PlanNode  # noqa: E402
 
 AGENT_LOOP_REGISTRY["beam_plan"] = BeamPlanner
 
@@ -95,7 +95,7 @@ __all__ += [
 
 
 # --- tool error recovery (additive) -----------------------------------------
-from .tool_error_recovery import (  # noqa: E402
+from agent.tool_error_recovery import (  # noqa: E402
     RecoveringDispatcher,
     RecoveryDecision,
     RecoveryPolicy,
@@ -111,7 +111,7 @@ __all__ += [
 
 
 # --- repo context packer (additive) -----------------------------------------
-from .repo_context_packer import (  # noqa: E402
+from agent.repo_context_packer import (  # noqa: E402
     FileSnippet,
     RepoContext,
     RepoContextPacker,
@@ -125,7 +125,7 @@ __all__ += [
 
 
 # --- unified diff generator (additive) --------------------------------------
-from .unified_diff_generator import (  # noqa: E402
+from agent.unified_diff_generator import (  # noqa: E402
     DiffResult,
     UnifiedDiffGenerator,
 )
@@ -137,13 +137,13 @@ __all__ += [
 
 
 # --- shell command planner (additive) ---------------------------------------
-from .shell_command_planner import (  # noqa: E402
+from agent.shell_command_planner import (  # noqa: E402
     ALLOWLIST as SHELL_ALLOWLIST,
 )
-from .shell_command_planner import (
+from agent.shell_command_planner import (
     DENYLIST as SHELL_DENYLIST,
 )
-from .shell_command_planner import (
+from agent.shell_command_planner import (
     ShellCommand,
     ShellCommandPlanner,
     ShellPlan,
@@ -159,7 +159,7 @@ __all__ += [
 
 
 # --- code execution sandbox (additive) --------------------------------------
-from .code_execution_sandbox import (  # noqa: E402
+from agent.code_execution_sandbox import (  # noqa: E402
     CodeExecutionSandbox,
     ExecutionResult,
 )
@@ -171,13 +171,13 @@ __all__ += [
 
 
 # --- code execution tool (additive) -----------------------------------------
-from .code_execution_tool import (  # noqa: E402
+from agent.code_execution_tool import (  # noqa: E402
     CODE_EXECUTION_TOOL_REGISTRY,
     CodeExecutionTool,
     ExecutionLanguage,
     ExecutionRequest,
 )
-from .code_execution_tool import (
+from agent.code_execution_tool import (
     ExecutionResult as CodeExecutionResult,
 )
 
@@ -191,7 +191,7 @@ __all__ += [
 
 
 # --- code test runner (additive) --------------------------------------------
-from .code_test_runner import (  # noqa: E402
+from agent.code_test_runner import (  # noqa: E402
     CodeTestRunner,
     TestResult,
 )
@@ -203,7 +203,7 @@ __all__ += [
 
 
 # --- task decomposer (additive) ---------------------------------------------
-from .task_decomposer import (  # noqa: E402
+from agent.task_decomposer import (  # noqa: E402
     SubTask,
     TaskDAG,
     TaskDecomposer,
@@ -221,7 +221,7 @@ __all__ += [
 
 
 # --- MCP client (additive) --------------------------------------------------
-from .mcp_client import (  # noqa: E402
+from agent.mcp_client import (  # noqa: E402
     MCP_PROTOCOL_VERSION,
     MCPClient,
     MCPPrompt,
@@ -243,7 +243,7 @@ __all__ += [
 
 
 # --- code refactor tool (additive) ------------------------------------------
-from .code_refactor_tool import (  # noqa: E402
+from agent.code_refactor_tool import (  # noqa: E402
     CodeRefactorTool,
     RefactorResult,
 )
@@ -255,10 +255,10 @@ __all__ += [
 
 
 # --- toolformer data generation (additive) ----------------------------------
-from .toolformer_data_gen import (  # noqa: E402
+from agent.toolformer_data_gen import (  # noqa: E402
     Tool as ToolformerTool,
 )
-from .toolformer_data_gen import (
+from agent.toolformer_data_gen import (
     ToolCallAnnotation,
     ToolformerConfig,
     ToolformerDataGenerator,
@@ -279,7 +279,7 @@ __all__ += [
 
 
 # --- dispatch task (additive) -----------------------------------------------
-from .dispatch_task import (  # noqa: E402
+from agent.dispatch_task import (  # noqa: E402
     Dispatcher,
     DispatchOutcome,
     DispatchReport,
@@ -299,7 +299,7 @@ __all__ += [
 
 
 # --- budget-bounded ReAct wrapper (additive) --------------------------------
-from .budget_bounded_loop import (  # noqa: E402
+from agent.budget_bounded_loop import (  # noqa: E402
     BudgetBoundedLoop,
     BudgetState,
     ToolInvocationBudgetError,
@@ -315,10 +315,10 @@ __all__ += [
 
 
 # --- tool sandbox denylist (additive) ---------------------------------------
-from .tool_sandbox_denylist import (  # noqa: E402
+from agent.tool_sandbox_denylist import (  # noqa: E402
     DEFAULT_DENYLIST as TOOL_SANDBOX_DEFAULT_DENYLIST,
 )
-from .tool_sandbox_denylist import (
+from agent.tool_sandbox_denylist import (
     DenylistCategory,
     DenylistRule,
     DenyVerdict,
@@ -342,7 +342,7 @@ __all__ += [
 
 
 # --- five-state lifecycle controller (additive) -----------------------------
-from .five_state_controller import (  # noqa: E402
+from agent.five_state_controller import (  # noqa: E402
     AgentState,
     ControlContext,
     ControllerEvent,
@@ -366,7 +366,7 @@ __all__ += [
 
 
 # --- agent swarm (additive) -------------------------------------------------
-from .agent_swarm import AgentSwarm, CriticalPathAnalyzer, SubAgentResult  # noqa: E402
+from agent.agent_swarm import AgentSwarm, CriticalPathAnalyzer, SubAgentResult  # noqa: E402
 
 AGENT_LOOP_REGISTRY["agent_swarm"] = AgentSwarm
 
@@ -378,10 +378,10 @@ __all__ += [
 
 
 # --- web browse tool (additive) ---------------------------------------------
-from .web_browse_tool import (  # noqa: E402
+from agent.web_browse_tool import (  # noqa: E402
     DEFAULT_TOOL_DESCRIPTOR as WEB_BROWSE_TOOL_DESCRIPTOR,
 )
-from .web_browse_tool import (
+from agent.web_browse_tool import (
     PrivateHostBlocked,
     UrlValidationError,
     WebBrowseTool,
@@ -409,7 +409,7 @@ __all__ += [
 
 
 # --- plugin hook registry (additive) ----------------------------------------
-from .plugin_hook import (  # noqa: E402
+from agent.plugin_hook import (  # noqa: E402
     HOOK_POINTS,
     HOOK_REGISTRY,
     PluginHookRegistry,
@@ -425,7 +425,7 @@ __all__ += [
 
 
 # --- preserve thinking ring buffer (additive) --------------------------------
-from .preserve_thinking import (  # noqa: E402
+from agent.preserve_thinking import (  # noqa: E402
     PreserveThinkingBuffer,
     PreserveThinkingConfig,
     ThinkingSnapshot,
@@ -441,7 +441,7 @@ __all__ += [
 
 
 # --- background executor (additive) -----------------------------------------
-from .background_executor import (  # noqa: E402
+from agent.background_executor import (  # noqa: E402
     BackgroundExecutor,
     BackgroundExecutorConfig,
     BackgroundTask,
@@ -459,7 +459,7 @@ __all__ += [
 
 
 # --- swarm scaler (additive) ------------------------------------------------
-from .swarm_scaler import (  # noqa: E402
+from agent.swarm_scaler import (  # noqa: E402
     SwarmScaler,
     SwarmScalerConfig,
     WorkerStats,
@@ -477,7 +477,7 @@ __all__ += [
 
 
 # --- proactive trigger registry (additive) ----------------------------------
-from .proactive_trigger import (  # noqa: E402
+from agent.proactive_trigger import (  # noqa: E402
     ProactiveTriggerConfig,
     ProactiveTriggerRegistry,
     TriggerSpec,
@@ -497,7 +497,7 @@ __all__ += [
 
 
 # --- reflexion verbal RL agent (additive) -----------------------------------
-from .reflexion_agent import (  # noqa: E402
+from agent.reflexion_agent import (  # noqa: E402
     ReflexionAgent,
     ReflexionAttempt,
     ReflexionConfig,
@@ -517,7 +517,7 @@ __all__ += [
 
 
 # --- multi-resource budget ledger (additive) --------------------------------
-from .budget_ledger import (  # noqa: E402
+from agent.budget_ledger import (  # noqa: E402
     BUDGET_LEDGER_REGISTRY,
     BudgetExhaustedError,
     BudgetLedger,
@@ -577,7 +577,7 @@ def __getattr__(name: str):
 
 
 # --- AST-aware FIM processor (additive) -------------------------------------
-from .ast_fim import (  # noqa: E402
+from agent.ast_fim import (  # noqa: E402
     AST_FIM_REGISTRY,
     ASTAnalyzer,
     ASTNode,
@@ -597,7 +597,7 @@ __all__ += [
 
 
 # --- patch synthesis engine (additive) --------------------------------------
-from .patch_synthesis import (  # noqa: E402
+from agent.patch_synthesis import (  # noqa: E402
     PATCH_REGISTRY,
     Patch,
     PatchError,
@@ -615,7 +615,7 @@ __all__ += [
 
 
 # --- plan executor (additive) -----------------------------------------------
-from .plan_executor import (  # noqa: E402
+from agent.plan_executor import (  # noqa: E402
     PLAN_EXECUTOR_REGISTRY,
     PlanExecutor,
     PlanStep,
@@ -633,7 +633,7 @@ __all__ += [
 
 
 # --- tool orchestrator (additive) -------------------------------------------
-from .tool_orchestrator import (  # noqa: E402
+from agent.tool_orchestrator import (  # noqa: E402
     TOOL_ORCHESTRATOR,
     ToolCall,
     ToolCallOutcome,
@@ -648,14 +648,14 @@ __all__ += [
 ]
 
 # --- skill executor (cycle-204) ---------------------------------------------
-from .skill_executor import (  # noqa: E402
+from agent.skill_executor import (  # noqa: E402
     DEFAULT_SKILL_EXECUTOR,
     SKILL_EXECUTOR_REGISTRY,
     SkillContext,
     SkillExecutionError,
     SkillExecutor,
 )
-from .skill_executor import (
+from agent.skill_executor import (
     ExecutionResult as SkillExecutionResult,
 )
 
@@ -669,7 +669,7 @@ __all__ += [
 ]
 
 # --- plugin loader (cycle-204) -----------------------------------------------
-from .plugin_loader import (  # noqa: E402
+from agent.plugin_loader import (  # noqa: E402
     DEFAULT_PLUGIN_LOADER,
     PLUGIN_LOADER_REGISTRY,
     LoadedPlugin,
@@ -686,7 +686,7 @@ __all__ += [
 ]
 
 # --- plugin dependency resolver (cycle-204) ----------------------------------
-from .plugin_dependency_resolver import (  # noqa: E402
+from agent.plugin_dependency_resolver import (  # noqa: E402
     DEFAULT_DEPENDENCY_RESOLVER,
     DEPENDENCY_RESOLVER_REGISTRY,
     DependencyCycleError,
@@ -701,7 +701,7 @@ __all__ += [
 ]
 
 # --- skill composer (cycle-204b) --------------------------------------------
-from .skill_composer import (  # noqa: E402
+from agent.skill_composer import (  # noqa: E402
     DEFAULT_SKILL_COMPOSER,
     SKILL_COMPOSER_REGISTRY,
     CompositionResult,
@@ -720,7 +720,7 @@ __all__ += [
 ]
 
 # --- plugin sandbox (cycle-204b) ---------------------------------------------
-from .plugin_sandbox import (  # noqa: E402
+from agent.plugin_sandbox import (  # noqa: E402
     DEFAULT_PLUGIN_SANDBOX,
     PLUGIN_SANDBOX_REGISTRY,
     PluginSandbox,
@@ -739,7 +739,7 @@ __all__ += [
 ]
 
 # --- skill trigger engine (cycle-204b) ---------------------------------------
-from .skill_trigger_engine import (  # noqa: E402
+from agent.skill_trigger_engine import (  # noqa: E402
     DEFAULT_TRIGGER_ENGINE,
     TRIGGER_ENGINE_REGISTRY,
     MatchedSkill,
@@ -758,7 +758,7 @@ __all__ += [
 ]
 
 # --- natural language command parser (cycle-208) -----------------------------
-from .nl_command_parser import (  # noqa: E402
+from agent.nl_command_parser import (  # noqa: E402
     DEFAULT_NL_PARSER,
     NL_PARSER_REGISTRY,
     NLCommandParseError,
@@ -775,7 +775,7 @@ __all__ += [
 ]
 
 # --- command dispatcher (cycle-208) ------------------------------------------
-from .command_dispatcher import (  # noqa: E402
+from agent.command_dispatcher import (  # noqa: E402
     COMMAND_DISPATCHER_REGISTRY,
     DEFAULT_COMMAND_DISPATCHER,
     CommandDispatcher,
@@ -792,7 +792,7 @@ __all__ += [
 ]
 
 # --- agent mode registry (cycle-209) -----------------------------------------
-from .agent_mode_registry import (  # noqa: E402
+from agent.agent_mode_registry import (  # noqa: E402
     AGENT_MODE_REGISTRY,
     DEFAULT_MODE_REGISTRY,
     AgentMode,
@@ -809,7 +809,7 @@ __all__ += [
 ]
 
 # --- unified persona system --------------------------------------------------
-from .personality_router import (  # noqa: E402
+from agent.personality_router import (  # noqa: E402
     PERSONALITY_KEYWORDS,
     PERSONALITY_ROUTER_REGISTRY,
     PersonalityRouter,
@@ -826,7 +826,7 @@ __all__ += [
 ]
 
 # --- workflow engine (cycle-209) ---------------------------------------------
-from .workflow_engine import (  # noqa: E402
+from agent.workflow_engine import (  # noqa: E402
     DEFAULT_WORKFLOW_EXECUTOR,
     WORKFLOW_EXECUTOR_REGISTRY,
     WorkflowCheckpoint,
@@ -847,7 +847,7 @@ __all__ += [
 ]
 
 # --- trace analyzer (cycle-209 subagent) --------------------------------------
-from .trace_analyzer import (  # noqa: E402
+from agent.trace_analyzer import (  # noqa: E402
     TRACE_ANALYZER_REGISTRY,
     ToolSummary,
     TraceAnalysis,
@@ -862,7 +862,7 @@ __all__ += [
 ]
 
 # --- socratic tutor (additive) ----------------------------------------------
-from .socratic_tutor import (  # noqa: E402
+from agent.socratic_tutor import (  # noqa: E402
     DEFAULT_SOCRATIC_TUTOR,
     SOCRATIC_TUTOR_REGISTRY,
     ConceptMastery,
@@ -880,7 +880,7 @@ __all__ += [
     "TutorSession",
 ]
 # --- skill evolver (cycle-211) -----------------------------------------------
-from .skill_evolver import (  # noqa: E402
+from agent.skill_evolver import (  # noqa: E402
     DEFAULT_SKILL_EVOLVER,
     SKILL_EVOLVER_REGISTRY,
     CrystallizedSkill,
@@ -897,7 +897,7 @@ __all__ += [
 ]
 
 # --- tutorial engine (cycle-211) ---------------------------------------------
-from .tutorial_engine import (  # noqa: E402
+from agent.tutorial_engine import (  # noqa: E402
     DEFAULT_TUTORIAL_ENGINE,
     TUTORIAL_ENGINE_REGISTRY,
     Tutorial,
@@ -941,27 +941,37 @@ __all__ += [
 ]
 
 # --- agent runtime, memory, and registry surface (additive) ------------------
-from .agent_memory import AgentMemory, MemoryEntry  # noqa: E402
-from .agent_persistence import AgentPersistence  # noqa: E402
-from .agent_registry import AGENT_REGISTRY, AgentType  # noqa: E402
-from .agent_runtime import AgentMessage, AgentRuntime, AgentSpec, AgentStatus  # noqa: E402
-from .auto_dev import AutoDevAgent, DevGuardrail, DevOperation, DevPlan, DevSandbox  # noqa: E402
-from .multi_agent import DebateCoordinator, SupervisorCoordinator, SwarmCoordinator  # noqa: E402
-from .neural_brain import BrainContext, BrainState, NeuralBrain  # noqa: E402
-from .plugin_system import PluginManager  # noqa: E402
-from .self_upgrade import (
+from agent.agent_memory import AgentMemory, MemoryEntry  # noqa: E402
+from agent.agent_persistence import AgentPersistence  # noqa: E402
+from agent.agent_registry import AGENT_REGISTRY, AgentType  # noqa: E402
+from agent.agent_runtime import AgentMessage, AgentRuntime, AgentSpec, AgentStatus  # noqa: E402
+from agent.auto_dev import (  # noqa: E402
+    AutoDevAgent,
+    DevGuardrail,
+    DevOperation,
+    DevPlan,
+    DevSandbox,
+)
+from agent.multi_agent import (  # noqa: E402
+    DebateCoordinator,
+    SupervisorCoordinator,
+    SwarmCoordinator,
+)
+from agent.neural_brain import BrainContext, BrainState, NeuralBrain  # noqa: E402
+from agent.plugin_system import PluginManager  # noqa: E402
+from agent.self_upgrade import (
     MetricSnapshot,
     SelfUpgradeSystem,
     UpgradeProposal,
 )  # noqa: E402
-from .skill_library import Skill, VoyagerSkillLibrary  # noqa: E402
+from agent.skill_library import Skill, VoyagerSkillLibrary  # noqa: E402
 
 # Backward-compat aliases so existing code that imported "VoyagerSkill" works
 VoyagerSkill = Skill  # type: ignore[has-type, misc]  # noqa: N816
-from .skill_registry import SkillRegistry, SkillSpec  # noqa: E402
-from .skills_registry import SKILLS_REGISTRY  # noqa: E402
-from .skills_registry import Skill as RegistrySkill
-from .specialist_agents import (  # noqa: E402
+from agent.skill_registry import SkillRegistry, SkillSpec  # noqa: E402
+from agent.skills_registry import SKILLS_REGISTRY  # noqa: E402
+from agent.skills_registry import Skill as RegistrySkill
+from agent.specialist_agents import (  # noqa: E402
     ApeOrchestrator,
     BaseSpecialist,
     CodeSpecialist,
@@ -977,8 +987,8 @@ from .specialist_agents import (  # noqa: E402
     ToolEngineer,
     TrainingEngineer,
 )
-from .tool_registry import ToolRegistry  # noqa: E402
-from .tool_sandbox import ToolSandbox  # noqa: E402
+from agent.tool_registry import ToolRegistry  # noqa: E402
+from agent.tool_sandbox import ToolSandbox  # noqa: E402
 
 __all__ += [
     "AgentMessage",

@@ -1,8 +1,8 @@
-"""End-to-end integration test for ``src.agent.mcp_client``.
+"""End-to-end integration test for ``agent.mcp_client``.
 
 Uses a stub in-process JSON-RPC server object as the transport. No
 sockets, pipes, or external packages. Also verifies that the MCP
-client symbols are exposed via ``src.agent`` and that prior agent
+client symbols are exposed via ``agent`` and that prior agent
 surface entries remain intact.
 """
 
@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import pytest
 
-import src.agent as agent_surface
-from src.agent import (
+import agent as agent_surface
+from agent import (
     MCPClient,
     MCPPrompt,
     MCPProtocolError,
@@ -19,7 +19,7 @@ from src.agent import (
     MCPToolCallResult,
     MCPToolSpec,
 )
-from src.agent.mcp_client import MCP_PROTOCOL_VERSION
+from agent.mcp_client import MCP_PROTOCOL_VERSION
 
 
 # ---------------------------------------------------------------------------

@@ -1,10 +1,10 @@
-"""Tests for src.agent.plugin_dependency_resolver — topological dependency ordering."""
+"""Tests for agent.plugin_dependency_resolver — topological dependency ordering."""
 
 from __future__ import annotations
 
 import pytest
 
-from src.agent.plugin_dependency_resolver import (
+from agent.plugin_dependency_resolver import (
     DEFAULT_DEPENDENCY_RESOLVER,
     DEPENDENCY_RESOLVER_REGISTRY,
     DependencyCycleError,

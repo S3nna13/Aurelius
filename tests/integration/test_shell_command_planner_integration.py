@@ -1,13 +1,13 @@
 """Integration tests for the shell-command planner surface.
 
 Exercises that the :class:`ShellCommandPlanner` is exposed via
-``src.agent``, plans a benign intent, and blocks forbidden commands.
+``agent``, plans a benign intent, and blocks forbidden commands.
 """
 
 from __future__ import annotations
 
-import src.agent as agent_surface
-from src.agent import ShellCommand, ShellCommandPlanner, ShellPlan
+import agent as agent_surface
+from agent import ShellCommand, ShellCommandPlanner, ShellPlan
 
 
 def test_exposed_via_agent_surface() -> None:

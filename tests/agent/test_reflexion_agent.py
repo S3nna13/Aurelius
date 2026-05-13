@@ -1,4 +1,4 @@
-"""Unit and integration tests for src.agent.reflexion_agent.
+"""Unit and integration tests for agent.reflexion_agent.
 
 Tests 1-14 cover unit behaviour; test 15 is the integration test that drives a
 full reflexion loop end-to-end.
@@ -6,7 +6,7 @@ full reflexion loop end-to-end.
 
 from __future__ import annotations
 
-from src.agent.reflexion_agent import (
+from agent.reflexion_agent import (
     ReflexionAgent,
     ReflexionAttempt,
     ReflexionConfig,

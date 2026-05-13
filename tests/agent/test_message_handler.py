@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.agent.message_handler import (
+from agent.message_handler import (
     DEFAULT_MESSAGE_HANDLER,
     MESSAGE_HANDLER_REGISTRY,
     MessageHandler,

@@ -9,7 +9,7 @@ import time
 
 import pytest
 
-from src.agent.five_state_controller import (
+from agent.five_state_controller import (
     AgentState,
     ControlContext,
     ControllerEvent,

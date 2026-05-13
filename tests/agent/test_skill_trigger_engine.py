@@ -1,16 +1,16 @@
-"""Tests for src.agent.skill_trigger_engine."""
+"""Tests for agent.skill_trigger_engine."""
 
 from __future__ import annotations
 
 import pytest
 
-from src.agent.skill_executor import (
+from agent.skill_executor import (
     ExecutionResult,
     SkillContext,
     SkillExecutionError,
     SkillExecutor,
 )
-from src.agent.skill_trigger_engine import (
+from agent.skill_trigger_engine import (
     TRIGGER_ENGINE_REGISTRY,
     MatchedSkill,
     SkillTriggerEngine,

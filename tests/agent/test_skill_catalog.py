@@ -1,4 +1,4 @@
-"""Unit tests for ``src.agent.skill_catalog``."""
+"""Unit tests for ``agent.skill_catalog``."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from src.agent.skill_catalog import SkillCatalog, SkillCatalogEntry
+from agent.skill_catalog import SkillCatalog, SkillCatalogEntry
 from src.model import InterfaceFrameworkError
 
 

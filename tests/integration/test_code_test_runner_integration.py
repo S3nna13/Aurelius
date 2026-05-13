@@ -1,6 +1,6 @@
 """Integration tests for the code test runner.
 
-Confirm public exposure via :mod:`src.agent`, that prior registry
+Confirm public exposure via :mod:`agent`, that prior registry
 entries remain intact, and that an end-to-end pytest invocation
 against a temporary directory produces a parsed :class:`TestResult`.
 """
@@ -10,8 +10,8 @@ from __future__ import annotations
 import sys
 import textwrap
 
-import src.agent as agent_pkg
-from src.agent import CodeTestRunner, TestResult
+import agent as agent_pkg
+from agent import CodeTestRunner, TestResult
 
 
 def test_exposed_via_src_agent() -> None:

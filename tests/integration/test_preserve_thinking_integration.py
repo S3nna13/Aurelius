@@ -10,8 +10,8 @@ Scenario:
 
 from __future__ import annotations
 
-from src.agent import AGENT_LOOP_REGISTRY
-from src.agent.preserve_thinking import (
+from agent import AGENT_LOOP_REGISTRY
+from agent.preserve_thinking import (
     PreserveThinkingBuffer,
     PreserveThinkingConfig,
 )

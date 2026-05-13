@@ -1,10 +1,10 @@
-"""Tests for src.agent.skill_evolver."""
+"""Tests for agent.skill_evolver."""
 
 from __future__ import annotations
 
 import pytest
 
-from src.agent.skill_evolver import (
+from agent.skill_evolver import (
     DEFAULT_SKILL_EVOLVER,
     SKILL_EVOLVER_REGISTRY,
     CrystallizedSkill,

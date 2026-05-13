@@ -1,10 +1,10 @@
-"""Unit tests for :mod:`src.agent.tool_error_recovery`."""
+"""Unit tests for :mod:`agent.tool_error_recovery`."""
 
 from __future__ import annotations
 
 import pytest
 
-from src.agent.tool_error_recovery import (
+from agent.tool_error_recovery import (
     ErrorClassifier,
     RecoveringDispatcher,
     RecoveryDecision,
@@ -12,7 +12,7 @@ from src.agent.tool_error_recovery import (
     RecoveryStrategy,
     decide,
 )
-from src.agent.tool_registry_dispatcher import ToolInvocationResult
+from agent.tool_registry_dispatcher import ToolInvocationResult
 
 
 def _fail(name: str, error: str) -> ToolInvocationResult:

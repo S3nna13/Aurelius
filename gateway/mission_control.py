@@ -29,11 +29,11 @@ from dataclasses import dataclass, field
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any
 
-from src.agent.command_dispatcher import (
+from agent.command_dispatcher import (
     CommandDispatcher,
     CommandDispatchError,
 )
-from src.agent.nl_command_parser import (
+from agent.nl_command_parser import (
     NLCommandParseError,
     NLCommandParser,
 )

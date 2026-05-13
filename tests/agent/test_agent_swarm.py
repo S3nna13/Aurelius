@@ -1,4 +1,4 @@
-"""Unit tests for src.agent.agent_swarm (Kimi K2.5 §3.2, arXiv:2602.02276).
+"""Unit tests for agent.agent_swarm (Kimi K2.5 §3.2, arXiv:2602.02276).
 
 12 tests covering CriticalPathAnalyzer, AgentSwarm.dispatch, SubAgentResult
 fields, and edge / adversarial cases.
@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from src.agent.agent_swarm import AgentSwarm, CriticalPathAnalyzer, SubAgentResult
+from agent.agent_swarm import AgentSwarm, CriticalPathAnalyzer, SubAgentResult
 
 # ---------------------------------------------------------------------------
 # Helpers

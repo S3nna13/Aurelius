@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from src.agent import AGENT_LOOP_REGISTRY
-from src.agent.plugin_hook import HOOK_REGISTRY, PluginHookRegistry
+from agent import AGENT_LOOP_REGISTRY
+from agent.plugin_hook import HOOK_REGISTRY, PluginHookRegistry
 
 # ---------------------------------------------------------------------------
 # 1. "plugin_hook" key present in AGENT_LOOP_REGISTRY

@@ -1,4 +1,4 @@
-"""Unit tests for :mod:`src.agent.code_test_runner`.
+"""Unit tests for :mod:`agent.code_test_runner`.
 
 These tests generate tiny test files inside pytest's ``tmp_path`` and
 invoke :class:`CodeTestRunner` against them. We use ``--rootdir`` /
@@ -13,10 +13,11 @@ import textwrap
 
 import pytest
 
-from agent.code_test_runner import _parse_counts, _parse_failed_names
-from src.agent.code_test_runner import (
+from agent.code_test_runner import (
     CodeTestRunner,
     TestResult,
+    _parse_counts,
+    _parse_failed_names,
 )
 
 # ---------------------------------------------------------------------------

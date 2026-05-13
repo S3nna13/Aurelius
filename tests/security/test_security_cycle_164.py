@@ -54,7 +54,7 @@ class TestAURSEC20240024SqlitedictGate:
 class TestSubprocessHardening:
     def test_code_execution_tool_uses_sys_executable(self):
         """CodeExecutionTool must use sys.executable instead of hardcoded python3."""
-        from src.agent.code_execution_tool import (
+        from agent.code_execution_tool import (
             CodeExecutionTool,
             ExecutionLanguage,
             ExecutionRequest,
@@ -63,7 +63,7 @@ class TestSubprocessHardening:
         tool = CodeExecutionTool()
         req = ExecutionRequest(code="print(42)", language=ExecutionLanguage.PYTHON)
 
-        with patch("src.agent.code_execution_tool.subprocess.run") as mock_run:
+        with patch("agent.code_execution_tool.subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0, stdout="42\n", stderr="")
             tool.execute(req)
 
@@ -76,7 +76,7 @@ class TestSubprocessHardening:
 
     def test_code_execution_tool_rejects_javascript(self):
         """JavaScript execution must be rejected (not implemented = smaller attack surface)."""
-        from src.agent.code_execution_tool import (
+        from agent.code_execution_tool import (
             CodeExecutionTool,
             ExecutionLanguage,
             ExecutionRequest,
@@ -90,7 +90,7 @@ class TestSubprocessHardening:
 
     def test_code_execution_tool_deny_patterns_block_dangerous_code(self):
         """Deny patterns must block obviously dangerous primitives."""
-        from src.agent.code_execution_tool import (
+        from agent.code_execution_tool import (
             CodeExecutionTool,
             ExecutionLanguage,
             ExecutionRequest,
@@ -120,7 +120,7 @@ class TestSubprocessHardening:
 class TestProactiveTriggerExceptionHandling:
     def test_broken_trigger_fn_is_logged_not_silenced(self, caplog):
         """A broken trigger_fn must be logged, not silently swallowed."""
-        from src.agent.proactive_trigger import (
+        from agent.proactive_trigger import (
             ProactiveTriggerRegistry,
             TriggerSpec,
         )
@@ -141,7 +141,7 @@ class TestProactiveTriggerExceptionHandling:
 
     def test_trigger_registry_limits_max_triggers(self):
         """Registry capacity limits prevent unbounded DoS."""
-        from src.agent.proactive_trigger import (
+        from agent.proactive_trigger import (
             ProactiveTriggerConfig,
             ProactiveTriggerRegistry,
             TriggerSpec,

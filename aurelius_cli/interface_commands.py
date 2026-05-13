@@ -15,9 +15,9 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any, TextIO
 
-from src.agent.interface_runtime import AureliusInterfaceRuntime
-from src.agent.session_manager import SessionManager
-from src.agent.skill_catalog import SkillCatalog
+from agent.interface_runtime import AureliusInterfaceRuntime
+from agent.session_manager import SessionManager
+from agent.skill_catalog import SkillCatalog
 from src.model.interface_framework import AureliusInterfaceFramework, InterfaceFrameworkError
 from src.ui.aurelius_shell import (
     AureliusShell,

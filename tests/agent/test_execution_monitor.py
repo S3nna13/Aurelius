@@ -1,12 +1,12 @@
 """
-Tests for src/agent/execution_monitor.py  (≥28 tests)
+Tests for agent/execution_monitor.py  (≥28 tests)
 """
 
 import time
 
 import pytest
 
-from src.agent.execution_monitor import (
+from agent.execution_monitor import (
     EXECUTION_MONITOR_REGISTRY,
     BudgetConfig,
     ExecutionEvent,

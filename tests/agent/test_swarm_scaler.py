@@ -1,10 +1,10 @@
-"""Unit tests for src/agent/swarm_scaler.py (10-16 tests, Cycle 128-E)."""
+"""Unit tests for agent/swarm_scaler.py (10-16 tests, Cycle 128-E)."""
 
 from __future__ import annotations
 
 import pytest
 
-from src.agent.swarm_scaler import (
+from agent.swarm_scaler import (
     SwarmScaler,
     SwarmScalerConfig,
     WorkItem,

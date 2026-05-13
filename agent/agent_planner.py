@@ -7,7 +7,7 @@ sub-steps at each node, a pluggable ``scorer_fn`` assigns a scalar
 utility to every proposal, and a breadth-first beam search keeps the
 top-K partial plans at each depth. The winning root-to-leaf path is
 converted into an execution queue consumable by
-:class:`src.agent.react_loop.ReActLoop`.
+:class:`agent.react_loop.ReActLoop`.
 
 Design notes
 ------------

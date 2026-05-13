@@ -1,7 +1,7 @@
 """Tool-error recovery strategies for agent loops.
 
 Given a failed :class:`ToolInvocationResult` from
-:mod:`src.agent.tool_registry_dispatcher`, this module classifies the
+:mod:`agent.tool_registry_dispatcher`, this module classifies the
 error, selects a recovery strategy, and (via
 :class:`RecoveringDispatcher`) applies that strategy automatically up to
 a policy-configured limit.

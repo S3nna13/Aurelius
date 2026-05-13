@@ -1,7 +1,7 @@
 """Integration tests for the Toolformer data generation pipeline.
 
 Validates:
-  - symbols exported from src.agent surface
+  - symbols exported from agent surface
   - TOOLFORMER_DATA_REGISTRY registration
   - config keys wired correctly
   - end-to-end pipeline: text → annotated training examples
@@ -9,8 +9,8 @@ Validates:
 
 from __future__ import annotations
 
-import src.agent as agent_surface
-from src.agent.toolformer_data_gen import (
+import agent as agent_surface
+from agent.toolformer_data_gen import (
     Tool,
     ToolCallAnnotation,
     ToolformerConfig,

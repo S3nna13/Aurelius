@@ -1,4 +1,4 @@
-"""Unit tests for src.agent.tool_call_parser.
+"""Unit tests for agent.tool_call_parser.
 
 Covers happy-path parsing for both XML and JSON envelopes, plus the
 adversarial surface: malformed JSON, prompt injection, streaming
@@ -12,7 +12,7 @@ import json
 
 import pytest
 
-from src.agent.tool_call_parser import (
+from agent.tool_call_parser import (
     JSONToolCallParser,
     ParsedToolCall,
     ToolCallParseError,

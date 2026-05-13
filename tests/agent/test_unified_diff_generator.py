@@ -1,10 +1,10 @@
-"""Unit tests for :mod:`src.agent.unified_diff_generator`."""
+"""Unit tests for :mod:`agent.unified_diff_generator`."""
 
 from __future__ import annotations
 
 import pytest
 
-from src.agent.unified_diff_generator import DiffResult, UnifiedDiffGenerator
+from agent.unified_diff_generator import DiffResult, UnifiedDiffGenerator
 
 
 def test_modify_single_file_contains_hunk_header():

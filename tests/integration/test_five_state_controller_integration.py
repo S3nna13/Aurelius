@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from src.agent import AGENT_LIFECYCLE_REGISTRY
-from src.agent.five_state_controller import AgentState, FiveStateController
+from agent import AGENT_LIFECYCLE_REGISTRY
+from agent.five_state_controller import AgentState, FiveStateController
 from src.model.config import AureliusConfig
 from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 

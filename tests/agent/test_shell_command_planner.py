@@ -1,4 +1,4 @@
-"""Unit tests for :mod:`src.agent.shell_command_planner`."""
+"""Unit tests for :mod:`agent.shell_command_planner`."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import time
 
 import pytest
 
-from src.agent.shell_command_planner import (
+from agent.shell_command_planner import (
     ShellCommand,
     ShellCommandPlanner,
     ShellPlan,

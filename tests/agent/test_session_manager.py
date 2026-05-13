@@ -1,4 +1,4 @@
-"""Unit tests for ``src.agent.session_manager``."""
+"""Unit tests for ``agent.session_manager``."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from src.agent.session_manager import SessionManager, SessionRecord
+from agent.session_manager import SessionManager, SessionRecord
 from src.model import (
     AureliusInterfaceFramework,
     InterfaceFrameworkError,
@@ -61,7 +61,7 @@ def test_session_manager_persists_threads_workstreams_jobs_and_audit_state(tmp_p
         thread,
         category="file write",
         action_summary="touch session state",
-        affected_resources=["src/agent/session_manager.py"],
+        affected_resources=["agent/session_manager.py"],
         reason="The test needs explicit approval records.",
         reversible=True,
         minimum_scope="allow_once",
