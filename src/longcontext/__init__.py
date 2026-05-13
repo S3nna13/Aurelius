@@ -116,12 +116,14 @@ from .streaming_attention import (  # noqa: E402
 
 LONGCONTEXT_STRATEGY_REGISTRY["streaming_attention"] = StreamingAttentionCache
 
+from .memory_manager import MemoryManager as KVCacheMemoryManager  # noqa: E402
 from .memory_mapped_context import (  # noqa: E402
     ContextChunk,
     MemoryMappedContext,
 )
 
 LONGCONTEXT_STRATEGY_REGISTRY["memory_mapped_context"] = MemoryMappedContext
+LONGCONTEXT_STRATEGY_REGISTRY["kv_cache_memory_manager"] = KVCacheMemoryManager
 
 from .sliding_window_attention import SlidingWindowAttention, SWAConfig  # noqa: E402
 
@@ -199,4 +201,5 @@ __all__ = [
     # context_window_manager
     "ContextWindowManager",
     "WindowPolicy",
+    "KVCacheMemoryManager",
 ]

@@ -123,7 +123,8 @@ class TestCompressedPagedKVCache:
 
         base = PagedKVCache(n_layers=32, n_kv_heads=8, head_dim=64)
         wrapped = CompressedPagedKVCache(
-            base, compress_frequency=1,
+            base,
+            compress_frequency=1,
         )
         # Manually compress a block
         k = torch.randn(16, 8, 64, dtype=torch.float16)

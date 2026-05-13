@@ -15,12 +15,13 @@ def test_profiler_start_stop():
     assert result.tokens_per_sec > 0
 
 
-def test_profiler_tokens_per_sec():
+def test_profiler_tokens_per_sec(monkeypatch):
     profiler = ThroughputProfiler()
+    times = iter([100.0, 100.1])
+    monkeypatch.setattr(time, "perf_counter", lambda: next(times))
     profiler.start(n_tokens=1000)
-    time.sleep(0.1)  # ~10k tokens/sec
     result = profiler.stop()
-    assert 5000 < result.tokens_per_sec < 50000  # reasonable range
+    assert result.tokens_per_sec == pytest.approx(10_000.0)
 
 
 def test_profiler_context_manager():

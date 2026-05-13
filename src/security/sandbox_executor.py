@@ -28,10 +28,14 @@ Pure stdlib.
 
 from __future__ import annotations
 
+import atexit
 import builtins as _py_builtins
 import concurrent.futures
 import contextlib
 import io
+import threading
+import weakref
+from concurrent.futures.thread import _threads_queues, _worker
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -110,6 +114,49 @@ def _truncate(text: str, max_bytes: int) -> str:
     return encoded[:max_bytes].decode("utf-8", errors="replace")
 
 
+class _DaemonThreadPoolExecutor(concurrent.futures.ThreadPoolExecutor):
+    """ThreadPoolExecutor variant whose workers are daemon threads.
+
+    The sandbox can be triggered from long-lived test runs and may still have
+    idle workers when the interpreter begins shutdown. Daemonizing the shared
+    pool workers ensures the process can exit cleanly without waiting for the
+    sandbox pool to be explicitly closed first.
+    """
+
+    def _adjust_thread_count(self) -> None:  # pragma: no cover - mirrors stdlib
+        if self._idle_semaphore.acquire(timeout=0):
+            return
+
+        def weakref_cb(
+            _,
+            q=self._work_queue,
+        ) -> None:
+            q.put(None)
+
+        num_threads = len(self._threads)
+        if num_threads >= self._max_workers:
+            return
+
+        thread_name = (
+            f"{self._thread_name_prefix}_{num_threads}"
+            if self._thread_name_prefix
+            else f"ThreadPoolExecutor-{num_threads}"
+        )
+        thread = threading.Thread(
+            name=thread_name,
+            target=_worker,
+            args=(
+                weakref.ref(self, weakref_cb),
+                self._create_worker_context(),
+                self._work_queue,
+            ),
+        )
+        thread.daemon = True
+        thread.start()
+        self._threads.add(thread)
+        _threads_queues[thread] = self._work_queue
+
+
 class _CappedStringIO(io.StringIO):
     def __init__(self, cap: int) -> None:
         super().__init__()
@@ -124,7 +171,7 @@ class _CappedStringIO(io.StringIO):
         # In the worst case a codepoint is 4 UTF-8 bytes, so slicing a few
         # characters past the remaining budget is safe.
         if len(s) > remaining + 4:
-            s = s[:remaining + 4]
+            s = s[: remaining + 4]
         encoded = s.encode("utf-8", errors="replace")
         if len(encoded) <= remaining:
             self._bytes_written += len(encoded)
@@ -150,8 +197,19 @@ def _run_exec(code: str, globs: dict[str, Any], max_bytes: int) -> SandboxResult
     return result
 
 
+def _shutdown_sandbox_pool() -> None:
+    """Release the shared sandbox worker pool."""
+
+    _SANDBOX_POOL.shutdown(wait=False, cancel_futures=True)
+
+
 class SandboxExecutor:
     """In-process sandboxed dynamic execution with timeout + restricted builtins."""
+
+    def close(self) -> None:
+        """Shut down the shared worker pool."""
+
+        _shutdown_sandbox_pool()
 
     def _build_globals(self, config: SandboxConfig) -> dict[str, Any]:
         safe_builtins: dict[str, Any] = {}
@@ -184,9 +242,14 @@ class SandboxExecutor:
             safe_builtins.pop(blocked, None)
         globs: dict[str, Any] = {"__builtins__": safe_builtins}
         for attr in (
-            "__class__", "__bases__", "__subclasses__",
-            "__mro__", "__globals__", "__code__",
-            "__closure__", "__dict__",
+            "__class__",
+            "__bases__",
+            "__subclasses__",
+            "__mro__",
+            "__globals__",
+            "__code__",
+            "__closure__",
+            "__dict__",
         ):
             globs[attr] = None
         return globs
@@ -221,12 +284,10 @@ class SandboxExecutor:
             # the caller is not blocked on a runaway sandbox thread.
             try:
                 future.cancel()
-            except Exception:  # noqa: S110
+            except Exception:  # noqa: S110  # cancel() returns False if already done
                 pass
             old_pool = _SANDBOX_POOL
-            _SANDBOX_POOL = concurrent.futures.ThreadPoolExecutor(
-                max_workers=4, thread_name_prefix="sandbox"
-            )
+            _SANDBOX_POOL = _DaemonThreadPoolExecutor(max_workers=4, thread_name_prefix="sandbox")
             old_pool.shutdown(wait=False)
             return SandboxResult(
                 stdout="",
@@ -236,8 +297,9 @@ class SandboxExecutor:
             )
 
 
-_SANDBOX_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=4, thread_name_prefix="sandbox")
+_SANDBOX_POOL = _DaemonThreadPoolExecutor(max_workers=4, thread_name_prefix="sandbox")
 SANDBOX_EXECUTOR = SandboxExecutor()
+atexit.register(_shutdown_sandbox_pool)
 
 
 __all__ = [

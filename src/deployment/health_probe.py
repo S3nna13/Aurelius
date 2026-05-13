@@ -42,6 +42,8 @@ class HealthProbe:
             raise ValueError("URL must contain a valid host.")
 
         hostname = parsed.hostname
+        if hostname in {"localhost", "127.0.0.1", "::1"}:
+            return
         try:
             ip = ipaddress.ip_address(hostname)
         except ValueError:

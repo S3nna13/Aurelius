@@ -173,7 +173,7 @@ class RuleViolation:
 
 @dataclass
 class RuleEvaluationReport:
-    violations: list = field(default_factory=list)
+    violations: list[RuleViolation] = field(default_factory=list)
     evaluated_rules: int = 0
     passed: int = 0
     failed: int = 0

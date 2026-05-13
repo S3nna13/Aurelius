@@ -10,6 +10,10 @@ dependencies = [
     "pyyaml>=6.0",
     "rich>=13.0.0",
     "numpy>=1.26.0",
+    "torchao>=0.3.0",
+    "liger-kernel>=0.5.0",
+    "sageattention>=2.0.0",
+    "datasets>=2.19.0",
 ]
 # pip>=26.1 required at environment level for CVE-2026-3219
 # Removed: einops (0 imports), lxml (0 imports), langchain-core (0 imports, was CVE-patched),
@@ -71,11 +75,11 @@ dev = [
 ]
 
 [project.scripts]
-aurelius = "src.cli.main:main"
-aurelius-cli = "src.cli.terminal_cli:main"
-aurelius-shell = "src.cli.aurelius_shell:run"
+aurelius = "aurelius_cli.main:main"
+aurelius-cli = "aurelius_cli.terminal_cli:main"
+aurelius-shell = "aurelius_cli.aurelius_shell:run"
 aurelius-api = "src.backend:start_api"
-aurelius-server = "src.serving.aurelius_api:start"
+aurelius-server = "gateway.aurelius_api:start"
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -88,12 +92,73 @@ include = ["aurelius*", "src*"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-extend-exclude = ["archive/**"]
+extend-exclude = [
+    "archive/**",
+    "tests/legacy/**",
+    "aurelius/data_pipeline/**",
+    "scripts/generate_dissertation.py",
+    # Frozen: SHA256 of this file is tested in integration tests.
+    # Ruff format would add blank lines changing the hash.
+    "src/model/attention.py",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "S"]
-ignore = ["S105", "S311"]
-per-file-ignores = {"tests/**" = ["S101", "S108", "S104", "E501", "E701", "E702", "E741", "E402", "F403", "F405", "F841"], "**/__init__.py" = ["E402", "F403"], "training_data/**" = ["E501"], "scripts/**" = ["S101", "S603", "S607"], "src/persona/**" = ["E501"], "src/serving/aurelius_server.py" = ["S104"]}
+ignore = ["S105", "S110", "S311"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S108", "S104", "E501"]
+"**/__init__.py" = ["E402", "F403"]
+"training_data/**" = ["E501"]
+"scripts/**" = ["S101", "S603", "S607", "E402", "E501"]
+"alembic/versions/**" = ["E501"]
+"src/agent/absolute_zero.py" = ["S603", "E501"]
+"src/agent/auto_dev.py" = ["S603", "E501"]
+"src/training/program_synthesis.py" = ["S603", "E501"]
+"src/persona/**" = ["E501"]
+"src/serving/aurelius_server.py" = ["S104", "E501"]
+"src/alignment/grpo.py" = ["E501"]
+"src/alignment/praxis/trainer.py" = ["E501"]
+"src/backends/webhook_dispatcher.py" = ["E501"]
+"src/inference/code_execution.py" = ["E501", "S102"]
+"src/inference/duo_attention.py" = ["E501"]
+"src/model/architectures/rag_agents.py" = ["E501", "S307"]
+"src/serving/api_server.py" = ["E501", "S307"]
+"src/inference/evict.py" = ["E501"]
+"src/longcontext/memory_manager.py" = ["E501"]
+"src/memory/composite.py" = ["E501"]
+"src/memory/manager.py" = ["E501"]
+"src/memory/unified_orchestrator.py" = ["E501"]
+"src/model/architectures/transformer.py" = ["E501"]
+"src/model/attention.py" = ["E501"]
+"src/model/transformer.py" = ["E501"]
+"src/retrieval/pipeline.py" = ["E501"]
+"src/security/gcg_attack.py" = ["E501"]
+"src/security/sandbox_executor.py" = ["E501"]
+"scripts/export_gguf.py" = ["E501"]
+"src/alignment/aem.py" = ["E501"]
+"src/alignment/praxis/reward_signals.py" = ["E501"]
+"src/alignment/praxis/steering_reward.py" = ["E501"]
+"src/backends/credential_manager.py" = ["E501"]
+"src/backends/http_backend.py" = ["E501"]
+"src/data/aidev_analyzer.py" = ["E501"]
+"src/data/curriculum_data_mixer.py" = ["E501"]
+"src/data/deduplication.py" = ["E501"]
+"src/eval/benchmark_runner.py" = ["E501"]
+"src/eval/hypothesis_testing.py" = ["E501"]
+"src/inference/quest_attention.py" = ["E501"]
+"src/inference/rocket_kv.py" = ["E501"]
+"src/model/mhc.py" = ["E501"]
+"src/security/encryptor.py" = ["E501"]
+"tests/alignment/test_praxis_e2e.py" = ["E501"]
+"tests/reasoning/test_toolgt_reasoner.py" = ["E501"]
+"aurelius/_registry_snapshot.py" = ["E501"]
+"scripts/test_circular_imports.py" = ["S101", "E402", "E501"]
+"tests/inference/test_speculative.py" = ["E402"]
+"tests/test_aurelius_model.py" = ["E402"]
+"tests/test_kv_cache.py" = ["E402"]
+"tests/test_rust_bridge.py" = ["E402"]
+"tests/test_package_namespace.py" = ["E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

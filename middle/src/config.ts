@@ -6,7 +6,7 @@ const VALID_CHAT_BACKENDS: ChatBackend[] = ['mock', 'vllm', 'agentic']
 
 export function normalizeChatBackend(
   value: string | null | undefined,
-  fallback: ChatBackend = 'vllm',
+  fallback: ChatBackend = 'mock',
 ): ChatBackend {
   const normalized = value?.trim().toLowerCase()
   if (normalized && VALID_CHAT_BACKENDS.includes(normalized as ChatBackend)) {
@@ -22,7 +22,7 @@ export const config = {
   vllmUpstreamUrl: process.env.AURELIUS_VLLM_URL || process.env.UPSTREAM_URL || 'http://127.0.0.1:8080',
   agenticUpstreamUrl:
     process.env.AURELIUS_AGENTIC_URL || process.env.UPSTREAM_URL || 'http://127.0.0.1:8080',
-  defaultChatBackend: normalizeChatBackend(process.env.AURELIUS_DEFAULT_CHAT_BACKEND, 'vllm'),
+  defaultChatBackend: normalizeChatBackend(process.env.AURELIUS_DEFAULT_CHAT_BACKEND, 'mock'),
   redisUrl: process.env.REDIS_URL || 'redis://localhost:6379/0',
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
   apiKey: process.env.AURELIUS_API_KEY || '',

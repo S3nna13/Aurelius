@@ -1,11 +1,224 @@
-"""Global test fixtures and configuration."""
+"""Global test fixtures and configuration.
 
+Provides autouse function-scoped fixtures that snapshot module-level singleton
+registries before each test and restore them afterwards.  This prevents
+state-pollution across tests when the full suite is run, regardless of
+execution order.
+
+Registries protected:
+  - API_SHAPE_REGISTRY      (src.serving.openai_api_validator)
+  - TOOL_REGISTRY           (src.tools.tool_registry)
+  - MCP_SERVER_REGISTRY     (src.mcp.mcp_server)
+  - MCP_TOOL_SCHEMA_REGISTRY (src.mcp.tool_schema_registry)
+  - SSE_SERVER_REGISTRY     (src.mcp.sse_mcp_server)
+  - SAFE_EXTRACTOR_REGISTRY (src.security.safe_archive)
+"""
+
+from __future__ import annotations
+
+import importlib
 import os
+from typing import Any
+
+import pytest
 
 
 def pytest_configure(config):
-    """Set env vars before any test modules are collected."""
+    """Set required env vars before any test modules are collected."""
     os.environ.setdefault(
         "AURELIUS_ENCRYPTION_KEY",
-        "dGVzdGluZ19rZXlfZm9yX2F1cmVsaXVzX3Rlc3Rz",
+        "eraA96t0Jt605u3a6it1Z58dZXraqjM22HCNv4RYb7U=",
     )
+
+
+def _snapshot(obj: Any) -> Any:
+    """Return a shallow copy of a dict-like registry."""
+    return dict(obj)
+
+
+def _restore(obj: Any, snapshot: dict) -> None:
+    """Clear *obj* and repopulate from *snapshot*."""
+    obj.clear()
+    obj.update(snapshot)
+
+
+# ---------------------------------------------------------------------------
+# API_SHAPE_REGISTRY
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _isolate_api_shape_registry():
+    """Snapshot/restore API_SHAPE_REGISTRY around every test."""
+    try:
+        mod = importlib.import_module("src.serving.openai_api_validator")
+        registry = mod.API_SHAPE_REGISTRY
+    except Exception:
+        yield
+        return
+
+    snap = _snapshot(registry)
+    yield
+    _restore(registry, snap)
+
+
+# ---------------------------------------------------------------------------
+# TOOL_REGISTRY  (ToolRegistry._specs and ._handlers are internal dicts)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _isolate_tool_registry():
+    """Snapshot/restore TOOL_REGISTRY around every test."""
+    try:
+        mod = importlib.import_module("src.tools.tool_registry")
+        registry = mod.TOOL_REGISTRY
+    except Exception:
+        yield
+        return
+
+    snap_specs = _snapshot(registry._specs)
+    snap_handlers = _snapshot(registry._handlers)
+    yield
+    _restore(registry._specs, snap_specs)
+    _restore(registry._handlers, snap_handlers)
+
+
+# ---------------------------------------------------------------------------
+# MCP_SERVER_REGISTRY
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _isolate_mcp_server_registry():
+    """Snapshot/restore MCP_SERVER_REGISTRY around every test."""
+    try:
+        mod = importlib.import_module("src.mcp.mcp_server")
+        registry = mod.MCP_SERVER_REGISTRY
+    except Exception:
+        yield
+        return
+
+    snap = _snapshot(registry)
+    yield
+    _restore(registry, snap)
+
+
+# ---------------------------------------------------------------------------
+# MCP_TOOL_SCHEMA_REGISTRY
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _isolate_mcp_tool_schema_registry():
+    """Snapshot/restore MCP_TOOL_SCHEMA_REGISTRY around every test."""
+    try:
+        mod = importlib.import_module("src.mcp.tool_schema_registry")
+        registry = mod.MCP_TOOL_SCHEMA_REGISTRY
+    except Exception:
+        yield
+        return
+
+    snap = _snapshot(registry)
+    yield
+    _restore(registry, snap)
+
+
+# ---------------------------------------------------------------------------
+# SSE_SERVER_REGISTRY
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _isolate_sse_server_registry():
+    """Snapshot/restore SSE_SERVER_REGISTRY around every test."""
+    try:
+        mod = importlib.import_module("src.mcp.sse_mcp_server")
+        registry = mod.SSE_SERVER_REGISTRY
+    except Exception:
+        yield
+        return
+
+    snap = _snapshot(registry)
+    yield
+    _restore(registry, snap)
+
+
+# ---------------------------------------------------------------------------
+# SAFE_EXTRACTOR_REGISTRY
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _isolate_safe_extractor_registry():
+    """Snapshot/restore SAFE_EXTRACTOR_REGISTRY around every test."""
+    try:
+        mod = importlib.import_module("src.security.safe_archive")
+        registry = mod.SAFE_EXTRACTOR_REGISTRY
+    except Exception:
+        yield
+        return
+
+    snap = _snapshot(registry)
+    yield
+    _restore(registry, snap)
+
+
+# ---------------------------------------------------------------------------
+# AGENT_REGISTRY
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _isolate_agent_registry():
+    """Snapshot/restore AGENT_REGISTRY around every test."""
+    try:
+        mod = importlib.import_module("aurelius.agent_registry")
+        registry = mod.AGENT_REGISTRY
+    except Exception:
+        yield
+        return
+
+    snap = _snapshot(registry)
+    yield
+    _restore(registry, snap)
+
+
+# ---------------------------------------------------------------------------
+# SKILL_REGISTRY
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _isolate_skill_registry():
+    """Snapshot/restore SKILL_REGISTRY around every test."""
+    try:
+        mod = importlib.import_module("aurelius.skills_registry")
+        registry = mod.SKILL_REGISTRY
+    except Exception:
+        yield
+        return
+
+    snap = _snapshot(registry)
+    yield
+    _restore(registry, snap)
+
+
+# ---------------------------------------------------------------------------
+# BUILTIN_PLUGINS (aurelius.plugin_system)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def _isolate_builtin_plugins():
+    """Snapshot/restore BUILTIN_PLUGINS around every test."""
+    try:
+        mod = importlib.import_module("aurelius.plugin_system")
+        registry = mod.BUILTIN_PLUGINS
+    except Exception:
+        yield
+        return
+
+    snap = _snapshot(registry)
+    yield
+    _restore(registry, snap)

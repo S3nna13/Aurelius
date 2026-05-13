@@ -6,7 +6,9 @@ signature ``Callable[[ChatRequest], str]`` and a backend label string.
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -42,6 +44,7 @@ def build_engine(
     max_num_seqs: int = 256,
     speculative_decoding: bool = False,
     n_spec_tokens: int = 5,
+    model_revision: str | None = None,
 ) -> tuple[Callable[[ChatRequest], str], str]:
     """Construct and return a generate function and backend label.
 
@@ -70,6 +73,8 @@ def build_engine(
             speculative_decoding=speculative_decoding,
             n_spec_tokens=n_spec_tokens,
         )
+        hf_revision = model_revision or os.environ.get("AURELIUS_HF_REVISION")
+        model_is_local = Path(model_path).expanduser().exists()
 
         def generate_from_engine(request: ChatRequest) -> str:
             try:
@@ -80,7 +85,16 @@ def build_engine(
                     "pip install transformers"
                 )
 
-            tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+            if not model_is_local and not hf_revision:
+                raise ValueError(
+                    "Hugging Face model downloads require AURELIUS_HF_REVISION to pin a revision"
+                )
+
+            tokenizer = AutoTokenizer.from_pretrained(
+                model_path,
+                trust_remote_code=True,
+                revision=hf_revision,
+            )
             prompt_tokens = []
             if request.system:
                 system_text = request.system

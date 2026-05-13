@@ -18,6 +18,7 @@ import json
 import os
 import shlex
 import subprocess  # nosec B404 - internal command runner wrapper
+import sys
 import time
 import uuid
 from collections.abc import Callable
@@ -186,13 +187,20 @@ class ToolExecutor:
         self.sandbox = sandbox
         self.history: list[tuple[str, ToolResult]] = []
 
+    def _is_python_launcher(self, base: str) -> bool:
+        return base == "python" or base.startswith("python3")
+
     def check_safety(self, command: str) -> tuple[bool, str]:
         cmd_lower = command.lower()
         for deny in self.DENY_LIST:
             if deny in cmd_lower:
                 return False, f"Command denied: matches pattern '{deny}'"
         base = command.split()[0] if command.split() else ""
-        if base not in self.ALLOW_LIST and not base.startswith("./"):
+        if (
+            base not in self.ALLOW_LIST
+            and not base.startswith("./")
+            and not self._is_python_launcher(base)
+        ):
             return False, f"Command not in allow list: {base}"
         return True, ""
 
@@ -206,6 +214,8 @@ class ToolExecutor:
             argv = shlex.split(command)
             if not argv:
                 raise ValueError("Command is empty")
+            if self._is_python_launcher(argv[0]):
+                argv[0] = sys.executable
             result = subprocess.run(  # noqa: S603
                 argv,
                 shell=False,
@@ -215,6 +225,7 @@ class ToolExecutor:
                 cwd=cwd,
             )  # nosec
             elapsed = time.time() - start
+
             tr = ToolResult(
                 stdout=result.stdout[:10000],
                 stderr=result.stderr[:5000],

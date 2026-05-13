@@ -34,7 +34,7 @@ The **Mission Control web frontend** (`aurelius serve` or `frontend/`) offers tw
 | **Model Chat** | `/api/chat/completions` | Direct model inference; backend selection controls which provider handles the request |
 
 In Model Chat, the **backend selector** lets you choose:
-- **Auto** — Uses the **Default Backend** saved in Settings (falls back to `vllm` if unset)
+- **Auto** — Uses the **Default Backend** saved in Settings (falls back to `mock` if unset)
 - **Mock** — Fast local stub for offline testing (no upstream call)
 - **vLLM** — GPU-backed inference server at the configured vLLM upstream URL
 - **Agentic** — ReAct tool-use loop via the Aurelius agent runtime

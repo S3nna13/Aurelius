@@ -101,21 +101,23 @@ def _cap(data: str) -> str:
     return truncated.decode("utf-8", errors="replace") + "\n...[truncated]..."
 
 
-_BLOCKED_ENV_KEYS = frozenset({
-    "LD_PRELOAD",
-    "LD_LIBRARY_PATH",
-    "DYLD_INSERT_LIBRARIES",
-    "DYLD_LIBRARY_PATH",
-    "DYLD_FRAMEWORK_PATH",
-    "PYTHONPATH",
-    "PYTHONHOME",
-    "PATH",
-    "HOME",
-    "SHELL",
-    "TMPDIR",
-    "LD_AUDIT",
-    "LD_PROFILE",
-})
+_BLOCKED_ENV_KEYS = frozenset(
+    {
+        "LD_PRELOAD",
+        "LD_LIBRARY_PATH",
+        "DYLD_INSERT_LIBRARIES",
+        "DYLD_LIBRARY_PATH",
+        "DYLD_FRAMEWORK_PATH",
+        "PYTHONPATH",
+        "PYTHONHOME",
+        "PATH",
+        "HOME",
+        "SHELL",
+        "TMPDIR",
+        "LD_AUDIT",
+        "LD_PROFILE",
+    }
+)
 
 
 def run_safe(
@@ -156,7 +158,7 @@ def run_safe(
     for arg in argv_list[1:]:
         if "/" in arg or "\\" in arg:
             try:
-                PurePath(arg).resolve()  # validate resolvable
+                _resolved = PurePath(arg).resolve()  # noqa: F841
                 if ".." in PurePath(arg).parts:
                     raise UnsafeSubprocessError(f"argv contains path traversal: {arg!r}")
             except (ValueError, OSError):

@@ -52,7 +52,7 @@ function normalizeBackend(value: string | null | undefined): BackendMode {
   const normalized = value?.trim().toLowerCase();
   return normalized && VALID_BACKENDS.has(normalized as BackendMode)
     ? normalized as BackendMode
-    : 'vllm';
+    : 'mock';
 }
 
 const AVAILABLE_MODELS: ModelConfig[] = [
@@ -71,7 +71,7 @@ export default function Playground() {
   const [topP, setTopP] = useState(0.9);
   const [stream, setStream] = useState(true);
   const [backend, setBackend] = useLocalStorage<BackendSelection>('playground_backend', 'auto');
-  const [resolvedBackend, setResolvedBackend] = useState<BackendMode>('vllm');
+  const [resolvedBackend, setResolvedBackend] = useState<BackendMode>('mock');
   const [selectedModels, setSelectedModels] = useLocalStorage<string[]>(
     'playground_selected_models',
     [AVAILABLE_MODELS[0].id],

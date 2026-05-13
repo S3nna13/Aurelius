@@ -25,7 +25,9 @@ class TestClassifyIntent:
         assert classify_intent("Step by step plan") == ToolGTTemplate.MULTI_TOOL_SEQUENCE
 
     def test_search_keywords(self):
-        assert classify_intent("Search for the capital of France") == ToolGTTemplate.SEARCH_THEN_ANSWER
+        assert (
+            classify_intent("Search for the capital of France") == ToolGTTemplate.SEARCH_THEN_ANSWER
+        )
         assert classify_intent("Look up the weather") == ToolGTTemplate.SEARCH_THEN_ANSWER
         assert classify_intent("Retrieve user data") == ToolGTTemplate.SEARCH_THEN_ANSWER
 

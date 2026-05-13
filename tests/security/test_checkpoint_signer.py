@@ -77,10 +77,26 @@ def test_signer_algorithm_label_default():
     assert signer.algorithm == "hmac-sha256"
 
 
-def test_signer_algorithm_fallback_when_crypto_unavailable():
-    """When cryptography is not installed, Ed25519 key bytes fall back to HMAC."""
-    signer = CheckpointSigner(private_key_bytes=b"k" * 32)
+def test_signer_algorithm_fallback_when_crypto_unavailable(monkeypatch, sample_digest):
+    """Simulate cryptography being unavailable and verify the HMAC fallback path.
+
+    This keeps the test stable even on machines where cryptography is installed.
+    """
+    import builtins
+
+    real_import = builtins.__import__
+
+    def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
+        if name.startswith("cryptography.hazmat.primitives.asymmetric"):
+            raise ImportError("cryptography unavailable")
+        return real_import(name, globals, locals, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+    signer = CheckpointSigner(private_key_bytes=b"\x01" * 32, hmac_key=b"fallback-key")
     assert signer.algorithm == "hmac-sha256"
+    sig = signer.sign_digest(sample_digest)
+    assert len(sig) == 64
+    assert signer.verify_digest(sample_digest, sig) is True
 
 
 # ---------------------------------------------------------------------------

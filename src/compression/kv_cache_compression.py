@@ -78,7 +78,7 @@ class KVCacheCompressor:
             evict_indices_list = [i for i in range(total) if i not in keep_indices]
             if not evict_indices_list:
                 fallback_count = min(n, total - max(1, total // 4))
-                evict_indices_list = [idx for idx, _ in indexed[-(fallback_count or n):]]
+                evict_indices_list = [idx for idx, _ in indexed[-(fallback_count or n) :]]
             evict_indices = set(evict_indices_list[:n])
             evicted = [self._cache[i] for i in sorted(evict_indices)]
             self._cache = [e for i, e in enumerate(self._cache) if i not in evict_indices]
@@ -91,6 +91,7 @@ class KVCacheCompressor:
 
     def compress_int8(self, values: list[float]) -> tuple[list[int], float, float]:
         import math
+
         if not values:
             return [], 1e-8, 0.0
         values = [0.0 if not math.isfinite(v) else v for v in values]

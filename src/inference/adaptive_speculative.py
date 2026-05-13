@@ -83,10 +83,7 @@ class AdaptiveSpecController:
         round_rate = accepted / proposed
 
         # Update EMA
-        self._ema = (
-            self.cfg.ema_alpha * round_rate
-            + (1 - self.cfg.ema_alpha) * self._ema
-        )
+        self._ema = self.cfg.ema_alpha * round_rate + (1 - self.cfg.ema_alpha) * self._ema
 
         # Adjust K based on deviation from target
         error = self._ema - self.cfg.target_acceptance
@@ -182,9 +179,7 @@ class AdaptiveSpeculativeDecoder:
 
         return generated
 
-    def _run_one_round(
-        self, input_ids: torch.Tensor, K: int
-    ) -> torch.Tensor:
+    def _run_one_round(self, input_ids: torch.Tensor, K: int) -> torch.Tensor:
         """Run a single speculation round with the underlying decoder.
 
         Args:

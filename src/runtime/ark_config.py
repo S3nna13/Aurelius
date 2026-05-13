@@ -39,10 +39,10 @@ class ArkConfig:
         repr=False,
     )
 
-    # Model Serving
-    default_model: str = "gpt-4o"
-    fallback_model: str = "gpt-3.5-turbo"
-    embedding_model: str = "text-embedding-3-small"
+    # Model Serving — offline-first defaults (override via ARK_DEFAULT_MODEL env var)
+    default_model: str = "aurelius-1.3b"
+    fallback_model: str = "aurelius-1.3b"
+    embedding_model: str = "local-hash-embedding"
     embedding_dim: int = 1536
     max_tokens_default: int = 4096
     temperature_default: float = 0.7
@@ -119,9 +119,10 @@ class ArkConfig:
 
     @staticmethod
     def _coerce(val: str) -> Any:
-        if val.lower() in ("true", "yes", "1"):
+        lower = val.lower()
+        if lower in ("true", "yes"):
             return True
-        if val.lower() in ("false", "no", "0"):
+        if lower in ("false", "no"):
             return False
         try:
             return int(val)
@@ -139,7 +140,7 @@ class ArkConfig:
             if k.startswith("_"):
                 continue
             if redact and k in self._sensitive_fields:
-                v = "[REDACTED]" if v else ""
+                v = "[REDACTED]"
             result[k] = v
         return result
 

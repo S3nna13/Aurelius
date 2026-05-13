@@ -445,3 +445,9 @@ impl DataEngine {
             .create_training_run(&name, &model_id, total_epochs)
     }
 }
+
+impl Default for DataEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}

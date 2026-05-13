@@ -113,8 +113,10 @@ class DifferentialAttention(nn.Module):
     The per-head outputs are concatenated and projected through W_o.
     """
 
-    def __init__(self, config: DiffAttnConfig) -> None:
+    def __init__(self, config: DiffAttnConfig | None = None, **kwargs) -> None:
         super().__init__()
+        if config is None:
+            config = DiffAttnConfig(**kwargs)
         self.n_heads = config.n_heads
         self.head_dim = config.head_dim  # dimension of *each* softmax head
         self.scale = math.sqrt(self.head_dim)
@@ -148,18 +150,22 @@ class DifferentialAttention(nn.Module):
     def forward(
         self,
         x: torch.Tensor,
+        freqs_cis: torch.Tensor | None = None,
         mask: torch.Tensor | None = None,
-    ) -> torch.Tensor:
+        past_kv: tuple[torch.Tensor, torch.Tensor] | dict | None = None,
+    ) -> tuple[torch.Tensor, None]:
         """Compute differential attention.
 
         Args:
             x:    (B, T, d_model)
+            freqs_cis: Ignored (present for API compatibility with GQA).
             mask: Optional attention bias of shape (B, 1, T, T) or (1, 1, T, T).
                   Typically a causal mask with 0 at valid positions and -inf
                   (or very large negative) at masked positions.
+            past_kv: Ignored (differential attention does not use KV cache).
 
         Returns:
-            (B, T, d_model)
+            (output, None) where output is (B, T, d_model).
         """
         B, T, _ = x.shape
         H = self.n_heads
@@ -212,7 +218,7 @@ class DifferentialAttention(nn.Module):
         # ---- Merge heads and project out -----------------------------------
         # (B, T, H * D)
         out = out_heads.transpose(1, 2).contiguous().view(B, T, H * D)
-        return self.out_proj(out)  # (B, T, d_model)
+        return self.out_proj(out)
 
 
 # ---------------------------------------------------------------------------
@@ -248,7 +254,8 @@ class DiffTransformerBlock(nn.Module):
         Returns:
             (B, T, d_model)
         """
-        x = x + self.attn(self.attn_norm(x), mask)
+        attn_out, _ = self.attn(self.attn_norm(x), mask)
+        x = x + attn_out
         x = x + self.ffn(self.ffn_norm(x))
         return x
 

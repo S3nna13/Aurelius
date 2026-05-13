@@ -222,7 +222,7 @@ def compute_wmd_approx(
     sim_matrix = cosine_similarity_matrix(mat_a, mat_b)  # (|A|, |B|)
     max_sim = sim_matrix.max(dim=1).values  # (|A|,)
     distances = 1.0 - max_sim  # (|A|,)
-    return float(distances.mean().item())
+    return float(distances.mean().clamp(0.0, 1.0).item())
 
 
 # ---------------------------------------------------------------------------

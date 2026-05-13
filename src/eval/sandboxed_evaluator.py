@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 import tempfile
 from dataclasses import dataclass, field
 
@@ -74,7 +75,7 @@ class SandboxedEvaluator:
             timed_out = False
             try:
                 proc = subprocess.run(  # nosec B603  # noqa: S603
-                    ["python3", tmp_path],  # noqa: S607
+                    [sys.executable, tmp_path],
                     capture_output=True,
                     timeout=self._config.timeout_s,
                     shell=False,

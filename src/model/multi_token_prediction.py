@@ -67,10 +67,7 @@ class MultiTokenPredictionHead(nn.Module):
         self.norm = RMSNorm(config.d_model, eps=config.rms_norm_eps)
         self.shared_proj = nn.Linear(config.d_model, config.d_model, bias=False)
         self.heads = nn.ModuleList(
-            [
-                nn.Linear(config.d_model, config.vocab_size, bias=False)
-                for _ in range(self.depth)
-            ]
+            [nn.Linear(config.d_model, config.vocab_size, bias=False) for _ in range(self.depth)]
         )
 
     def forward(

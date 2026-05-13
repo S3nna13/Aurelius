@@ -4,15 +4,23 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
+from src.routing.intent import Intent, IntentClassifier
+from src.runtime.ark_config import ArkConfig
+
 MODEL_ROUTER_REGISTRY: dict[str, type] = {}
-from src.routing.intent import Intent, IntentClassifier  # noqa: E402
-from src.runtime.ark_config import ArkConfig  # noqa: E402
+
+DEFAULT_SMALL_MODEL = "aurelius-1b"
+DEFAULT_MEDIUM_MODEL = "aurelius-3b"
+DEFAULT_LARGE_MODEL = "aurelius-7b"
+DEFAULT_PRIVATE_MODEL = "aurelius-32b"
+DEFAULT_VISION_MODEL = "aurelius-vision"
+DEFAULT_CODE_MODEL = "codestral-22b"
 
 
 class RouteAction(Enum):
     ROUTE_TO_SMALL = "small"  # Fast, cheap local model
     ROUTE_TO_MEDIUM = "medium"  # Balanced model
-    ROUTE_TO_LARGE = "large"  # Powerful cloud model
+    ROUTE_TO_LARGE = "large"  # Powerful local frontier model
     ROUTE_TO_VISION = "vision"  # Multimodal model
     ROUTE_TO_CODE = "code"  # Code-specialized model
     ROUTE_TO_RAG = "rag"  # Retrieval pipeline
@@ -90,69 +98,53 @@ class ModelRouter:
     @staticmethod
     def _default_catalog() -> dict[str, dict[str, Any]]:
         return {
-            "gpt-4o": {
-                "provider": "openai",
-                "cost_per_1k_input": 0.0025,
-                "cost_per_1k_output": 0.01,
-                "context": 128000,
-                "tier": "large",
-                "modalities": ["text", "image"],
+            DEFAULT_SMALL_MODEL: {
+                "provider": "local",
+                "cost_per_1k_input": 0.0,
+                "cost_per_1k_output": 0.0,
+                "context": 4096,
+                "tier": "small",
+                "modalities": ["text"],
             },
-            "gpt-4o-mini": {
-                "provider": "openai",
-                "cost_per_1k_input": 0.00015,
-                "cost_per_1k_output": 0.0006,
-                "context": 128000,
+            DEFAULT_MEDIUM_MODEL: {
+                "provider": "local",
+                "cost_per_1k_input": 0.0,
+                "cost_per_1k_output": 0.0,
+                "context": 8192,
                 "tier": "medium",
+                "modalities": ["text"],
+            },
+            DEFAULT_LARGE_MODEL: {
+                "provider": "local",
+                "cost_per_1k_input": 0.0,
+                "cost_per_1k_output": 0.0,
+                "context": 8192,
+                "tier": "large",
+                "modalities": ["text"],
+            },
+            DEFAULT_PRIVATE_MODEL: {
+                "provider": "local",
+                "cost_per_1k_input": 0.0,
+                "cost_per_1k_output": 0.0,
+                "context": 32768,
+                "tier": "large",
+                "modalities": ["text"],
+            },
+            DEFAULT_VISION_MODEL: {
+                "provider": "local",
+                "cost_per_1k_input": 0.0,
+                "cost_per_1k_output": 0.0,
+                "context": 32768,
+                "tier": "vision",
                 "modalities": ["text", "image"],
             },
-            "claude-3.5-sonnet": {
-                "provider": "anthropic",
-                "cost_per_1k_input": 0.003,
-                "cost_per_1k_output": 0.015,
-                "context": 200000,
-                "tier": "large",
-                "modalities": ["text"],
-            },
-            "claude-3-haiku": {
-                "provider": "anthropic",
-                "cost_per_1k_input": 0.00025,
-                "cost_per_1k_output": 0.00125,
-                "context": 200000,
-                "tier": "small",
-                "modalities": ["text"],
-            },
-            "llama-3.1-8b": {
-                "provider": "local",
-                "cost_per_1k_input": 0.0,
-                "cost_per_1k_output": 0.0,
-                "context": 32768,
-                "tier": "small",
-                "modalities": ["text"],
-            },
-            "llama-3.1-70b": {
-                "provider": "local",
-                "cost_per_1k_input": 0.0,
-                "cost_per_1k_output": 0.0,
-                "context": 32768,
-                "tier": "large",
-                "modalities": ["text"],
-            },
-            "codestral-22b": {
+            DEFAULT_CODE_MODEL: {
                 "provider": "local",
                 "cost_per_1k_input": 0.0,
                 "cost_per_1k_output": 0.0,
                 "context": 65536,
                 "tier": "code",
                 "modalities": ["text"],
-            },
-            "gpt-4o-vision": {
-                "provider": "openai",
-                "cost_per_1k_input": 0.005,
-                "cost_per_1k_output": 0.015,
-                "context": 128000,
-                "tier": "vision",
-                "modalities": ["text", "image"],
             },
         }
 
@@ -207,46 +199,38 @@ class ModelRouter:
         return self._route_default(profile)
 
     def _route_private(self, profile: TaskProfile) -> RoutingDecision:
+        info = self._model_catalog.get(DEFAULT_PRIVATE_MODEL, {})
         return RoutingDecision(
             action=RouteAction.ROUTE_TO_LARGE,
-            model="llama-3.1-70b",
+            model=DEFAULT_PRIVATE_MODEL,
             confidence=0.9,
             reason="Privacy-sensitive — using private local model",
             requires_security_check=True,
-            context_length=32768,
-            cost_estimate=0.0,
+            context_length=info.get("context", 32768),
+            cost_estimate=self._estimate_cost(info, 1000, 500),
         )
 
     def _route_vision(self, profile: TaskProfile) -> RoutingDecision:
-        model = "gpt-4o-vision"
+        model = DEFAULT_VISION_MODEL
         info = self._model_catalog.get(model, {})
         return RoutingDecision(
             action=RouteAction.ROUTE_TO_VISION,
             model=model,
             confidence=0.85,
-            reason="Multimodal content — routing to vision model",
+            reason="Multimodal content — routing to local vision model",
             requires_retrieval=True,
-            context_length=info.get("context", 128000),
+            context_length=info.get("context", 32768),
             cost_estimate=self._estimate_cost(info, 1000, 500),
         )
 
     def _route_code(self, profile: TaskProfile) -> RoutingDecision:
-        # Code tasks use specialized models
-        if profile.user_tier == "enterprise":
-            model = "codestral-22b"
-        elif profile.user_tier == "pro":
-            model = "gpt-4o"
-        else:
-            model = "gpt-4o-mini"
-
+        model = DEFAULT_CODE_MODEL
         info = self._model_catalog.get(model, {})
         return RoutingDecision(
-            action=RouteAction.ROUTE_TO_CODE
-            if "codestral" in model
-            else RouteAction.ROUTE_TO_LARGE,
+            action=RouteAction.ROUTE_TO_CODE,
             model=model,
             confidence=0.8,
-            reason=f"Code task — routing to {model}",
+            reason=f"Code task — routing to local code model {model}",
             requires_tools=True,
             requires_reasoning=True,
             context_length=info.get("context", 65536),
@@ -256,7 +240,7 @@ class ModelRouter:
         )
 
     def _route_deep_reasoning(self, profile: TaskProfile) -> RoutingDecision:
-        model = "gpt-4o" if profile.user_tier in ("pro", "enterprise") else "gpt-4o-mini"
+        model = DEFAULT_PRIVATE_MODEL if profile.user_tier == "enterprise" else DEFAULT_LARGE_MODEL
         info = self._model_catalog.get(model, {})
         return RoutingDecision(
             action=RouteAction.ROUTE_TO_LARGE,
@@ -265,31 +249,38 @@ class ModelRouter:
             reason=f"Deep reasoning — routing to {model} with RAG",
             requires_retrieval=True,
             requires_reasoning=True,
-            context_length=info.get("context", 128000),
+            context_length=info.get("context", 8192 if model == DEFAULT_LARGE_MODEL else 32768),
             max_tokens=4096,
             temperature=0.5,
             cost_estimate=self._estimate_cost(info, 3000, 2000),
         )
 
     def _route_rag(self, profile: TaskProfile) -> RoutingDecision:
-        model = "gpt-4o" if profile.latency_sla_ms > 3000 else "gpt-4o-mini"
+        if profile.user_tier == "enterprise":
+            model = DEFAULT_PRIVATE_MODEL
+        elif profile.latency_sla_ms > 3000:
+            model = DEFAULT_LARGE_MODEL
+        else:
+            model = DEFAULT_MEDIUM_MODEL
         info = self._model_catalog.get(model, {})
         intent = profile.intent
         return RoutingDecision(
             action=RouteAction.ROUTE_TO_RAG,
             model=model,
             confidence=0.75,
-            reason=f"Retrieval needed — RAG pipeline with {model}",
+            reason=f"Retrieval needed — RAG pipeline with local model {model}",
             requires_retrieval=True,
             requires_tools=bool(intent and intent.requires_tools),
-            context_length=info.get("context", 128000),
+            context_length=info.get(
+                "context", 8192 if model in {DEFAULT_MEDIUM_MODEL, DEFAULT_LARGE_MODEL} else 32768
+            ),
             cost_estimate=self._estimate_cost(info, 2000 + len(profile.content) // 4, 1000),
         )
 
     def _route_default(self, profile: TaskProfile) -> RoutingDecision:
         # Fast path for simple queries → small model
         message_len = len(profile.content)
-        if message_len < 100 and profile.user_tier != "enterprise":
+        if message_len < 100:
             # Try semantic cache
             if self._is_cacheable_simple(profile.content):
                 return RoutingDecision(
@@ -300,31 +291,47 @@ class ModelRouter:
                     cost_estimate=0.0,
                 )
 
+            if profile.user_tier == "enterprise":
+                model = DEFAULT_PRIVATE_MODEL
+                action = RouteAction.ROUTE_TO_LARGE
+            elif profile.user_tier == "pro":
+                model = DEFAULT_MEDIUM_MODEL
+                action = RouteAction.ROUTE_TO_MEDIUM
+            else:
+                model = DEFAULT_SMALL_MODEL
+                action = RouteAction.ROUTE_TO_SMALL
+
+            info = self._model_catalog.get(model, {})
             return RoutingDecision(
-                action=RouteAction.ROUTE_TO_SMALL,
-                model="gpt-4o-mini",
+                action=action,
+                model=model,
                 confidence=0.7,
-                reason="Simple query — small model sufficient",
-                cost_estimate=self._estimate_cost({}, max(50, message_len), 100),
+                reason=f"Simple query — local model sufficient ({model})",
+                context_length=info.get("context", 4096),
+                cost_estimate=self._estimate_cost(info, max(50, message_len), 100),
             )
 
         # Pro/Enterprise → better model
         if profile.user_tier in ("pro", "enterprise"):
-            model = "gpt-4o" if profile.user_tier == "enterprise" else "gpt-4o-mini"
+            model = (
+                DEFAULT_PRIVATE_MODEL if profile.user_tier == "enterprise" else DEFAULT_LARGE_MODEL
+            )
             info = self._model_catalog.get(model, {})
             return RoutingDecision(
-                action=RouteAction.ROUTE_TO_MEDIUM,
+                action=RouteAction.ROUTE_TO_LARGE
+                if profile.user_tier == "enterprise"
+                else RouteAction.ROUTE_TO_MEDIUM,
                 model=model,
                 confidence=0.7,
-                reason=f"Standard query, tier {profile.user_tier} — routing to {model}",
+                reason=f"Standard query, tier {profile.user_tier} — routing to local model {model}",
                 cost_estimate=self._estimate_cost(info, message_len, 500),
             )
 
         return RoutingDecision(
             action=RouteAction.ROUTE_TO_MEDIUM,
-            model="gpt-4o-mini",
+            model=DEFAULT_MEDIUM_MODEL,
             confidence=0.6,
-            reason="Default routing",
+            reason="Default routing — local medium model",
         )
 
     @staticmethod

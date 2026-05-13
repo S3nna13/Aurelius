@@ -1,4 +1,5 @@
 """Base platform adapter for gateway messaging."""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

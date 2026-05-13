@@ -4,6 +4,7 @@
 Runs a dummy forward/backward pass a few times and measures the overhead of
 instantiating the scaler and calling ``scale``/``step``/``update``.
 """
+
 import time
 
 import torch
@@ -39,7 +40,7 @@ for _ in range(iterations):
     scaler.step(optimizer)
     scaler.update()
 elapsed = time.perf_counter() - start
-print(f"{iterations} steps in {elapsed:.3f}s => {iterations/elapsed:.2f} steps/sec")
+print(f"{iterations} steps in {elapsed:.3f}s => {iterations / elapsed:.2f} steps/sec")
 
 if __name__ == "__main__":
     pass

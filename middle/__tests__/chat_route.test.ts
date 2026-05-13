@@ -54,6 +54,7 @@ describe('chat route', () => {
   it('returns a live upstream completion', async () => {
     const res = await sendJson('/api/chat/completions', {
       model: 'aurelius-1.3b',
+      backend: 'vllm',
       messages: [{ role: 'user', content: 'hello' }],
     });
 

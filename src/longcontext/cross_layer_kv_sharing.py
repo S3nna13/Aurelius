@@ -25,6 +25,15 @@ from dataclasses import dataclass
 import torch
 from torch import Tensor, nn
 
+
+def _apply_rope(x: Tensor, freqs_cis: Tensor) -> Tensor:
+    """Apply rotary position embeddings. x: (B, T, n_heads, head_dim)."""
+    x_complex = torch.view_as_complex(x.float().reshape(*x.shape[:-1], -1, 2))
+    freqs = freqs_cis.unsqueeze(0).unsqueeze(2)  # (1, T, 1, head_dim//2)
+    x_rotated = torch.view_as_real(x_complex * freqs).flatten(-2)
+    return x_rotated.to(x.dtype)
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Config
 # ──────────────────────────────────────────────────────────────────────────────
@@ -140,14 +149,16 @@ class CrossLayerKVAttention(nn.Module):
         self,
         x: Tensor,
         kv_cache: Tensor | None = None,
+        freqs_cis: Tensor | None = None,
     ) -> tuple[Tensor, Tensor]:
         """Apply one cross-layer-KV attention layer.
 
         Args:
-            x:        Input tensor of shape [B, T, d_model].
-            kv_cache: For borrower layers: KV state from the owner, shape
-                      [B, n_kv_heads, T, 2*head_dim] (k and v packed along
-                      last dim).  Ignored / not used by owner layers.
+            x:         Input tensor of shape [B, T, d_model].
+            kv_cache:  For borrower layers: KV state from the owner, shape
+                       [B, n_kv_heads, T, 2*head_dim] (k and v packed along
+                       last dim).  Ignored / not used by owner layers.
+            freqs_cis: Optional precomputed RoPE frequencies (T, head_dim//2).
 
         Returns:
             (output, kv_state) where
@@ -164,13 +175,18 @@ class CrossLayerKVAttention(nn.Module):
         groups = nh // nkv  # query groups per KV head
 
         # --- Query projection ------------------------------------------
-        # [B, T, nh*hd] -> [B, nh, T, hd]
-        q = self.q_proj(x).view(B, T, nh, hd).transpose(1, 2)
+        q = self.q_proj(x).view(B, T, nh, hd)  # (B, T, nh, hd)
+        if freqs_cis is not None:
+            q = _apply_rope(q, freqs_cis)
+        q = q.transpose(1, 2)  # [B, nh, T, hd]
 
         # --- Key / Value -----------------------------------------------
         if self.is_kv_owner:
             # Compute fresh k, v and pack into kv_state.
-            k = self.k_proj(x).view(B, T, nkv, hd).transpose(1, 2)  # [B, nkv, T, hd]
+            k = self.k_proj(x).view(B, T, nkv, hd)  # (B, T, nkv, hd)
+            if freqs_cis is not None:
+                k = _apply_rope(k, freqs_cis)
+            k = k.transpose(1, 2)  # [B, nkv, T, hd]
             v = self.v_proj(x).view(B, T, nkv, hd).transpose(1, 2)  # [B, nkv, T, hd]
             kv_state = torch.cat([k, v], dim=-1)  # [B, nkv, T, 2*hd]
         else:
@@ -237,14 +253,15 @@ class CrossLayerKVStack(nn.Module):
     # Forward                                                              #
     # ------------------------------------------------------------------ #
 
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor, freqs_cis: Tensor | None = None) -> Tensor:
         """Pass x through the entire stack.
 
         Owner layers compute fresh KV and store them; each borrower in the
         same group immediately receives the owner's kv_state.
 
         Args:
-            x: [B, T, d_model]
+            x:         [B, T, d_model]
+            freqs_cis: Optional RoPE frequencies (T, head_dim//2).
 
         Returns:
             [B, T, d_model]
@@ -253,9 +270,9 @@ class CrossLayerKVStack(nn.Module):
 
         for layer in self.layers:
             if layer.is_kv_owner:
-                x, current_kv = layer(x, kv_cache=None)
+                x, current_kv = layer(x, kv_cache=None, freqs_cis=freqs_cis)
             else:
-                x, current_kv = layer(x, kv_cache=current_kv)
+                x, current_kv = layer(x, kv_cache=current_kv, freqs_cis=freqs_cis)
 
         return x
 

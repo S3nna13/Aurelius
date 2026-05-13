@@ -118,7 +118,7 @@ class WebhookDispatcher:
                         raw_body, endpoint.secret_header
                     )
                 req = Request(url, data=raw_body, headers=headers, method="POST")  # noqa: S310
-                resp = urlopen(req, timeout=10)  # noqa: S310
+                resp = urlopen(req, timeout=10)  # nosec B310  # noqa: S310
                 breaker.record_success()
                 return DispatchResult(
                     url=url,

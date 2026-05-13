@@ -170,6 +170,12 @@ class PPOTrainer:
         self._hidden_states: list[Tensor] = []
         self._hook_handle = None
 
+        # Safety geometry preservation (optional — set via enable_safety_geometry)
+        self._safety_geo_monitor = None
+        self._safety_geo_coeff = 0.001
+        self._safety_geo_check_interval = 100
+        self._step_count = 0
+
     def _register_hidden_hook(self) -> None:
         """Register a forward hook on the policy's final norm to capture hidden states."""
         if self._hook_handle is not None:
@@ -213,6 +219,37 @@ class PPOTrainer:
             # Fallback: use embedding-dim slice of logits (shouldn't happen normally)
             hidden = logits
         return hidden, logits, pkv
+
+    def enable_safety_geometry(
+        self,
+        reference_unsafe: Tensor,
+        reference_safe: Tensor,
+        coeff: float = 0.001,
+        check_interval: int = 100,
+    ) -> None:
+        """Enable safety geometry preservation monitoring."""
+        from src.safety.geometry_preservation import SafetyGeometryMonitor
+
+        self._safety_geo_monitor = SafetyGeometryMonitor(
+            self.policy, reference_unsafe, reference_safe
+        )
+        self._safety_geo_coeff = coeff
+        self._safety_geo_check_interval = check_interval
+
+    def _check_safety_geometry(
+        self, unsafe_activations: Tensor | None = None, safe_activations: Tensor | None = None
+    ) -> Tensor:
+        """Check safety geometry drift and return regularization loss (0 if disabled)."""
+        if self._safety_geo_monitor is None:
+            return torch.tensor(0.0, device=next(self.policy.parameters()).device)
+        self._step_count += 1
+        if unsafe_activations is not None and safe_activations is not None:
+            if self._step_count % self._safety_geo_check_interval == 0:
+                self._safety_geo_monitor.check_and_warn(unsafe_activations, safe_activations)
+            return self._safety_geo_monitor.geometry_preservation_loss(
+                unsafe_activations, safe_activations, self._safety_geo_coeff
+            )
+        return torch.tensor(0.0, device=next(self.policy.parameters()).device)
 
     def collect_rollout(self, prompt_ids: Tensor) -> dict:
         """Sample n_rollout_steps tokens from policy.
@@ -339,18 +376,22 @@ class PPOTrainer:
             log_probs_for_tokens = log_probs_shifted[
                 :, prompt_len - 1 : prompt_len - 1 + T, :
             ]  # (B, T, V)
-            curr_log_probs = log_probs_for_tokens.gather(
-                2, tokens.unsqueeze(-1)
-            ).squeeze(-1)  # (B, T)
+            curr_log_probs = log_probs_for_tokens.gather(2, tokens.unsqueeze(-1)).squeeze(
+                -1
+            )  # (B, T)
 
-            # Value head over all hidden states
-            curr_values = self.value_head(hidden)  # (B, T)
+            # Value head over all hidden states, then slice to only token positions
+            # hidden: (B, P+T, d_model), curr_values_full: (B, P+T)
+            # We need only the T positions corresponding to the generated tokens
+            curr_values_full = self.value_head(hidden)  # (B, P+T)
+            curr_values = curr_values_full[:, prompt_len : prompt_len + T]  # (B, T)
 
             p_loss, _ = ppo_policy_loss(curr_log_probs, old_log_probs, advantages, cfg.clip_ratio)
             v_loss = ppo_value_loss(curr_values, returns)
             ent = entropy_bonus(curr_log_probs)
 
             total_loss = p_loss + cfg.vf_coeff * v_loss - cfg.entropy_coeff * ent
+            total_loss = total_loss + self._check_safety_geometry()
 
             self.optimizer.zero_grad()
             total_loss.backward()

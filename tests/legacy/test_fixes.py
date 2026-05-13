@@ -1,11 +1,8 @@
+from __future__ import annotations
+
 import pytest
-
-pytest.skip("legacy test: module removed during reorganization", allow_module_level=True)
-import os
-import sys
-
-import torch
-import torch.nn as nn
+pytest.skip("legacy test: modules moved to archive/ during reorganization", allow_module_level=True)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 sys.path.insert(1, os.path.dirname(os.path.abspath(__file__)))
 

@@ -286,7 +286,6 @@ class MMLUScorer:
 
         out: list[MMLUResult] = []
         for p in problems:
-            shots: list[MMLUProblem] | None
             if self.n_shots > 0:
                 if few_shot_pool is None:
                     shots = CANONICAL_EXEMPLARS[: self.n_shots]

@@ -43,6 +43,15 @@ def __getattr__(name: str):
         module = import_module(f"src.{name}")
         globals()[name] = module
         return module
+    # Legacy top-level aliases: model → src.model
+    if name == "model":
+        _src_model = import_module("src.model")
+        globals()["model"] = _src_model
+        return _src_model
+    if name == "safety":
+        _src_safety = import_module("src.safety")
+        globals()["safety"] = _src_safety
+        return _src_safety
     raise AttributeError(f"module 'src' has no attribute {name!r}")
 
 

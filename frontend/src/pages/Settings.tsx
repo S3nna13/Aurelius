@@ -33,7 +33,7 @@ export default function SettingsPage() {
     notifications: true, emailAlerts: false, soundEnabled: true,
     autoUpdate: true, telemetry: false, maxConcurrency: '4',
     defaultModel: 'aurelius-1.3b', temperature: '0.7',
-    defaultBackend: 'vllm',
+    defaultBackend: 'mock',
     upstreamUrl: 'http://127.0.0.1:8080',
     vllmUpstreamUrl: 'http://127.0.0.1:8080',
     agenticUpstreamUrl: 'http://127.0.0.1:8080',

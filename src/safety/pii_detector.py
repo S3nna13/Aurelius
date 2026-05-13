@@ -383,7 +383,7 @@ class PIIDetector:
         if mode == "remove":
             return ""
         # Unreachable — __init__ validates the mode.
-        assert False, f"unknown redaction_mode {mode!r}"  # noqa: S101
+        raise RuntimeError(f"unknown redaction_mode {mode!r}")
 
     # -- scan drivers ------------------------------------------------------
 
@@ -485,16 +485,18 @@ def _resolve_overlaps(matches: Iterable[PIIMatch]) -> list[PIIMatch]:
     ordered = sorted(matches, key=key)
     accepted: list[PIIMatch] = []
     ends: list[int] = []
+    starts: list[int] = []
     for m in ordered:
         s, e = m.span
         conflict = False
-        for ae in ends:
-            if s < ae:
+        for ae, as_ in zip(ends, starts):
+            if s < ae and e > as_:  # genuine span overlap
                 conflict = True
                 break
         if not conflict:
             accepted.append(m)
             ends.append(e)
+            starts.append(s)
     return accepted
 
 

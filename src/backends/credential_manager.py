@@ -49,9 +49,7 @@ class CredentialManager:
 
     def refresh(self, provider: str) -> Credential:
         # Do not mutate status before raising — caller would be left in REFRESHING forever.
-        raise NotImplementedError(
-            f"OAuth refresh not implemented for provider: {provider}"
-        )
+        raise NotImplementedError(f"OAuth refresh not implemented for provider: {provider}")
 
     def get_or_refresh(self, provider: str) -> Credential:
         if self.is_expired(provider):

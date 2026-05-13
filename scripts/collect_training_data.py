@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import random
 import shutil
 import subprocess
@@ -41,7 +42,10 @@ def collect(src, tmp, limit=2000):
     kwa = {"split": "train", "streaming": True}
     if cfg:
         kwa["name"] = cfg
-    ds = load_dataset(hf_id, **kwa)
+    hf_revision = os.environ.get("AURELIUS_HF_REVISION")
+    if not hf_revision:
+        raise ValueError("AURELIUS_HF_REVISION is required to pin Hugging Face dataset revisions")
+    ds = load_dataset(hf_id, revision=hf_revision, **kwa)
     with open(out, "w") as f:
         for i, ex in enumerate(ds):
             if count >= limit:

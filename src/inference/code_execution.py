@@ -114,11 +114,20 @@ def extract_code_blocks(text: str, language: str = "python") -> list[str]:
 # Sanitization
 # ---------------------------------------------------------------------------
 
-_BLOCKED_ATTRS = frozenset({
-    "__class__", "__bases__", "__subclasses__", "__builtins__",
-    "__globals__", "__code__", "__closure__", "__dict__",
-    "__mro__", "__import__",
-})
+_BLOCKED_ATTRS = frozenset(
+    {
+        "__class__",
+        "__bases__",
+        "__subclasses__",
+        "__builtins__",
+        "__globals__",
+        "__code__",
+        "__closure__",
+        "__dict__",
+        "__mro__",
+        "__import__",
+    }
+)
 
 
 class _AstChecker(ast.NodeVisitor):
@@ -144,7 +153,11 @@ class _AstChecker(ast.NodeVisitor):
 
     def visit_Call(self, node: ast.Call) -> None:
         if isinstance(node.func, ast.Name) and node.func.id in (
-            "exec", "eval", "compile", "open", "__import__",
+            "exec",
+            "eval",
+            "compile",
+            "open",
+            "__import__",
         ):
             self.violations.append(f"use of '{node.func.id}()' is not allowed")
         if isinstance(node.func, ast.Attribute) and node.func.attr in ("__import__",):
@@ -261,7 +274,7 @@ def execute_python(code: str, config: ExecutionConfig) -> ExecutionResult:
         try:
             compiled = compile(code, "<sandbox>", "exec")
             with contextlib.redirect_stdout(stdout_buf), contextlib.redirect_stderr(stderr_buf):
-                exec(compiled, restricted_globals)  # noqa: S102
+                exec(compiled, restricted_globals)  # nosec B102  # noqa: S102
         except Exception as exc:
             exc_holder.append(exc)
 
@@ -386,7 +399,7 @@ class CodeInterpreterSession:
             except Exception as exc:
                 exc_holder.append(exc)
 
-        thread = threading.Thread(target=_run, daemon=True)
+        thread = threading.Thread(target=_run, daemon=True)  # noqa: S110
         thread.start()
         thread.join(timeout=self._config.timeout_seconds)
 

@@ -203,11 +203,11 @@ export function buildApp() {
     }
   })
 
-  // Provider router — unified Aurelius + OpenAI
+  // Provider router — unified Aurelius providers
   app.get('/api/provider/status', (_req, res) => {
     res.json({
       primary: 'aurelius',
-      fallback: 'openai',
+      fallback: 'mock',
       openai_configured: !!providerRouter.openaiApiKey,
       stats: providerRouter.getStats(),
       models: providerRouter.getAvailableModels(),

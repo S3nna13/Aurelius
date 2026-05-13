@@ -121,10 +121,10 @@ fn main() {
 
     match &cli.command {
         Commands::Stats { file } => {
-            if let Some(path) = file {
-                if !engine.load_from_file(path.clone()) {
-                    eprintln!("Warning: Could not load from {path}");
-                }
+            if let Some(path) = file
+                && !engine.load_from_file(path.clone())
+            {
+                eprintln!("Warning: Could not load from {path}");
             }
             let stats = engine.get_stats();
             println!("Aurelius Data Engine Stats:");

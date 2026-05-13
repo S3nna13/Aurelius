@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -16,7 +14,7 @@ from .moe import SparseMoELayer
 from .rms_norm import RMSNorm
 
 
-def _build_attention(config: AureliusConfig, layer_idx: int) -> nn.Module:
+def _build_attention(config: AureliusConfig, layer_idx: int, n_layers: int) -> nn.Module:
     if config.mla_enabled:
         from .mla_wrapper import MLACompatibleAttention
 
@@ -46,12 +44,12 @@ class TransformerBlock(nn.Module):
     Supports dense FFN or SparseMoE FFN.
     """
 
-    def __init__(self, config: AureliusConfig, layer_idx: int = 0) -> None:
+    def __init__(self, config: AureliusConfig, layer_idx: int = 0, n_layers: int = 24) -> None:
         super().__init__()
         self.config = config
         self.layer_idx = layer_idx
 
-        self.attn = _build_attention(config, layer_idx)
+        self.attn = _build_attention(config, layer_idx, n_layers)
         self.attn_norm = RMSNorm(config.d_model, eps=config.rms_norm_eps)
         self.ffn_norm = RMSNorm(config.d_model, eps=config.rms_norm_eps)
 
@@ -91,7 +89,7 @@ class TransformerBlock(nn.Module):
         past_kv: tuple[torch.Tensor, torch.Tensor] | None = None,
     ) -> tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor], torch.Tensor]:
         if self.use_mhc:
-            attn_result = self.mhc_attn(self.attn_norm(x), self.attn, freqs_cis, mask, past_kv)
+            attn_result = self.mhc_attn(x, self.attn, freqs_cis, mask, past_kv)
             if isinstance(attn_result, tuple):
                 x, kv = attn_result
             else:
@@ -103,7 +101,7 @@ class TransformerBlock(nn.Module):
 
         if isinstance(self.ffn, SparseMoELayer):
             if self.use_mhc:
-                ffn_result = self.mhc_ffn(self.ffn_norm(x), self.ffn)
+                ffn_result = self.mhc_ffn(x, self.ffn)
                 if isinstance(ffn_result, tuple):
                     x, aux_loss = ffn_result
                     return x, kv, aux_loss
@@ -113,7 +111,7 @@ class TransformerBlock(nn.Module):
                 x, aux_loss = self.ffn(self.ffn_norm(x))
         else:
             if self.use_mhc:
-                x = self.mhc_ffn(self.ffn_norm(x), self.ffn)
+                x = self.mhc_ffn(x, self.ffn)
             else:
                 x = x + self.ffn(self.ffn_norm(x))
             aux_loss = x.new_zeros(())
@@ -137,8 +135,7 @@ class AureliusTransformer(nn.Module):
     def __init__(self, config: AureliusConfig | None = None) -> None:
         super().__init__()
         self.config = config or AureliusConfig()
-        self.last_moe_aux_loss: torch.Tensor
-        self.register_buffer("last_moe_aux_loss_buf", torch.tensor(0.0), persistent=False)
+        self.last_moe_aux_loss = torch.tensor(0.0)
 
         # Token embedding
         self.embed = nn.Embedding(self.config.vocab_size, self.config.d_model)
@@ -146,7 +143,7 @@ class AureliusTransformer(nn.Module):
         # Transformer blocks (with MoE support per layer)
         self.layers = nn.ModuleList(
             [
-                TransformerBlock(self.config, layer_idx=i)
+                TransformerBlock(self.config, layer_idx=i, n_layers=self.config.n_layers)
                 for i in range(self.config.n_layers)
             ]
         )
@@ -160,13 +157,14 @@ class AureliusTransformer(nn.Module):
         # Multi-Token Prediction (MTP)
         self.mtp: nn.Module | None = None
         if self.config.mtp_enabled:
-            from .multi_token_prediction import MTPConfig, MultiTokenPredictionHead
+            from .mtp import MTPModule
 
-            mtp_cfg = MTPConfig(
-                depth=self.config.mtp_n_predict,
-                lambda_mtp=self.config.mtp_loss_weight,
+            self.mtp = MTPModule(
+                d_model=self.config.d_model,
+                vocab_size=self.config.vocab_size,
+                n_predict=self.config.mtp_n_predict,
+                share_params=self.config.mtp_share_params,
             )
-            self.mtp = MultiTokenPredictionHead(self.config, mtp_cfg)
         if self.config.tie_embeddings:
             self.lm_head.weight = self.embed.weight
 
@@ -233,10 +231,6 @@ class AureliusTransformer(nn.Module):
         )
 
         x = self.embed(input_ids)
-        assert past_len + S <= self.config.max_seq_len, (  # noqa: S101
-            f"past_len({past_len}) + S({S}) = {past_len + S} "
-            f"exceeds max_seq_len {self.config.max_seq_len}"
-        )
         freqs_cis = self.freqs_cis[past_len : past_len + S]
 
         if self.config.use_gradient_checkpointing and past_key_values is not None:
@@ -283,23 +277,9 @@ class AureliusTransformer(nn.Module):
                 loss = loss + self.config.mtp_loss_weight * mtp_loss
 
         # Store aux loss for external monitoring (e.g., trainer logging)
-        self.last_moe_aux_loss = moe_aux_loss.detach().to(x.device)
+        self.last_moe_aux_loss = moe_aux_loss.detach()
 
         return loss, logits, present_key_values
-
-    @staticmethod
-    def _sample(logits: torch.Tensor, temperature: float, top_p: float) -> torch.Tensor:
-        """Top-p nucleus sampling with temperature scaling."""
-        if temperature != 1.0:
-            assert temperature > 0, f"temperature must be > 0, got {temperature}"  # noqa: S101
-            logits = logits / temperature
-        sorted_logits, sorted_indices = torch.sort(logits, descending=False)
-        cumulative_probs = sorted_logits.softmax(dim=-1).cumsum(dim=-1)
-        sorted_mask = cumulative_probs <= (1.0 - top_p)
-        sorted_mask[..., -1:] = False
-        mask = sorted_mask.scatter(1, sorted_indices, sorted_mask)
-        logits = logits.masked_fill(mask, float("-inf"))
-        return torch.multinomial(logits.softmax(dim=-1), num_samples=1)
 
     @torch.no_grad()
     def generate(
@@ -334,13 +314,22 @@ class AureliusTransformer(nn.Module):
         cur_ids = input_ids
         think_tokens = 0
         think_closed = False
-        finished = torch.zeros(B, dtype=torch.bool, device=input_ids.device)
 
         for step in range(max_new_tokens):
             _, logits, past_key_values = self(cur_ids, past_key_values=past_key_values)
             next_logits = logits[:, -1, :]
 
-            next_token = self._sample(next_logits, temperature, top_p)
+            if temperature != 1.0:
+                next_logits = next_logits / temperature
+
+            sorted_logits, sorted_indices = torch.sort(next_logits, descending=False)
+            cumulative_probs = sorted_logits.softmax(dim=-1).cumsum(dim=-1)
+            sorted_mask = cumulative_probs <= (1.0 - top_p)
+            sorted_mask[..., -1:] = False
+            mask = sorted_mask.scatter(1, sorted_indices, sorted_mask)
+            next_logits = next_logits.masked_fill(mask, float("-inf"))
+
+            next_token = torch.multinomial(next_logits.softmax(dim=-1), num_samples=1)
 
             if reasoning_budget is not None and not think_closed:
                 think_tokens += 1
@@ -348,14 +337,10 @@ class AureliusTransformer(nn.Module):
                     next_token = torch.full_like(next_token, think_token_id)
                     think_closed = True
 
-            if eos_token_id is not None:
-                finished = finished | (next_token.squeeze(-1) == eos_token_id)
-                next_token[finished.unsqueeze(-1)] = eos_token_id
-
             cur_ids = next_token
             input_ids = torch.cat([input_ids, next_token], dim=1)
 
-            if eos_token_id is not None and finished.all():
+            if eos_token_id is not None and (next_token == eos_token_id).all():
                 break
 
         return input_ids
@@ -368,9 +353,7 @@ class AureliusTransformer(nn.Module):
         temperature: float = 1.0,
         top_p: float = 0.9,
         eos_token_id: int | None = None,
-        reasoning_budget: int | None = None,
-        think_token_id: int = 50400,
-    ) -> Iterator[torch.Tensor]:
+    ) -> Iterator[torch.Tensor]:  # noqa: F821
         """Autoregressive generation yielding one token at a time.
 
         Same algorithm as generate(), but yields each new token as it is
@@ -390,30 +373,29 @@ class AureliusTransformer(nn.Module):
         B, _ = input_ids.shape
         past_key_values = None
         cur_ids = input_ids
-        finished = torch.zeros(B, dtype=torch.bool, device=input_ids.device)
-        think_tokens = 0
-        think_closed = False
 
         for _ in range(max_new_tokens):
             _, logits, past_key_values = self(cur_ids, past_key_values=past_key_values)
             next_logits = logits[:, -1, :]
 
-            next_token = self._sample(next_logits, temperature, top_p)
+            if temperature != 1.0:
+                next_logits = next_logits / temperature
 
-            if reasoning_budget is not None and not think_closed:
-                think_tokens += 1
-                if think_tokens >= reasoning_budget:
-                    next_token = torch.full_like(next_token, think_token_id)
-                    think_closed = True
+            # Top-p nucleus sampling (same as generate())
+            sorted_logits, sorted_indices = torch.sort(next_logits, descending=False)
+            cumulative_probs = sorted_logits.softmax(dim=-1).cumsum(dim=-1)
+            sorted_mask = cumulative_probs <= (1.0 - top_p)
+            sorted_mask[..., -1:] = False
+            mask = sorted_mask.scatter(1, sorted_indices, sorted_mask)
+            next_logits = next_logits.masked_fill(mask, float("-inf"))
 
-            if eos_token_id is not None:
-                finished = finished | (next_token.squeeze(-1) == eos_token_id)
+            next_token = torch.multinomial(next_logits.softmax(dim=-1), num_samples=1)  # (B, 1)
 
             yield next_token
 
             cur_ids = next_token
 
-            if eos_token_id is not None and finished.all():
+            if eos_token_id is not None and (next_token == eos_token_id).all():
                 return
 
     def count_parameters(self, *, count_embeddings: bool = True) -> dict[str, int]:

@@ -9,6 +9,8 @@ from __future__ import annotations
 import torch
 from torch.optim import Optimizer
 
+__all__ = ["Muon", "build_muon_optimizer"]
+
 
 def _newton_schulz(G: torch.Tensor, steps: int = 5) -> torch.Tensor:
     if G.ndim < 2:
@@ -153,3 +155,24 @@ class Muon(Optimizer):
                 p.add_(g_orth.to(p.dtype), alpha=-lr)
 
         return loss
+
+
+def build_muon_optimizer(
+    model, muon_lr: float = 0.02, adam_lr: float = 3e-4, weight_decay: float = 0.1
+) -> tuple:
+    """Split model params into Muon (matrices) and AdamW (rest) groups."""
+    muon_params, adam_params = [], []
+    for name, p in model.named_parameters():
+        if not p.requires_grad:
+            continue
+        # Embeddings, norms, biases, 1D params → AdamW
+        if p.ndim < 2 or "embed" in name or "norm" in name or "bias" in name:
+            adam_params.append(p)
+        else:
+            muon_params.append(p)
+
+    muon_opt = Muon(muon_params, lr=muon_lr, weight_decay=weight_decay)
+    adam_opt = torch.optim.AdamW(
+        adam_params, lr=adam_lr, betas=(0.9, 0.95), weight_decay=weight_decay
+    )
+    return muon_opt, adam_opt

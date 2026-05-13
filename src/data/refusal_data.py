@@ -97,11 +97,13 @@ class RefusalDataGenerator:
             if not self.verify_fn(prompt):
                 continue
             refusal = self.generate_fn(prompt)
-            examples.append(RefusalExample(
-                prompt=prompt,
-                refusal_response=refusal,
-                category=f"bogus_{category}",
-            ))
+            examples.append(
+                RefusalExample(
+                    prompt=prompt,
+                    refusal_response=refusal,
+                    category=f"bogus_{category}",
+                )
+            )
 
         logger.info(f"Generated {len(examples)} bogus QA refusal examples")
         return examples
@@ -113,12 +115,14 @@ class RefusalDataGenerator:
 
         for prompt in requests[:n_samples]:
             refusal = random.choice(_SAFETY_REFUSALS)
-            examples.append(RefusalExample(
-                prompt=prompt,
-                refusal_response=refusal,
-                category="harmful_request",
-                source="template",
-            ))
+            examples.append(
+                RefusalExample(
+                    prompt=prompt,
+                    refusal_response=refusal,
+                    category="harmful_request",
+                    source="template",
+                )
+            )
 
         logger.info(f"Generated {len(examples)} harmful refusal examples")
         return examples
@@ -133,12 +137,17 @@ class RefusalDataGenerator:
     def save_jsonl(self, examples: list[RefusalExample], path: str) -> None:
         with open(path, "w") as f:
             for ex in examples:
-                f.write(json.dumps({
-                    "prompt": ex.prompt,
-                    "response": ex.refusal_response,
-                    "category": ex.category,
-                    "source": ex.source,
-                }) + "\n")
+                f.write(
+                    json.dumps(
+                        {
+                            "prompt": ex.prompt,
+                            "response": ex.refusal_response,
+                            "category": ex.category,
+                            "source": ex.source,
+                        }
+                    )
+                    + "\n"
+                )
         logger.info(f"Saved {len(examples)} refusal examples to {path}")
 
     @staticmethod

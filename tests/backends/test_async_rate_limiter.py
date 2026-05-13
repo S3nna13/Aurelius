@@ -109,7 +109,7 @@ def test_reset_clears_count():
     async def run():
         await limiter.acquire("k")
         await limiter.acquire("k")
-        limiter.reset("k")
+        await limiter.reset("k")
         return await limiter.acquire("k")
 
     result = asyncio.run(run())
@@ -118,7 +118,7 @@ def test_reset_clears_count():
 
 def test_reset_unknown_key_no_error():
     limiter = AsyncFixedWindowRateLimiter(RateLimitConfig(5, 60.0))
-    limiter.reset("does-not-exist")
+    asyncio.run(limiter.reset("does-not-exist"))
 
 
 # ---------------------------------------------------------------------------
@@ -128,7 +128,11 @@ def test_reset_unknown_key_no_error():
 
 def test_get_remaining_full_on_new_key():
     limiter = AsyncFixedWindowRateLimiter(RateLimitConfig(10, 60.0))
-    assert limiter.get_remaining("new") == 10
+
+    async def run():
+        return await limiter.get_remaining("new")
+
+    assert asyncio.run(run()) == 10
 
 
 def test_get_remaining_decrements():
@@ -137,7 +141,7 @@ def test_get_remaining_decrements():
     async def run():
         await limiter.acquire("r")
         await limiter.acquire("r")
-        return limiter.get_remaining("r")
+        return await limiter.get_remaining("r")
 
     remaining = asyncio.run(run())
     assert remaining == 3
@@ -149,7 +153,7 @@ def test_get_remaining_zero_at_limit():
     async def run():
         await limiter.acquire("r")
         await limiter.acquire("r")
-        return limiter.get_remaining("r")
+        return await limiter.get_remaining("r")
 
     remaining = asyncio.run(run())
     assert remaining == 0

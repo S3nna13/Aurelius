@@ -42,11 +42,7 @@ impl Metrics {
             .or_insert(0) += 1;
         *self.inner.status_counts.entry(status).or_insert(0) += 1;
 
-        let mut latencies = self
-            .inner
-            .latencies
-            .entry("all".to_string())
-            .or_insert_with(Vec::new);
+        let mut latencies = self.inner.latencies.entry("all".to_string()).or_default();
         latencies.push(latency_ms);
         if latencies.len() > 1000 {
             latencies.remove(0);

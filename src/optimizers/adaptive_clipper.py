@@ -79,6 +79,16 @@ class ZClip:
         self._ema_sq: float = 0.0
         self._step: int = 0
 
+    @property
+    def _ema_mean(self) -> float:
+        """Exposed for backward compatibility with tests."""
+        return self._ema
+
+    @property
+    def _ema_var(self) -> float:
+        """Exposed for backward compatibility with tests."""
+        return self._ema_sq - self._ema * self._ema
+
     def _z_score(self, norm: float) -> tuple[float, float, float]:
         """Compute z-score using current EMA state (before update).
 

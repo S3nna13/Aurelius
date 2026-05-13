@@ -119,11 +119,13 @@ def _build_draft_tree(
         dist = _get_probs(draft_model, tree_ctx, temperature)[-1]
         token = _sample_from_probs(dist, top_p=top_p)
 
-        nodes.append(DraftNode(
-            token_id=token.item(),
-            score=dist[token].item(),
-            parent=parents[i],
-        ))
+        nodes.append(
+            DraftNode(
+                token_id=token.item(),
+                score=dist[token].item(),
+                parent=parents[i],
+            )
+        )
 
     return nodes
 
@@ -174,7 +176,11 @@ class TreeSpeculativeDecoder:
 
             # Step 2: Score tree nodes with draft model
             nodes = _build_draft_tree(
-                self.draft, generated, parents, cfg.temperature, cfg.top_p,
+                self.draft,
+                generated,
+                parents,
+                cfg.temperature,
+                cfg.top_p,
             )
 
             # Step 3: Find best root-to-leaf path
@@ -193,9 +199,7 @@ class TreeSpeculativeDecoder:
             # Score each path by sum of log-probs
             best_path = max(
                 all_paths,
-                key=lambda path: sum(
-                    nodes[idx].score for idx in range(len(path))
-                ),
+                key=lambda path: sum(nodes[idx].score for idx in range(len(path))),
             )
 
             # Step 4: Verify best path with target model

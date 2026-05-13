@@ -37,13 +37,13 @@ describe('ProviderRouter', () => {
     vi.restoreAllMocks();
   });
 
-  it('routes to Aurelius first', async () => {
+  it('uses the default mock backend when no backend is specified', async () => {
     const router = new ProviderRouter();
     const result = await router.complete({
       model: 'aurelius-1.3b',
       messages: [{ role: 'user', content: 'hello' }],
     });
-    expect(result.choices[0].message.content).toContain('Aurelius live reply');
+    expect(result.choices[0].message.content).toContain('Mock response to: hello');
   });
 
   it('returns available models across providers', () => {
@@ -61,7 +61,7 @@ describe('ProviderRouter', () => {
       messages: [{ role: 'user', content: 'hi' }],
     });
     const stats = router.getStats();
-    expect(stats.aurelius.requests).toBe(1);
+    expect(stats.mock.requests).toBe(1);
   });
 
   it('routes mock backend without calling upstream', async () => {
@@ -123,7 +123,7 @@ describe('ProviderRouter', () => {
       expect(payload.model).toBe('aurelius-2.7b');
       expect(payload.temperature).toBe(0.42);
     } finally {
-      engine.setConfig('chat.backend', previousBackend || 'vllm');
+      engine.setConfig('chat.backend', previousBackend || 'mock');
       engine.setConfig('chat.model', previousModel || 'aurelius-1.3b');
       engine.setConfig('chat.temperature', previousTemperature || '0.7');
     }
@@ -152,29 +152,29 @@ describe('ProviderRouter', () => {
       expect(result.backend).toBe('agentic');
       expect(result.resolved).toBe('agentic');
     } finally {
-      engine.setConfig('chat.backend', previousBackend || 'vllm');
+      engine.setConfig('chat.backend', previousBackend || 'mock');
     }
   });
 
   it('resolveBackend with invalid backend value returns config default (normalization)', () => {
     const engine = getEngine();
     const previousBackend = engine.getConfig('chat.backend');
-    engine.setConfig('chat.backend', 'vllm');
+    engine.setConfig('chat.backend', 'mock');
 
     try {
       const router = new ProviderRouter();
       const result = router.resolveBackend('invalid-backend');
-      expect(result.backend).toBe('vllm');
-      expect(result.resolved).toBe('vllm');
+      expect(result.backend).toBe('mock');
+      expect(result.resolved).toBe('mock');
     } finally {
-      engine.setConfig('chat.backend', previousBackend || 'vllm');
+      engine.setConfig('chat.backend', previousBackend || 'mock');
     }
   });
 
   it('complete returns resolved_backend in response when using auto', async () => {
     const engine = getEngine();
     const previousBackend = engine.getConfig('chat.backend');
-    engine.setConfig('chat.backend', 'vllm');
+    engine.setConfig('chat.backend', 'mock');
 
     try {
       const router = new ProviderRouter({ vllmUpstreamUrl: 'http://vllm-upstream.local' });
@@ -184,9 +184,9 @@ describe('ProviderRouter', () => {
         messages: [{ role: 'user', content: 'hello auto backend' }],
       });
 
-      expect(result.resolved_backend).toBe('vllm');
+      expect(result.resolved_backend).toBe('mock');
     } finally {
-      engine.setConfig('chat.backend', previousBackend || 'vllm');
+      engine.setConfig('chat.backend', previousBackend || 'mock');
     }
   });
 

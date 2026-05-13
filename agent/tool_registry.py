@@ -100,7 +100,10 @@ class ToolRegistry:
         return [
             tid
             for tid, spec in self._tools.items()
-            if spec.enabled and TOOL_GROUP_REGISTRY.get(tid, "") in allowed_groups
+            if spec.enabled
+            and (
+                tid not in TOOL_GROUP_REGISTRY or TOOL_GROUP_REGISTRY.get(tid, "") in allowed_groups
+            )
         ]
 
     def get(self, tool_id: str) -> ToolSpec | None:

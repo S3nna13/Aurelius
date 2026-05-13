@@ -95,10 +95,14 @@ def export_gguf(
     config = config_fn()
 
     # Count total parameters
-    total_params = config.n_layers * (
-        config.d_model * config.d_ff * 3  # SwiGLU: gate + up + down
-        + 4 * config.d_model * config.head_dim * config.n_heads  # Q, K, V, O
-    ) + config.vocab_size * config.d_model * 2  # embed + lm_head
+    total_params = (
+        config.n_layers
+        * (
+            config.d_model * config.d_ff * 3  # SwiGLU: gate + up + down
+            + 4 * config.d_model * config.head_dim * config.n_heads  # Q, K, V, O
+        )
+        + config.vocab_size * config.d_model * 2
+    )  # embed + lm_head
     total_params += config.n_layers * config.d_model * 4  # 2x RMSNorm per layer
 
     # Load state dict

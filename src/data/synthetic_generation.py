@@ -116,12 +116,14 @@ class MultiAgentPromptGenerator:
             if domain and domain != agent_name:
                 continue
             response = agent_fn(prompt)
-            samples.append(SyntheticSample(
-                prompt=prompt,
-                response=response,
-                domain=agent_name,
-                quality_score=0.7 if len(response) > 10 else 0.3,
-            ))
+            samples.append(
+                SyntheticSample(
+                    prompt=prompt,
+                    response=response,
+                    domain=agent_name,
+                    quality_score=0.7 if len(response) > 10 else 0.3,
+                )
+            )
         return samples
 
     @staticmethod

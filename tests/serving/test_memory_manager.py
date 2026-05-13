@@ -10,7 +10,8 @@ VOCAB = 256
 
 
 @pytest.fixture
-def store(tmp_path):
+def store(tmp_path, monkeypatch):
+    monkeypatch.setenv("AURELIUS_MEMORY_DIR", str(tmp_path))
     path = str(tmp_path / "memory.json")
     return MemoryStore(storage_path=path)
 
@@ -27,7 +28,8 @@ def embed_weight():
 
 
 # 1. MemoryStore instantiates with tmp path
-def test_memory_store_instantiates(tmp_path):
+def test_memory_store_instantiates(tmp_path, monkeypatch):
+    monkeypatch.setenv("AURELIUS_MEMORY_DIR", str(tmp_path))
     path = str(tmp_path / "memory.json")
     ms = MemoryStore(storage_path=path)
     assert isinstance(ms, MemoryStore)

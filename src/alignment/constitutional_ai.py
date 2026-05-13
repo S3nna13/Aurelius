@@ -379,7 +379,9 @@ class ConstitutionalAITrainer:
             score = score_principle_compliance(logits, response_ids, i, n_principles)
             scores[:, i] = score
 
-        scores.argmin(dim=-1)  # select lowest-scoring principle for revision
+        min_score_idx = scores.argmin(dim=-1)
+        principle = self.principles[min_score_idx[0].item() % len(self.principles)]
+        revision_prompt = principle.revision_prompt  # noqa: F841
 
         with torch.no_grad():
             revision_ids = self.policy.generate(

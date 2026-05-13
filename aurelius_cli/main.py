@@ -545,6 +545,7 @@ def _run_chat(
                 if arg:
                     try:
                         from src.persona import BUILTIN_PERSONAS, UnifiedPersonaRegistry
+
                         ureg = UnifiedPersonaRegistry()
                         for p in BUILTIN_PERSONAS:
                             ureg.register(p)

@@ -1,12 +1,8 @@
+from __future__ import annotations
+
 import pytest
-
-pytest.skip("legacy test: module removed during reorganization", allow_module_level=True)
-import sys
-
-import torch
-
-sys.path.insert(1, '/Users/christienantonio/aurelius')
-from adaptive_precision import AdaptivePrecisionManager, FP8LTSMemory, TieredMemoryBank
+pytest.skip("legacy test: modules moved to archive/ during reorganization", allow_module_level=True)
+sys.path.insert(0, '/Users/christienantonio/aurelius')
 from async_memory import AsyncConsolidationPipeline, ConsolidationTask, PagedLTSMemory
 from deduplication import CosineDeduplicator, L2Deduplicator, PriorityProportionalAllocator
 from prefetch_router import (

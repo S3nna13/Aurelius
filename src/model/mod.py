@@ -138,6 +138,8 @@ class MoDLayer(nn.Module):
         aux_loss = ((router_probs.mean(dim=1) - target) ** 2).mean()
 
         return output, None, aux_loss
+
+
 class CapacityTracker:
     """Tracks MoD routing statistics across forward passes.
 
@@ -171,5 +173,3 @@ class CapacityTracker:
             "mean_utilization": sum(self.mean_utilization(i) for i in range(self.n_layers))
             / max(self.n_layers, 1),
         }
-
-

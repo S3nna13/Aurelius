@@ -457,3 +457,40 @@ __all__ += [
     "CoalescingSlot",
     "RequestCoalescer",
 ]
+
+# ---------------------------------------------------------------------------
+# KIVI — 2-bit asymmetric KV cache quantization (Cycle 138)
+# ---------------------------------------------------------------------------
+from src.inference.kivi_quant import (  # noqa: E402
+    KIVIQuantizer,
+)
+
+__all__ += [
+    "KIVIQuantizer",
+]
+
+# ---------------------------------------------------------------------------
+# DuoAttention — retrieval vs. streaming head classification (Cycle 138)
+# ---------------------------------------------------------------------------
+from src.inference.duo_attention import (  # noqa: E402
+    DuoAttentionConfig,
+    DuoAttentionManager,
+)
+
+__all__ += [
+    "DuoAttentionConfig",
+    "DuoAttentionManager",
+]
+
+# ---------------------------------------------------------------------------
+# Quest — Page-Level Sparse Attention (Phase 3)
+# ---------------------------------------------------------------------------
+from src.inference.quest_attention import (  # noqa: E402
+    QuestAttention,
+)
+
+DECODER_REGISTRY["quest_attention"] = QuestAttention
+
+__all__ += [
+    "QuestAttention",
+]

@@ -154,14 +154,14 @@ impl JsonValidator {
             ));
         }
 
-        if let Value::Array(arr) = &value {
-            if arr.len() as u32 > self.max_array_length {
-                warnings.push(format!(
-                    "Large array: {} elements (limit: {})",
-                    arr.len(),
-                    self.max_array_length
-                ));
-            }
+        if let Value::Array(arr) = &value
+            && arr.len() as u32 > self.max_array_length
+        {
+            warnings.push(format!(
+                "Large array: {} elements (limit: {})",
+                arr.len(),
+                self.max_array_length
+            ));
         }
 
         // Check for common issues
@@ -184,6 +184,7 @@ impl JsonValidator {
         }
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn validate_value(
         &self,
         val: &Value,
@@ -258,6 +259,7 @@ impl JsonValidator {
         }
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn validate_against_schema(
         &self,
         value: &Value,
@@ -296,65 +298,65 @@ impl JsonValidator {
                 }
             }
 
-            if let Some(min) = schema.min_fields {
-                if (map.len() as u32) < min {
-                    errors.push(format!(
-                        "{}: minimum {} fields, got {}",
-                        path,
-                        min,
-                        map.len()
-                    ));
-                }
+            if let Some(min) = schema.min_fields
+                && (map.len() as u32) < min
+            {
+                errors.push(format!(
+                    "{}: minimum {} fields, got {}",
+                    path,
+                    min,
+                    map.len()
+                ));
             }
-            if let Some(max) = schema.max_fields {
-                if (map.len() as u32) > max {
-                    errors.push(format!(
-                        "{}: maximum {} fields, got {}",
-                        path,
-                        max,
-                        map.len()
-                    ));
-                }
+            if let Some(max) = schema.max_fields
+                && (map.len() as u32) > max
+            {
+                errors.push(format!(
+                    "{}: maximum {} fields, got {}",
+                    path,
+                    max,
+                    map.len()
+                ));
             }
 
             for (key, child) in map {
                 let child_path = format!("{}.{}", path, key);
                 // Check nested schemas
-                if let Some(nested) = &schema.properties {
-                    if let Some(field_schema) = nested.iter().find(|prop| prop.name == *key) {
-                        self.validate_against_schema(
-                            child,
-                            &field_schema.schema,
-                            errors,
-                            warnings,
-                            &child_path,
-                        );
-                    }
+                if let Some(nested) = &schema.properties
+                    && let Some(field_schema) = nested.iter().find(|prop| prop.name == *key)
+                {
+                    self.validate_against_schema(
+                        child,
+                        &field_schema.schema,
+                        errors,
+                        warnings,
+                        &child_path,
+                    );
                 }
             }
         }
 
         // Array validation
         if let Value::Array(arr) = value {
-            if let Some(min) = schema.min_items {
-                if (arr.len() as u32) < min {
-                    errors.push(format!(
-                        "{}: minimum {} items, got {}",
-                        path,
-                        min,
-                        arr.len()
-                    ));
-                }
+            if let Some(min) = schema.min_items
+                && (arr.len() as u32) < min
+            {
+                errors.push(format!(
+                    "{}: minimum {} items, got {}",
+                    path,
+                    min,
+                    arr.len()
+                ));
             }
-            if let Some(max) = schema.max_items {
-                if (arr.len() as u32) > max {
-                    errors.push(format!(
-                        "{}: maximum {} items, got {}",
-                        path,
-                        max,
-                        arr.len()
-                    ));
-                }
+            if let Some(max) = schema.max_items
+                && (arr.len() as u32) > max
+            {
+                errors.push(format!(
+                    "{}: maximum {} items, got {}",
+                    path,
+                    max,
+                    arr.len()
+                ));
             }
             if let Some(item_schema) = &schema.items_schema {
                 for (i, item) in arr.iter().enumerate() {
@@ -366,15 +368,15 @@ impl JsonValidator {
 
         // String validation
         if let Value::String(s) = value {
-            if let Some(min) = schema.min_length {
-                if (s.len() as u32) < min {
-                    errors.push(format!("{}: minimum {} chars, got {}", path, min, s.len()));
-                }
+            if let Some(min) = schema.min_length
+                && (s.len() as u32) < min
+            {
+                errors.push(format!("{}: minimum {} chars, got {}", path, min, s.len()));
             }
-            if let Some(max) = schema.max_length {
-                if (s.len() as u32) > max {
-                    errors.push(format!("{}: maximum {} chars, got {}", path, max, s.len()));
-                }
+            if let Some(max) = schema.max_length
+                && (s.len() as u32) > max
+            {
+                errors.push(format!("{}: maximum {} chars, got {}", path, max, s.len()));
             }
             if let Some(pattern) = &schema.pattern {
                 match regex::Regex::new(pattern) {
@@ -396,15 +398,15 @@ impl JsonValidator {
         // Numeric validation
         if let Value::Number(n) = value {
             let f = n.as_f64().unwrap_or(0.0);
-            if let Some(min) = schema.minimum {
-                if f < min {
-                    errors.push(format!("{}: minimum {}, got {}", path, min, f));
-                }
+            if let Some(min) = schema.minimum
+                && f < min
+            {
+                errors.push(format!("{}: minimum {}, got {}", path, min, f));
             }
-            if let Some(max) = schema.maximum {
-                if f > max {
-                    errors.push(format!("{}: maximum {}, got {}", path, max, f));
-                }
+            if let Some(max) = schema.maximum
+                && f > max
+            {
+                errors.push(format!("{}: maximum {}, got {}", path, max, f));
             }
         }
     }
@@ -489,6 +491,12 @@ impl JsonValidator {
             actual_type: actual,
             message,
         }
+    }
+}
+
+impl Default for JsonValidator {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

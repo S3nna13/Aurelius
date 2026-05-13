@@ -95,6 +95,7 @@ class OllamaAdapter:
                 return resp.status == 200
         except Exception as exc:
             import logging
+
             logging.getLogger(__name__).debug("Ollama health check failed: %s", exc)
             return False
 

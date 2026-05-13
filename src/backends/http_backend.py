@@ -3,11 +3,15 @@ from __future__ import annotations
 import ipaddress
 import json
 import logging
+import os
 import socket
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from urllib.parse import urlparse
+
+logger = logging.getLogger(__name__)
 
 _ALLOWED_SCHEMES = frozenset(["http", "https"])
 _BLOCKED_NETWORKS = [
@@ -24,6 +28,8 @@ _BLOCKED_NETWORKS = [
 
 
 def _is_private_or_reserved(host: str) -> bool:
+    if host.lower() == "localhost":
+        return False
     try:
         ip = ipaddress.ip_address(host)
     except ValueError:
@@ -31,7 +37,9 @@ def _is_private_or_reserved(host: str) -> bool:
             ip = ipaddress.ip_address(socket.gethostbyname(host))
         except (socket.gaierror, ValueError):
             return True
-    return ip.is_private or ip.is_loopback or ip.is_reserved or ip.is_link_local
+    if ip.is_loopback:
+        return False
+    return ip.is_private or ip.is_reserved or ip.is_link_local or ip.is_unspecified
 
 
 def _validate_backend_url(url: str) -> None:
@@ -43,10 +51,15 @@ def _validate_backend_url(url: str) -> None:
         raise ValueError(f"backend URL scheme {parsed.scheme!r} not allowed; must be http or https")
     if not parsed.hostname:
         raise ValueError(f"backend URL missing host: {url!r}")
+    if os.environ.get("AURELIUS_ALLOW_PRIVATE_URLS") == "1":
+        logger.warning(
+            "AURELIUS_ALLOW_PRIVATE_URLS bypass active — skipping private IP validation for: %s",
+            url,
+        )
+        return
     if _is_private_or_reserved(parsed.hostname):
         raise ValueError(
-            f"backend URL host {parsed.hostname!r} resolves to "
-            "a private/reserved address"
+            f"backend URL host {parsed.hostname!r} resolves to a private/reserved address"
         )
 
 
@@ -90,6 +103,18 @@ class HTTPBackend:
                 if 400 <= exc.code < 500:
                     raise RuntimeError(f"Client error {exc.code}: {exc.reason}") from exc
                 last_exc = exc
+            except (urllib.error.URLError, urllib.error.HTTPError, OSError, TimeoutError) as exc:
+                last_exc = exc
+                if attempt < cfg.max_retries - 1:
+                    sleep_s = min(2.0**attempt + 0.1, 8.0)
+                    logging.getLogger(__name__).debug(
+                        "Request attempt %d/%d failed (%s); retrying in %.1fs",
+                        attempt + 1,
+                        cfg.max_retries,
+                        exc.__class__.__name__,
+                        sleep_s,
+                    )
+                    time.sleep(sleep_s)
             except Exception as exc:
                 last_exc = exc
         raise RuntimeError(

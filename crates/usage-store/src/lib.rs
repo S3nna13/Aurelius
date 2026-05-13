@@ -92,15 +92,15 @@ impl UsageStoreInner {
             if let Some(guard) = events_table.get(id)? {
                 let ev: Event =
                     serde_json::from_str(guard.value()).expect("Failed to deserialize event");
-                if let Some(ref t) = since {
-                    if ev.timestamp < *t {
-                        continue;
-                    }
+                if let Some(ref t) = since
+                    && ev.timestamp < *t
+                {
+                    continue;
                 }
-                if let Some(et) = event_type {
-                    if ev.event_type != et {
-                        continue;
-                    }
+                if let Some(et) = event_type
+                    && ev.event_type != et
+                {
+                    continue;
                 }
                 out.push(ev);
                 if out.len() >= limit {

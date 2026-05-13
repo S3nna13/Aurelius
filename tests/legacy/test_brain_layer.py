@@ -1,11 +1,8 @@
+from __future__ import annotations
+
 import pytest
-
-pytest.skip("legacy test: module removed during reorganization", allow_module_level=True)
-import sys
-
-import torch
-
-sys.path.insert(1, '/Users/christienantonio/aurelius')
+pytest.skip("legacy test: modules moved to archive/ during reorganization", allow_module_level=True)
+sys.path.insert(0, '/Users/christienantonio/aurelius')
 from brain_layer import *
 
 B, D = 2, 64

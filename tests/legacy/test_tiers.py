@@ -1,20 +1,8 @@
-import pytest
-
-pytest.skip("legacy test: module removed during reorganization", allow_module_level=True)
-import os
-import sys
+from __future__ import annotations
 
 import pytest
-import torch
-
-sys.path.insert(1, os.path.dirname(os.path.abspath(__file__)))
-
-from agent_core import MCTSNode, PlanningModule, ToolFormerAdapter
-from aurelius_model_7b import AureliusModel7B
-from aurelius_model_7b import BrainBridge as BrainBridge7B
-from aurelius_model_14b import AureliusModel14B
-from aurelius_model_32b import AureliusModel32B
-from memory_core import AurelianMemoryCore, GraphConsolidator, LTSMemory, SurpriseGate
+pytest.skip("legacy test: modules moved to archive/ during reorganization", allow_module_level=True)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from skills import SkillLibrary, SkillRegistry
 

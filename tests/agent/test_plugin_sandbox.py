@@ -1,13 +1,20 @@
-"""Tests for agent.plugin_sandbox."""
+"""Tests for src.agent.plugin_sandbox."""
 
 from __future__ import annotations
 
+import sys
 import types
 
 import pytest
 
-from agent.plugin_hook import PluginHookRegistry
-from agent.plugin_sandbox import (
+# Python 3.14 + torch multiprocessing spawn is incompatible (compression._common)
+pytestmark = pytest.mark.skipif(
+    sys.version_info >= (3, 14),
+    reason="Python 3.14 + torch multiprocessing spawn is broken (compression._common)",
+)
+
+from src.agent.plugin_hook import PluginHookRegistry  # noqa: E402
+from src.agent.plugin_sandbox import (  # noqa: E402
     PLUGIN_SANDBOX_REGISTRY,
     PluginSandbox,
     SandboxConfig,

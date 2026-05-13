@@ -40,7 +40,7 @@ class DeploymentHealthMonitor:
         return [m for m in self._metrics if not m.healthy]
 
     def recent(self, limit: int = 10) -> list[HealthMetric]:
-        return self._metrics[-limit:]
+        return list(self._metrics)[-limit:]
 
     def clear(self) -> None:
         self._metrics.clear()

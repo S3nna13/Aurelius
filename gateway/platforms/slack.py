@@ -1,4 +1,5 @@
 """slack platform adapter for Aurelius gateway."""
+
 from __future__ import annotations
 
 from .base import PlatformAdapter

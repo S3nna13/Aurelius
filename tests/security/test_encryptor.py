@@ -2,9 +2,18 @@
 
 from __future__ import annotations
 
+import os
+
 import pytest
 
-from src.security.encryptor import SimpleEncryptor, _get_default_encryptor
+# Set a valid Fernet key before importing the encryptor module.
+# AURELIUS_ENCRYPTION_KEY is required by SimpleEncryptor.__post_init__.
+os.environ.setdefault(
+    "AURELIUS_ENCRYPTION_KEY",
+    "eraA96t0Jt605u3a6it1Z58dZXraqjM22HCNv4RYb7U=",
+)
+
+from src.security.encryptor import SimpleEncryptor, _get_default_encryptor  # noqa: E402
 
 # Detect whether cryptography is available.
 _CRYPTOGAPHY_AVAILABLE = True
