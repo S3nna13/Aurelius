@@ -89,4 +89,5 @@ def test_end_to_end_scoring_bad_trajectory_fails():
     result = MythosCodingRubric().score(bad, heuristic_judge)
     assert result.passed is False
 
+
 pytestmark = pytest.mark.integration

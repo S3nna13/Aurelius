@@ -24,6 +24,8 @@ def test_end_to_end_tiny_batch_training_step():
     from src.alignment import KTOv2Loss
 pytestmark = pytest.mark.integration
 
+
+
     torch.manual_seed(0)
     # Tiny "policy": a single learnable bias applied to fixed reference logprobs.
     ref = torch.tensor([0.3, -0.2, 0.1, -0.4, 0.0, 0.25, -0.15, 0.05])

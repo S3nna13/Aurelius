@@ -91,4 +91,5 @@ def test_all_six_tasks_encodable() -> None:
         assert out.shape == (16,)
         assert torch.isfinite(out).all()
 
+
 pytestmark = pytest.mark.integration

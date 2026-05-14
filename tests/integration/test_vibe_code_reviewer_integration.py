@@ -39,4 +39,5 @@ def test_reviewer_instantiable_from_registry():
     assert report.findings
     assert report.findings[0].cwe == "CWE-918"
 
+
 pytestmark = pytest.mark.integration

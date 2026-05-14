@@ -64,4 +64,5 @@ def test_tiny_nn_linear_train_step_fn() -> None:
     for loss in result.losses[:-1]:
         assert loss == loss  # not NaN
 
+
 pytestmark = pytest.mark.integration

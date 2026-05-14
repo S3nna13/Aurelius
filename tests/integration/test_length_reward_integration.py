@@ -6,10 +6,12 @@ Verifies:
 - compute_tensor() returns expected shape and plausible values.
 - ALIGNMENT_REGISTRY["length_reward"] is wired to LengthReward.
 """
-pytestmark = pytest.mark.integration
 
 import pytest
 import torch
+pytestmark = pytest.mark.integration
+
+
 
 from src.alignment import ALIGNMENT_REGISTRY
 from src.alignment.length_reward import LengthReward, LengthRewardConfig

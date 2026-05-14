@@ -71,4 +71,5 @@ def test_two_round_battle_generates_preference_pairs() -> None:
     # Final code should no longer contain the hardcoded API key literal.
     assert '"abcd1234xyz"' not in transcript.final_code
 
+
 pytestmark = pytest.mark.integration

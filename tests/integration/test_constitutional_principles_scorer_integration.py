@@ -31,4 +31,5 @@ def test_registered_class_scores_sample() -> None:
     principles = {p.principle for p in report.principle_scores}
     assert {"helpful", "honest", "harmless", "respectful", "concise"}.issubset(principles)
 
+
 pytestmark = pytest.mark.integration

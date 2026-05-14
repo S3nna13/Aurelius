@@ -3,9 +3,11 @@
 Verifies that the class is correctly wired into MODEL_COMPONENT_REGISTRY
 via src/model/__init__.py, and that the routing API works end-to-end.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 # ---------------------------------------------------------------------------
 # 1. "dp_aware_moe_routing" present in MODEL_COMPONENT_REGISTRY

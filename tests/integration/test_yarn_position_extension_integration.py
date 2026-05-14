@@ -7,9 +7,11 @@ Verify:
 * Importing ``src.longcontext`` (and touching the YaRN helpers) does not
   import ``src.model`` — hermetic subprocess check.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import subprocess
 import sys

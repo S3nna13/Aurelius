@@ -3,9 +3,11 @@
 Verifies end-to-end generation of 30 mixed problems, correct-answer verification,
 difficulty_stats totals, and registry wiring.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 from src.data.synthetic_math import (
     DATA_REGISTRY,

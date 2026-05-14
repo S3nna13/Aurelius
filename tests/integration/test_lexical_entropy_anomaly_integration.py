@@ -27,4 +27,5 @@ def test_smoke_score_with_flag():
     r = det.score("x " * 40)
     assert isinstance(r.is_anomaly, bool)
 
+
 pytestmark = pytest.mark.integration

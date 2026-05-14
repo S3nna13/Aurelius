@@ -9,9 +9,11 @@ Covers the full lifecycle:
   - Backward pass
   - Registry entry
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import pytest
 import torch

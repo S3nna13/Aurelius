@@ -2,9 +2,11 @@
 and is exposed through ``src.chat`` without breaking existing registry
 entries.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import torch
 

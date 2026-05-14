@@ -59,4 +59,5 @@ def test_existing_agent_loop_registry_keys_intact():
             f"Regression: existing key {key!r} missing from AGENT_LOOP_REGISTRY"
         )
 
+
 pytestmark = pytest.mark.integration

@@ -9,6 +9,8 @@ _SAMPLE_SOURCE = """\
 import os
 pytestmark = pytest.mark.integration
 
+
+
 def compute(x, y):
     result = x + y
     return result

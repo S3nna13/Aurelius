@@ -6,9 +6,11 @@ Verifies:
 - total_loss is computed on kept groups and supports .backward().
 - Metrics dict is well-formed.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import torch
 

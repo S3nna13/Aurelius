@@ -4,9 +4,11 @@ Verifies that the class is correctly wired into MODEL_COMPONENT_REGISTRY
 via src/model/__init__.py, and that basic forward / freeze-indexer paths
 work end-to-end.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import torch
 

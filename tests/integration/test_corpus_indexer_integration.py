@@ -6,9 +6,11 @@ Also asserts that prior exports from :mod:`src.retrieval` remain intact,
 so appending :class:`CorpusIndexer` to the package didn't regress
 anything.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import os
 

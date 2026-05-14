@@ -1,9 +1,11 @@
 """Integration tests: :class:`RecoveringDispatcher` over a real
 :class:`ToolRegistryDispatcher`.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 from agent import (
     RecoveringDispatcher,

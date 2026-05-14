@@ -90,4 +90,5 @@ def test_shell_capability_and_journal_commands_are_reachable_from_execute_comman
     assert surface["surface"]["engine_adapters"]["count"] >= 3
     assert surface_schema["schema"]["schema_name"] == "aurelius.interface.surface-catalog"
 
+
 pytestmark = pytest.mark.integration

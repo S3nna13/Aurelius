@@ -71,4 +71,5 @@ def test_skill_catalog_discovery_precedence_and_round_trip(tmp_path):
     assert visible[0].skill_id == "body-only"
     json.dumps(catalog.describe())
 
+
 pytestmark = pytest.mark.integration

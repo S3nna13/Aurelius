@@ -66,4 +66,5 @@ def test_personas_exposed_as_module_constants() -> None:
     assert BLUE_TEAM_PERSONA.id == "blue_team"
     assert PURPLE_TEAM_PERSONA.id == "purple_team"
 
+
 pytestmark = pytest.mark.integration

@@ -86,4 +86,5 @@ def test_pack_iter_on_generator():
         assert pb.attention_mask.dtype == torch.bool
         assert pb.loss_mask.dtype == torch.bool
 
+
 pytestmark = pytest.mark.integration

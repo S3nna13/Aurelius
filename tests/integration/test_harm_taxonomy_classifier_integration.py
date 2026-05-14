@@ -1,9 +1,11 @@
 """Integration tests for the harm taxonomy classifier within the safety
 surface's public registry.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 from src.safety import (
     HARM_CATEGORIES,

@@ -4,9 +4,11 @@ These assert that the safety surface exposes both classifiers via
 :data:`src.safety.SAFETY_FILTER_REGISTRY` and that they produce sensible
 joint verdicts on realistic adversarial and benign content.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 from src.safety import (
     HARM_CLASSIFIER_REGISTRY,

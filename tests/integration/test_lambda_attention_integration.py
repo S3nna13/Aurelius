@@ -4,9 +4,11 @@ Verifies that (a) the class is exposed via ``src.model``, (b) adding the new
 module did NOT modify the frozen files, (c) the existing registry is intact,
 and (d) an end-to-end forward/backward pass runs without error.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import hashlib
 import pathlib

@@ -4,9 +4,11 @@ Verifies that both adapters register cleanly into the global registries and
 that select_backend_for_manifest resolves a vLLM-tagged manifest to a
 VLLMAdapter instance.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import pytest
 

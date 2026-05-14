@@ -39,4 +39,5 @@ def test_feature_flag_off_preserves_default_behavior():
     # Registry remains inspectable regardless of flag value.
     assert "five_state" in AGENT_LIFECYCLE_REGISTRY
 
+
 pytestmark = pytest.mark.integration

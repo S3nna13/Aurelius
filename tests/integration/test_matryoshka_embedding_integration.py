@@ -27,4 +27,5 @@ def test_src_namespace_exposes_public_subpackages() -> None:
     assert "model" in src.__all__
     assert "chat" in src.__all__
 
+
 pytestmark = pytest.mark.integration

@@ -3,9 +3,11 @@
 Asserts the registry contract exposed by :mod:`src.safety` without touching
 any sibling surface, and verifies the absence of import-time side effects.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import importlib
 import sys

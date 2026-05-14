@@ -10,9 +10,11 @@ Verifies:
        :mod:`src.model` — the reranker must stay decoupled from the
        frozen core transformer stack. Verified in a hermetic subprocess.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import subprocess
 import sys

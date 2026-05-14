@@ -59,4 +59,5 @@ def test_adapter_survives_round_trip_through_registry():
     assert back.target_modules == ("q_proj", "v_proj")
     assert back.metadata == {"note": "test"}
 
+
 pytestmark = pytest.mark.integration

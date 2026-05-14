@@ -57,4 +57,5 @@ def test_resolve_by_variant_id_through_package_registry() -> None:
     assert dec.allowed is True
     assert dec.variant_id == AURELIUS_REFERENCE_MANIFEST.registry_key
 
+
 pytestmark = pytest.mark.integration

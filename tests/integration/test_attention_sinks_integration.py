@@ -6,9 +6,11 @@ Verify:
   attention computation
 * importing the longcontext package does not touch src.model
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import sys
 

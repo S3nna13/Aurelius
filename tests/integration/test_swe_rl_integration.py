@@ -8,9 +8,11 @@ Verifies end-to-end flow:
   - compute_policy_loss backward pass works
   - TRAINING_REGISTRY["swe_rl"] is wired to SWERLTrainer
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import math
 

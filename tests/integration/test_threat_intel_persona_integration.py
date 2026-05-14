@@ -50,4 +50,5 @@ def test_other_registered_templates_unchanged() -> None:
     for key in ("chatml", "llama3", "harmony"):
         assert key in CHAT_TEMPLATE_REGISTRY
 
+
 pytestmark = pytest.mark.integration

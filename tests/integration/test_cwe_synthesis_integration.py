@@ -5,9 +5,11 @@
 - Verifies batch diversity over several seeds
 - Verifies data pipeline (tokenizer trainer) still imports cleanly
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 
 def test_loader_registry_exposes_cwe_generator():

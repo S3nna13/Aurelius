@@ -7,9 +7,11 @@ Verifies:
 3. A pre-existing AGENT_LOOP_REGISTRY key ("react") is still present — no
    accidental registry mutation.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 from agent import AGENT_LOOP_REGISTRY
 from agent.agent_swarm import SubAgentResult

@@ -3,9 +3,11 @@
 Loads each production scaling config, verifies dimensions, and confirms a
 reduced model can be instantiated and run a forward pass.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import torch
 

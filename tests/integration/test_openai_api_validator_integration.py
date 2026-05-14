@@ -95,4 +95,5 @@ def test_registry_classes_are_instantiable_and_validate():
     errs = resp_cls().validate({})
     assert len(errs) > 0
 
+
 pytestmark = pytest.mark.integration

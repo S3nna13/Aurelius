@@ -70,4 +70,5 @@ def test_end_to_end_happy_path_via_registry():
     )
     assert parsed[0].function_name == "lookup"
 
+
 pytestmark = pytest.mark.integration

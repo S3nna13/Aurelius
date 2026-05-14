@@ -33,4 +33,5 @@ def test_smoke_with_flag_enabled():
     m = b.build(32, dtype=torch.float32)
     assert m.shape == (1, 1, 32, 32)
 
+
 pytestmark = pytest.mark.integration

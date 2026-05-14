@@ -36,4 +36,5 @@ def test_smoke_run_with_flag_agnostic():
     )
     assert loop.run("hi").final_answer == "ok"
 
+
 pytestmark = pytest.mark.integration

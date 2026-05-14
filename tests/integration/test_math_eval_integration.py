@@ -9,9 +9,11 @@ Verifies:
 Run with:
     .venv/bin/python3.14 -m pytest tests/integration/test_math_eval_integration.py -v
 """
-pytestmark = pytest.mark.integration
 
 import pytest
+pytestmark = pytest.mark.integration
+
+
 
 from src.eval.math_eval import MathEval
 

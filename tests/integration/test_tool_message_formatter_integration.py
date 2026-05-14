@@ -4,9 +4,11 @@ Verifies that a ``ToolMessageFormatter`` pulled from
 ``MESSAGE_FORMAT_REGISTRY`` produces messages that round-trip through
 the ``ChatMLTemplate`` in ``CHAT_TEMPLATE_REGISTRY`` without raising.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 from src.chat import CHAT_TEMPLATE_REGISTRY, MESSAGE_FORMAT_REGISTRY
 from src.chat.chatml_template import ChatMLTemplate, Message

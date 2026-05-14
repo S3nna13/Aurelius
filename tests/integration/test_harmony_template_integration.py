@@ -6,9 +6,11 @@ Verifies that:
      user+assistant messages with the expected GPT-OSS-120B delimiters.
   3. Existing keys in the registry (regression guard) are unaffected.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 from src.chat import CHAT_TEMPLATE_REGISTRY
 from src.chat.harmony_template import HarmonyTemplate

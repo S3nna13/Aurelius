@@ -11,9 +11,11 @@ Checks:
   5. acceptance_rate() in [0, 1].
   6. Gradient flow through draft().
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import torch
 

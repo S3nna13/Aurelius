@@ -6,9 +6,11 @@ Verifies end-to-end behaviour:
 - decode_step output structure and numeric invariants
 - Registry wiring (DECODER_REGISTRY["eagle3"] == Eagle3Decoder)
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import torch
 import torch.nn.functional as F

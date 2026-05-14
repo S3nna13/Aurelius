@@ -48,4 +48,5 @@ def test_import_has_no_side_effects(tmp_path, monkeypatch):
     assert dict(m2.EMBEDDING_REGISTRY) == snap_e
     assert dict(m2.RERANKER_REGISTRY) == snap_rr
 
+
 pytestmark = pytest.mark.integration

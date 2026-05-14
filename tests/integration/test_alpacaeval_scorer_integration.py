@@ -74,4 +74,5 @@ def test_end_to_end_three_problem_scoring():
     comps = [scorer.compare(p, c) for p, c in zip(problems, candidates)]
     assert all(isinstance(c, AlpacaComparison) for c in comps)
 
+
 pytestmark = pytest.mark.integration

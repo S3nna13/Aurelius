@@ -74,4 +74,5 @@ def test_refusal_score_has_expected_fields() -> None:
     assert isinstance(res.score, float)
     assert isinstance(res.signals, list)
 
+
 pytestmark = pytest.mark.integration

@@ -4,9 +4,11 @@ Verifies that prior __init__ exports survive intact and that an
 end-to-end mining run with a real :class:`BM25Retriever` produces
 sensible negatives.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import pytest
 

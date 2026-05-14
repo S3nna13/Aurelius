@@ -50,4 +50,5 @@ def test_end_to_end_allocate_write_read():
     cache.deallocate("req")
     assert cache.num_free_pages() == 8
 
+
 pytestmark = pytest.mark.integration

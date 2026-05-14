@@ -95,4 +95,5 @@ def test_detector_no_op_when_flag_off() -> None:
     assert cfg.safety_reward_hack_detector_enabled is False
     assert callable(RewardHackDetector)
 
+
 pytestmark = pytest.mark.integration

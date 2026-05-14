@@ -7,9 +7,11 @@ Verifies:
     text, and counts.
   - BENCHMARK_REGISTRY["vision_grounding_eval"] is VisionGroundingEval.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 from src.eval import BENCHMARK_REGISTRY
 from src.eval.vision_grounding_eval import VisionGroundingEval, VisionGroundingEvalConfig

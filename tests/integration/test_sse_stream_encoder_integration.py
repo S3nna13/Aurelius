@@ -24,4 +24,5 @@ def test_smoke_encode():
     enc = serving.SSEStreamEncoder()
     assert b"data:" in enc.encode_event(data="token")
 
+
 pytestmark = pytest.mark.integration

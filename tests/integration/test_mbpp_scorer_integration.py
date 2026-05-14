@@ -62,4 +62,5 @@ def test_end_to_end_two_problem_score():
     assert out["n_problems"] == 2
     assert out["pass@1"] == pytest.approx(0.5)
 
+
 pytestmark = pytest.mark.integration

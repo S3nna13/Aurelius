@@ -30,4 +30,5 @@ def test_smoke_select_with_flag():
     s = torch.tensor([0.0, 2.0, 1.0])
     assert inf.BeamVerifierSelector.select_best(s).item() == 1
 
+
 pytestmark = pytest.mark.integration

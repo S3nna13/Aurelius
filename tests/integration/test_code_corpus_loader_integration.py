@@ -6,9 +6,11 @@ Checks:
 - Multi-language (.py, .rs, .go) files are traversed.
 - Existing src.data exports (e.g. FIM_PREFIX, AURELIUS_MIX) still import.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 from pathlib import Path
 

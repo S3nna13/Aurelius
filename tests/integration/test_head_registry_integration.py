@@ -40,4 +40,5 @@ def test_build_head_end_to_end() -> None:
     y = head(x)
     assert y.shape == (1, 4, 1)
 
+
 pytestmark = pytest.mark.integration

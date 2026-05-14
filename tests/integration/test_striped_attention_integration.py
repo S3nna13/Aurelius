@@ -8,9 +8,11 @@ verifies that:
   - head_type_mask alternates correctly
   - the module is registered in MODEL_COMPONENT_REGISTRY
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import pytest
 import torch

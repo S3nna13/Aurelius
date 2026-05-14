@@ -6,9 +6,11 @@ Verifies that:
  3. End-to-end constraint pipeline: mock logits → constrained_logits → valid token.
  4. GrammarConstrainedDecoder integrates similarly.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import torch
 

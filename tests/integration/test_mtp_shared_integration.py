@@ -6,9 +6,11 @@ Verifies:
   3. Shared weight verified on registry-constructed instance.
   4. Existing registry entries / public symbols are untouched (regression guard).
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import torch
 

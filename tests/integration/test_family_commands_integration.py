@@ -76,6 +76,8 @@ def test_main_cli_still_starts_with_help():
     from src.cli import main as cli_main
 pytestmark = pytest.mark.integration
 
+
+
     parser = cli_main._build_parser()
     # Should still have the pre-existing commands at minimum.
     ns = parser.parse_args(["chat"])

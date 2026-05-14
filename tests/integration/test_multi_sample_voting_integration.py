@@ -68,4 +68,5 @@ def test_end_to_end_usc_on_five_samples():
     assert result.selected != samples[-1]
     assert result.selected in samples[:4]
 
+
 pytestmark = pytest.mark.integration

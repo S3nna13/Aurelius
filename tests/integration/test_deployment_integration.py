@@ -5,9 +5,11 @@ SLSA supply-chain attestation spec, Apache-2.0.
 
 Includes integration tests for GitHub Actions CI YAML generator (additive).
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import json
 from pathlib import Path

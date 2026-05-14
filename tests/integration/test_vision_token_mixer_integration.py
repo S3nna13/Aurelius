@@ -6,9 +6,11 @@ Verifies end-to-end mix_batch behaviour on 3 samples:
   - vision_ratio constraint holds within tolerance
   - vision_mask sums match n_vision_inserted for every sample
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import pytest
 

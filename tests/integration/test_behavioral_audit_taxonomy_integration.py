@@ -62,4 +62,5 @@ def test_end_to_end_audit_on_simple_trajectory():
     syco = next(s for s in result.scores if s.dimension_id == "misleading.sycophancy")
     assert syco.score > 0.0
 
+
 pytestmark = pytest.mark.integration

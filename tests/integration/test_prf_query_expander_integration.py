@@ -23,4 +23,5 @@ def test_smoke_expand():
     r = ex.expand("search", ["search ranking bm25"], num_terms=2)
     assert "bm25" in r.query or "ranking" in r.query
 
+
 pytestmark = pytest.mark.integration

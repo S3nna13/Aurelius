@@ -6,9 +6,11 @@ Validates:
 - Work-stealing was active (tasks_stolen > 0)
 - Registry wired (AGENT_LOOP_REGISTRY["swarm_scaler"] is SwarmScaler)
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import random
 

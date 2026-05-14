@@ -43,4 +43,5 @@ def test_synthetic_outlier_triggers_spike_detection() -> None:
     spike_entries = [a for a in mon.anomalies() if a["type"] == "spike"]
     assert any(a["step"] == 49 for a in spike_entries)
 
+
 pytestmark = pytest.mark.integration

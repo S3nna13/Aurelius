@@ -3,9 +3,11 @@
 WebArena benchmark (Zhou et al. 2307.13854, Apache-2.0), GitHub Actions (MIT spec),
 clean-room implementation.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 from src.eval.webarena_scorer import (
     WEBARENA_TASK_REGISTRY,

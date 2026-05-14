@@ -4,9 +4,11 @@ Verifies the generator surface is exposed through src.chat and that a
 generated sample round-trips cleanly through the ChatML template
 encoder.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 
 def test_generators_exposed_from_src_chat():

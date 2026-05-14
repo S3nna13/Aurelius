@@ -35,4 +35,5 @@ def test_prodigy_trains_tiny_mlp_20_steps():
     # Require final loss lower than initial, allowing Prodigy warmup in between.
     assert losses[-1] < loss0
 
+
 pytestmark = pytest.mark.integration

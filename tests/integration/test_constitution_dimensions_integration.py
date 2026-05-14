@@ -32,4 +32,5 @@ def test_scorer_smoke_via_registry():
     report = scorer.score("trajectory")
     assert len(report.grades) == 15
 
+
 pytestmark = pytest.mark.integration

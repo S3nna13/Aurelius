@@ -60,4 +60,5 @@ def test_inference_format_via_surface() -> None:
     assert out.endswith(FIM_MIDDLE)
     assert "pre" in out and "suf" in out
 
+
 pytestmark = pytest.mark.integration

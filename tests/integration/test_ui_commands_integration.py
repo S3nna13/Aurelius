@@ -2,9 +2,11 @@
 
 Verifies cross-module contracts from the integration_requirements spec.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import pytest
 from rich.console import Console

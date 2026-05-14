@@ -4,9 +4,11 @@ Verifies that (a) the class is exposed via ``src.model``, (b) adding the new
 module did NOT modify the frozen ``src/model/attention.py`` file, and (c) an
 end-to-end forward pass runs without error.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import hashlib
 import pathlib

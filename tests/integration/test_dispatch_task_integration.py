@@ -64,4 +64,5 @@ def test_end_to_end_dispatch_three_inputs():
     assert set(report.finalized.split("|")) == {"ALPHA", "BETA", "GAMMA"}
     assert report.circuit_open is False
 
+
 pytestmark = pytest.mark.integration

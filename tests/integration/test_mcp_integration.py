@@ -4,9 +4,11 @@ Covers:
 - Register a ToolSchema, create a LocalMCPClient backed by StdioMCPServer,
   call list_tools() and validate the schema is present in the registry.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import pytest
 

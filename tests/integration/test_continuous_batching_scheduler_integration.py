@@ -4,9 +4,11 @@ Drives the scheduler with a fake ``step_fn`` that returns ``input_ids[-1] + 1``
 for each active request, verifying that FIFO admission, iteration-level
 batching, and completion all compose end-to-end.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import pytest
 

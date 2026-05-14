@@ -121,4 +121,5 @@ def test_workflow_shell_completes_and_blocks_with_json_safe_round_trips(tmp_path
     assert len(blocked.transcript) == 2
     assert blocked.transcript[1]["result"]["status"] == "denied"
 
+
 pytestmark = pytest.mark.integration

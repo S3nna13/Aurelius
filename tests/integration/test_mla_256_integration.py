@@ -70,4 +70,5 @@ def test_existing_registry_keys_unaffected():
         "Pre-existing registry key 'mtp_shared' must not be removed"
     )
 
+
 pytestmark = pytest.mark.integration

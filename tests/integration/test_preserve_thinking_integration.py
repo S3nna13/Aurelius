@@ -7,9 +7,11 @@ Scenario:
   - Verify get_prepend_tokens() returns the last snapshot's tokens.
   - Verify AGENT_LOOP_REGISTRY["preserve_thinking"] is wired correctly.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 from agent import AGENT_LOOP_REGISTRY
 from agent.preserve_thinking import (

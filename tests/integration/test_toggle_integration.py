@@ -7,7 +7,9 @@ from src.alignment import ALIGNMENT_REGISTRY
 
 def test_toggle_in_registry():
     """'toggle' key must be present in ALIGNMENT_REGISTRY."""
+
 pytestmark = pytest.mark.integration
+
     assert "toggle" in ALIGNMENT_REGISTRY, (
         f"'toggle' not found in ALIGNMENT_REGISTRY. Keys: {list(ALIGNMENT_REGISTRY.keys())}"
     )

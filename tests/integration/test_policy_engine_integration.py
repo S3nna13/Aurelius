@@ -91,4 +91,5 @@ def test_add_rule_via_registry_instance() -> None:
     assert len(eng.rules) == before + 1
     assert eng.rules[-1].name == "custom_noop"
 
+
 pytestmark = pytest.mark.integration

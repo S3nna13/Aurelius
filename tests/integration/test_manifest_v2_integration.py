@@ -16,9 +16,11 @@ Covers:
 
 Pure stdlib.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import dataclasses
 import json

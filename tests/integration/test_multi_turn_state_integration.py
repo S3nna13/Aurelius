@@ -6,9 +6,11 @@ Verifies:
 - prior chat entries (imports from src.chat) remain intact,
 - integration with ContextCompactor from src.longcontext.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import src.chat as chat_pkg
 from src.chat.multi_turn_state import ConversationState, ConversationTurn

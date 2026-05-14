@@ -95,4 +95,5 @@ def test_end_to_end_echo_and_add() -> None:
     assert len(log) == 2
     assert all(entry["ok"] for entry in log)
 
+
 pytestmark = pytest.mark.integration

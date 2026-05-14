@@ -47,4 +47,5 @@ class TestHealthEndpoints:
         )
         assert resp.status_code in (200, 401)
 
+
 pytestmark = pytest.mark.integration

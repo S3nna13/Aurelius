@@ -6,9 +6,11 @@ package's DECODER_REGISTRY and behaves correctly when called through it.
 GPT-OSS-120B (arXiv:2508.10925).
 SWE-bench Verified: low=47.9%, medium=52.6%, high=62.4%.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import src.inference as inference
 from src.inference import DECODER_REGISTRY, LEVEL_CONFIGS

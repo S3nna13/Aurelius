@@ -42,4 +42,5 @@ def test_lookup_missing_engine_adapter_rejects_unknown_name() -> None:
     with pytest.raises(BackendAdapterError, match="not registered"):
         get_engine_adapter("gguf")
 
+
 pytestmark = pytest.mark.integration

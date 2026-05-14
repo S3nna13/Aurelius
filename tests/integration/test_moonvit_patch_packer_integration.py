@@ -6,9 +6,11 @@ Verifies:
   3. Output is a 3-tuple of tensors with expected dtypes.
   4. Existing MODEL_COMPONENT_REGISTRY entries are still present (regression guard).
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import torch
 

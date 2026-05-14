@@ -47,6 +47,8 @@ def test_existing_registry_keys_intact():
     from src.alignment import ALIGNMENT_REGISTRY
 pytestmark = pytest.mark.integration
 
+
+
     # Keys that must survive across all cycles
     required_keys = {"prm", "adversarial_code_battle", "constitution_dimensions"}
     missing = required_keys - set(ALIGNMENT_REGISTRY.keys())

@@ -69,4 +69,5 @@ class TestAgents:
         assert resp.status_code == 200
         assert resp.json()["success"] is True
 
+
 pytestmark = pytest.mark.integration

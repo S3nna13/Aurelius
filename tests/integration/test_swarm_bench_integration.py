@@ -26,7 +26,9 @@ def _mock_subagent_fn(task: SwarmTask, max_steps: int) -> SubAgentResult:
 
 def test_swarm_bench_in_benchmark_registry():
     """'swarm_bench' key must be present in BENCHMARK_REGISTRY."""
+
 pytestmark = pytest.mark.integration
+
     assert "swarm_bench" in BENCHMARK_REGISTRY
 
 

@@ -49,4 +49,5 @@ def test_small_probe_against_stubs_returns_tapresult():
     assert isinstance(result.succeeded, bool)
     assert 0.0 <= result.best_score <= 1.0
 
+
 pytestmark = pytest.mark.integration

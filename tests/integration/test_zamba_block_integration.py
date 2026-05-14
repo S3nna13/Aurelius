@@ -7,9 +7,11 @@ Input: [2, 8, 64].
 Verify: output shape, n_attention_layers=2, n_ssm_layers=4, backward works,
         shared_attn is a single module, registry wired.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import torch
 

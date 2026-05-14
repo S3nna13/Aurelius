@@ -207,4 +207,5 @@ def test_main_session_journal_commands_run_end_to_end(tmp_path, capsys):
     assert session_payload["journal"]["entries"] >= 1
     assert session_payload["journal"]["branches"] >= 1
 
+
 pytestmark = pytest.mark.integration

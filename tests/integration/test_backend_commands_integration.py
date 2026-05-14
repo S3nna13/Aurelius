@@ -65,4 +65,5 @@ def test_main_backend_engine_commands_run_end_to_end(capsys):
     assert rc == 0
     assert payload["engine"]["backend_name"] == "gguf"
 
+
 pytestmark = pytest.mark.integration

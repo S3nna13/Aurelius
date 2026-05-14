@@ -4,9 +4,11 @@ Scenario: 3 triggers (2 interval, 1 condition) across a simulated time
 progression.  Verifies expected fire counts and that the registry is
 properly wired into AGENT_LOOP_REGISTRY["proactive_trigger"].
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 from agent import AGENT_LOOP_REGISTRY
 from agent.proactive_trigger import (

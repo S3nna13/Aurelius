@@ -4,9 +4,11 @@ Builds GQAAbsorbedAttention(d_model=64, n_heads=4, n_kv_heads=2, head_dim=16).
 Verifies both paths produce matching outputs, kv_heads_ratio=0.5, backward
 works, and registry is wired correctly.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import pytest
 import torch

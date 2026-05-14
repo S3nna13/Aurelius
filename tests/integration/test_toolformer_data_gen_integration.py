@@ -6,9 +6,11 @@ Validates:
   - config keys wired correctly
   - end-to-end pipeline: text → annotated training examples
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import agent as agent_surface
 from agent.toolformer_data_gen import (

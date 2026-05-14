@@ -100,4 +100,5 @@ def test_end_to_end_registry_bm25_still_works():
     hits = r.query("parseXMLDoc", k=3)
     assert hits and hits[0][0] == 2
 
+
 pytestmark = pytest.mark.integration

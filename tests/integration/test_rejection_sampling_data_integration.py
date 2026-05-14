@@ -82,4 +82,5 @@ def test_end_to_end_all_pairs_for_one_prompt():
         assert p.chosen_reward > p.rejected_reward
         assert p.prompt == "refactor this function"
 
+
 pytestmark = pytest.mark.integration

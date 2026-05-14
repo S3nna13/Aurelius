@@ -42,4 +42,5 @@ def test_end_to_end_stream_produces_parseable_frames() -> None:
     ids = {p["id"] for p in parsed[:-1]}
     assert len(ids) == 1
 
+
 pytestmark = pytest.mark.integration

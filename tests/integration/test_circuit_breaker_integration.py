@@ -42,6 +42,8 @@ def test_config_flag_can_be_enabled() -> None:
 
 class _FakeFlakyService:
     """Deterministic flaky service: fails first N calls, then succeeds."""
+
+
 pytestmark = pytest.mark.integration
 
     def __init__(self, fail_first: int) -> None:

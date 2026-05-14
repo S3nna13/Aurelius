@@ -5,9 +5,11 @@ sockets, pipes, or external packages. Also verifies that the MCP
 client symbols are exposed via ``agent`` and that prior agent
 surface entries remain intact.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import pytest
 

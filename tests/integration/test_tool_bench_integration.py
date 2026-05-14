@@ -6,9 +6,11 @@ Verifies:
 - format_compliance on 3 raw responses
 - BENCHMARK_REGISTRY["tool_bench"] is wired
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import pytest
 

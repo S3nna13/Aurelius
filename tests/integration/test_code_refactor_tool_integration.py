@@ -63,4 +63,5 @@ def test_rename_and_remove_unused_roundtrip(tmp_path: pathlib.Path) -> None:
     assert "import os" not in final
     assert "import sys" in final
 
+
 pytestmark = pytest.mark.integration

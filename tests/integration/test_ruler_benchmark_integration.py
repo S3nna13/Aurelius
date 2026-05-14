@@ -63,4 +63,5 @@ def test_end_to_end_tiny_run_via_registry():
     assert all(v == 1.0 for v in per.values())
     assert bench.overall_score(results) == 1.0
 
+
 pytestmark = pytest.mark.integration

@@ -38,4 +38,5 @@ class TestSearch:
         data = resp.json()
         assert "results" in data
 
+
 pytestmark = pytest.mark.integration

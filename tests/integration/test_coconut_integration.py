@@ -4,9 +4,11 @@ Builds CoCoNut from a config dict (d_model=64, n_continuous_steps=4),
 passes [2, 8, 64] hidden states through it, verifies output shape,
 trace length, backward pass, and registry wiring.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import torch
 

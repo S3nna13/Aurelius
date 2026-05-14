@@ -46,4 +46,5 @@ def test_end_to_end_round_trip_via_registry() -> None:
     assert report.valid is True
     assert "round_trip_mismatch" not in report.signals
 
+
 pytestmark = pytest.mark.integration

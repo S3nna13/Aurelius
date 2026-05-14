@@ -71,4 +71,5 @@ def test_save_load_via_trainer(tmp_path) -> None:
     assert loaded["vocab"] == tok["vocab"]
     assert loaded["merges"] == tok["merges"]
 
+
 pytestmark = pytest.mark.integration

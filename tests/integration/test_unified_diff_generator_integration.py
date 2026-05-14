@@ -5,9 +5,11 @@ exposed via :mod:`agent`, that prior agent registry entries remain
 intact, and that generated diffs round-trip through the production
 ``apply_patch_via_python`` helper from :mod:`src.eval.swebench_lite_scorer`.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import tempfile
 from pathlib import Path

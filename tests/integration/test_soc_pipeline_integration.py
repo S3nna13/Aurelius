@@ -48,4 +48,5 @@ def test_feature_flag_off_preserves_default_construction():
     # Confirm no side-effects of disabled flag: registry still usable.
     assert "default" in DEFENSIVE_PIPELINE_REGISTRY
 
+
 pytestmark = pytest.mark.integration

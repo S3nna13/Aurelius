@@ -85,4 +85,5 @@ def test_end_to_end_cycle_rejected():
     with pytest.raises(TaskDecompositionError):
         dec.decompose("x")
 
+
 pytestmark = pytest.mark.integration

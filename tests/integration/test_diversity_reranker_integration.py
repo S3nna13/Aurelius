@@ -72,4 +72,5 @@ def test_registry_instantiation_via_name():
     out = inst.rerank([("a", 0.9), ("b", 0.4)], emb, k=2)
     assert [d for d, _ in out] == ["a", "b"]
 
+
 pytestmark = pytest.mark.integration

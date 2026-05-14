@@ -8,9 +8,11 @@ Verifies:
   - statistics() zones are consistent with manual expectation.
   - TRAINING_REGISTRY["curriculum_rl"] == CurriculumRLSampler.
 """
-pytestmark = pytest.mark.integration
 
 import pytest
+pytestmark = pytest.mark.integration
+
+
 
 from src.training import TRAINING_REGISTRY
 from src.training.curriculum_rl import CurriculumRLConfig, CurriculumRLSampler

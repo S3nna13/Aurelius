@@ -84,4 +84,5 @@ def test_end_to_end_pairwise():
     assert agg["n_valid"] == 4
     assert abs(agg["win_rate_a"] + agg["win_rate_b"] + agg["tie_rate"] - 1.0) < 1e-9
 
+
 pytestmark = pytest.mark.integration

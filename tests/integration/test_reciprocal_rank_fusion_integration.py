@@ -10,9 +10,11 @@ Covers three things:
    independent :class:`BM25Retriever` instances built on two different
    corpora (the canonical "fuse-two-BM25-shards" use case).
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 from src.retrieval import (
     FUSION_REGISTRY,

@@ -89,4 +89,5 @@ def test_tool_output_wrap_then_scan_echo_detected() -> None:
     assert detection.leaked is True
     assert detection.leaked_tokens == [token]
 
+
 pytestmark = pytest.mark.integration

@@ -27,4 +27,5 @@ def test_smoke_generate():
     assert len(probes) == 5
     assert all(len(p.text) > 0 for p in probes)
 
+
 pytestmark = pytest.mark.integration

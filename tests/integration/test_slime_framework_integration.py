@@ -94,4 +94,5 @@ def test_search_task_partial_overlap_via_registry() -> None:
     score = search.reward("alpha beta", "alpha beta gamma")
     assert 0.0 < score < 1.0
 
+
 pytestmark = pytest.mark.integration

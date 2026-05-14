@@ -67,4 +67,5 @@ def test_end_to_end_chunked_stream() -> None:
     assert last_decision is not None
     assert "greeting" in buffer
 
+
 pytestmark = pytest.mark.integration

@@ -5,9 +5,11 @@ Verifies:
 * reset() correctly restores state.
 * DECODER_REGISTRY["wait_token_forcer"] is wired correctly.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import src.inference as inference_pkg
 from src.inference.wait_token_forcer import WaitTokenForcer, WaitTokenForcerConfig

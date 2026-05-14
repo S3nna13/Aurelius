@@ -8,9 +8,11 @@ Verifies:
 - Domain breakdown is populated correctly
 - Efficiency score is non-negative
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import pytest
 

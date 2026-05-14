@@ -40,4 +40,5 @@ def test_feature_flag_off_preserves_default_behavior():
     assert cfg.longcontext_compaction_trigger_enabled is False
     assert "compaction_trigger" in LONGCONTEXT_STRATEGY_REGISTRY
 
+
 pytestmark = pytest.mark.integration

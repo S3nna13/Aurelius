@@ -40,4 +40,5 @@ def test_end_to_end_single_problem_two_constraints() -> None:
     assert agg["loose_accuracy"] == 1.0
     assert set(agg["per_type_accuracy"]) == {"contains_keyword", "length_words"}
 
+
 pytestmark = pytest.mark.integration

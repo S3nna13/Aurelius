@@ -5,9 +5,11 @@ Verifies:
   * CHAT_TEMPLATE_REGISTRY["chatml"] is a working template.
   * encode -> decode is lossless for a representative conversation.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import sys
 

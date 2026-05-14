@@ -47,4 +47,5 @@ def test_sibling_registries_preserved():
     assert isinstance(retrieval.EMBEDDING_REGISTRY, dict)
     assert isinstance(retrieval.RERANKER_REGISTRY, dict)
 
+
 pytestmark = pytest.mark.integration

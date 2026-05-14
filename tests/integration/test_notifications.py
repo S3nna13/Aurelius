@@ -56,4 +56,5 @@ class TestNotifications:
         for n in data.get("notifications", []):
             assert n["category"] == "startup"
 
+
 pytestmark = pytest.mark.integration

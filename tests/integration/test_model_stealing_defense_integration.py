@@ -5,9 +5,11 @@ Verifies that :class:`~src.security.ModelStealingDefense` is exposed via the
 that an end-to-end extraction-defense scenario escalates the threat level
 and perturbs logits as expected.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import random
 import string

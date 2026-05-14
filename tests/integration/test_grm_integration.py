@@ -5,9 +5,11 @@ Verifies:
 2. The class can be constructed from the registry and score a 4-dim dict.
 3. Pre-existing registry keys are undisturbed.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import pytest
 import torch

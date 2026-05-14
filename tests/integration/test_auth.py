@@ -60,4 +60,5 @@ class TestAuth:
         data = resp.json()
         assert "keys" in data
 
+
 pytestmark = pytest.mark.integration

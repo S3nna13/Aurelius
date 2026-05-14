@@ -8,9 +8,11 @@ Verifies:
   subprocess check — DO NOT mutate sys.modules in-process; that leaked
   stale class refs in cycle-101).
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import subprocess
 import sys

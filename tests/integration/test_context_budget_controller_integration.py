@@ -6,9 +6,11 @@ Verifies that:
 - The full eviction scenario (spec integration test) works end-to-end
 - Pre-existing registry entries are not disturbed (regression guards)
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 from src.longcontext import LONGCONTEXT_STRATEGY_REGISTRY
 from src.longcontext.context_budget_controller import (

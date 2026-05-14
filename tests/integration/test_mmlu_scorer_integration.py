@@ -91,4 +91,5 @@ def test_end_to_end_three_problem_scoring():
     assert results[2].predicted_letter == "A"
     assert results[2].subject == "history"
 
+
 pytestmark = pytest.mark.integration

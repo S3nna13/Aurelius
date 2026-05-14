@@ -83,4 +83,5 @@ def test_streaming_append_roundtrip():
     assert torch.allclose(kd, k_full, atol=0.08)
     assert torch.allclose(vd, v_full, atol=0.08)
 
+
 pytestmark = pytest.mark.integration

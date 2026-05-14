@@ -3,9 +3,11 @@
 Exercises that the :class:`ShellCommandPlanner` is exposed via
 ``agent``, plans a benign intent, and blocks forbidden commands.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import agent as agent_surface
 from agent import ShellCommand, ShellCommandPlanner, ShellPlan

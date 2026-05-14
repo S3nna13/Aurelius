@@ -5,9 +5,11 @@ Checks that:
   * The ``safety_rule_engine_enabled`` config flag exists and defaults to False.
   * SEED_RULES round-trip through from_dicts -> evaluate.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 from src.model.config import AureliusConfig
 from src.safety import (

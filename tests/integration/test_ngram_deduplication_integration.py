@@ -26,4 +26,5 @@ def test_smoke_cluster():
     g = data.NgramDeduplicationToolkit.cluster_duplicates(["aa", "aa", "bb"], n=1, threshold=1.0)
     assert len(g) == 2
 
+
 pytestmark = pytest.mark.integration

@@ -49,4 +49,5 @@ def test_3_turn_probe_against_synthetic_target_and_judge():
         assert isinstance(t.target_response, str) and t.target_response
         assert {"success", "score", "rationale"} == set(t.judge_verdict)
 
+
 pytestmark = pytest.mark.integration

@@ -1,8 +1,10 @@
 """Integration tests: HallucinationGuard wired into the safety registry and
 constructable from AureliusConfig behind a feature flag that defaults OFF."""
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 from src.model.config import AureliusConfig
 from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag

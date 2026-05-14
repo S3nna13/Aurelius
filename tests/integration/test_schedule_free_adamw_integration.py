@@ -5,9 +5,11 @@ Verifies:
   * end-to-end training of a 2-layer MLP for 10 steps decreases the loss
   * existing optimizer registry / public symbols are intact
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import torch
 import torch.nn as nn

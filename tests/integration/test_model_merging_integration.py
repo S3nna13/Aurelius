@@ -55,4 +55,5 @@ def test_end_to_end_linear_via_modelmerger() -> None:
     assert torch.allclose(result.state_dict["ln.weight"], torch.full((4,), 3.0))
     assert set(result.state_dict.keys()) == set(a.keys())
 
+
 pytestmark = pytest.mark.integration

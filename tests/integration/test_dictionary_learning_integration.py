@@ -53,4 +53,5 @@ def test_small_end_to_end_pipeline() -> None:
     nnz = (alpha_re.abs() > 0).sum(dim=1)
     assert int(nnz.max().item()) <= 3
 
+
 pytestmark = pytest.mark.integration

@@ -4,9 +4,11 @@ Confirm public exposure via :mod:`agent` and basic end-to-end
 ``execute`` / ``execute_file`` behaviour. Also sanity-checks that prior
 agent-surface registry entries remain intact.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import pytest
 

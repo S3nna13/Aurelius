@@ -47,4 +47,5 @@ def test_templates_produce_distinct_wire_formats() -> None:
     assert "<|im_start|>" in chatml_out
     assert "<|start_header_id|>" in llama3_out
 
+
 pytestmark = pytest.mark.integration

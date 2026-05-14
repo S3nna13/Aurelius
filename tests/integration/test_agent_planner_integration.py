@@ -5,9 +5,11 @@ without disturbing existing entries (notably ``react``), and that a
 planner built from the registry produces a usable execution queue end
 to end.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 from agent import AGENT_LOOP_REGISTRY, BeamPlanner, PlanNode
 

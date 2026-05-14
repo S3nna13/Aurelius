@@ -39,4 +39,5 @@ def test_smoke_guard_blocks_dangerous_call():
     assert v.allowed is False
     assert v.violated_rules
 
+
 pytestmark = pytest.mark.integration

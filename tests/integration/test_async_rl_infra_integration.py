@@ -6,9 +6,11 @@ Checks:
     returns exactly 5 results.
  3. Pre-existing AUXILIARY_LOSS_REGISTRY key is still present (regression guard).
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 from src.training import AUXILIARY_LOSS_REGISTRY, TRAINING_REGISTRY
 from src.training.async_rl_infra import RolloutOrchestrator, RolloutResult, RolloutTask

@@ -62,4 +62,5 @@ def test_public_exports():
     assert hasattr(longcontext, "ContextCompactor")
     assert hasattr(longcontext, "CompactionTurn")
 
+
 pytestmark = pytest.mark.integration

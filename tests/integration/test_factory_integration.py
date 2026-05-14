@@ -65,4 +65,5 @@ def test_compatibility_roundtrip_on_reference_manifest():
     assert verdict.severity == "exact"
     assert_compatible(verdict)
 
+
 pytestmark = pytest.mark.integration

@@ -5,9 +5,11 @@ Verifies that importing :mod:`src.safety` registers ``"pii"`` under
 prompt-injection entries, and that the instantiated detector handles a
 realistic adversarial blob containing an email, SSN, and valid credit card.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 from src.safety import SAFETY_FILTER_REGISTRY
 from src.safety.pii_detector import PIIDetector

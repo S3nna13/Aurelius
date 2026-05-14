@@ -49,4 +49,5 @@ def test_default_catalog_shape_exposed_via_package():
         assert isinstance(m, MainTaskSpec)
         assert isinstance(s, SideTaskSpec)
 
+
 pytestmark = pytest.mark.integration

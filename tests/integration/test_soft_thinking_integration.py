@@ -6,9 +6,11 @@ Verifies: output shape [2, 8, 64], backward works, entropy shape [2, 8], registr
 
 Run with: .venv/bin/python3.14 -m pytest tests/integration/test_soft_thinking_integration.py -v
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import torch
 

@@ -5,10 +5,12 @@ Verifies that:
 2. A TITOGateway can be constructed via the registry entry and processes a batch.
 3. Pre-existing registry keys are not disturbed by the additive wiring.
 """
-pytestmark = pytest.mark.integration
 
 from src.training import TRAINING_REGISTRY
 from src.training.tito_gateway import TITOConfig
+pytestmark = pytest.mark.integration
+
+
 
 # ---------------------------------------------------------------------------
 # 1. Registry key existence

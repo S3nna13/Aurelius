@@ -5,9 +5,11 @@ side-effects, and exercise the end-to-end surface against a sample
 threat-report payload drawn from the Anthropic-Cybersecurity-Skills
 style of analysis prompt.
 """
-pytestmark = pytest.mark.integration
 
 import pytest
+pytestmark = pytest.mark.integration
+
+
 
 import src.security as sec
 

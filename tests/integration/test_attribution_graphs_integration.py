@@ -40,4 +40,5 @@ def test_existing_interp_entries_intact():
         token_attribution,  # noqa: F401
     )
 
+
 pytestmark = pytest.mark.integration

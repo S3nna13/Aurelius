@@ -44,4 +44,5 @@ def test_niah_idempotent_registration():
     after = eval_pkg.BENCHMARK_REGISTRY["niah"]
     assert before is after or before.__name__ == after.__name__
 
+
 pytestmark = pytest.mark.integration

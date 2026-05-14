@@ -5,9 +5,11 @@ surface is wired up end-to-end, and that ``render_welcome`` with the
 default branding plus the ``welcome-fade`` motion returns original
 Aurelius copy containing no third-party vendor references.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 
 def test_ui_package_exports_three_registries():

@@ -54,4 +54,5 @@ def test_end_to_end_art_run_against_stubs():
     assert result.asr_at_k[1] == 0.5
     assert result.asr_at_k[10] > result.asr_at_k[1]
 
+
 pytestmark = pytest.mark.integration

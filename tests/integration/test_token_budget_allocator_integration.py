@@ -31,4 +31,5 @@ def test_smoke_allocate():
     )
     assert sum(out.caps) == 100
 
+
 pytestmark = pytest.mark.integration

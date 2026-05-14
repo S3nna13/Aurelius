@@ -7,9 +7,11 @@ Checks:
   * Existing model registry entries remain intact.
   * End-to-end forward + backward runs cleanly.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import hashlib
 import pathlib

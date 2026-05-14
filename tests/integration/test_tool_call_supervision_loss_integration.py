@@ -30,4 +30,5 @@ def test_smoke_forward():
     loss.backward()
     assert torch.isfinite(loss)
 
+
 pytestmark = pytest.mark.integration

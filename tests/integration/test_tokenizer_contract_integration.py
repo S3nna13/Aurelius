@@ -36,4 +36,5 @@ def test_end_to_end_validate_round_trip():
     assert verdict.matches is True
     assert verdict.actual_hash == expected
 
+
 pytestmark = pytest.mark.integration

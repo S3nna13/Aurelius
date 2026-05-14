@@ -5,9 +5,11 @@ Verifies that:
 - A full request → create_response → validate_response round-trip passes all checks
 - A streaming round-trip yields properly ordered events
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import src.serving  # noqa: F401  — triggers registry population
 from src.serving import API_SHAPE_REGISTRY

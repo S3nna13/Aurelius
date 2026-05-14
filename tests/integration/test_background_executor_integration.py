@@ -9,6 +9,8 @@ def test_background_executor_registered():
     from agent.background_executor import BackgroundExecutor
 pytestmark = pytest.mark.integration
 
+
+
     assert "background_executor" in agent.AGENT_LOOP_REGISTRY
     assert agent.AGENT_LOOP_REGISTRY["background_executor"] is BackgroundExecutor
 

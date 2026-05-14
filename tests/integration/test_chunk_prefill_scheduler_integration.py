@@ -10,9 +10,11 @@ verifies that:
 * Decode slots appear in batches once a request transitions.
 * The DECODER_REGISTRY is wired with the ``"chunk_prefill"`` key.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import pytest
 

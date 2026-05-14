@@ -50,4 +50,5 @@ def test_smoke_merge():
     out = enc.merge(frags)
     assert "dev" in out and "user" in out
 
+
 pytestmark = pytest.mark.integration

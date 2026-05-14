@@ -39,4 +39,5 @@ def test_train_step_on_tiny_mlp():
     assert not torch.equal(first_weight_shard, updated)
     assert torch.isfinite(loss).item()
 
+
 pytestmark = pytest.mark.integration

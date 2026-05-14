@@ -90,4 +90,5 @@ def test_hermetic_import_does_not_pull_src_model() -> None:
     )
     assert "OK" in result.stdout
 
+
 pytestmark = pytest.mark.integration

@@ -40,4 +40,5 @@ def test_smoke_check():
     v = g.check("hi")
     assert isinstance(v, safety.KnnVerdict)
 
+
 pytestmark = pytest.mark.integration

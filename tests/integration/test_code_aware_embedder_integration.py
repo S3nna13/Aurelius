@@ -43,4 +43,5 @@ def test_sibling_registries_preserved():
     assert "cross_encoder" in retrieval.RERANKER_REGISTRY
     assert "basic" in retrieval.CITATION_REGISTRY
 
+
 pytestmark = pytest.mark.integration

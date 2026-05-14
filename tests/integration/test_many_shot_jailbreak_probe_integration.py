@@ -41,4 +41,5 @@ def test_end_to_end_sweep_against_stubs():
     assert result.first_success_shot == 16
     assert len(result.per_shot_results) == 4
 
+
 pytestmark = pytest.mark.integration

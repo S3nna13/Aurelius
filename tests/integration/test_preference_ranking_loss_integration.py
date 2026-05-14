@@ -57,4 +57,5 @@ def test_one_pass_through_all_losses():
     assert pred.grad is not None and torch.isfinite(pred.grad).all()
     assert pc.grad is not None and torch.isfinite(pc.grad).all()
 
+
 pytestmark = pytest.mark.integration

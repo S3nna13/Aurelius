@@ -110,4 +110,5 @@ def test_session_manager_persists_session_workstream_and_queue_state(tmp_path):
     )
     assert reloaded.list_sessions()[0].session_id == session.session_id
 
+
 pytestmark = pytest.mark.integration

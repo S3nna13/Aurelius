@@ -5,9 +5,11 @@ Verifies:
 2. The class can be constructed from the registry and .loss() returns a finite scalar.
 3. Pre-existing alignment registry keys are still present (regression guard).
 """
-pytestmark = pytest.mark.integration
 
 import torch
+pytestmark = pytest.mark.integration
+
+
 
 from src.alignment import ALIGNMENT_REGISTRY
 

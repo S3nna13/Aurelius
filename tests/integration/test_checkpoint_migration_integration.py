@@ -35,4 +35,5 @@ def test_end_to_end_migration_through_public_api() -> None:
     assert result["tokenizer_id"] == "aurelius-bpe-32k"
     assert result["training_recipe"] is None
 
+
 pytestmark = pytest.mark.integration

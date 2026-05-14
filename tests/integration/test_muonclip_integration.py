@@ -6,9 +6,11 @@ Verifies:
      for 5 steps and produces a finite loss.
   3. Pre-existing OPTIMIZER_REGISTRY keys are not removed (regression guard).
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import torch
 import torch.nn as nn

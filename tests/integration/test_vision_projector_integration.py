@@ -3,9 +3,11 @@
 Verifies end-to-end construction, forward pass, backward pass, and registry entry
 using a config dict (matching typical runtime usage pattern).
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import torch
 

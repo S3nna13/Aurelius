@@ -54,7 +54,9 @@ def test_multimodal_registry_round_trip_and_json_summary():
 
 def test_all_four_encoder_registries_are_non_none():
     """All 4 required registries must be importable and non-None from src.multimodal."""
+
 pytestmark = pytest.mark.integration
+
     assert multimodal_pkg.VISION_ENCODER_REGISTRY is not None
     assert multimodal_pkg.AUDIO_ENCODER_REGISTRY is not None
     assert multimodal_pkg.MODALITY_PROJECTOR_REGISTRY is not None

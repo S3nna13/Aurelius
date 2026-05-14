@@ -4,9 +4,11 @@ Creates a synthetic 3×32×32 tensor with two distinct bright blobs and calls
 all four functions in sequence, asserting that counts match, areas sum
 correctly, and no exceptions are raised.
 """
-pytestmark = pytest.mark.integration
 
 import torch
+pytestmark = pytest.mark.integration
+
+
 
 from src.data.programmatic_image_tools import (
     blob_count,

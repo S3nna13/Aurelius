@@ -51,4 +51,5 @@ def test_pack_toy_repo_three_py_files(tmp_path):
     assert "io_utils.py" in ctx.tree
     assert ctx.token_estimate <= 2000
 
+
 pytestmark = pytest.mark.integration

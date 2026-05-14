@@ -60,4 +60,5 @@ def test_validate_interface_contract_accepts_real_contract_artifacts():
         prompt_yaml_text=bundle.prompt_yaml_text,
     )
 
+
 pytestmark = pytest.mark.integration

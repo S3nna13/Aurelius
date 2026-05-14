@@ -80,4 +80,5 @@ def test_scanner_no_op_when_flag_off() -> None:
     assert cfg.safety_skill_scanner_enabled is False
     assert callable(SkillScanner)
 
+
 pytestmark = pytest.mark.integration

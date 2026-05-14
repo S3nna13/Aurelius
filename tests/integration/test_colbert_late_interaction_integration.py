@@ -27,4 +27,5 @@ def test_registry_construct_and_score() -> None:
     # Identical tokens with L2 norm -> score == Nq.
     assert abs(score - 3.0) < 1e-4
 
+
 pytestmark = pytest.mark.integration

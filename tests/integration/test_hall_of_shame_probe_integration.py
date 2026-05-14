@@ -14,9 +14,11 @@ and :class:`PromptInjectionScanner`). They verify that:
 
 The tests tolerate detector misses — the goal is wiring, not tuning.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import unittest
 

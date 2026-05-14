@@ -3,9 +3,11 @@
 Verifies end-to-end usage via the public ``src.alignment`` package and that
 existing alignment imports are not broken by the new module.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 
 def test_exposed_via_src_alignment():

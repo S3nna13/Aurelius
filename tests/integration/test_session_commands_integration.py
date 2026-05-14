@@ -243,4 +243,5 @@ def test_main_session_export_and_import_commands_run_end_to_end(tmp_path, capsys
     assert imported_session is not None
     assert imported_session.threads[thread.thread_id].thread_id == thread.thread_id
 
+
 pytestmark = pytest.mark.integration

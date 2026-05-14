@@ -81,4 +81,5 @@ def test_fact_and_inmemory_store_via_surface():
     mem = ConversationMemory(store)
     assert mem.get("manual-1").content == "hand-built fact"
 
+
 pytestmark = pytest.mark.integration

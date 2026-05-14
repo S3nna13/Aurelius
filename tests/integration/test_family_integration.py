@@ -56,4 +56,5 @@ def test_aurelius_config_default_unchanged():
             f"AureliusConfig unexpectedly grew a {forbidden!r} field"
         )
 
+
 pytestmark = pytest.mark.integration

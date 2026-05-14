@@ -6,9 +6,11 @@ Also covers BrowserDriver lifecycle and Trajectory record/replay.
 Inspired by OpenDevin/OpenDevin (browser tool), MoonshotAI/Kimi-Dev (coding agent loop),
 Apache-2.0, clean-room reimplementation.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import pytest
 

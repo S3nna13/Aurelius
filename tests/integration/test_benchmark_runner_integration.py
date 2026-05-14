@@ -68,4 +68,5 @@ class BenchmarkRunnerIntegrationTests(unittest.TestCase):
 if __name__ == "__main__":
     unittest.main()
 
+
 pytestmark = pytest.mark.integration

@@ -47,4 +47,5 @@ def test_end_to_end_insert_and_find():
     assert stats["entries"] >= 1
     assert stats["hits"] == 1
 
+
 pytestmark = pytest.mark.integration

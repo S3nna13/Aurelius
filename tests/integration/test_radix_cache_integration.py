@@ -6,9 +6,11 @@ Exercises a realistic batched-inference scenario:
 - Evicting 2 blocks verifies free_blocks increases.
 - The DECODER_REGISTRY is confirmed to contain the RadixCache class.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import pytest
 

@@ -45,4 +45,5 @@ def test_train_tiny_mlp_loss_decreases():
     final_loss = loss_fn(model(x), y).item()
     assert final_loss < initial_loss
 
+
 pytestmark = pytest.mark.integration

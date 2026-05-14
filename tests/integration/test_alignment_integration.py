@@ -4,9 +4,11 @@ Verifies that SPINTrainer and KTOTrainer are correctly registered in the
 ALIGNMENT_REGISTRY and can complete a full forward + gradient step on a tiny
 model without producing NaN values.
 """
-pytestmark = pytest.mark.integration
 
 from __future__ import annotations
+pytestmark = pytest.mark.integration
+
+
 
 import torch
 import torch.nn as nn
