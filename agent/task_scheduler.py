@@ -3,14 +3,19 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 import threading
 import uuid
 from collections.abc import Callable
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from pathlib import Path
 
 
 def _make_runner(cmd_list: list[str]) -> Callable[[], None]:
     """Return a zero-arg callable that launches `cmd_list` via subprocess.Popen."""
+
     def _run() -> None:
         try:
             subprocess.Popen(  # noqa: S603 — intentional shell command execution
@@ -23,9 +28,9 @@ def _make_runner(cmd_list: list[str]) -> Callable[[], None]:
             )
         except Exception as exc:  # pragma: no cover
             print(f"[scheduler] failed to start {cmd_list}: {exc}", file=sys.stderr)
+
     return _run
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+
 
 # ---------------------------------------------------------------------------
 # Cron expression helpers
@@ -123,6 +128,7 @@ def _parse_delay(value: str | int | float) -> float:
 # Job model
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Job:
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:8])
@@ -149,6 +155,7 @@ class Job:
 # ---------------------------------------------------------------------------
 # TaskScheduler
 # ---------------------------------------------------------------------------
+
 
 class TaskScheduler:
     """
@@ -181,10 +188,12 @@ class TaskScheduler:
         self._runner_thread: threading.Thread | None = None
         self._stop_event = threading.Event()
         self._idle_event = threading.Event()
-        self._wake_event = threading.Event()  #用于唤醒睡眠循环以响应状态变更
+        self._wake_event = threading.Event()  # 用于唤醒睡眠循环以响应状态变更
         self._jobs_lock = threading.Lock()
         self._started = False
-        self._store_path = Path(store_path) if store_path else (Path.home() / ".cache" / "aurelius" / "jobs.json")
+        self._store_path = (
+            Path(store_path) if store_path else Path.home() / ".cache" / "aurelius" / "jobs.json"
+        )
         self._store_path.parent.mkdir(parents=True, exist_ok=True)
         self._load_store()
 
@@ -238,8 +247,12 @@ class TaskScheduler:
                     func=None,  # will set below
                     args=(),
                     kwargs={},
-                    next_run=datetime.fromisoformat(rec["next_run"]) if rec.get("next_run") else None,
-                    last_run=datetime.fromisoformat(rec["last_run"]) if rec.get("last_run") else None,
+                    next_run=(
+                        datetime.fromisoformat(rec["next_run"]) if rec.get("next_run") else None
+                    ),
+                    last_run=(
+                        datetime.fromisoformat(rec["last_run"]) if rec.get("last_run") else None
+                    ),
                     run_count=rec.get("run_count", 0),
                     is_recurring=rec.get("is_recurring", False),
                     is_paused=rec.get("is_paused", False),
@@ -252,7 +265,7 @@ class TaskScheduler:
                 # Add directly without triggering another save
                 with self._jobs_lock:
                     self._jobs[job.id] = job
-            except Exception:
+            except Exception:  # noqa: S112
                 continue
 
     def _save_store(self) -> None:
@@ -270,7 +283,6 @@ class TaskScheduler:
             self._jobs.clear()
         self._save_store()
         self._wake_event.set()
-
 
     def schedule_cron(
         self,
@@ -469,7 +481,6 @@ class TaskScheduler:
                         # One-shot: mark cancelled after first run
                         job.is_cancelled = True
 
-
             with self._jobs_lock:
                 # Remove cancelled jobs
                 self._jobs = {jid: j for jid, j in self._jobs.items() if not j.is_cancelled}
@@ -502,13 +513,15 @@ class TaskScheduler:
         except Exception:
             # Swallow exceptions to keep the scheduler alive
             import traceback
+
             traceback.print_exc()
 
     def _sleep_until_next(self) -> None:
         """Sleep until the next job is due, the stop event fires, or a wake signal arrives."""
         with self._jobs_lock:
             next_times = [
-                job.next_run for job in self._jobs.values()
+                job.next_run
+                for job in self._jobs.values()
                 if job.next_run and not job.is_cancelled and not job.is_paused
             ]
         if not next_times:
