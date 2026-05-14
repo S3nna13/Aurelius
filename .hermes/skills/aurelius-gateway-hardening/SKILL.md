@@ -142,6 +142,13 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=10s \
 ## ENVIRONMENT VARIABLES
 
 | Variable | Default | Purpose |
+| `AURELIUS_SERVING_PROFILE` | `production` | Serving preset: `production` (full-featured) or `single-gpu` (throughput-optimized, no speculative decode, smaller batches) |
+| `AURELIUS_BATCH_SIZE_MAX` | `32` (prod), `16` (single-gpu) | Maximum batch size for static batch endpoint and vLLM `max_num_seqs` |
+| `AURELIUS_GPU_MEM_UTIL` | `0.90` (prod), `0.85` (single-gpu) | Fraction of GPU memory allocated to vLLM KV cache |
+| `AURELIUS_USE_CUDA_GRAPHS` | `auto` | Enable CUDA graphs for kernel fusion: `always`, `never`, `auto` |
+| `AURELIUS_SPECULATIVE_DECODING` | profile‑dependent | Explicitly enable/disable speculative decoding (overrides profile) |
+| `AURELIUS_KV_CACHE_STRATEGY` | `standard` (single-gpu) / `auto` (prod) | KV cache backend; `standard` = plain paged attention |
+
 |----------|---------|---------|
 | `AURELIUS_MAX_REQUEST_SIZE` | `1048576` (1 MiB) | Max JSON body size |
 | `AURELIUS_ALLOWED_HOSTS` | `*` | Comma-separated host allow-list |
@@ -185,6 +192,22 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=10s \
 
 **Add a new rate-limit backend:**
 
+
+### Add a serving profile
+
+1. Define profile defaults in `_load_engine()` (see `gateway/aurelius_api.py`)
+2. Document in README "Serving Profiles" and update the env‑var table
+3. Consider adding a dedicated CLI flag (`--profile`) for convenience
+
+### Add a new batch endpoint
+
+1. Add a Pydantic request model with `prompts: list[str]`
+2. Ensure tokenizer is cached at startup (`_tokenizer` global)
+3. Implement `generate_batch(input_ids_list, ...)` on the engine object
+4. Wire route to call `_engine_obj.generate_batch(...)` and sanitize outputs
+5. Add unit test in `tests/serving/test_batch_endpoint.py`
+
+
 1. Implement `RateLimiter` protocol in `gateway/rate_limit.py`
 2. Extend `get_rate_limiter()` factory branch
 3. Call `METRICS.set_rate_limiter_backend("<name>")` after instantiation
@@ -199,3 +222,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=10s \
 ## CHANGELOG
 
 - 2026-05-13 — Initial implementation: validation, sanitization, rate limiting (memory+Redis), health/readiness endpoints, Prometheus counters, Helm/K8s probes, README overhaul
+- 2026-05-13 — Added serving profiles (`single-gpu`), batch endpoint `/v1/batch/completions`, env vars for batch/torch tuning; updated engine loader 3‑tuple return; tests updated.
