@@ -49,24 +49,6 @@ The frontend never talks directly to Python. All API calls route through the BFF
 | Optimizer | Muon (Newton-Schulz 8+2 steps + Nesterov + RMS rescaling) |
 | Checkpoint | safetensors (legacy .pt fallback with deprecation warning) |
 
-### In-Flight Architecture Upgrades (Step 3.5 Flash — arXiv:2602.10604)
-
-| Upgrade | Status |
-|---------|--------|
-| Shared expert in MoE (always-firing alongside top-k routed) | In progress |
-| S3F1 hybrid attention (3 sliding-window : 1 full per 4-layer block) | In progress |
-| Polar Express Muon (T=6 float16 coupled iteration after Newton-Schulz) | In progress |
-| Fast-MTP (exponential decay loss weighting across prediction offsets) | In progress |
-| Staged MTP training (MTP-1 warmup → clone weights → joint MTP-2/3) | In progress |
-| EP-level load balancing (ℒ_EP = G × Σ f_g × p_g) | In progress |
-| MoE activation clipping (±16) + per-expert norm monitoring | In progress |
-| MIS-PO alignment (token + trajectory distributional filtering) | In progress |
-| MTP speculative decoding (draft via MTP heads, verify in one forward pass) | In progress |
-| Progressive batch schedule (4k → 8k → 12k → 16k tokens) | In progress |
-| Context length schedule (4k pretrain → 32k → 128k mid-training) | In progress |
-
-**Already live:** Dynamic MoE routing — unified `MoERouter` with TOP_K / expert-choice / hash modes, learnable per-expert temperature, EMA load-balancing bias (Step 3.5 Flash §3.3).
-
 ---
 
 ## Training
