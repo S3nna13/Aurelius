@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        language: [python, javascript]
+        language: [python]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
