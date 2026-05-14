@@ -1,1 +1,0 @@
-@pytest.mark.integration
