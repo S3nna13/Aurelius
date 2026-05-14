@@ -7,6 +7,7 @@ import torch
 from src.model import MODEL_COMPONENT_REGISTRY
 from src.model.mla_256 import MLA256Attention, MLA256Config
 
+
 # ---------------------------------------------------------------------------
 # Shared tiny config used across integration tests
 # ---------------------------------------------------------------------------
@@ -69,6 +70,7 @@ def test_existing_registry_keys_unaffected():
     assert "mtp_shared" in MODEL_COMPONENT_REGISTRY, (
         "Pre-existing registry key 'mtp_shared' must not be removed"
     )
+
 
 
 pytestmark = pytest.mark.integration

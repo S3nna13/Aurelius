@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 
+
 class TestAuth:
     URL = "/api/auth"
 
@@ -59,6 +60,7 @@ class TestAuth:
         assert resp.status_code == 200
         data = resp.json()
         assert "keys" in data
+
 
 
 pytestmark = pytest.mark.integration

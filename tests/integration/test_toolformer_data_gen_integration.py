@@ -8,7 +8,6 @@ Validates:
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -21,6 +20,9 @@ from agent.toolformer_data_gen import (
 )
 from src.model.config import AureliusConfig
 from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
+
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Registry / export tests

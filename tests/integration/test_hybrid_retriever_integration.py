@@ -5,6 +5,7 @@ from __future__ import annotations
 from src.retrieval import RETRIEVER_REGISTRY, BM25Retriever, HybridRetriever
 
 
+
 def _embed(text: str) -> list[float]:
     t = text.lower()
     return [float(t.count(c)) for c in "abcdefghij"]
@@ -77,6 +78,7 @@ def test_sparse_only_hybrid_matches_plain_bm25_end_to_end():
     )
     hybrid.add_documents(corpus)
     assert [d for d, _ in hybrid.query("alpha", k=5)] == [d for d, _ in plain.query("alpha", k=5)]
+
 
 
 pytestmark = pytest.mark.integration

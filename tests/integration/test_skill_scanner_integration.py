@@ -5,6 +5,7 @@ from __future__ import annotations
 from src.model.config import AureliusConfig
 from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 from src.safety import (
+
     SAFETY_FILTER_REGISTRY,
     SkillScanner,
     SkillScanReport,
@@ -79,6 +80,7 @@ def test_scanner_no_op_when_flag_off() -> None:
     # the scanner class is still importable for when callers opt in.
     assert cfg.safety_skill_scanner_enabled is False
     assert callable(SkillScanner)
+
 
 
 pytestmark = pytest.mark.integration

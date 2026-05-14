@@ -6,17 +6,19 @@ correctly, and no exceptions are raised.
 """
 
 import torch
-pytestmark = pytest.mark.integration
 
 
 
 from src.data.programmatic_image_tools import (
+
     blob_count,
     crop_region,
     detect_objects,
     pixel_distance,
 )
 
+
+pytestmark = pytest.mark.integration
 
 def test_full_pipeline_two_blobs():
     """End-to-end pipeline: crop → pixel_distance → blob_count → detect_objects."""

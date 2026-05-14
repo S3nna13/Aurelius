@@ -5,6 +5,7 @@ from __future__ import annotations
 import torch
 
 from src.longcontext import (
+
     LONGCONTEXT_STRATEGY_REGISTRY,
     CompressedKIVI,
     KIVIQuantizer,
@@ -33,6 +34,7 @@ def test_kivi_exposed_classes_importable():
 
 def test_int4_buffer_smaller_than_int8_buffer_same_tokens():
     """INT4 packed KV should be strictly smaller than INT8 packed KV."""
+
 
 pytestmark = pytest.mark.integration
 

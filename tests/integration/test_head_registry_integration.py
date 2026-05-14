@@ -9,6 +9,7 @@ import src.model as model_pkg
 from src.model import AureliusConfig
 
 
+
 def test_head_registry_exported_from_model_package() -> None:
     assert hasattr(model_pkg, "HEAD_REGISTRY")
     assert hasattr(model_pkg, "build_head")
@@ -39,6 +40,7 @@ def test_build_head_end_to_end() -> None:
     x = torch.randn(1, 4, 16)
     y = head(x)
     assert y.shape == (1, 4, 1)
+
 
 
 pytestmark = pytest.mark.integration

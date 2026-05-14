@@ -7,6 +7,7 @@ import pytest
 from src.training import TRAINING_REGISTRY
 from src.training.slime_framework import SlimeTaskRouter, make_default_router
 
+
 # ---------------------------------------------------------------------------
 # 1. Registry presence
 # ---------------------------------------------------------------------------
@@ -93,6 +94,7 @@ def test_search_task_partial_overlap_via_registry() -> None:
     search = router.route("search")
     score = search.reward("alpha beta", "alpha beta gamma")
     assert 0.0 < score < 1.0
+
 
 
 pytestmark = pytest.mark.integration

@@ -9,12 +9,14 @@ Verifies:
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
 from agent import AGENT_LOOP_REGISTRY
 from agent.agent_swarm import SubAgentResult
+
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Tests

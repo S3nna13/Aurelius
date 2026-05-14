@@ -9,6 +9,7 @@ from src.model.config import AureliusConfig
 from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 
 
+
 def test_registry():
     assert lc.LONGCONTEXT_STRATEGY_REGISTRY["swa_causal_mask"] is lc.SlidingWindowCausalMaskBuilder
 
@@ -32,6 +33,7 @@ def test_smoke_with_flag_enabled():
     b = lc.SlidingWindowCausalMaskBuilder(window_size=min(8, cfg.longcontext_sliding_window_size))
     m = b.build(32, dtype=torch.float32)
     assert m.shape == (1, 1, 32, 32)
+
 
 
 pytestmark = pytest.mark.integration

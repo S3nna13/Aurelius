@@ -6,6 +6,7 @@ from agent.agent_swarm import CriticalPathAnalyzer, SubAgentResult
 from src.eval import BENCHMARK_REGISTRY
 from src.eval.swarm_bench import SwarmBenchResult, SwarmTask
 
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -26,6 +27,7 @@ def _mock_subagent_fn(task: SwarmTask, max_steps: int) -> SubAgentResult:
 
 def test_swarm_bench_in_benchmark_registry():
     """'swarm_bench' key must be present in BENCHMARK_REGISTRY."""
+
 
 pytestmark = pytest.mark.integration
 

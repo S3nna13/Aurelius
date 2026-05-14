@@ -6,7 +6,6 @@ end-to-end forward pass runs without error.
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -14,6 +13,8 @@ import hashlib
 import pathlib
 
 import torch
+
+pytestmark = pytest.mark.integration
 
 FROZEN_ATTENTION_SHA256 = "c30d59b401bce355dc486222275923b153accd335b0e898794f23c2e09a90376"
 
@@ -44,6 +45,7 @@ def test_frozen_attention_file_unchanged():
 
 def test_end_to_end_forward():
     from src.model import ChunkedLocalAttention
+
 
     torch.manual_seed(1234)
     mod = ChunkedLocalAttention(

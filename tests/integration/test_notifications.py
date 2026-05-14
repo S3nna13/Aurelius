@@ -7,6 +7,7 @@ from typing import Any
 import pytest
 
 
+
 class TestNotifications:
     URL = "/api/notifications"
 
@@ -55,6 +56,7 @@ class TestNotifications:
         data = resp.json()
         for n in data.get("notifications", []):
             assert n["category"] == "startup"
+
 
 
 pytestmark = pytest.mark.integration

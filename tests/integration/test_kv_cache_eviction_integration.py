@@ -6,12 +6,13 @@ most safety-relevant policies: LRU and SINK_PRESERVING.
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
 import pytest
 
+
+pytestmark = pytest.mark.integration
 
 def test_public_surface_re_exported_from_src_inference():
     from src.inference import (
@@ -91,6 +92,7 @@ def test_transactional_admission_when_over_capacity():
     """Failing admit() leaves engine state completely intact."""
 
     from src.inference import CacheEntry, EvictionEngine, EvictionError, EvictionPolicy
+
 
     engine = EvictionEngine(EvictionPolicy.LRU, capacity_bytes=20)
     engine.admit(CacheEntry("a", 10, is_sink=True))

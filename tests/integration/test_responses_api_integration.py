@@ -7,13 +7,13 @@ Verifies that:
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
 import src.serving  # noqa: F401  — triggers registry population
 from src.serving import API_SHAPE_REGISTRY
 from src.serving.responses_api import (
+
     RESPONSE_COMPLETED,
     RESPONSE_CREATED,
     RESPONSES_API_REGISTRY,
@@ -22,6 +22,8 @@ from src.serving.responses_api import (
     ResponsesAPIRequest,
     ResponsesAPIValidator,
 )
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Registry integration

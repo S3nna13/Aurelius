@@ -7,12 +7,14 @@ to end.
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
 from agent import AGENT_LOOP_REGISTRY, BeamPlanner, PlanNode
 
+
+
+pytestmark = pytest.mark.integration
 
 def _echo_generate(task, path):
     # Each call emits exactly two deterministic proposals echoing the

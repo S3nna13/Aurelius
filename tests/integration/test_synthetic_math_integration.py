@@ -5,16 +5,18 @@ difficulty_stats totals, and registry wiring.
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
 from src.data.synthetic_math import (
+
     DATA_REGISTRY,
     SyntheticMathConfig,
     SyntheticMathGenerator,
 )
 
+
+pytestmark = pytest.mark.integration
 
 def test_registry_wired():
     """SyntheticMathGenerator must be accessible via DATA_REGISTRY."""

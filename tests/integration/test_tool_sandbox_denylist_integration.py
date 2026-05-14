@@ -34,10 +34,12 @@ def test_config_flag_defaults_off():
 def test_smoke_guard_blocks_dangerous_call():
     from agent import ToolSandboxDenylist
 
+
     guard = ToolSandboxDenylist()
     v = guard.evaluate("shell", {"cmd": "rm -rf /"})
     assert v.allowed is False
     assert v.violated_rules
+
 
 
 pytestmark = pytest.mark.integration

@@ -9,7 +9,6 @@ Verifies end-to-end flow:
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -18,6 +17,8 @@ import torch.nn as nn
 
 from src.training import TRAINING_REGISTRY
 from src.training.pcgrad_v2 import PCGradV2, PCGradV2Config
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -107,6 +108,7 @@ def test_pcgrad_v2_optimizer_step_reduces_n_conflicts():
 def test_pcgrad_v2_gradient_bank_multi_batch():
     """GradientBank correctly accumulates and averages gradients."""
     from src.training.pcgrad_v2 import GradientBank
+
 
     bank = GradientBank(n_tasks=2, bank_size=3)
     grads_0 = [torch.ones(4)]

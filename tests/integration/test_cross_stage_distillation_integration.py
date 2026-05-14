@@ -7,12 +7,14 @@ Verifies:
 """
 
 import torch
-pytestmark = pytest.mark.integration
 
 
 
 from src.alignment import ALIGNMENT_REGISTRY
 
+
+
+pytestmark = pytest.mark.integration
 
 def test_registry_contains_cross_stage_distillation():
     """ALIGNMENT_REGISTRY must expose the cross_stage_distillation key."""

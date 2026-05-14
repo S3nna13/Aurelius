@@ -40,6 +40,7 @@ def test_end_to_end_build_validate_summarize():
 
     from agent.web_browse_tool import WebFetchResult
 
+
     fake = WebFetchResult(
         status=200,
         url=spec.url,
@@ -50,6 +51,7 @@ def test_end_to_end_build_validate_summarize():
     summary = tool.summarize_result(fake)
     assert "HTTP 200" in summary
     assert "hello world" in summary
+
 
 
 pytestmark = pytest.mark.integration

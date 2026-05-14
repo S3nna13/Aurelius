@@ -6,7 +6,6 @@ trace length, backward pass, and registry wiring.
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -14,6 +13,9 @@ import torch
 
 from src.inference import DECODER_REGISTRY
 from src.inference.coconut import CoCoNut, CoCoNutConfig
+
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Integration test

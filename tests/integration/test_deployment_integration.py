@@ -7,7 +7,6 @@ Includes integration tests for GitHub Actions CI YAML generator (additive).
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -22,6 +21,8 @@ from src.deployment.container_builder import (
 )
 from src.deployment.helm_chart import HelmChart, HelmChartGenerator, HelmChartValues
 from src.deployment.otel_instrumentation import Tracer
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Registry smoke tests
@@ -176,6 +177,7 @@ def test_otel_tracer_lifecycle() -> None:
 def test_github_actions_generate(tmp_path: Path) -> None:
     """Generate a CI workflow, write to tempdir, verify .github/workflows/ path."""
     from src.deployment.github_actions import GHActionsGenerator, GHActionsWorkflow
+
 
     gen = GHActionsGenerator()
     workflow: GHActionsWorkflow = gen.default_ci_workflow(python_version="3.14")

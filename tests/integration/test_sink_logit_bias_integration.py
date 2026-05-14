@@ -15,6 +15,7 @@ def test_logit_bias_registry():
 def test_config_defaults():
     from src.model.config import AureliusConfig
 
+
     c = AureliusConfig()
     assert c.inference_sink_logit_bias_enabled is False
     assert c.inference_sink_logit_bonus == 1.0
@@ -34,6 +35,7 @@ def test_smoke_apply():
         bonus=1.5,
     )
     assert out[0, -1, 2] == 1.5 and out[0, -1, 3] == 1.5
+
 
 
 pytestmark = pytest.mark.integration

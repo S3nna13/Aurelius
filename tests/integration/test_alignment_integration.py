@@ -6,7 +6,6 @@ model without producing NaN values.
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -25,6 +24,8 @@ from src.alignment.spin_trainer import (
     SPINConfig,
     SPINTrainer,
 )
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Tiny causal LM
@@ -226,5 +227,6 @@ def test_kto_trainer_all_undesirable_no_nan():
 
     assert math.isfinite(result["loss"])
     import pytest
+
 
     assert result["kto_desirable"] == pytest.approx(0.0)

@@ -6,16 +6,18 @@ properly wired into AGENT_LOOP_REGISTRY["proactive_trigger"].
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
 from agent import AGENT_LOOP_REGISTRY
 from agent.proactive_trigger import (
+
     ProactiveTriggerRegistry,
     condition_trigger,
     interval_trigger,
 )
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # 1. Registry wired into AGENT_LOOP_REGISTRY

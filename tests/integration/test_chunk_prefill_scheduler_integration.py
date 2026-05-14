@@ -12,7 +12,6 @@ verifies that:
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -20,10 +19,13 @@ import pytest
 
 from src.inference import DECODER_REGISTRY
 from src.inference.chunk_prefill_scheduler import (
+
     ChunkPrefillConfig,
     ChunkPrefillScheduler,
     Request,
 )
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Registry wiring

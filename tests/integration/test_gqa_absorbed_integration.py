@@ -6,7 +6,6 @@ works, and registry is wired correctly.
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -15,6 +14,9 @@ import torch
 
 from src.model import MODEL_COMPONENT_REGISTRY
 from src.model.gqa_absorbed import GQAAbsorbedAttention, GQAAbsorbedConfig
+
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Shared integration fixture

@@ -15,6 +15,7 @@ from agent import (
 from src.model import AureliusInterfaceFramework
 
 
+
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
@@ -157,6 +158,7 @@ def test_interface_runtime_end_to_end_session_workstream_and_workflow(tmp_path):
     assert status["journal"]["entries"] >= 1
     assert runtime.get_thread(session.session_id, thread.thread_id).thread_id == thread.thread_id
     assert runtime.get_background_job(session.session_id, run.job_ids[0]).status == "completed"
+
 
 
 pytestmark = pytest.mark.integration

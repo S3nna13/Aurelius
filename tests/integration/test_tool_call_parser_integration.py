@@ -7,13 +7,14 @@ original semantic payload.
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
 import importlib
 import sys
 
+
+pytestmark = pytest.mark.integration
 
 def test_registry_contains_xml_and_json_keys() -> None:
     from agent import TOOL_CALL_PARSER_REGISTRY
@@ -76,6 +77,7 @@ def test_import_has_no_unexpected_side_effects() -> None:
     # keys (no duplicate registration errors, no mutation of foreign
     # module state). We also confirm no provider SDKs were pulled in.
     import agent as agent_mod
+
 
     importlib.reload(agent_mod)
     assert set(["xml", "json"]).issubset(agent_mod.TOOL_CALL_PARSER_REGISTRY.keys())

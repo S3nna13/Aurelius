@@ -10,7 +10,6 @@ Verifies:
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -24,6 +23,8 @@ import src.longcontext as lc
 from src.longcontext.ring_attention import RingAttention
 
 
+pytestmark = pytest.mark.integration
+
 def test_registry_has_ring_attention_entry():
     assert "ring_attention" in lc.LONGCONTEXT_STRATEGY_REGISTRY
     assert lc.LONGCONTEXT_STRATEGY_REGISTRY["ring_attention"] is RingAttention
@@ -33,6 +34,7 @@ def test_registry_retains_prior_entries():
     # Additive-only registration: prior strategies must still be reachable.
     from src.longcontext.attention_sinks import AttentionSinkCache
     from src.longcontext.kv_compression import KVInt8Compressor
+
 
     assert lc.LONGCONTEXT_STRATEGY_REGISTRY["kv_int8"] is KVInt8Compressor
     assert lc.LONGCONTEXT_STRATEGY_REGISTRY["attention_sinks"] is AttentionSinkCache

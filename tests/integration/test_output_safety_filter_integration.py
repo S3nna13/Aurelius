@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from src.safety import (
+
     HARM_CLASSIFIER_REGISTRY,
     SAFETY_FILTER_REGISTRY,
     FilterDecision,
@@ -66,6 +67,7 @@ def test_end_to_end_chunked_stream() -> None:
         assert last_decision.action == "allow"
     assert last_decision is not None
     assert "greeting" in buffer
+
 
 
 pytestmark = pytest.mark.integration

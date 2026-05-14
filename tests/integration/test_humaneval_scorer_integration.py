@@ -7,6 +7,7 @@ import pytest
 import src.eval as ev
 
 
+
 def test_metric_registry_has_humaneval():
     assert "humaneval" in ev.METRIC_REGISTRY
 
@@ -36,6 +37,7 @@ def test_end_to_end_pass_at_1_on_toy_problem():
     problem = HumanEvalProblem(
         task_id="int/0",
         prompt='def add(a, b):\n    """Return a+b."""\n',
+
 
 pytestmark = pytest.mark.integration
 

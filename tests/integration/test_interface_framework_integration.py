@@ -6,6 +6,7 @@ from pathlib import Path
 
 import src.model as model_pkg
 from src.model import (
+
     AureliusInterfaceFramework,
     BackgroundJob,
     Checkpoint,
@@ -114,6 +115,7 @@ def test_framework_round_trip_with_real_contract_bundle():
     assert tool_call["arguments"] == {"path": str(_repo_root())}
     assert child.parent_thread_id == resumed.thread_id
     assert child.lineage[-1] == resumed.thread_id
+
 
 
 pytestmark = pytest.mark.integration

@@ -23,6 +23,7 @@ def test_registry_retains_prior_entries():
     from src.longcontext.kv_compression import KVInt8Compressor
     from src.longcontext.ring_attention import RingAttention
 
+
     reg = lc.LONGCONTEXT_STRATEGY_REGISTRY
     assert reg["kv_int8"] is KVInt8Compressor
     assert reg["attention_sinks"] is AttentionSinkCache
@@ -63,6 +64,7 @@ def test_importing_longcontext_does_not_import_model():
     assert result.returncode == 0, (
         f"subprocess failed: stdout={result.stdout!r} stderr={result.stderr!r}"
     )
+
 
 
 pytestmark = pytest.mark.integration

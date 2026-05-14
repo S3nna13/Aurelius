@@ -8,8 +8,10 @@ from src.model import MODEL_COMPONENT_REGISTRY
 from src.model.aqlm_quant import AQLMConfig, AQLMLinear
 
 
+
 def test_aqlm_integration_end_to_end():
     """Full integration: init -> quantize -> forward -> backward -> checks."""
+
 
 
 pytestmark = pytest.mark.integration

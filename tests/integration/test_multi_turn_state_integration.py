@@ -8,7 +8,6 @@ Verifies:
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -16,6 +15,9 @@ import src.chat as chat_pkg
 from src.chat.multi_turn_state import ConversationState, ConversationTurn
 from src.longcontext.context_compaction import ContextCompactor
 
+
+
+pytestmark = pytest.mark.integration
 
 def test_exposed_in_src_chat():
     assert hasattr(chat_pkg, "ConversationState")

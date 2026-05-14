@@ -45,9 +45,11 @@ def test_construct_from_registry_and_call():
 def test_existing_registry_keys_intact():
     """Ensure adding 'parl' did not remove any pre-existing registry entries."""
     from src.alignment import ALIGNMENT_REGISTRY
+
+
+
+
 pytestmark = pytest.mark.integration
-
-
 
     # Keys that must survive across all cycles
     required_keys = {"prm", "adversarial_code_battle", "constitution_dimensions"}

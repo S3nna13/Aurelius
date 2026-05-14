@@ -7,6 +7,7 @@ import torch
 
 import src.retrieval as retrieval
 from src.retrieval import (
+
     EMBEDDING_REGISTRY,
     INSTRUCTION_PREFIXES,
     DenseEmbedder,
@@ -90,6 +91,7 @@ def test_all_six_tasks_encodable() -> None:
         out = wrapper.encode("text", task=task)
         assert out.shape == (16,)
         assert torch.isfinite(out).all()
+
 
 
 pytestmark = pytest.mark.integration

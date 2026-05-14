@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import src.eval as eval_pkg
 from src.eval import (
+
     BENCHMARK_REGISTRY,
     MULTI_NEEDLE_REGISTRY,
     MultiNeedleConfig,
@@ -67,6 +68,7 @@ def test_three_seeds_produce_pairwise_distinct_prompts():
     assert prompts[0] != prompts[1]
     assert prompts[1] != prompts[2]
     assert prompts[0] != prompts[2]
+
 
 
 pytestmark = pytest.mark.integration

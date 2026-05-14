@@ -28,6 +28,7 @@ def test_config_flags_default_off():
 def test_smoke_run_with_flag_agnostic():
     from agent import BudgetBoundedLoop
 
+
     loop = BudgetBoundedLoop(
         lambda m: "<final_answer>ok</final_answer>",
         {},
@@ -35,6 +36,7 @@ def test_smoke_run_with_flag_agnostic():
         max_tool_invocations=1,
     )
     assert loop.run("hi").final_answer == "ok"
+
 
 
 pytestmark = pytest.mark.integration

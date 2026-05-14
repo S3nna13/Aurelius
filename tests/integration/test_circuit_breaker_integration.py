@@ -7,6 +7,7 @@ import pytest
 from src.model.config import AureliusConfig
 from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 from src.serving import (
+
     API_SHAPE_REGISTRY,
     DECODER_REGISTRY,
     RESILIENCE_REGISTRY,
@@ -42,6 +43,7 @@ def test_config_flag_can_be_enabled() -> None:
 
 class _FakeFlakyService:
     """Deterministic flaky service: fails first N calls, then succeeds."""
+
 
 
 pytestmark = pytest.mark.integration

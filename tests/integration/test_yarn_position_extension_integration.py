@@ -9,7 +9,6 @@ Verify:
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -20,6 +19,9 @@ import torch
 
 import src.longcontext as lc
 
+
+
+pytestmark = pytest.mark.integration
 
 def test_yarn_surface_exposed_on_package() -> None:
     assert hasattr(lc, "YarnConfig")

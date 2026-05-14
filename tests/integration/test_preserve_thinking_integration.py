@@ -9,16 +9,18 @@ Scenario:
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
 from agent import AGENT_LOOP_REGISTRY
 from agent.preserve_thinking import (
+
     PreserveThinkingBuffer,
     PreserveThinkingConfig,
 )
 
+
+pytestmark = pytest.mark.integration
 
 def test_preserve_thinking_full_integration():
     cfg = PreserveThinkingConfig(

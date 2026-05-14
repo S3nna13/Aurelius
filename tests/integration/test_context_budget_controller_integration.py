@@ -8,17 +8,19 @@ Verifies that:
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
 from src.longcontext import LONGCONTEXT_STRATEGY_REGISTRY
 from src.longcontext.context_budget_controller import (
+
     ContextBudgetConfig,
     ContextBudgetController,
     ContextSegment,
     SegmentPriority,
 )
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Registry wiring

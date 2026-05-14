@@ -7,6 +7,7 @@ from typing import Any
 import pytest
 
 
+
 class TestAgents:
     AGENTS_URL = "/api/agents"
 
@@ -68,6 +69,7 @@ class TestAgents:
         )
         assert resp.status_code == 200
         assert resp.json()["success"] is True
+
 
 
 pytestmark = pytest.mark.integration

@@ -8,6 +8,7 @@ from pathlib import Path
 from agent import SkillCatalog, SkillCatalogEntry
 
 
+
 def _repo_root(tmp_path: Path) -> Path:
     root = tmp_path / "repo"
     (root / "skills").mkdir(parents=True)
@@ -70,6 +71,7 @@ def test_skill_catalog_discovery_precedence_and_round_trip(tmp_path):
     assert resolved.metadata["normalized_scope"] == "thread"
     assert visible[0].skill_id == "body-only"
     json.dumps(catalog.describe())
+
 
 
 pytestmark = pytest.mark.integration

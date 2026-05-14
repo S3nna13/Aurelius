@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from src import eval as eval_pkg
 from src.eval.arena_hard_scorer import (
+
     ArenaComparison,
     ArenaHardScorer,
     ArenaProblem,
@@ -35,6 +36,7 @@ def test_prior_registry_entries_intact():
 
 def test_end_to_end_three_model_round_robin():
     """3 models x 2 problems; judge prefers answers containing 'STRONG'."""
+
 
 
 pytestmark = pytest.mark.integration

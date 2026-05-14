@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import src.eval as eval_pkg
 from src.eval.alpacaeval_scorer import (
+
     AlpacaComparison,
     AlpacaEvalScorer,
     AlpacaProblem,
@@ -73,6 +74,7 @@ def test_end_to_end_three_problem_scoring():
     # Sanity: each comparison round-trips the dataclass type.
     comps = [scorer.compare(p, c) for p, c in zip(problems, candidates)]
     assert all(isinstance(c, AlpacaComparison) for c in comps)
+
 
 
 pytestmark = pytest.mark.integration

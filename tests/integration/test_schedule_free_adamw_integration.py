@@ -7,7 +7,6 @@ Verifies:
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -17,6 +16,9 @@ import torch.nn as nn
 import src.optimizers as optim_pkg
 from src.optimizers import ScheduleFreeAdamW
 
+
+
+pytestmark = pytest.mark.integration
 
 def test_exposed_via_package():
     assert hasattr(optim_pkg, "ScheduleFreeAdamW")

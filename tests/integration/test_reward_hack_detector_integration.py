@@ -5,6 +5,7 @@ from __future__ import annotations
 from src.model.config import AureliusConfig
 from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 from src.safety import (
+
     SAFETY_FILTER_REGISTRY,
     RewardHackDetector,
     RewardHackReport,
@@ -94,6 +95,7 @@ def test_detector_no_op_when_flag_off() -> None:
         raise AssertionError("flag should default OFF")
     assert cfg.safety_reward_hack_detector_enabled is False
     assert callable(RewardHackDetector)
+
 
 
 pytestmark = pytest.mark.integration

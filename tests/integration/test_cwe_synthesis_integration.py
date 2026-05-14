@@ -7,10 +7,11 @@
 """
 
 from __future__ import annotations
+
+
+
+
 pytestmark = pytest.mark.integration
-
-
-
 
 def test_loader_registry_exposes_cwe_generator():
     from src.data import LOADER_REGISTRY, CWESyntheticGenerator
@@ -91,6 +92,7 @@ def test_integration_no_foreign_imports_in_module():
 def test_rendering_is_pure_string_never_executed():
     """Safety: render output is a string and is not exec'd by anyone."""
     from src.data import CWESyntheticGenerator
+
 
     gen = CWESyntheticGenerator(rng_seed=0)
     pair = gen.generate_pair(cwe_id="CWE-94")

@@ -5,6 +5,7 @@ from __future__ import annotations
 import torch
 
 from src.retrieval import (
+
     RERANKER_REGISTRY,
     BM25Retriever,
     JaccardDiversityReranker,
@@ -71,6 +72,7 @@ def test_registry_instantiation_via_name():
     }
     out = inst.rerank([("a", 0.9), ("b", 0.4)], emb, k=2)
     assert [d for d, _ in out] == ["a", "b"]
+
 
 
 pytestmark = pytest.mark.integration

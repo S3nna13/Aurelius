@@ -11,6 +11,7 @@ from src.model.config import AureliusConfig
 from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 
 
+
 def test_compaction_trigger_registered():
     assert "compaction_trigger" in LONGCONTEXT_STRATEGY_REGISTRY
     assert LONGCONTEXT_STRATEGY_REGISTRY["compaction_trigger"] is CompactionTriggerManager
@@ -39,6 +40,7 @@ def test_feature_flag_off_preserves_default_behavior():
     cfg = AureliusConfig()
     assert cfg.longcontext_compaction_trigger_enabled is False
     assert "compaction_trigger" in LONGCONTEXT_STRATEGY_REGISTRY
+
 
 
 pytestmark = pytest.mark.integration

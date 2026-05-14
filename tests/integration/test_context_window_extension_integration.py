@@ -10,7 +10,6 @@ Verifies:
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -20,6 +19,9 @@ import torch
 
 import src.longcontext as lc
 from src.model.config import AureliusConfig
+
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Registry surface tests

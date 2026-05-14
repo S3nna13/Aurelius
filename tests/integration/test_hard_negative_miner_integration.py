@@ -6,7 +6,6 @@ sensible negatives.
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -14,12 +13,15 @@ import pytest
 
 import src.retrieval as retrieval_pkg
 from src.retrieval import (
+
     HARD_NEGATIVE_STRATEGIES,
     BM25Retriever,
     HardNegative,
     HardNegativeMiner,
 )
 
+
+pytestmark = pytest.mark.integration
 
 def test_package_exports_new_surface() -> None:
     assert HardNegativeMiner is retrieval_pkg.HardNegativeMiner

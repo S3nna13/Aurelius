@@ -7,6 +7,7 @@ import pytest
 import src.eval as ev
 
 
+
 def test_metric_registry_has_livecodebench():
     assert "livecodebench" in ev.METRIC_REGISTRY
 
@@ -93,6 +94,7 @@ def test_end_to_end_two_problem_score():
     assert out["per_difficulty"]["medium"] == pytest.approx(0.0)
     assert out["per_source"]["leetcode"] == pytest.approx(1.0)
     assert out["per_source"]["codeforces"] == pytest.approx(0.0)
+
 
 
 pytestmark = pytest.mark.integration

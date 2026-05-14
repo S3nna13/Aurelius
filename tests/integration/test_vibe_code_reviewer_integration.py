@@ -6,6 +6,7 @@ import src.eval as eval_mod
 from src.model.config import AureliusConfig
 
 
+
 def test_registered_in_metric_and_benchmark_registry():
     assert "vibe_code_reviewer" in eval_mod.METRIC_REGISTRY
     assert "vibe_code_reviewer" in eval_mod.BENCHMARK_REGISTRY
@@ -38,6 +39,7 @@ def test_reviewer_instantiable_from_registry():
     report = reviewer.review_file("x.py", code="# VIBE_SSRF_SINK\n")
     assert report.findings
     assert report.findings[0].cwe == "CWE-918"
+
 
 
 pytestmark = pytest.mark.integration

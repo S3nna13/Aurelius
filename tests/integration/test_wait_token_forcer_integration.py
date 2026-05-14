@@ -7,12 +7,14 @@ Verifies:
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
 import src.inference as inference_pkg
 from src.inference.wait_token_forcer import WaitTokenForcer, WaitTokenForcerConfig
+
+
+pytestmark = pytest.mark.integration
 
 END_THINK = 151645
 WAIT_TOK = 151649

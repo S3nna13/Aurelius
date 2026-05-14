@@ -8,6 +8,7 @@ import src.interpretability as interp
 from src.interpretability import DictionaryLearner, DictionaryResult
 
 
+
 def test_exposed_at_package_level() -> None:
     assert hasattr(interp, "DictionaryLearner")
     assert hasattr(interp, "DictionaryResult")
@@ -52,6 +53,7 @@ def test_small_end_to_end_pipeline() -> None:
     # sparsity honored on re-encode
     nnz = (alpha_re.abs() > 0).sum(dim=1)
     assert int(nnz.max().item()) <= 3
+
 
 
 pytestmark = pytest.mark.integration

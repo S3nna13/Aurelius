@@ -8,7 +8,6 @@ Verifies:
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -17,6 +16,9 @@ import torch
 from src.training import TRAINING_REGISTRY
 from src.training.still3_trainer import STILL3Config, STILL3Trainer
 
+
+
+pytestmark = pytest.mark.integration
 
 def test_still3_registry_wired():
     """TRAINING_REGISTRY must expose 'still3' mapped to STILL3Trainer."""

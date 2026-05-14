@@ -6,6 +6,7 @@ import torch
 
 import src.inference as inference
 from src.inference import (
+
     JSONDecoderState,
     JSONMaskBuilder,
     is_valid_json_prefix,
@@ -58,6 +59,7 @@ def test_prefix_validity_helper() -> None:
     assert is_valid_json_prefix('{"k":1') is True
     assert is_valid_json_prefix("[1, 2, 3]") is True
     assert is_valid_json_prefix("][") is False
+
 
 
 pytestmark = pytest.mark.integration

@@ -6,6 +6,7 @@ from src import eval as eval_pkg
 from src.eval.mmlu_scorer import MMLUProblem, MMLUScorer
 
 
+
 def test_prior_registry_entries_intact():
     reg = eval_pkg.METRIC_REGISTRY
     for key in (
@@ -90,6 +91,7 @@ def test_end_to_end_three_problem_scoring():
     assert results[2].correct is False
     assert results[2].predicted_letter == "A"
     assert results[2].subject == "history"
+
 
 
 pytestmark = pytest.mark.integration

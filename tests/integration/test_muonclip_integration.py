@@ -8,7 +8,6 @@ Verifies:
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -16,6 +15,9 @@ import torch
 import torch.nn as nn
 
 from src.optimizers import OPTIMIZER_REGISTRY, MuonClip
+
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # 1. Registry contains "muonclip"

@@ -10,12 +10,14 @@ Verifies:
 """
 
 import pytest
-pytestmark = pytest.mark.integration
 
 
 
 from src.training import TRAINING_REGISTRY
 from src.training.curriculum_rl import CurriculumRLConfig, CurriculumRLSampler
+
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Fixture: fully-wired sampler with 10 tasks

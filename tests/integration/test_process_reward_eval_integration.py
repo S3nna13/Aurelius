@@ -6,17 +6,19 @@ ranges, and the registry is correctly wired.
 """
 
 import pytest
-pytestmark = pytest.mark.integration
 
 
 
 from src.eval import BENCHMARK_REGISTRY
 from src.eval.process_reward_eval import (
+
     PRMEvalConfig,
     ProcessRewardEval,
     SolutionEval,
     StepPrediction,
 )
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Fixture: 5 solutions with mixed step correctness and PRM scores

@@ -7,6 +7,7 @@ import pytest
 import src.eval as ev
 
 
+
 def test_metric_registry_has_mbpp():
     assert "mbpp" in ev.METRIC_REGISTRY
 
@@ -61,6 +62,7 @@ def test_end_to_end_two_problem_score():
     out = score_problems([p1, p2], completions, k_values=[1], max_workers=2, timeout_seconds=5.0)
     assert out["n_problems"] == 2
     assert out["pass@1"] == pytest.approx(0.5)
+
 
 
 pytestmark = pytest.mark.integration

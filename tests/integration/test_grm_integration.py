@@ -7,7 +7,6 @@ Verifies:
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -16,6 +15,8 @@ import torch
 
 from src.alignment import ALIGNMENT_REGISTRY
 from src.alignment.grm import DIMENSIONS, GenerativeRewardModel
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # 1. "grm" in ALIGNMENT_REGISTRY
@@ -69,6 +70,7 @@ def test_registry_rule_mode_via_registry():
     """Hybrid rule mode works when constructed through the registry."""
     cls = ALIGNMENT_REGISTRY["grm"]
     from src.alignment.grm import GRMConfig
+
 
     grm = cls(GRMConfig(mode="rule"))
     result = grm.score({"helpfulness": 0.1}, rule_reward=0.55)

@@ -5,10 +5,11 @@ existing alignment imports are not broken by the new module.
 """
 
 from __future__ import annotations
+
+
+
+
 pytestmark = pytest.mark.integration
-
-
-
 
 def test_exposed_via_src_alignment():
     # Importable via the package path (even though __init__.py is minimal).
@@ -56,6 +57,7 @@ def test_existing_alignment_imports_still_work():
 
 def test_weighted_vote_end_to_end_math_style():
     from src.alignment.best_of_n_reranker import BestOfNReranker
+
 
     # Simulate 5 chain-of-thought samples for a math problem; majority
     # arrives at "42".

@@ -4,7 +4,6 @@ entries.
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -12,6 +11,7 @@ import torch
 
 import src.chat as chat_pkg
 from src.chat import (
+
     CHAT_TEMPLATE_REGISTRY,
     MASK_VALUE,
     MESSAGE_FORMAT_REGISTRY,
@@ -22,6 +22,8 @@ from src.chat import (
     build_role_mask,
 )
 
+
+pytestmark = pytest.mark.integration
 
 def test_exposed_from_chat_package():
     assert hasattr(chat_pkg, "RoleSpan")

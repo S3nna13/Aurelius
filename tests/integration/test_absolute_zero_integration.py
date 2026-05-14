@@ -7,7 +7,6 @@ number of tasks.
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -16,9 +15,12 @@ import torch
 
 from src.alignment import ALIGNMENT_REGISTRY
 from src.alignment.absolute_zero import (
+
     AbsoluteZeroConfig,
     AbsoluteZeroTrainer,
 )
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Mock helpers

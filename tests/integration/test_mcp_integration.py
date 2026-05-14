@@ -6,7 +6,6 @@ Covers:
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -21,6 +20,8 @@ from src.mcp.tool_schema_registry import (
     register_tool_schema,
     validate_tool_call,
 )
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Fixture: isolated registry
@@ -236,6 +237,7 @@ def test_extension_manifest_validate():
 def test_plugin_host_lifecycle():
     """Register plugin, enable, list, disable, unregister — full lifecycle."""
     from src.mcp.plugin_host import PluginHost, PluginHostError, PluginManifest
+
 
     host = PluginHost()
 

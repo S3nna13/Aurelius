@@ -8,12 +8,13 @@ Checks:
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
 from src.training import AUXILIARY_LOSS_REGISTRY, TRAINING_REGISTRY
 from src.training.async_rl_infra import RolloutOrchestrator, RolloutResult, RolloutTask
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -86,6 +87,7 @@ class TestEndToEnd:
     def test_trainer_async_rl_branch_disabled_returns_none(self) -> None:
         """build_async_rl_orchestrator(enabled=False) returns None (feature flag off)."""
         from src.training.trainer import build_async_rl_orchestrator
+
 
         result = build_async_rl_orchestrator(enabled=False)
         assert result is None

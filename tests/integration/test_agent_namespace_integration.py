@@ -6,6 +6,7 @@ import importlib
 
 import agent as agent_pkg
 
+
 EXPECTED_EXPORTS = {
     "AgentRuntime": ("agent.agent_runtime", "AgentRuntime"),
     "AgentSpec": ("agent.agent_runtime", "AgentSpec"),
@@ -32,6 +33,7 @@ def test_src_agent_package_exposes_new_surface_exports() -> None:
 
     for export_name in EXPECTED_EXPORTS:
         assert export_name in agent_pkg.__all__
+
 
 
 pytestmark = pytest.mark.integration

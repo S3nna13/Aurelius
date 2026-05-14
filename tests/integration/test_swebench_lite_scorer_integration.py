@@ -30,10 +30,12 @@ def test_end_to_end_single_synthetic_problem() -> None:
     tests = textwrap.dedent(
         """\
         from pkg.math_utils import add
+
+
+
+
+
 pytestmark = pytest.mark.integration
-
-
-
 
         def test_add():
             assert add(2, 3) == 5

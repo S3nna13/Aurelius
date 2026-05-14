@@ -8,12 +8,14 @@ Verifies that:
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
 from src.chat import CHAT_TEMPLATE_REGISTRY
 from src.chat.harmony_template import HarmonyTemplate
+
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # 1. Registry contains "harmony"

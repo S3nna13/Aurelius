@@ -6,6 +6,7 @@ import src.retrieval as ret
 from src.model.config import AureliusConfig
 
 
+
 def test_query_expander_registry():
     assert ret.QUERY_EXPANDER_REGISTRY["prf"] is ret.PRFQueryExpander
 
@@ -22,6 +23,7 @@ def test_smoke_expand():
     ex = ret.PRFQueryExpander()
     r = ex.expand("search", ["search ranking bm25"], num_terms=2)
     assert "bm25" in r.query or "ranking" in r.query
+
 
 
 pytestmark = pytest.mark.integration

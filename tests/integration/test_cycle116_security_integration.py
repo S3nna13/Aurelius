@@ -7,11 +7,13 @@ style of analysis prompt.
 """
 
 import pytest
-pytestmark = pytest.mark.integration
 
 
 
 import src.security as sec
+
+
+pytestmark = pytest.mark.integration
 
 SAMPLE_THREAT_REPORT = """
 Observed adversary at 203.0.113.77 used PowerShell to execute a script

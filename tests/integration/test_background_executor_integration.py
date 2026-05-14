@@ -7,9 +7,10 @@ def test_background_executor_registered():
     """BackgroundExecutor must appear in AGENT_LOOP_REGISTRY."""
     import agent as agent
     from agent.background_executor import BackgroundExecutor
+
+
+
 pytestmark = pytest.mark.integration
-
-
 
     assert "background_executor" in agent.AGENT_LOOP_REGISTRY
     assert agent.AGENT_LOOP_REGISTRY["background_executor"] is BackgroundExecutor
@@ -68,6 +69,7 @@ def test_full_lifecycle_priority_order():
 def test_registry_class_is_instantiable():
     """The registered class can be instantiated via the registry key."""
     import agent as agent
+
 
     cls = agent.AGENT_LOOP_REGISTRY["background_executor"]
     instance = cls()

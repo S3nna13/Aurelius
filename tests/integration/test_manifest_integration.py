@@ -6,6 +6,7 @@ import src.model as model_pkg
 import src.model.manifest as manifest_mod
 from src.model import AureliusConfig
 from src.model.manifest import (
+
     AURELIUS_REFERENCE_MANIFEST,
     MODEL_MANIFEST_REGISTRY,
     FamilyManifest,
@@ -39,6 +40,7 @@ def test_aurelius_config_constructs_unchanged():
 
 def test_reference_is_registered_under_canonical_key():
     assert MODEL_MANIFEST_REGISTRY["aurelius/base-1.395b"] is AURELIUS_REFERENCE_MANIFEST
+
 
 
 pytestmark = pytest.mark.integration

@@ -7,6 +7,7 @@ import re
 import src.inference as inference_pkg
 
 
+
 def test_exposed_via_inference_package():
     assert hasattr(inference_pkg, "MultiSampleVoter")
     assert hasattr(inference_pkg, "VoteResult")
@@ -67,6 +68,7 @@ def test_end_to_end_usc_on_five_samples():
     assert result.strategy == "usc"
     assert result.selected != samples[-1]
     assert result.selected in samples[:4]
+
 
 
 pytestmark = pytest.mark.integration

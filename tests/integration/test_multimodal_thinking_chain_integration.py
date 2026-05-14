@@ -3,7 +3,6 @@ budget accounting, limit enforcement, and registry wiring.
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -11,11 +10,14 @@ import pytest
 
 from src.inference import DECODER_REGISTRY
 from src.inference.multimodal_thinking_chain import (
+
     MultimodalThinkingChain,
     MultimodalThinkingConfig,
     StepType,
     VisionStepLimitError,
 )
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Integration test: full chain exercise

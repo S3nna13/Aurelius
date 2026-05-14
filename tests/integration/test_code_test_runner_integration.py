@@ -6,7 +6,6 @@ against a temporary directory produces a parsed :class:`TestResult`.
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -16,6 +15,9 @@ import textwrap
 import agent as agent_pkg
 from agent import CodeTestRunner, TestResult
 
+
+
+pytestmark = pytest.mark.integration
 
 def test_exposed_via_src_agent() -> None:
     assert hasattr(agent_pkg, "CodeTestRunner")

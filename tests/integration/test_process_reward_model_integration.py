@@ -10,7 +10,6 @@ Verifies:
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -21,6 +20,8 @@ from src.model.config import AureliusConfig
 from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 from src.training.process_reward_model import ProcessRewardModel
 from src.training.trainer import build_model_for_training
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Shared tiny config
@@ -141,6 +142,7 @@ def test_prm_forward_pass_integration():
 
 def test_prm_inference_end_to_end():
     from src.training.process_reward_model import PRMInference
+
 
     cfg = tiny_prm_config()
     prm = ProcessRewardModel(cfg)

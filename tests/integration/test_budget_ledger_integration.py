@@ -6,13 +6,13 @@ an injectable clock.
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
 import pytest
 
 from agent import (
+
     BUDGET_LEDGER_REGISTRY,
     BudgetExhaustedError,
     BudgetLedger,
@@ -26,6 +26,8 @@ from agent import (
     register_ledger,
 )
 
+
+pytestmark = pytest.mark.integration
 
 class _FakeClock:
     def __init__(self, start_ns: int = 0) -> None:

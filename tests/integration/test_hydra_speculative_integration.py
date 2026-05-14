@@ -13,7 +13,6 @@ Checks:
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -21,6 +20,9 @@ import torch
 
 from src.inference import DECODER_REGISTRY
 from src.inference.hydra_speculative import HydraConfig, HydraSpeculative
+
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Shared fixtures / constants

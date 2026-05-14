@@ -5,7 +5,6 @@ clean-room implementation.
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -14,6 +13,8 @@ from src.eval.webarena_scorer import (
     WebArenaResult,
     WebArenaScorer,
 )
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # WebArena scorer integration
@@ -72,6 +73,7 @@ def test_webarena_scorer() -> None:
 # ---------------------------------------------------------------------------
 
 from src.eval.osworld_scorer import (  # noqa: E402
+
     OSWORLD_TASK_REGISTRY,
     OSWorldResult,
     OSWorldScorer,

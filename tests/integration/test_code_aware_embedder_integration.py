@@ -29,6 +29,7 @@ def test_end_to_end_embed_via_registry():
 def test_config_flag_defaults_off():
     from src.model.config import AureliusConfig
 
+
     cfg = AureliusConfig()
     assert hasattr(cfg, "retrieval_code_aware_embedder_enabled")
     assert cfg.retrieval_code_aware_embedder_enabled is False
@@ -42,6 +43,7 @@ def test_sibling_registries_preserved():
     assert "dense" in retrieval.EMBEDDING_REGISTRY
     assert "cross_encoder" in retrieval.RERANKER_REGISTRY
     assert "basic" in retrieval.CITATION_REGISTRY
+
 
 
 pytestmark = pytest.mark.integration

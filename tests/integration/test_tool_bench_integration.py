@@ -8,7 +8,6 @@ Verifies:
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -16,11 +15,14 @@ import pytest
 
 from src.eval import BENCHMARK_REGISTRY
 from src.eval.tool_bench import (
+
     ToolBench,
     ToolBenchConfig,
     ToolBenchSample,
     ToolCall,
 )
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers

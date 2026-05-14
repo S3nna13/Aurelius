@@ -5,7 +5,6 @@ using a config dict (matching typical runtime usage pattern).
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -13,6 +12,9 @@ import torch
 
 from src.model import MODEL_COMPONENT_REGISTRY
 from src.model.vision_projector import VisionProjector, VisionProjectorConfig
+
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Shared tiny config used across integration tests

@@ -6,7 +6,6 @@ and (d) an end-to-end forward/backward pass runs without error.
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -14,6 +13,8 @@ import hashlib
 import pathlib
 
 import torch
+
+pytestmark = pytest.mark.integration
 
 FROZEN_SHA256 = {
     "transformer.py": "f9d51b145f4a96b95114d88161cf1c768d7ef750a0d76a0697a6e4f842da77cc",
@@ -64,6 +65,7 @@ def test_existing_registry_intact():
 
 def test_end_to_end_forward_backward():
     from src.model import LambdaAttention
+
 
     torch.manual_seed(7)
     mod = LambdaAttention(

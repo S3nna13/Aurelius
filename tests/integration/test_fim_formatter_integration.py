@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import src.chat as chat
 from src.chat import (
+
     CHAT_TEMPLATE_REGISTRY,
     FIM_MIDDLE,
     FIM_PAD,
@@ -59,6 +60,7 @@ def test_inference_format_via_surface() -> None:
     out = f.format_for_inference("pre", "suf")
     assert out.endswith(FIM_MIDDLE)
     assert "pre" in out and "suf" in out
+
 
 
 pytestmark = pytest.mark.integration

@@ -7,7 +7,6 @@ intact, and that generated diffs round-trip through the production
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -18,6 +17,9 @@ import agent
 from agent import DiffResult, UnifiedDiffGenerator
 from src.eval.swebench_lite_scorer import apply_patch_via_python
 
+
+
+pytestmark = pytest.mark.integration
 
 def test_surface_exports_present():
     assert "DiffResult" in agent.__all__

@@ -8,7 +8,6 @@ Verifies end-to-end behaviour:
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -19,6 +18,8 @@ from src.inference.eagle3_decoding import (
     Eagle3Config,
     Eagle3Decoder,
 )
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -142,6 +143,7 @@ def test_eagle3_high_threshold_drafts_min():
 def test_eagle3_registry_wired():
     """DECODER_REGISTRY['eagle3'] must point to Eagle3Decoder."""
     from src.inference import DECODER_REGISTRY
+
 
     assert "eagle3" in DECODER_REGISTRY, "eagle3 not found in DECODER_REGISTRY"
     assert DECODER_REGISTRY["eagle3"] is Eagle3Decoder, (

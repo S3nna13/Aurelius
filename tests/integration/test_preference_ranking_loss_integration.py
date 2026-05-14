@@ -6,6 +6,7 @@ import torch
 
 import src.alignment as alignment_pkg
 from src.alignment import (
+
     bradley_terry_loss,
     dpo_pair_loss,
     listnet_loss,
@@ -56,6 +57,7 @@ def test_one_pass_through_all_losses():
     assert chosen.grad is not None and torch.isfinite(chosen.grad).all()
     assert pred.grad is not None and torch.isfinite(pred.grad).all()
     assert pc.grad is not None and torch.isfinite(pc.grad).all()
+
 
 
 pytestmark = pytest.mark.integration

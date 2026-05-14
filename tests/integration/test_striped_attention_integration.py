@@ -10,7 +10,6 @@ verifies that:
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -19,6 +18,9 @@ import torch
 
 from src.model import MODEL_COMPONENT_REGISTRY
 from src.model.striped_attention import StripedAttention, StripedAttentionConfig
+
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Integration config (tiny, matches spec)

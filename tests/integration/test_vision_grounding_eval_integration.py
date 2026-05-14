@@ -9,12 +9,14 @@ Verifies:
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
 from src.eval import BENCHMARK_REGISTRY
 from src.eval.vision_grounding_eval import VisionGroundingEval, VisionGroundingEvalConfig
+
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Integration test

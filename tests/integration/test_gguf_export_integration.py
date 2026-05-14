@@ -12,6 +12,7 @@ from scripts.export_gguf import export_gguf
 from src.model.config import AureliusConfig
 from src.model.transformer import AureliusTransformer
 
+
 # ---------------------------------------------------------------------------
 # Shared tiny config
 # ---------------------------------------------------------------------------
@@ -41,6 +42,7 @@ def tiny_model() -> AureliusTransformer:
 @pytest.fixture
 def checkpoint_dir(tmp_path: Path, tiny_model: AureliusTransformer) -> Path:
     """Save a tiny model as safetensors and return the checkpoint directory."""
+
 
 pytestmark = pytest.mark.integration
 

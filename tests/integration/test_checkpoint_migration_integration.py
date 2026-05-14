@@ -5,6 +5,7 @@ from __future__ import annotations
 from src.model import MIGRATION_REGISTRY, AureliusConfig, CheckpointMigrator
 
 
+
 def test_checkpoint_migrator_exported_from_model_package() -> None:
     assert CheckpointMigrator is not None
     migrator = CheckpointMigrator()
@@ -34,6 +35,7 @@ def test_end_to_end_migration_through_public_api() -> None:
     assert result["checkpoint_format_version"] == "2.0.0"
     assert result["tokenizer_id"] == "aurelius-bpe-32k"
     assert result["training_recipe"] is None
+
 
 
 pytestmark = pytest.mark.integration

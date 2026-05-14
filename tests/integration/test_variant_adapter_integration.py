@@ -6,6 +6,7 @@ import pytest
 
 import src.model as model_pkg
 from src.model.variant_adapter import (
+
     VARIANT_ADAPTER_ATTACHMENTS,
     VARIANT_ADAPTER_REGISTRY,
     AdapterKind,
@@ -58,6 +59,7 @@ def test_adapter_survives_round_trip_through_registry():
     assert back.rank == 16
     assert back.target_modules == ("q_proj", "v_proj")
     assert back.metadata == {"note": "test"}
+
 
 
 pytestmark = pytest.mark.integration

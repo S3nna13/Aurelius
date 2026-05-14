@@ -5,6 +5,7 @@ from __future__ import annotations
 from src import longcontext as lc
 from src.longcontext.prefix_cache import PrefixCache, PrefixEntry
 
+
 EXPECTED_PRIOR = [
     "kv_int8",
     "attention_sinks",
@@ -46,6 +47,7 @@ def test_end_to_end_insert_and_find():
     stats = cache.stats()
     assert stats["entries"] >= 1
     assert stats["hits"] == 1
+
 
 
 pytestmark = pytest.mark.integration

@@ -5,8 +5,10 @@ import torch
 from src.alignment import ALIGNMENT_REGISTRY
 
 
+
 def test_toggle_in_registry():
     """'toggle' key must be present in ALIGNMENT_REGISTRY."""
+
 
 pytestmark = pytest.mark.integration
 

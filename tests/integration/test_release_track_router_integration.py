@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import src.model as model_pkg
 from src.model import (
+
     AURELIUS_REFERENCE_MANIFEST,
     DEV_POLICY,
     INTERNAL_POLICY,
@@ -56,6 +57,7 @@ def test_resolve_by_variant_id_through_package_registry() -> None:
     dec = router.resolve_by_variant_id(AURELIUS_REFERENCE_MANIFEST.registry_key)
     assert dec.allowed is True
     assert dec.variant_id == AURELIUS_REFERENCE_MANIFEST.registry_key
+
 
 
 pytestmark = pytest.mark.integration

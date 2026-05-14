@@ -9,12 +9,14 @@ Verifies:
 
 import pytest
 import torch
-pytestmark = pytest.mark.integration
 
 
 
 from src.alignment import ALIGNMENT_REGISTRY
 from src.alignment.length_reward import LengthReward, LengthRewardConfig
+
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Fixtures

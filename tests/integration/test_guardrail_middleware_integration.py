@@ -6,7 +6,6 @@ enforces pre + post guardrails against real safety detectors.
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -14,10 +13,13 @@ import pytest
 
 import src.serving as serving
 from src.serving import (
+
     REFUSAL_STRING,
     GuardrailMiddleware,
     MiddlewareDecision,
 )
+
+pytestmark = pytest.mark.integration
 
 PRIOR_PUBLIC_NAMES = [
     "APIValidationError",

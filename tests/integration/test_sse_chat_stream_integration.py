@@ -6,6 +6,7 @@ from src.model.config import AureliusConfig
 from src.serving import STREAM_HANDLER_REGISTRY, SSEChatStream, parse_sse_event
 
 
+
 def test_registered_in_stream_handler_registry() -> None:
     assert "sse_chat" in STREAM_HANDLER_REGISTRY
     assert STREAM_HANDLER_REGISTRY["sse_chat"] is SSEChatStream
@@ -41,6 +42,7 @@ def test_end_to_end_stream_produces_parseable_frames() -> None:
     # Stable stream id across all chunks.
     ids = {p["id"] for p in parsed[:-1]}
     assert len(ids) == 1
+
 
 
 pytestmark = pytest.mark.integration

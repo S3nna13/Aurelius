@@ -5,6 +5,7 @@ from __future__ import annotations
 from agent import AGENT_LOOP_REGISTRY
 from agent.plugin_hook import HOOK_REGISTRY, PluginHookRegistry
 
+
 # ---------------------------------------------------------------------------
 # 1. "plugin_hook" key present in AGENT_LOOP_REGISTRY
 # ---------------------------------------------------------------------------
@@ -58,6 +59,7 @@ def test_existing_agent_loop_registry_keys_intact():
         assert key in AGENT_LOOP_REGISTRY, (
             f"Regression: existing key {key!r} missing from AGENT_LOOP_REGISTRY"
         )
+
 
 
 pytestmark = pytest.mark.integration

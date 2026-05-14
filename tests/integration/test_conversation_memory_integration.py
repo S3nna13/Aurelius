@@ -7,6 +7,7 @@ from src.chat import ConversationMemory, Fact, InMemoryStore, JSONFileStore
 from src.retrieval.bm25_retriever import BM25Retriever
 
 
+
 def test_public_symbols_exposed():
     for name in ("ConversationMemory", "Fact", "InMemoryStore", "JSONFileStore"):
         assert hasattr(chat_pkg, name), f"{name} missing from src.chat"
@@ -80,6 +81,7 @@ def test_fact_and_inmemory_store_via_surface():
     )
     mem = ConversationMemory(store)
     assert mem.get("manual-1").content == "hand-built fact"
+
 
 
 pytestmark = pytest.mark.integration

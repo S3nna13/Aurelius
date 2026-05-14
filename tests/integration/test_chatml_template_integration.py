@@ -7,12 +7,13 @@ Verifies:
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
 import sys
 
+
+pytestmark = pytest.mark.integration
 
 def test_importing_src_chat_does_not_import_torch_or_model():
     # Ensure we observe the post-import state cleanly.
@@ -60,6 +61,7 @@ def test_registry_roundtrip():
 
 def test_registry_generation_prompt_path():
     from src.chat import CHAT_TEMPLATE_REGISTRY, Message
+
 
     tpl = CHAT_TEMPLATE_REGISTRY["chatml"]
     wire = tpl.encode([Message("user", "hello")], add_generation_prompt=True)

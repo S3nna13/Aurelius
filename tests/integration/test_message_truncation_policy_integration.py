@@ -5,13 +5,15 @@ and operates correctly on a real ChatML-produced message list.
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
 import src.chat as chat
 from src.chat.chatml_template import ChatMLTemplate, Message
 
+
+
+pytestmark = pytest.mark.integration
 
 def _render_and_parse(messages):
     """Round-trip a list of messages through the ChatML encoder to get

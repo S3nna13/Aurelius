@@ -3,17 +3,19 @@ surface's public registry.
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
 from src.safety import (
+
     HARM_CATEGORIES,
     HARM_CLASSIFIER_REGISTRY,
     SAFETY_FILTER_REGISTRY,
     HarmTaxonomyClassifier,
 )
 
+
+pytestmark = pytest.mark.integration
 
 def test_registry_contains_harm_taxonomy() -> None:
     assert "harm_taxonomy" in HARM_CLASSIFIER_REGISTRY

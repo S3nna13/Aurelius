@@ -8,6 +8,7 @@ from src.retrieval import RERANKER_REGISTRY
 from src.retrieval.colbert_late_interaction import ColBERTConfig, ColBERTScorer
 
 
+
 def test_colbert_in_reranker_registry() -> None:
     assert "colbert" in RERANKER_REGISTRY
     assert RERANKER_REGISTRY["colbert"] is ColBERTScorer
@@ -26,6 +27,7 @@ def test_registry_construct_and_score() -> None:
     score = scorer.score_pair(q, q.clone())
     # Identical tokens with L2 norm -> score == Nq.
     assert abs(score - 3.0) < 1e-4
+
 
 
 pytestmark = pytest.mark.integration

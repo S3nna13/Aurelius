@@ -8,6 +8,7 @@ import torch.nn.functional as F
 
 from src.alignment import ALIGNMENT_REGISTRY
 from src.alignment.online_rft import (
+
     OnlineRFTConfig,
     OnlineRFTTrainer,
     RFTSample,
@@ -20,6 +21,7 @@ from src.alignment.online_rft import (
 
 class _TinyModel(nn.Module):
     """Minimal transformer-free model: embedding + linear head."""
+
 
 
 pytestmark = pytest.mark.integration

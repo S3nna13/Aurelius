@@ -8,7 +8,6 @@ Verifies that:
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -21,6 +20,8 @@ from src.serving.structured_output_decoder import (
     GrammarConstrainedDecoder,
     StructuredOutputDecoder,
 )
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Config-driven construction
@@ -273,6 +274,7 @@ def test_no_heavy_ml_imports():
     """
     import ast
     import pathlib
+
 
     src_path = (
         pathlib.Path(__file__).parent.parent.parent

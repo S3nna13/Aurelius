@@ -7,6 +7,7 @@ import os
 import src.agent as agent
 
 
+
 def _mkfile(root, rel, content):
     path = os.path.join(str(root), rel)
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -50,6 +51,7 @@ def test_pack_toy_repo_three_py_files(tmp_path):
     assert "greet.py" in ctx.tree
     assert "io_utils.py" in ctx.tree
     assert ctx.token_estimate <= 2000
+
 
 
 pytestmark = pytest.mark.integration

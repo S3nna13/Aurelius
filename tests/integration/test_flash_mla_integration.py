@@ -11,7 +11,6 @@ Covers the full lifecycle:
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -20,6 +19,9 @@ import torch
 
 from src.model import MODEL_COMPONENT_REGISTRY
 from src.model.flash_mla import FlashMLAAttention, FlashMLAConfig
+
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Shared setup

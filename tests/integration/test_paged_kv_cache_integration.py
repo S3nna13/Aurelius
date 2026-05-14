@@ -7,6 +7,7 @@ import torch
 from src import longcontext as lc
 from src.longcontext.paged_kv_cache import PagedKVCache
 
+
 EXPECTED_PRIOR = [
     "kv_int8",
     "attention_sinks",
@@ -49,6 +50,7 @@ def test_end_to_end_allocate_write_read():
         assert torch.allclose(out_v[i], tokens[i][1])
     cache.deallocate("req")
     assert cache.num_free_pages() == 8
+
 
 
 pytestmark = pytest.mark.integration

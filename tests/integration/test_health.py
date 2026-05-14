@@ -7,6 +7,7 @@ from typing import Any
 import requests
 
 
+
 class TestHealthEndpoints:
     def test_health_returns_ok(self, api_client: Any, health_url: str) -> None:
         resp = api_client.get(health_url)
@@ -46,6 +47,7 @@ class TestHealthEndpoints:
             timeout=5,
         )
         assert resp.status_code in (200, 401)
+
 
 
 pytestmark = pytest.mark.integration

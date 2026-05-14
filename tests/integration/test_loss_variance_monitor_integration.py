@@ -7,6 +7,7 @@ import math
 from src.training import LossVarianceMonitor
 
 
+
 def test_exposed_via_src_training() -> None:
     # Importing via the package namespace must work.
     mon = LossVarianceMonitor(window_size=50)
@@ -42,6 +43,7 @@ def test_synthetic_outlier_triggers_spike_detection() -> None:
     # The spike entry should reference step 49.
     spike_entries = [a for a in mon.anomalies() if a["type"] == "spike"]
     assert any(a["step"] == 49 for a in spike_entries)
+
 
 
 pytestmark = pytest.mark.integration

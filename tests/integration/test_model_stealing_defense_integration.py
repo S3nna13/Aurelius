@@ -7,7 +7,6 @@ and perturbs logits as expected.
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -16,6 +15,8 @@ import string
 
 import torch
 
+
+pytestmark = pytest.mark.integration
 
 def test_exposed_via_src_security():
     import src.security as sec
@@ -36,6 +37,7 @@ def test_prior_entries_intact():
 
 def test_end_to_end_defense_scenario():
     from src.security import ModelStealingDefense
+
 
     defense = ModelStealingDefense(
         entropy_threshold=3.0,

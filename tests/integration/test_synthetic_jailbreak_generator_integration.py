@@ -13,6 +13,7 @@ def test_benchmark_registry_entry():
 def test_config_flag_off():
     from src.model.config import AureliusConfig
 
+
     assert AureliusConfig().eval_synthetic_jailbreak_generator_enabled is False
     assert ev.eval_synthetic_jailbreak_generator_enabled is False
 
@@ -26,6 +27,7 @@ def test_smoke_generate():
     probes = g.generate(5, seed=1)
     assert len(probes) == 5
     assert all(len(p.text) > 0 for p in probes)
+
 
 
 pytestmark = pytest.mark.integration

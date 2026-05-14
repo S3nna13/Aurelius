@@ -18,7 +18,6 @@ Pure stdlib.
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -29,6 +28,7 @@ import pytest
 
 import src.model as model_pkg
 from src.model import (
+
     AURELIUS_REFERENCE_MANIFEST,
     MANIFEST_SCHEMA_VERSION,
     MODEL_MANIFEST_REGISTRY,
@@ -46,6 +46,8 @@ from src.model import (
     v2_to_v1_dict,
 )
 
+
+pytestmark = pytest.mark.integration
 
 def _v1_payload(**overrides):
     data = {

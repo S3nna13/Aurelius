@@ -39,6 +39,7 @@ def test_config_flag_defaults_off():
 def test_end_to_end_dispatch_three_inputs():
     from agent import Dispatcher, DispatchTask
 
+
     class UpperTask(DispatchTask):
         name = "upper"
 
@@ -63,6 +64,7 @@ def test_end_to_end_dispatch_three_inputs():
     # Order in finalize matches success order, but all should be uppercased.
     assert set(report.finalized.split("|")) == {"ALPHA", "BETA", "GAMMA"}
     assert report.circuit_open is False
+
 
 
 pytestmark = pytest.mark.integration

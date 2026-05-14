@@ -8,11 +8,12 @@ Verifies:
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
 import torch
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # 1. Registry membership
@@ -80,6 +81,7 @@ def test_registry_shared_weight():
 
 def test_existing_public_symbols_intact():
     import src.model as m
+
 
     must_have = {
         "AureliusConfig",

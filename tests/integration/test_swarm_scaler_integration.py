@@ -8,7 +8,6 @@ Validates:
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -19,6 +18,9 @@ import pytest
 from agent import AGENT_LOOP_REGISTRY
 from agent.swarm_scaler import SwarmScaler, SwarmScalerConfig, WorkerStats
 
+
+
+pytestmark = pytest.mark.integration
 
 def _worker_fn(payload: dict) -> dict:
     """Simulate a small computation: square the value field."""

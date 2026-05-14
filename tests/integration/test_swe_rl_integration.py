@@ -10,7 +10,6 @@ Verifies end-to-end flow:
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -21,11 +20,14 @@ import torch
 
 from src.training import TRAINING_REGISTRY
 from src.training.swe_rl import (
+
     SWEPatch,
     SWERLConfig,
     SWERLTrainer,
     SWETask,
 )
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Fixtures

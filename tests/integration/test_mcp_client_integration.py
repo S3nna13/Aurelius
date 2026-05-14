@@ -7,7 +7,6 @@ surface entries remain intact.
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -24,6 +23,9 @@ from agent import (
 )
 from agent.mcp_client import MCP_PROTOCOL_VERSION
 
+
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # stub server: a toy MCP server exposing a calculator tool, a readme

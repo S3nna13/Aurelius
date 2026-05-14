@@ -16,6 +16,7 @@ def test_exposed_via_src_data_module_import():
     # Must be importable via dotted module path.
     from src.data import instruction_dataset_packer as mod  # noqa: F401
 
+
     assert hasattr(mod, "InstructionSample")
     assert hasattr(mod, "PackedBatch")
     assert hasattr(mod, "InstructionDatasetPacker")
@@ -85,6 +86,7 @@ def test_pack_iter_on_generator():
         assert pb.input_ids.dtype == torch.long
         assert pb.attention_mask.dtype == torch.bool
         assert pb.loss_mask.dtype == torch.bool
+
 
 
 pytestmark = pytest.mark.integration

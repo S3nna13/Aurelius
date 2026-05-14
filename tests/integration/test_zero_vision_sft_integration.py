@@ -6,13 +6,14 @@ Pure PyTorch only — no transformers, trl, einops, scipy, sklearn, PIL, cv2, ti
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
 import torch
 
 from src.alignment.zero_vision_sft import ZeroVisionSFTConfig, ZeroVisionSFTTrainer
+
+pytestmark = pytest.mark.integration
 
 VOCAB = 256
 SEQ = 16
@@ -112,6 +113,7 @@ def test_integration_train_step():
 def test_integration_alignment_registry():
     """ALIGNMENT_REGISTRY['zero_vision_sft'] must map to ZeroVisionSFTTrainer."""
     from src.alignment import ALIGNMENT_REGISTRY
+
 
     assert "zero_vision_sft" in ALIGNMENT_REGISTRY
     assert ALIGNMENT_REGISTRY["zero_vision_sft"] is ZeroVisionSFTTrainer

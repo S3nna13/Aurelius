@@ -6,19 +6,21 @@ batching, and completion all compose end-to-end.
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
 import pytest
 
 from src.inference import (
+
     SCHEDULER_REGISTRY,
     BatchStep,
     ContinuousBatchingScheduler,
     InferenceRequest,
 )
 
+
+pytestmark = pytest.mark.integration
 
 def _fake_step_fn(step: BatchStep) -> dict:
     """Return a token that is ``last_input_token + 1`` per request."""

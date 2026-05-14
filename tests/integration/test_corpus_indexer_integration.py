@@ -8,7 +8,6 @@ anything.
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -20,6 +19,9 @@ import src.retrieval as retrieval_pkg
 from src.retrieval import BM25Retriever
 from src.retrieval.corpus_indexer import Chunk, CorpusIndexer
 
+
+
+pytestmark = pytest.mark.integration
 
 def _write(root, rel, text):
     p = os.path.join(str(root), rel)

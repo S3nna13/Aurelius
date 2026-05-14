@@ -6,6 +6,7 @@ from pathlib import Path
 
 import src.model as model_pkg
 from src.model import (
+
     InterfaceContractBundle,
     InterfaceContractPaths,
     load_interface_contract_bundle,
@@ -59,6 +60,7 @@ def test_validate_interface_contract_accepts_real_contract_artifacts():
         markdown_text=bundle.markdown_text,
         prompt_yaml_text=bundle.prompt_yaml_text,
     )
+
 
 
 pytestmark = pytest.mark.integration

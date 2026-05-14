@@ -88,12 +88,14 @@ def test_existing_serving_modules_still_importable():
 def test_registry_classes_are_instantiable_and_validate():
     from src.serving import API_SHAPE_REGISTRY
 
+
     req_cls = API_SHAPE_REGISTRY["openai.chat.request"]
     resp_cls = API_SHAPE_REGISTRY["openai.chat.response"]
     assert req_cls().validate({"model": "m", "messages": [{"role": "user", "content": "hi"}]}) == []
     # A clearly invalid response should produce errors.
     errs = resp_cls().validate({})
     assert len(errs) > 0
+
 
 
 pytestmark = pytest.mark.integration

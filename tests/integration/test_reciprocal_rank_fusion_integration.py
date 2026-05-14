@@ -12,11 +12,11 @@ Covers three things:
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
 from src.retrieval import (
+
     FUSION_REGISTRY,
     RETRIEVER_REGISTRY,
     BM25Retriever,
@@ -28,6 +28,8 @@ from src.retrieval import (
     reciprocal_rank_fusion,
 )
 
+
+pytestmark = pytest.mark.integration
 
 def _embed(text: str) -> list[float]:
     t = text.lower()

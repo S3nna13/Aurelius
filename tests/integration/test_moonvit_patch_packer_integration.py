@@ -8,11 +8,12 @@ Verifies:
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
 import torch
+
+pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # 1. Registry membership
@@ -107,6 +108,7 @@ def test_registry_output_dtypes():
 
 def test_existing_registry_keys_intact():
     from src.model import MODEL_COMPONENT_REGISTRY
+
 
     expected_keys = {"dsa_attention", "mtp_shared", "dp_aware_moe_routing", "mla_256"}
     for key in expected_keys:

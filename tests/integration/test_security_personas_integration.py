@@ -15,6 +15,7 @@ from src.model.config import AureliusConfig
 from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 
 
+
 def test_security_personas_registered_in_chat_template_registry() -> None:
     assert "security_personas" in CHAT_TEMPLATE_REGISTRY
     reg = CHAT_TEMPLATE_REGISTRY["security_personas"]
@@ -65,6 +66,7 @@ def test_personas_exposed_as_module_constants() -> None:
     assert RED_TEAM_PERSONA.id == "red_team"
     assert BLUE_TEAM_PERSONA.id == "blue_team"
     assert PURPLE_TEAM_PERSONA.id == "purple_team"
+
 
 
 pytestmark = pytest.mark.integration

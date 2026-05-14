@@ -6,11 +6,11 @@ joint verdicts on realistic adversarial and benign content.
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
 from src.safety import (
+
     HARM_CLASSIFIER_REGISTRY,
     SAFETY_FILTER_REGISTRY,
     InjectionScore,
@@ -19,6 +19,8 @@ from src.safety import (
     PromptInjectionScanner,
 )
 
+
+pytestmark = pytest.mark.integration
 
 def test_registry_exposes_both_filters() -> None:
     assert "jailbreak" in SAFETY_FILTER_REGISTRY

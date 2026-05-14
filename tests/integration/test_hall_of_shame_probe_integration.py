@@ -16,7 +16,6 @@ The tests tolerate detector misses — the goal is wiring, not tuning.
 """
 
 from __future__ import annotations
-pytestmark = pytest.mark.integration
 
 
 
@@ -37,6 +36,9 @@ from src.safety import (
 )
 from src.safety.hall_of_shame_probe import corpus_hash as corpus_hash_module
 
+
+
+pytestmark = pytest.mark.integration
 
 def _adversarial_count() -> int:
     return sum(1 for p in HALL_OF_SHAME_PROBES if p.expected_block)

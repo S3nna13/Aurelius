@@ -16,6 +16,7 @@ from src.eval import (
 from src.model.config import AureliusConfig
 
 
+
 def test_behavioral_audit_registered_under_eval_registries():
     assert "behavioral_audit_taxonomy" in METRIC_REGISTRY
     assert "behavioral_audit_taxonomy" in BENCHMARK_REGISTRY
@@ -61,6 +62,7 @@ def test_end_to_end_audit_on_simple_trajectory():
     # sycophancy default grader should fire on these markers
     syco = next(s for s in result.scores if s.dimension_id == "misleading.sycophancy")
     assert syco.score > 0.0
+
 
 
 pytestmark = pytest.mark.integration
