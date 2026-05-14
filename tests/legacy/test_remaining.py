@@ -1,11 +1,10 @@
+# ruff: noqa
 from __future__ import annotations
 
 import pytest
+
 pytest.skip("legacy test: modules moved to archive/ during reorganization", allow_module_level=True)
 sys.path.insert(0, '/Users/christienantonio/aurelius')
-from rust_bridge import _PyFallbackPageTable, _py_estimate_memory, _py_save_checkpoint
-from train_3b import count_parameters
-from generate_report import make_style, PRIMARY, SECONDARY, DARK_BG
 from agent_train import ImitationDataset
 from fused_kernels import FlashAttention3Wrapper
 from generate_report import DARK_BG, PRIMARY, SECONDARY, make_style

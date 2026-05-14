@@ -1,3 +1,4 @@
+# ruff: noqa
 """Legacy integration tests — skipped.
 
 These tests reference an old workspace at /Users/christienantonio/aurelius
@@ -9,7 +10,6 @@ in the current environment.
 These tests are excluded from the active test suite.
 """
 
-import sys
 
 import pytest
 

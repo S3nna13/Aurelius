@@ -1,17 +1,23 @@
 """Generate Aurelius dissertation PDF — updated May 2026."""
 from __future__ import annotations
+
 import argparse
 import datetime
 
 from reportlab.lib import colors
+from reportlab.lib.colors import HexColor
 from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import inch
-from reportlab.lib.colors import HexColor
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
-    PageBreak, HRFlowable,
+    HRFlowable,
+    PageBreak,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
 )
 
 # ── Palette ──────────────────────────────────────────────────────────────────
@@ -27,6 +33,8 @@ PAGE_W, PAGE_H = letter
 
 # Repository root path (fallback: current working directory)
 import os
+from pathlib import Path
+
 REPO_ROOT = os.getenv("AURELIUS_ROOT", str(Path.cwd()))
 
 
@@ -103,8 +111,8 @@ def eq(label, formula, note, st):
 
 def bar_chart_drawing(values, labels, title, bar_color=None):
     try:
-        from reportlab.graphics.shapes import Drawing, String
         from reportlab.graphics.charts.barcharts import VerticalBarChart
+        from reportlab.graphics.shapes import Drawing, String
         bc_color = bar_color or NAVY
         w, h = 460, 180
         d = Drawing(w, h + 50)
