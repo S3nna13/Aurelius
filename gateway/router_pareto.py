@@ -270,7 +270,8 @@ class ParetoFrontierRouter:
     def _compute_frontier(self):
         """
         Compute empirical frontier from recent history.
-        Backend B is dominated if ∃ A: cost_A ≤ cost_B AND latency_A ≤ latency_B AND quality_A ≥ quality_B,
+        Backend B is dominated if ∃ A:
+        cost_A ≤ cost_B AND latency_A ≤ latency_B AND quality_A ≥ quality_B,
         with at least one strict.
         """
         # Aggregate by backend: use median of recent samples
