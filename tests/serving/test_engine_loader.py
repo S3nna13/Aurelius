@@ -8,7 +8,7 @@ class TestBuildEngineMock(unittest.TestCase):
     def test_build_engine_mock(self):
         from src.serving.engine_loader import build_engine
 
-        gen_fn, label = build_engine("mock", "")
+        gen_fn, label, engine_obj = build_engine("mock", "")
         self.assertEqual(label, "mock")
         mock_request = MagicMock()
         mock_request.messages = [{"role": "user", "content": "hello"}]
@@ -20,7 +20,7 @@ class TestBuildEngineEmptyBackend(unittest.TestCase):
     def test_build_engine_empty_backend_uses_mock(self):
         from src.serving.engine_loader import build_engine
 
-        gen_fn, label = build_engine("", "")
+        gen_fn, label, engine_obj = build_engine("", "")
         self.assertEqual(label, "mock")
 
 
@@ -48,7 +48,7 @@ class TestBuildEngineAgentic(unittest.TestCase):
     ):
         from src.serving.engine_loader import build_engine
 
-        gen_fn, label = build_engine("agentic", "/model/path")
+        gen_fn, label, engine_obj = build_engine("agentic", "/model/path")
         self.assertEqual(label, "agentic")
         mock_load_model_for_chat.assert_called_once_with("/model/path")
         mock_build_agentic_request_generate_fn.assert_called_once()
@@ -61,7 +61,7 @@ class TestBuildEngineVLLM(unittest.TestCase):
     def test_build_engine_vllm_returns_callable_and_label(self, mock_vllm_engine_cls):
         from src.serving.engine_loader import build_engine
 
-        gen_fn, label = build_engine("vllm", "/model/path")
+        gen_fn, label, engine_obj = build_engine("vllm", "/model/path")
         self.assertEqual(label, "vllm")
         mock_vllm_engine_cls.assert_called_once()
         self.assertTrue(callable(gen_fn))
@@ -70,7 +70,7 @@ class TestBuildEngineVLLM(unittest.TestCase):
     def test_build_engine_vllm_passes_speculative_decoding(self, mock_vllm_engine_cls):
         from src.serving.engine_loader import build_engine
 
-        gen_fn, label = build_engine(
+        gen_fn, label, engine_obj = build_engine(
             "vllm",
             "/model/path",
             speculative_decoding=True,

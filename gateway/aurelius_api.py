@@ -13,6 +13,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+import torch
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, PlainTextResponse, Response
@@ -251,6 +252,13 @@ class ActionRequest(BaseModel):
 class WorkspaceRequest(BaseModel):
     path: str = ""
 
+class BatchRequest(BaseModel):
+    """Multiple prompts for static batch inference."""
+    prompts: list[str]
+    temperature: float = 0.7
+    max_tokens: int = 512
+
+
 
 sessions: dict[str, dict[str, Any]] = {}
 audit_log: list[dict[str, Any]] = []
@@ -378,21 +386,63 @@ _rate_limiter: Callable[[str], bool] | None = None
 
 @app.on_event("startup")
 async def _load_engine() -> None:
-    global _engine, _model_id
+    global _engine, _model_id, _engine_obj, _tokenizer
     model_path = os.environ.get("AURELIUS_MODEL_PATH", "checkpoints/aurelius_1.3b")
     backend = os.environ.get("AURELIUS_BACKEND", "vllm")
     tp = int(os.environ.get("TENSOR_PARALLEL_SIZE", "1"))
+
+    # ── Serving profile ────────────────────────────────────────────────────
+    profile = os.environ.get("AURELIUS_SERVING_PROFILE", "production").lower()
+    print(f"[profile] AURELIUS_SERVING_PROFILE={profile}")
+
+    if profile == "single-gpu":
+        _speculative_default = False
+        _batch_default = int(os.environ.get("AURELIUS_BATCH_SIZE_MAX", "16"))
+        _mem_util_default = float(os.environ.get("AURELIUS_GPU_MEM_UTIL", "0.85"))
+        torch.backends.cuda.matmul.allow_tf32 = True
+        torch.backends.cudnn.benchmark = True
+        print(f"[profile:single-gpu] speculative=off batch_max={_batch_default} ")
+        print(f"                    mem_util={_mem_util_default}")
+    else:
+        _speculative_default = True
+        _batch_default = int(os.environ.get("AURELIUS_BATCH_SIZE_MAX", "32"))
+        _mem_util_default = float(os.environ.get("AURELIUS_GPU_MEM_UTIL", "0.90"))
+
+    # Explicit env overrides
+    _speculative_env = os.environ.get("AURELIUS_SPECULATIVE_DECODING")
+    speculative_decoding = (
+        _speculative_env.lower() == "true" if _speculative_env else _speculative_default
+    )
+    max_num_seqs = _batch_default
+    gpu_memory_utilization = _mem_util_default
+
     try:
-        _engine, _model_id = build_engine(
+        _engine, _model_id, _engine_obj = build_engine(
             backend=backend,
             model_path=model_path,
             tensor_parallel_size=tp,
-            gpu_memory_utilization=0.90,
+            gpu_memory_utilization=gpu_memory_utilization,
+            speculative_decoding=speculative_decoding,
+            max_num_seqs=max_num_seqs,
         )
+        # Load tokenizer for batch endpoint
+        try:
+            from transformers import AutoTokenizer
+            _tokenizer = AutoTokenizer.from_pretrained(
+                model_path,
+                trust_remote_code=True,
+            )
+            print("[startup] Tokenizer loaded for batch endpoint")
+        except Exception as e:
+            print(f"[startup] Warning: tokenizer load failed — batch endpoint disabled: {e}")
+            _tokenizer = None
         print(f"[startup] Engine loaded: {_model_id} ({backend})")
-    except Exception as exc:
-        print(f"[startup] Engine load failed: {exc}")
+    except Exception:
+        print("[startup] Engine load failed: {exc}")
         _engine = None
+        _engine_obj = None
+        _tokenizer = None
+
 
 @app.on_event("startup")
 async def _init_rate_limiter() -> None:
@@ -462,6 +512,47 @@ async def chat_completion(request: dict) -> dict:
             "total_tokens": 0,
         },
     }
+
+
+@app.post("/v1/batch/completions")
+async def batch_completions(req: BatchRequest) -> dict:
+    """Batch completion — processes multiple prompts in one forward pass.
+
+    Returns an array of completions in the same order as the input prompts.
+    Requires that the engine was initialized with a batch‑capable backend
+    (vLLM). The tokenizer is loaded once at startup and cached.
+    """
+    if not req.prompts:
+        raise HTTPException(400, detail="'prompts' list cannot be empty")
+
+    if _tokenizer is None:
+        raise HTTPException(503, detail="tokenizer not available — batch endpoint disabled")
+
+    # Tokenize each prompt using the chat template
+    input_ids_list = [
+        _tokenizer.apply_chat_template(
+            [{"role": "user", "content": p}],
+            tokenize=True,
+            add_generation_prompt=True,
+        )
+        for p in req.prompts
+    ]
+
+    if _engine_obj is None or not hasattr(_engine_obj, "generate_batch"):
+        raise HTTPException(503, detail="engine not ready or batch unsupported")
+
+    try:
+        raw_results = _engine_obj.generate_batch(
+            input_ids_list=input_ids_list,
+            max_new_tokens=req.max_tokens,
+            temperature=req.temperature,
+        )
+    except Exception as exc:
+        raise HTTPException(500, f"Batch generation error: {exc}") from exc
+
+    completions = [_sanitize_completion(txt) for txt in raw_results]
+    return {"completions": completions, "count": len(completions)}
+
 
 
 @app.get("/v1/models")

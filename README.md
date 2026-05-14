@@ -213,6 +213,71 @@ Docker Compose (`deployment/compose.yaml`), Kubernetes (`k8s/aurelius-deployment
 
 ---
 
+
+## Serving Profiles
+
+Aurelius supports presets optimized for different deployment sizes:
+
+### `production` (default)
+Full feature set with research‑grade optimizations — speculative decoding
+(if checkpoint includes a draft model), auto‑selected KV cache strategy,
+larger batch size (32), and CUDA graphs where beneficial. Suitable for
+multi‑GPU or high‑memory single‑GPU servers.
+
+### `single-gpu`
+Memory‑conservative configuration for a single GPU:
+- Speculative decoding **disabled** (no draft model) — saves 15–25% VRAM
+- KV cache strategy: `standard` — plain paged attention, no exotic tricks
+- Batch size default: 16 (configurable via `AURELIUS_BATCH_SIZE_MAX`)
+- GPU memory utilization: 85% (safer headroom)
+- Torch optimizations: TF32 + cuDNN benchmark enabled
+
+Enable:
+```bash
+export AURELIUS_SERVING_PROFILE=single-gpu
+aurelius serve
+```
+
+Manual overrides (take precedence over profile):
+```bash
+export AURELIUS_SPECULATIVE_DECODING=false
+export AURELIUS_KV_CACHE_STRATEGY=standard
+export AURELIUS_BATCH_SIZE_MAX=16
+aurelius serve
+```
+
+---
+
+## Batch Inference
+
+High‑throughput static batch endpoint for offline/synchronous workloads:
+
+**POST** `/v1/batch/completions`
+
+Request body:
+```json
+{
+  "prompts": ["Prompt A", "Prompt B"],
+  "temperature": 0.7,
+  "max_tokens": 256
+}
+```
+
+Response:
+```json
+{
+  "completions": ["Output A", "Output B"],
+  "count": 2
+}
+```
+
+The batch endpoint tokenizes all prompts, runs a single forward pass, and
+returns all completions. Requires vLLM backend; respects the configured
+`AURELIUS_BATCH_SIZE_MAX`. Non‑streaming — use `/v1/chat/completions` for
+interactive chat.
+
+---
+
 ## Quick Start
 
 ```bash
@@ -266,6 +331,10 @@ docker compose up --profile cache    # with Redis
 | `AURELIUS_RATE_WINDOW` | `60` | Rate limit window (seconds) |
 | `AURELIUS_RATE_LIMIT_REDIS_URL` | — | Redis URL for distributed rate limiting |
 | `AURELIUS_RATE_LIMIT_PREFIX` | `rl:` | Redis key prefix for rate-limit tokens |
+| `AURELIUS_SERVING_PROFILE` | `production` | Serving preset: `production` (full features) or `single-gpu` (throughput-optimized, no speculative decode, smaller batches) |
+| `AURELIUS_USE_CUDA_GRAPHS` | `auto` | Enable CUDA graphs for kernel fusion: always/never/auto |
+| `AURELIUS_GPU_MEM_UTIL` | `0.90 (production), 0.85 (single-gpu)` | Fraction of GPU memory allocated to KV cache (vLLM) |
+| `AURELIUS_BATCH_SIZE_MAX` | `32` | Maximum batch size for static batch endpoint; also caps vLLM max_num_seqs |
 | `AURELIUS_MODEL_PATH` | — | Path to checkpoint directory |
 | `AURELIUS_VERSION` | `0.1.0` | Version string (visible at `/health`) |
 
