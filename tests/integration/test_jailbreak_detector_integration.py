@@ -15,6 +15,7 @@ import pytest
 
 
 
+
 pytestmark = pytest.mark.integration
 
 def test_registry_contains_jailbreak_entry() -> None:

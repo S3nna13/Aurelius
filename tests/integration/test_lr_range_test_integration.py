@@ -10,6 +10,8 @@ from src.training import LRRangeTest, LRRangeTestResult
 
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_exposed_via_src_training() -> None:

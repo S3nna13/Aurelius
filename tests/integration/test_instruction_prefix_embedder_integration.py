@@ -16,6 +16,7 @@ from src.retrieval import (
 )
 
 
+
 pytestmark = pytest.mark.integration
 
 def _tokenize(text: str) -> list[int]:

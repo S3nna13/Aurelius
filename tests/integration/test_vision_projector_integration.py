@@ -19,6 +19,8 @@ from src.model.vision_projector import VisionProjector, VisionProjectorConfig
 # Shared tiny config used across integration tests
 # ---------------------------------------------------------------------------
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 TINY_VIT_HIDDEN = 32

@@ -23,6 +23,8 @@ from src.optimizers import OPTIMIZER_REGISTRY, MuonClip
 # ---------------------------------------------------------------------------
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_muonclip_in_registry():

@@ -13,6 +13,8 @@ from src.longcontext.hierarchical_context_mgr import Turn
 
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def make_turns(n: int, tokens_each: int = 100) -> list[Turn]:

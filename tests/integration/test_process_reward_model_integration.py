@@ -26,6 +26,8 @@ from src.training.trainer import build_model_for_training
 # Shared tiny config
 # ---------------------------------------------------------------------------
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 STEP_TOKEN_ID = 5  # < vocab_size=256

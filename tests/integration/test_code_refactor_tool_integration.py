@@ -9,6 +9,8 @@ from agent import CodeRefactorTool, RefactorResult
 
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_exposed_via_src_agent() -> None:

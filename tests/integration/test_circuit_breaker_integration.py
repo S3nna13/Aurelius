@@ -17,6 +17,7 @@ from src.serving import (
 )
 
 
+
 pytestmark = pytest.mark.integration
 
 def test_registry_contains_circuit_breaker_entry() -> None:

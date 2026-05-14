@@ -19,6 +19,8 @@ from src.safety import (
 
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_registry_contains_hallucination_guard_entry() -> None:

@@ -16,6 +16,8 @@ from src.eval.tree_of_attacks_probe import (
 )
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_tap_registered_under_eval_registries():

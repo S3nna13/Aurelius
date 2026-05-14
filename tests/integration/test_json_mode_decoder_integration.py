@@ -13,6 +13,8 @@ from src.inference import (
 )
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_exports_exposed_on_package() -> None:

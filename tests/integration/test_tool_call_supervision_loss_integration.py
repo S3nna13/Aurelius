@@ -7,6 +7,8 @@ import torch
 import src.training as training
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_auxiliary_loss_registry():

@@ -16,6 +16,8 @@ import torch
 # ---------------------------------------------------------------------------
 # 1. "dsa_attention" present in MODEL_COMPONENT_REGISTRY
 # ---------------------------------------------------------------------------
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_dsa_attention_in_registry():

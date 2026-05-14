@@ -10,6 +10,8 @@ from src.model import AureliusInterfaceFramework
 
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def _repo_root() -> Path:

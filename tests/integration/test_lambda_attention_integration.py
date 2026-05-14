@@ -15,6 +15,8 @@ import pathlib
 import torch
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 FROZEN_SHA256 = {

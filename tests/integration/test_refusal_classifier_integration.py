@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_registry_contains_refusal_entry() -> None:

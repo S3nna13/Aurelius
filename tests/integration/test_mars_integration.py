@@ -10,6 +10,8 @@ from src.optimizers import Mars
 
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_mars_exposed_via_package():

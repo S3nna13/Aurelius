@@ -21,6 +21,8 @@ from src.safety import (
 
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_registry_exposes_both_filters() -> None:

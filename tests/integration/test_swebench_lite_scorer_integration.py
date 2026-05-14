@@ -8,6 +8,8 @@ import textwrap
 from src import eval as eval_pkg
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_metric_registry_has_swebench_lite() -> None:

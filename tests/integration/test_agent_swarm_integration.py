@@ -22,6 +22,8 @@ from agent.agent_swarm import SubAgentResult
 # ---------------------------------------------------------------------------
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_agent_swarm_in_registry():

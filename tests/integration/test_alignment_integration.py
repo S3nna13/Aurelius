@@ -30,6 +30,7 @@ from src.alignment.spin_trainer import (
 # Tiny causal LM
 # ---------------------------------------------------------------------------
 
+
 pytestmark = pytest.mark.integration
 
 VOCAB = 256

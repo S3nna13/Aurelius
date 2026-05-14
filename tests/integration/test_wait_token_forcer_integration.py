@@ -15,6 +15,8 @@ from src.inference.wait_token_forcer import WaitTokenForcer, WaitTokenForcerConf
 
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 END_THINK = 151645

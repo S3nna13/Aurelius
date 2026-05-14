@@ -21,6 +21,8 @@ from src.training.trainer import TrainConfig
 # ---------------------------------------------------------------------------
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def _make_tiny_aurelius_config(train_cfg: TrainConfig) -> AureliusConfig:

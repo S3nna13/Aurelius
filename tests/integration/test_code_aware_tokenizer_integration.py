@@ -6,6 +6,8 @@ import src.retrieval as retrieval
 from src.retrieval import BM25Retriever, CodeAwareTokenizer
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 CODE_CORPUS = [

@@ -14,6 +14,8 @@ from src.model.family import (
 )
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_family_registry_exported_from_package():

@@ -10,6 +10,8 @@ from src.eval.ifeval_scorer import IFEvalConstraint, IFEvalProblem
 
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 class BenchmarkRunnerIntegrationTests(unittest.TestCase):

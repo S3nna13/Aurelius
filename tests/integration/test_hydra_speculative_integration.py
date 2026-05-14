@@ -27,6 +27,8 @@ from src.inference.hydra_speculative import HydraConfig, HydraSpeculative
 # Shared fixtures / constants
 # ---------------------------------------------------------------------------
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 D_MODEL = 64

@@ -8,6 +8,8 @@ import src
 
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_src_package_lazily_exposes_model_and_chat() -> None:

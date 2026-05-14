@@ -8,6 +8,8 @@ from src.longcontext.context_compaction import Turn
 
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_registry_contains_context_compaction():

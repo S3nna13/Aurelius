@@ -41,6 +41,7 @@ from src.computer_use.trajectory_replay import (
 # Shared fixture
 # ---------------------------------------------------------------------------
 
+
 pytestmark = pytest.mark.integration
 
 SAMPLE_TREE: dict = {

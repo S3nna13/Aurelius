@@ -11,6 +11,8 @@ import src.longcontext as lc
 from src.longcontext.infini_attention import InfiniAttention
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_registry_has_infini_entry():

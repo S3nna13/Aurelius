@@ -9,6 +9,8 @@ from src.security.soc_pipeline import DEFAULT_SOC_PIPELINE, SOCPipeline
 
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_soc_pipeline_registered_in_defensive_registry():

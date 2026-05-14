@@ -7,6 +7,8 @@ from src.eval.mmlu_scorer import MMLUProblem, MMLUScorer
 
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_prior_registry_entries_intact():

@@ -7,6 +7,8 @@ import torch
 import src.inference as inf
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_logit_bias_registry():

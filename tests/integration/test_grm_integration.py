@@ -22,6 +22,7 @@ from src.alignment.grm import DIMENSIONS, GenerativeRewardModel
 # ---------------------------------------------------------------------------
 
 
+
 pytestmark = pytest.mark.integration
 
 def test_grm_key_in_registry():

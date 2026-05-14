@@ -15,6 +15,8 @@ from agent import AGENT_LOOP_REGISTRY, BeamPlanner, PlanNode
 
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def _echo_generate(task, path):

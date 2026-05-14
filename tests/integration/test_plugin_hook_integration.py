@@ -11,6 +11,8 @@ from agent.plugin_hook import HOOK_REGISTRY, PluginHookRegistry
 # ---------------------------------------------------------------------------
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_plugin_hook_in_agent_loop_registry():

@@ -19,6 +19,8 @@ import torch
 # ---------------------------------------------------------------------------
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_moonvit_patch_packer_in_registry():

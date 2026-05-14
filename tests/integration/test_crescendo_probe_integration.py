@@ -13,6 +13,8 @@ from src.eval.crescendo_probe import stub_judge_fn
 
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def _synthetic_target(history):

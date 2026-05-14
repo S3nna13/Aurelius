@@ -24,6 +24,8 @@ from src.inference.eagle3_decoding import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 D_MODEL = 64

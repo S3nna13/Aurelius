@@ -20,6 +20,8 @@ from src.inference.soft_thinking import SoftThinkingConfig, SoftThinkingMixer
 # Constants
 # ---------------------------------------------------------------------------
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 D_MODEL = 64

@@ -19,6 +19,8 @@ import torch
 # ---------------------------------------------------------------------------
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_mtp_shared_in_registry():

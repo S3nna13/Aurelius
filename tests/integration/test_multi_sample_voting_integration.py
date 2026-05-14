@@ -8,6 +8,8 @@ import src.inference as inference_pkg
 
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_exposed_via_inference_package():

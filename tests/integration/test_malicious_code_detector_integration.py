@@ -12,6 +12,8 @@ from src.safety import (
 
 # Runtime-assembled trigger tokens so the test source does not contain raw
 # dangerous identifiers.
+
+import pytest
 pytestmark = pytest.mark.integration
 
 _PK = "pick" + "le"

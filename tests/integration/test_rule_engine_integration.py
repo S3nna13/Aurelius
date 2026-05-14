@@ -20,6 +20,8 @@ from src.safety import (
 
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_rule_engine_registered_in_safety_filter_registry():

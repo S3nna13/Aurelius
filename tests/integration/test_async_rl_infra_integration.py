@@ -20,6 +20,8 @@ from src.training.async_rl_infra import RolloutOrchestrator, RolloutResult, Roll
 # ---------------------------------------------------------------------------
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def _make_task(task_id: int, task_type: str = "swe") -> RolloutTask:

@@ -11,6 +11,8 @@ from src.eval.mythos_coding_rubric import (
 )
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_metric_registry_contains_mythos():

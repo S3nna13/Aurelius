@@ -13,6 +13,7 @@ from src.training.slime_framework import SlimeTaskRouter, make_default_router
 # ---------------------------------------------------------------------------
 
 
+
 pytestmark = pytest.mark.integration
 
 def test_slime_in_training_registry() -> None:

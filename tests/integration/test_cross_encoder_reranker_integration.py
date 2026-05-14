@@ -32,6 +32,8 @@ from src.retrieval.cross_encoder_reranker import (
 
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_registry_contains_cross_encoder() -> None:

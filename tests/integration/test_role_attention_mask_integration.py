@@ -24,6 +24,8 @@ from src.chat import (
 
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_exposed_from_chat_package():

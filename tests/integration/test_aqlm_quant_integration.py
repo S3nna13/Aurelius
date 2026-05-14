@@ -9,6 +9,8 @@ from src.model.aqlm_quant import AQLMConfig, AQLMLinear
 
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_aqlm_integration_end_to_end():

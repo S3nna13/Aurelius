@@ -21,6 +21,8 @@ from src.inference import DECODER_REGISTRY, LEVEL_CONFIGS
 # ---------------------------------------------------------------------------
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_reasoning_level_key_in_decoder_registry() -> None:

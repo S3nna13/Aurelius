@@ -26,6 +26,7 @@ from src.model.flash_mla import FlashMLAAttention, FlashMLAConfig
 # Shared setup
 # ---------------------------------------------------------------------------
 
+
 pytestmark = pytest.mark.integration
 
 INTEGRATION_CFG = FlashMLAConfig(

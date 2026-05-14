@@ -15,6 +15,8 @@ from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_threat_intel_persona_registered_in_chat_template_registry() -> None:

@@ -8,6 +8,8 @@ from src.retrieval.bm25_retriever import BM25Retriever
 
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_public_symbols_exposed():

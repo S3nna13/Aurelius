@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def _repo_root() -> Path:

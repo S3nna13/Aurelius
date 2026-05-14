@@ -25,6 +25,7 @@ from src.model.striped_attention import StripedAttention, StripedAttentionConfig
 # Integration config (tiny, matches spec)
 # ---------------------------------------------------------------------------
 
+
 pytestmark = pytest.mark.integration
 
 D_MODEL = 64

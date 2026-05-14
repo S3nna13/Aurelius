@@ -10,6 +10,8 @@ from src.safety.constitutional_principles_scorer import (
 )
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_registry_has_constitutional_key() -> None:

@@ -12,6 +12,8 @@ from src.data.tokenizer_contract import (
 )
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_identity_registry_exposed_from_package():

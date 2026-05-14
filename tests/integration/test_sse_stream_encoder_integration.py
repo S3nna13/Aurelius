@@ -5,6 +5,8 @@ from __future__ import annotations
 import src.serving as serving
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_stream_handler_registry():

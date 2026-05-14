@@ -27,6 +27,8 @@ from src.serving.structured_output_decoder import (
 # ---------------------------------------------------------------------------
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def _make_decoder_from_config(

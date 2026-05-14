@@ -9,6 +9,8 @@ from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_alignment_registry_has_constitution_dimensions():

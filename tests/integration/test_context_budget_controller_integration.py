@@ -26,6 +26,8 @@ from src.longcontext.context_budget_controller import (
 # ---------------------------------------------------------------------------
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_context_budget_in_registry():

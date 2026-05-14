@@ -18,6 +18,8 @@ from src.longcontext.context_compaction import ContextCompactor
 
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_exposed_in_src_chat():

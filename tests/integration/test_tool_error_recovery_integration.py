@@ -16,6 +16,8 @@ from agent import (
 
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_public_exports_present():

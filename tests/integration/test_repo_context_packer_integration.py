@@ -8,6 +8,8 @@ import src.agent as agent
 
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def _mkfile(root, rel, content):

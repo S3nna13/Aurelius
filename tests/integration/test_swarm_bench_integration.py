@@ -12,6 +12,8 @@ from src.eval.swarm_bench import SwarmBenchResult, SwarmTask
 # ---------------------------------------------------------------------------
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def _make_tasks(n: int) -> list[SwarmTask]:

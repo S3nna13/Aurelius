@@ -30,6 +30,7 @@ from agent.mcp_client import MCP_PROTOCOL_VERSION
 # stub server: a toy MCP server exposing a calculator tool, a readme
 # resource, and a greet prompt. JSON-RPC over Python call.
 # ---------------------------------------------------------------------------
+
 pytestmark = pytest.mark.integration
 
 class StubMCPServer:

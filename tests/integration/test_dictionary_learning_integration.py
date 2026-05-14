@@ -9,6 +9,8 @@ from src.interpretability import DictionaryLearner, DictionaryResult
 
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_exposed_at_package_level() -> None:

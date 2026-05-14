@@ -27,6 +27,8 @@ from src.model.config import AureliusConfig
 # ---------------------------------------------------------------------------
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 def test_context_extension_registry_exposed() -> None:

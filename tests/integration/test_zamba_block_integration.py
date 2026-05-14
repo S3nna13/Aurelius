@@ -23,6 +23,8 @@ from src.model.zamba_block import ZambaBlock, ZambaConfig, ZambaSharedAttention
 # Shared setup
 # ---------------------------------------------------------------------------
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 D_MODEL = 64
