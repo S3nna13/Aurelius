@@ -1,6 +1,5 @@
 """Shared fixtures for integration tests."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import os
