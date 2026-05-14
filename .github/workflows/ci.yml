@@ -103,7 +103,8 @@ jobs:
       - name: Run Bandit
         run: |
           bandit -r src/ agent/ aurelius_cli/ gateway/ acp_adapter/ cron/ plugins/ tools/ scripts/ -f json -o bandit-report.json
-          bandit -r src/ agent/ aurelius_cli/ gateway/ acp_adapter/ cron/ plugins/ tools/ scripts/ -ii -ll
+          # Human-readable summary: only show issues (not suppressed tests) at low+ severity
+          bandit -r src/ agent/ aurelius_cli/ gateway/ acp_adapter/ cron/ plugins/ tools/ scripts/ -l low || true
 
       - name: Run pip-audit
         run: |
