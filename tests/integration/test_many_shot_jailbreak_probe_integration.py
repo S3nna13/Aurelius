@@ -1,6 +1,5 @@
 """Integration test for the many-shot jailbreak probe."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 from src.eval import (
@@ -41,3 +40,5 @@ def test_end_to_end_sweep_against_stubs():
     assert isinstance(result, MSJSweepResult)
     assert result.first_success_shot == 16
     assert len(result.per_shot_results) == 4
+
+pytestmark = pytest.mark.integration

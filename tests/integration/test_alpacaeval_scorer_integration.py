@@ -1,6 +1,5 @@
 """Integration: AlpacaEval scorer registered in METRIC_REGISTRY; end-to-end."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import src.eval as eval_pkg
@@ -74,3 +73,5 @@ def test_end_to_end_three_problem_scoring():
     # Sanity: each comparison round-trips the dataclass type.
     comps = [scorer.compare(p, c) for p, c in zip(problems, candidates)]
     assert all(isinstance(c, AlpacaComparison) for c in comps)
+
+pytestmark = pytest.mark.integration

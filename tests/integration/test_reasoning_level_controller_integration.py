@@ -1,12 +1,12 @@
 """Integration tests: reasoning_level_controller wired into DECODER_REGISTRY.
 
-@pytest.mark.integration
 Verifies that the reasoning-level entry is discoverable via the inference
 package's DECODER_REGISTRY and behaves correctly when called through it.
 
 GPT-OSS-120B (arXiv:2508.10925).
 SWE-bench Verified: low=47.9%, medium=52.6%, high=62.4%.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

@@ -1,6 +1,5 @@
 """Integration test for preserve_thinking module.
 
-@pytest.mark.integration
 Scenario:
   - Build a PreserveThinkingBuffer with max_snapshots=3.
   - Add 5 snapshots (triggering 2 evictions).
@@ -8,6 +7,7 @@ Scenario:
   - Verify get_prepend_tokens() returns the last snapshot's tokens.
   - Verify AGENT_LOOP_REGISTRY["preserve_thinking"] is wired correctly.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

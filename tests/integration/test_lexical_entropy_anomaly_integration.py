@@ -1,6 +1,5 @@
 """Integration: lexical entropy safety filter."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import src.safety as safety
@@ -27,3 +26,5 @@ def test_smoke_score_with_flag():
     det = safety.LexicalEntropyAnomalyDetector()
     r = det.score("x " * 40)
     assert isinstance(r.is_anomaly, bool)
+
+pytestmark = pytest.mark.integration

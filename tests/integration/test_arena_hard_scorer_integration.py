@@ -1,6 +1,5 @@
 """Integration tests for Arena-Hard: registry entry + end-to-end 3-model round-robin."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 from src import eval as eval_pkg
@@ -36,6 +35,7 @@ def test_prior_registry_entries_intact():
 
 def test_end_to_end_three_model_round_robin():
     """3 models x 2 problems; judge prefers answers containing 'STRONG'."""
+pytestmark = pytest.mark.integration
 
     def judge(prompt: str) -> str:
         a_start = prompt.index("[The Start of Assistant A's Answer]")

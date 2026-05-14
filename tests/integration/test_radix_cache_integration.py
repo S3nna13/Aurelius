@@ -1,12 +1,12 @@
 """Integration test for the RadixCache module.
 
-@pytest.mark.integration
 Exercises a realistic batched-inference scenario:
 - 5 blocks with a shared prefix [1,2,3,4] + unique suffixes are inserted.
 - Queries with the matching prefix verify hit_rate == 1.0.
 - Evicting 2 blocks verifies free_blocks increases.
 - The DECODER_REGISTRY is confirmed to contain the RadixCache class.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

@@ -1,6 +1,5 @@
 """Integration tests: FIM formatter is exposed on src.chat surface."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import src.chat as chat
@@ -60,3 +59,5 @@ def test_inference_format_via_surface() -> None:
     out = f.format_for_inference("pre", "suf")
     assert out.endswith(FIM_MIDDLE)
     assert "pre" in out and "suf" in out
+
+pytestmark = pytest.mark.integration

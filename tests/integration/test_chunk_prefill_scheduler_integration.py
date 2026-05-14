@@ -1,6 +1,5 @@
 """Integration test for ChunkPrefillScheduler.
 
-@pytest.mark.integration
 Scenario
 --------
 Three requests with different prompt lengths are added and stepped through
@@ -11,6 +10,7 @@ verifies that:
 * Decode slots appear in batches once a request transitions.
 * The DECODER_REGISTRY is wired with the ``"chunk_prefill"`` key.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

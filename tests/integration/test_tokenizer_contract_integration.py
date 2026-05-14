@@ -1,6 +1,5 @@
 """Integration: tokenizer_contract wired into src.data package."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import src.data as data_pkg
@@ -36,3 +35,5 @@ def test_end_to_end_validate_round_trip():
     verdict = TokenizerContractValidator().validate(identity, expected)
     assert verdict.matches is True
     assert verdict.actual_hash == expected
+
+pytestmark = pytest.mark.integration

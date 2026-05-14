@@ -1,6 +1,5 @@
 """Integration: beam verifier selection registry."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import torch
@@ -30,3 +29,5 @@ def test_smoke_select_with_flag():
     assert cfg.inference_beam_verifier_selector_enabled is True
     s = torch.tensor([0.0, 2.0, 1.0])
     assert inf.BeamVerifierSelector.select_best(s).item() == 1
+
+pytestmark = pytest.mark.integration

@@ -1,6 +1,5 @@
 """Integration tests for context_compaction registration in longcontext."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 from src import longcontext
@@ -62,3 +61,5 @@ def test_end_to_end_compaction():
 def test_public_exports():
     assert hasattr(longcontext, "ContextCompactor")
     assert hasattr(longcontext, "CompactionTurn")
+
+pytestmark = pytest.mark.integration

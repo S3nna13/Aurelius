@@ -1,6 +1,5 @@
 """Integration tests for KIVI INT4 KV cache quantization registry wiring."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import torch
@@ -34,6 +33,7 @@ def test_kivi_exposed_classes_importable():
 
 def test_int4_buffer_smaller_than_int8_buffer_same_tokens():
     """INT4 packed KV should be strictly smaller than INT8 packed KV."""
+pytestmark = pytest.mark.integration
     B, H, S, D = 1, 2, 64, 16
     k = torch.randn(B, H, S, D)
     v = torch.randn(B, H, S, D)

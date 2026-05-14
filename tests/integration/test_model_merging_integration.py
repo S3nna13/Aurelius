@@ -1,6 +1,5 @@
 """Integration tests for weight-space model merging."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import torch
@@ -55,3 +54,5 @@ def test_end_to_end_linear_via_modelmerger() -> None:
     assert torch.allclose(result.state_dict["blocks.0.attn.q.weight"], torch.full((4, 4), 2.0))
     assert torch.allclose(result.state_dict["ln.weight"], torch.full((4,), 3.0))
     assert set(result.state_dict.keys()) == set(a.keys())
+
+pytestmark = pytest.mark.integration

@@ -1,6 +1,5 @@
 """Integration tests wiring ``hall_of_shame_probe`` into the safety package.
 
-@pytest.mark.integration
 These tests exercise the re-export surface of :mod:`src.safety` and push the
 adversarial corpus through two concrete detectors (:class:`JailbreakDetector`
 and :class:`PromptInjectionScanner`). They verify that:
@@ -15,6 +14,7 @@ and :class:`PromptInjectionScanner`). They verify that:
 
 The tests tolerate detector misses — the goal is wiring, not tuning.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

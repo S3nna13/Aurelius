@@ -1,6 +1,5 @@
 """Integration tests for manifest_v2 surface (Cycle-132, Meta-Prompt v6).
 
-@pytest.mark.integration
 Covers:
     - Reference manifest is importable from the public ``src.model`` surface
       and qualifies as v2.
@@ -17,6 +16,7 @@ Covers:
 
 Pure stdlib.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

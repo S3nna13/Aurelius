@@ -1,6 +1,5 @@
 """Integration tests: humaneval registered and reachable via src.eval."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import pytest
@@ -37,6 +36,7 @@ def test_end_to_end_pass_at_1_on_toy_problem():
     problem = HumanEvalProblem(
         task_id="int/0",
         prompt='def add(a, b):\n    """Return a+b."""\n',
+pytestmark = pytest.mark.integration
         canonical_solution="    return a + b\n",
         test=(
             "def check(candidate):\n"

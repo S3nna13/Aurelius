@@ -1,12 +1,12 @@
 """Integration test for Eagle3 speculative decoding (Cycle 130-A).
 
-@pytest.mark.integration
 Verifies end-to-end behaviour:
 - Eagle3Decoder instantiation with a small config
 - Mock target model returning random probability vectors
 - decode_step output structure and numeric invariants
 - Registry wiring (DECODER_REGISTRY["eagle3"] == Eagle3Decoder)
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

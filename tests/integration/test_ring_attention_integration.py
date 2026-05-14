@@ -1,6 +1,5 @@
 """Integration tests for the ring_attention strategy surface.
 
-@pytest.mark.integration
 Verifies:
 * LONGCONTEXT_STRATEGY_REGISTRY advertises "ring_attention" alongside the
   prior entries (kv_int8, attention_sinks) — additive, non-destructive.
@@ -9,6 +8,7 @@ Verifies:
   subprocess check — DO NOT mutate sys.modules in-process; that leaked
   stale class refs in cycle-101).
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

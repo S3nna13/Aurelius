@@ -1,6 +1,5 @@
 """Integration: factory + compatibility exposed from src.model; config stable."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 from dataclasses import fields
@@ -65,3 +64,5 @@ def test_compatibility_roundtrip_on_reference_manifest():
     assert verdict.compatible is True
     assert verdict.severity == "exact"
     assert_compatible(verdict)
+
+pytestmark = pytest.mark.integration

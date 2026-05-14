@@ -1,6 +1,5 @@
 """Integration: budget-bounded agent loop registry + config flags."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 
@@ -36,3 +35,5 @@ def test_smoke_run_with_flag_agnostic():
         max_tool_invocations=1,
     )
     assert loop.run("hi").final_answer == "ok"
+
+pytestmark = pytest.mark.integration

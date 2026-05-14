@@ -1,6 +1,5 @@
 """Integration tests for the code-aware embedder wired through the registry."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import importlib
@@ -43,3 +42,5 @@ def test_sibling_registries_preserved():
     assert "dense" in retrieval.EMBEDDING_REGISTRY
     assert "cross_encoder" in retrieval.RERANKER_REGISTRY
     assert "basic" in retrieval.CITATION_REGISTRY
+
+pytestmark = pytest.mark.integration

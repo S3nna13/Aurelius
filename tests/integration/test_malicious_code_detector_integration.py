@@ -1,6 +1,5 @@
 """Integration tests: MaliciousCodeDetector is registered and end-to-end usable."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 from src.safety import (
@@ -61,3 +60,5 @@ def test_auto_language_detection_via_registry() -> None:
     det = SAFETY_FILTER_REGISTRY["malicious_code"]()
     assert det.detect_language("#!/usr/bin/env bash\nls\n") == "bash"
     assert det.detect_language("def foo():\n    return 1\n") == "python"
+
+pytestmark = pytest.mark.integration

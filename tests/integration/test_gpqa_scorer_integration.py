@@ -1,6 +1,5 @@
 """Integration test: GPQA scorer is registered and runs end-to-end."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 from src import eval as eval_pkg
@@ -89,3 +88,5 @@ def test_end_to_end_two_problem_scoring():
     assert results[0].correct is True
     assert results[1].correct is False
     assert results[1].predicted_letter == "A"
+
+pytestmark = pytest.mark.integration

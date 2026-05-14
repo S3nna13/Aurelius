@@ -1,6 +1,5 @@
 """Integration tests for the GGUF / llama.cpp-style engine adapter."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import json
@@ -42,3 +41,5 @@ def test_json_safe_describe_and_runtime_info() -> None:
 def test_lookup_missing_engine_adapter_rejects_unknown_name() -> None:
     with pytest.raises(BackendAdapterError, match="not registered"):
         get_engine_adapter("gguf")
+
+pytestmark = pytest.mark.integration

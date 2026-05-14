@@ -1,6 +1,5 @@
 """Integration tests: ColBERT scorer wired into RERANKER_REGISTRY."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import torch
@@ -27,3 +26,5 @@ def test_registry_construct_and_score() -> None:
     score = scorer.score_pair(q, q.clone())
     # Identical tokens with L2 norm -> score == Nq.
     assert abs(score - 3.0) < 1e-4
+
+pytestmark = pytest.mark.integration

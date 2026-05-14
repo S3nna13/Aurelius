@@ -1,10 +1,10 @@
 """Integration tests for agent/budget_ledger.
 
-@pytest.mark.integration
 Covers public re-exports, default-factory wiring, registry round-trip, a
 full-loop spending scenario, and deterministic severity escalation using
 an injectable clock.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

@@ -1,6 +1,5 @@
 """Integration tests: livecodebench registered and reachable via src.eval."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import pytest
@@ -94,3 +93,5 @@ def test_end_to_end_two_problem_score():
     assert out["per_difficulty"]["medium"] == pytest.approx(0.0)
     assert out["per_source"]["leetcode"] == pytest.approx(1.0)
     assert out["per_source"]["codeforces"] == pytest.approx(0.0)
+
+pytestmark = pytest.mark.integration

@@ -1,12 +1,12 @@
 """Integration test for LengthReward — length-conditional reward for efficient thinking chains.
 
-@pytest.mark.integration
 Verifies:
 - End-to-end batch computation across mixed rollouts (correct/incorrect, short/long).
 - statistics() sums correctly: n_correct + n_incorrect == total.
 - compute_tensor() returns expected shape and plausible values.
 - ALIGNMENT_REGISTRY["length_reward"] is wired to LengthReward.
 """
+pytestmark = pytest.mark.integration
 
 import pytest
 import torch

@@ -1,6 +1,5 @@
 """Integration test for the Crescendo multi-turn jailbreak probe."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 from src.eval import (
@@ -49,3 +48,5 @@ def test_3_turn_probe_against_synthetic_target_and_judge():
         assert isinstance(t.attacker_message, str) and t.attacker_message
         assert isinstance(t.target_response, str) and t.target_response
         assert {"success", "score", "rationale"} == set(t.judge_verdict)
+
+pytestmark = pytest.mark.integration

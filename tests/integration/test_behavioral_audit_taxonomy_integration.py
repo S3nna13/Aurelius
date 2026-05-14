@@ -1,6 +1,5 @@
 """Integration test for the 40-dim behavioral-audit taxonomy."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 from src.eval import (
@@ -62,3 +61,5 @@ def test_end_to_end_audit_on_simple_trajectory():
     # sycophancy default grader should fire on these markers
     syco = next(s for s in result.scores if s.dimension_id == "misleading.sycophancy")
     assert syco.score > 0.0
+
+pytestmark = pytest.mark.integration

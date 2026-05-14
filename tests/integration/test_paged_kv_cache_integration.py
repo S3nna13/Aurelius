@@ -1,6 +1,5 @@
 """Integration tests for paged_kv registration and end-to-end use."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import torch
@@ -50,3 +49,5 @@ def test_end_to_end_allocate_write_read():
         assert torch.allclose(out_v[i], tokens[i][1])
     cache.deallocate("req")
     assert cache.num_free_pages() == 8
+
+pytestmark = pytest.mark.integration

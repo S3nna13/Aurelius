@@ -1,12 +1,12 @@
 """Integration tests for MuonClip optimizer.
 
-@pytest.mark.integration
 Verifies:
   1. "muonclip" is present in OPTIMIZER_REGISTRY exposed by src.optimizers.
   2. An optimizer constructed from the registry trains a tiny nn.Linear(4, 2)
      for 5 steps and produces a finite loss.
   3. Pre-existing OPTIMIZER_REGISTRY keys are not removed (regression guard).
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

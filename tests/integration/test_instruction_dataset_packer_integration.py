@@ -1,6 +1,5 @@
 """Integration tests for InstructionDatasetPacker via src.data surface."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import torch
@@ -86,3 +85,5 @@ def test_pack_iter_on_generator():
         assert pb.input_ids.dtype == torch.long
         assert pb.attention_mask.dtype == torch.bool
         assert pb.loss_mask.dtype == torch.bool
+
+pytestmark = pytest.mark.integration

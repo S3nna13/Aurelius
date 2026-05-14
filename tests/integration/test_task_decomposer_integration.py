@@ -1,6 +1,5 @@
 """Integration tests for the task decomposer via the public agent surface."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import json
@@ -85,3 +84,5 @@ def test_end_to_end_cycle_rejected():
     dec = TaskDecomposer(lambda _t: json.dumps(payload))
     with pytest.raises(TaskDecompositionError):
         dec.decompose("x")
+
+pytestmark = pytest.mark.integration

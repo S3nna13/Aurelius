@@ -1,6 +1,5 @@
 """Integration: SSE encoder on serving surface."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import src.serving as serving
@@ -24,3 +23,5 @@ def test_api_shape_registry_unchanged_keys():
 def test_smoke_encode():
     enc = serving.SSEStreamEncoder()
     assert b"data:" in enc.encode_event(data="token")
+
+pytestmark = pytest.mark.integration

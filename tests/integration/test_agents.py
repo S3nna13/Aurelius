@@ -1,6 +1,5 @@
 """Agent integration tests."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 from typing import Any
@@ -69,3 +68,5 @@ class TestAgents:
         )
         assert resp.status_code == 200
         assert resp.json()["success"] is True
+
+pytestmark = pytest.mark.integration

@@ -1,6 +1,5 @@
 """Integration: token budget allocator chat registry."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import src.chat as chat
@@ -31,3 +30,5 @@ def test_smoke_allocate():
         total_budget=100,
     )
     assert sum(out.caps) == 100
+
+pytestmark = pytest.mark.integration

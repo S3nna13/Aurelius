@@ -1,7 +1,7 @@
 """Integration tests: :class:`RecoveringDispatcher` over a real
-@pytest.mark.integration
 :class:`ToolRegistryDispatcher`.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

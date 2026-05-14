@@ -1,5 +1,4 @@
 """
-@pytest.mark.integration
 Integration tests for src/eval/math_eval.py
 
 Verifies:
@@ -10,6 +9,7 @@ Verifies:
 Run with:
     .venv/bin/python3.14 -m pytest tests/integration/test_math_eval_integration.py -v
 """
+pytestmark = pytest.mark.integration
 
 import pytest
 

@@ -1,6 +1,5 @@
 """Integration test for FlashMLAAttention.
 
-@pytest.mark.integration
 Covers the full lifecycle:
   - Build from config
   - Forward in both modes
@@ -10,6 +9,7 @@ Covers the full lifecycle:
   - Backward pass
   - Registry entry
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

@@ -1,11 +1,11 @@
 """Integration tests for cycle-116 security modules.
 
-@pytest.mark.integration
 Verifies all six modules are exposed via src.security, coexist without
 side-effects, and exercise the end-to-end surface against a sample
 threat-report payload drawn from the Anthropic-Cybersecurity-Skills
 style of analysis prompt.
 """
+pytestmark = pytest.mark.integration
 
 import pytest
 

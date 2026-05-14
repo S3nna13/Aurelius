@@ -1,11 +1,11 @@
 """Integration tests for the PII detector's registration on the safety surface.
 
-@pytest.mark.integration
 Verifies that importing :mod:`src.safety` registers ``"pii"`` under
 ``SAFETY_FILTER_REGISTRY`` without clobbering the existing jailbreak and
 prompt-injection entries, and that the instantiated detector handles a
 realistic adversarial blob containing an email, SSN, and valid credit card.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

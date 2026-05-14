@@ -1,10 +1,10 @@
 """Integration test for ZeroVisionSFTTrainer.
 
-@pytest.mark.integration
 Verifies end-to-end: config, compute_loss, backward, registry wiring.
 Tiny config: vocab_size=256, seq_len=16, batch=2.
 Pure PyTorch only — no transformers, trl, einops, scipy, sklearn, PIL, cv2, timm.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

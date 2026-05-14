@@ -1,6 +1,5 @@
 """Integration tests for the dispatch-task primitive via the agent surface."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 
@@ -64,3 +63,5 @@ def test_end_to_end_dispatch_three_inputs():
     # Order in finalize matches success order, but all should be uppercased.
     assert set(report.finalized.split("|")) == {"ALPHA", "BETA", "GAMMA"}
     assert report.circuit_open is False
+
+pytestmark = pytest.mark.integration

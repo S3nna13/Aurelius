@@ -1,12 +1,12 @@
 """Integration test for STILL3Trainer.
 
-@pytest.mark.integration
 Verifies:
 - TRAINING_REGISTRY["still3"] is correctly wired.
 - filter_and_prepare discards uniform-reward groups and retains varied ones.
 - total_loss is computed on kept groups and supports .backward().
 - Metrics dict is well-formed.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

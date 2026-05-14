@@ -1,6 +1,5 @@
 """Integration: PRF query expander retrieval registry."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import src.retrieval as ret
@@ -23,3 +22,5 @@ def test_smoke_expand():
     ex = ret.PRFQueryExpander()
     r = ex.expand("search", ["search ranking bm25"], num_terms=2)
     assert "bm25" in r.query or "ranking" in r.query
+
+pytestmark = pytest.mark.integration

@@ -1,6 +1,5 @@
 """Integration: web_browse_tool wiring into agent package + config flag."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import agent as agent_pkg
@@ -51,3 +50,5 @@ def test_end_to_end_build_validate_summarize():
     summary = tool.summarize_result(fake)
     assert "HTTP 200" in summary
     assert "hello world" in summary
+
+pytestmark = pytest.mark.integration

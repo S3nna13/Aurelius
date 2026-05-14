@@ -1,6 +1,5 @@
 """Integration tests for the citation tracker wired through the registry."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import importlib
@@ -47,3 +46,5 @@ def test_sibling_registries_preserved():
     assert "bm25" in retrieval.RETRIEVER_REGISTRY
     assert isinstance(retrieval.EMBEDDING_REGISTRY, dict)
     assert isinstance(retrieval.RERANKER_REGISTRY, dict)
+
+pytestmark = pytest.mark.integration

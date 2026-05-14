@@ -1,6 +1,5 @@
 """Integration tests for AST-aware FIM and patch synthesis pipelines."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 from agent.ast_fim import ASTAnalyzer, FIMFormat, FIMSpan, FIMTokenizer
@@ -8,6 +7,7 @@ from agent.patch_synthesis import PatchSynthesizer
 
 _SAMPLE_SOURCE = """\
 import os
+pytestmark = pytest.mark.integration
 
 def compute(x, y):
     result = x + y

@@ -1,6 +1,5 @@
 """Integration tests for RULER benchmark registration and end-to-end run."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import src.eval as eval_pkg
@@ -63,3 +62,5 @@ def test_end_to_end_tiny_run_via_registry():
     per = bench.score_per_task(results)
     assert all(v == 1.0 for v in per.values())
     assert bench.overall_score(results) == 1.0
+
+pytestmark = pytest.mark.integration

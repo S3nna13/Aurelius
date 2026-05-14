@@ -1,6 +1,5 @@
 """Integration tests for TokenDropout inside a tiny LM training step."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import torch
@@ -78,3 +77,5 @@ def test_integration_determinism() -> None:
 
     assert torch.equal(out1, out2)
     assert torch.equal(m1, m2)
+
+pytestmark = pytest.mark.integration

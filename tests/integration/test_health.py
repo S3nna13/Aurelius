@@ -1,6 +1,5 @@
 """Health check integration tests."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 from typing import Any
@@ -47,3 +46,5 @@ class TestHealthEndpoints:
             timeout=5,
         )
         assert resp.status_code in (200, 401)
+
+pytestmark = pytest.mark.integration

@@ -1,6 +1,5 @@
 """Integration: SOC pipeline wired through DEFENSIVE_PIPELINE_REGISTRY."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 from src.model.config import AureliusConfig
@@ -48,3 +47,5 @@ def test_feature_flag_off_preserves_default_construction():
     assert cfg.security_soc_pipeline_enabled is False
     # Confirm no side-effects of disabled flag: registry still usable.
     assert "default" in DEFENSIVE_PIPELINE_REGISTRY
+
+pytestmark = pytest.mark.integration

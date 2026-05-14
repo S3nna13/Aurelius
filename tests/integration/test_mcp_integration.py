@@ -1,10 +1,10 @@
 """End-to-end integration tests for the Aurelius MCP surface (src.mcp).
 
-@pytest.mark.integration
 Covers:
 - Register a ToolSchema, create a LocalMCPClient backed by StdioMCPServer,
   call list_tools() and validate the schema is present in the registry.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

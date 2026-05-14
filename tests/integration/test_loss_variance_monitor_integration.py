@@ -1,6 +1,5 @@
 """Integration tests for LossVarianceMonitor in a simulated training loop."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import math
@@ -43,3 +42,5 @@ def test_synthetic_outlier_triggers_spike_detection() -> None:
     # The spike entry should reference step 49.
     spike_entries = [a for a in mon.anomalies() if a["type"] == "spike"]
     assert any(a["step"] == 49 for a in spike_entries)
+
+pytestmark = pytest.mark.integration

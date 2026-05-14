@@ -1,11 +1,11 @@
 """Integration tests for the Responses API shape within the Aurelius serving layer.
 
-@pytest.mark.integration
 Verifies that:
 - The Responses API is correctly registered in API_SHAPE_REGISTRY
 - A full request → create_response → validate_response round-trip passes all checks
 - A streaming round-trip yields properly ordered events
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

@@ -1,6 +1,5 @@
 """Integration tests for prefix_cache registration and end-to-end use."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 from src import longcontext as lc
@@ -47,3 +46,5 @@ def test_end_to_end_insert_and_find():
     stats = cache.stats()
     assert stats["entries"] >= 1
     assert stats["hits"] == 1
+
+pytestmark = pytest.mark.integration

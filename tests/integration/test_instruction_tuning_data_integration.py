@@ -1,10 +1,10 @@
 """Integration tests for src.chat.instruction_tuning_data.
 
-@pytest.mark.integration
 Verifies the generator surface is exposed through src.chat and that a
 generated sample round-trips cleanly through the ChatML template
 encoder.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

@@ -1,11 +1,11 @@
 """Integration tests for the Aurelius UI surface.
 
-@pytest.mark.integration
 Verifies that the three UI registries are populated, the welcome
 surface is wired up end-to-end, and that ``render_welcome`` with the
 default branding plus the ``welcome-fade`` motion returns original
 Aurelius copy containing no third-party vendor references.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

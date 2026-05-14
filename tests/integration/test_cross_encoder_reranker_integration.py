@@ -1,6 +1,5 @@
 """Integration tests for the cross-encoder reranker registry wiring.
 
-@pytest.mark.integration
 Verifies:
     1. ``RERANKER_REGISTRY`` exposes ``"cross_encoder"``.
     2. The registered class can be instantiated with a tiny config and
@@ -11,6 +10,7 @@ Verifies:
        :mod:`src.model` — the reranker must stay decoupled from the
        frozen core transformer stack. Verified in a hermetic subprocess.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

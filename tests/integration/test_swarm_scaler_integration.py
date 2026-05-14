@@ -1,12 +1,12 @@
 """Integration test for SwarmScaler — 50 mixed-priority tasks, 10 workers.
 
-@pytest.mark.integration
 Validates:
 - All 50 tasks complete
 - 10 WorkerStats entries returned
 - Work-stealing was active (tasks_stolen > 0)
 - Registry wired (AGENT_LOOP_REGISTRY["swarm_scaler"] is SwarmScaler)
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

@@ -1,12 +1,12 @@
 """Integration test: CodeCorpusLoader end-to-end over a small tmp repo.
 
-@pytest.mark.integration
 Checks:
 - Module is importable from src.data (existing entries intact).
 - End-to-end walk + pack_iter produces valid packed tensors.
 - Multi-language (.py, .rs, .go) files are traversed.
 - Existing src.data exports (e.g. FIM_PREFIX, AURELIUS_MIX) still import.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

@@ -1,5 +1,4 @@
 """
-@pytest.mark.integration
 Integration test for CurriculumRLSampler.
 
 Verifies:
@@ -9,6 +8,7 @@ Verifies:
   - statistics() zones are consistent with manual expectation.
   - TRAINING_REGISTRY["curriculum_rl"] == CurriculumRLSampler.
 """
+pytestmark = pytest.mark.integration
 
 import pytest
 

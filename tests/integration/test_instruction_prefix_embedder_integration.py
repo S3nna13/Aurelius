@@ -1,6 +1,5 @@
 """Integration tests for InstructionPrefixEmbedder via ``src.retrieval``."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import pytest
@@ -91,3 +90,5 @@ def test_all_six_tasks_encodable() -> None:
         out = wrapper.encode("text", task=task)
         assert out.shape == (16,)
         assert torch.isfinite(out).all()
+
+pytestmark = pytest.mark.integration

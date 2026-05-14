@@ -1,6 +1,5 @@
 """Integration tests for SSE chat-completion stream registration + config."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 from src.model.config import AureliusConfig
@@ -42,3 +41,5 @@ def test_end_to_end_stream_produces_parseable_frames() -> None:
     # Stable stream id across all chunks.
     ids = {p["id"] for p in parsed[:-1]}
     assert len(ids) == 1
+
+pytestmark = pytest.mark.integration

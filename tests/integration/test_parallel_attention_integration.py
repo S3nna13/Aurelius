@@ -1,6 +1,5 @@
 """Integration tests for :class:`ParallelAttentionBlock`.
 
-@pytest.mark.integration
 Checks:
   * Exposed via ``src.model`` (module attribute + ``__all__``).
   * Frozen files (``transformer.py``, ``attention.py``, ``ffn.py``,
@@ -8,6 +7,7 @@ Checks:
   * Existing model registry entries remain intact.
   * End-to-end forward + backward runs cleanly.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

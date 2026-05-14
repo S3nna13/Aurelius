@@ -1,6 +1,5 @@
 """Integration tests for the session journal CLI surface."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import json
@@ -207,3 +206,5 @@ def test_main_session_journal_commands_run_end_to_end(tmp_path, capsys):
     assert rc == 0
     assert session_payload["journal"]["entries"] >= 1
     assert session_payload["journal"]["branches"] >= 1
+
+pytestmark = pytest.mark.integration

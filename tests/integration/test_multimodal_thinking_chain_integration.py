@@ -1,7 +1,7 @@
 """Integration test for MultimodalThinkingChain — end-to-end chain building,
-@pytest.mark.integration
 budget accounting, limit enforcement, and registry wiring.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

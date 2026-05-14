@@ -1,6 +1,5 @@
 """Integration tests for the standalone fusion utilities.
 
-@pytest.mark.integration
 Covers three things:
 
 1. Public re-export through :mod:`src.retrieval` (the four functions and
@@ -11,6 +10,7 @@ Covers three things:
    independent :class:`BM25Retriever` instances built on two different
    corpora (the canonical "fuse-two-BM25-shards" use case).
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

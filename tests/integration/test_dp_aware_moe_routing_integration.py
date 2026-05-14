@@ -1,9 +1,9 @@
 """Integration tests for DPAwareMoERouter — GLM-5 §3.2 consistent hashing.
 
-@pytest.mark.integration
 Verifies that the class is correctly wired into MODEL_COMPONENT_REGISTRY
 via src/model/__init__.py, and that the routing API works end-to-end.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

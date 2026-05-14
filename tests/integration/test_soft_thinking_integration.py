@@ -1,12 +1,12 @@
 """Integration test for SoftThinkingMixer — end-to-end forward + backward pass.
 
-@pytest.mark.integration
 Config: d_model=64, vocab_size=256, top_k=10
 Input: random logits [2, 8, 256]
 Verifies: output shape [2, 8, 64], backward works, entropy shape [2, 8], registry wired.
 
 Run with: .venv/bin/python3.14 -m pytest tests/integration/test_soft_thinking_integration.py -v
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

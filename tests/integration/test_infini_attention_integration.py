@@ -1,6 +1,5 @@
 """Integration tests for the infini_attention strategy surface."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import subprocess
@@ -64,3 +63,5 @@ def test_importing_longcontext_does_not_import_model():
     assert result.returncode == 0, (
         f"subprocess failed: stdout={result.stdout!r} stderr={result.stderr!r}"
     )
+
+pytestmark = pytest.mark.integration

@@ -1,6 +1,5 @@
 """Integration tests for the YaRN position-extension utility surface.
 
-@pytest.mark.integration
 Verify:
 * The utility is exposed via ``src.longcontext`` (not registered in
   ``LONGCONTEXT_STRATEGY_REGISTRY`` — it's a helper, not a strategy).
@@ -8,6 +7,7 @@ Verify:
 * Importing ``src.longcontext`` (and touching the YaRN helpers) does not
   import ``src.model`` — hermetic subprocess check.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

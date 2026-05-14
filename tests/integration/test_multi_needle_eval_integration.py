@@ -1,6 +1,5 @@
 """Integration tests for multi_needle_eval through the src.eval package surface."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import src.eval as eval_pkg
@@ -68,3 +67,5 @@ def test_three_seeds_produce_pairwise_distinct_prompts():
     assert prompts[0] != prompts[1]
     assert prompts[1] != prompts[2]
     assert prompts[0] != prompts[2]
+
+pytestmark = pytest.mark.integration

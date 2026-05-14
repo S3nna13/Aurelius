@@ -1,6 +1,5 @@
 """Integration tests for the composed output safety filter."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 from src.safety import (
@@ -67,3 +66,5 @@ def test_end_to_end_chunked_stream() -> None:
         assert last_decision.action == "allow"
     assert last_decision is not None
     assert "greeting" in buffer
+
+pytestmark = pytest.mark.integration

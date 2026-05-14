@@ -1,6 +1,5 @@
 """Integration tests for the BM25 retriever wired through the registry."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import importlib
@@ -48,3 +47,5 @@ def test_import_has_no_side_effects(tmp_path, monkeypatch):
     assert dict(m2.RETRIEVER_REGISTRY) == snap_r
     assert dict(m2.EMBEDDING_REGISTRY) == snap_e
     assert dict(m2.RERANKER_REGISTRY) == snap_rr
+
+pytestmark = pytest.mark.integration

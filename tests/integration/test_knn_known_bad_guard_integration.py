@@ -1,6 +1,5 @@
 """Integration: kNN known-bad prompt safety filter."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import src.safety as safety
@@ -40,3 +39,5 @@ def test_smoke_check():
     g.bulk_load(list(safety.SEED_KNOWN_BAD))
     v = g.check("hi")
     assert isinstance(v, safety.KnnVerdict)
+
+pytestmark = pytest.mark.integration

@@ -1,6 +1,5 @@
 """Integration tests: PolicyEngine is registered and end-to-end usable."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 from src.safety import (
@@ -91,3 +90,5 @@ def test_add_rule_via_registry_instance() -> None:
     eng.add_rule(PolicyRule("custom_noop", "pre", never, "warn", "no-op rule"))
     assert len(eng.rules) == before + 1
     assert eng.rules[-1].name == "custom_noop"
+
+pytestmark = pytest.mark.integration

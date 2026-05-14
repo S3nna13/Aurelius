@@ -1,6 +1,5 @@
 """Integration: sink logit bias registry on inference surface."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import torch
@@ -35,3 +34,5 @@ def test_smoke_apply():
         bonus=1.5,
     )
     assert out[0, -1, 2] == 1.5 and out[0, -1, 3] == 1.5
+
+pytestmark = pytest.mark.integration

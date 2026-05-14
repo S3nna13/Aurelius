@@ -1,10 +1,10 @@
 """Integration tests for the guardrail middleware.
 
-@pytest.mark.integration
 Verifies that the middleware is exposed via ``src.serving`` without
 displacing prior public entries, and that an end-to-end wrap-and-call cycle
 enforces pre + post guardrails against real safety detectors.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

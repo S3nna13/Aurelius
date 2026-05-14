@@ -1,6 +1,5 @@
 """Integration tests for the Aurelius terminal shell surface."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import json
@@ -90,3 +89,5 @@ def test_shell_capability_and_journal_commands_are_reachable_from_execute_comman
     assert journal_branch["journal"]["branch_id"] == "main"
     assert surface["surface"]["engine_adapters"]["count"] >= 3
     assert surface_schema["schema"]["schema_name"] == "aurelius.interface.surface-catalog"
+
+pytestmark = pytest.mark.integration

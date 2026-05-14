@@ -1,6 +1,5 @@
 """Integration: CodeAwareTokenizer wired into BM25Retriever for code retrieval."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import src.retrieval as retrieval
@@ -100,3 +99,5 @@ def test_end_to_end_registry_bm25_still_works():
     r.add_documents(CODE_CORPUS)
     hits = r.query("parseXMLDoc", k=3)
     assert hits and hits[0][0] == 2
+
+pytestmark = pytest.mark.integration

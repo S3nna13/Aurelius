@@ -1,5 +1,4 @@
 """
-@pytest.mark.integration
 Integration test for src/eval/vision_grounding_eval.py
 
 Verifies:
@@ -8,6 +7,7 @@ Verifies:
     text, and counts.
   - BENCHMARK_REGISTRY["vision_grounding_eval"] is VisionGroundingEval.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

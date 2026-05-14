@@ -1,6 +1,5 @@
 """Integration tests for the chat.conversation_memory surface."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import src.chat as chat_pkg
@@ -81,3 +80,5 @@ def test_fact_and_inmemory_store_via_surface():
     )
     mem = ConversationMemory(store)
     assert mem.get("manual-1").content == "hand-built fact"
+
+pytestmark = pytest.mark.integration

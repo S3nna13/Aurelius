@@ -1,11 +1,11 @@
 """Integration tests for the TITO Gateway registry wiring (GLM-5 §4.1).
 
-@pytest.mark.integration
 Verifies that:
 1. "tito" is present in TRAINING_REGISTRY after importing src.training.
 2. A TITOGateway can be constructed via the registry entry and processes a batch.
 3. Pre-existing registry keys are not disturbed by the additive wiring.
 """
+pytestmark = pytest.mark.integration
 
 from src.training import TRAINING_REGISTRY
 from src.training.tito_gateway import TITOConfig

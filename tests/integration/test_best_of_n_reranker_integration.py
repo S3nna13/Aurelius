@@ -1,9 +1,9 @@
 """Integration tests for Best-of-N reranker.
 
-@pytest.mark.integration
 Verifies end-to-end usage via the public ``src.alignment`` package and that
 existing alignment imports are not broken by the new module.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

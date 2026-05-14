@@ -1,6 +1,5 @@
 """Integration tests for ProcessRewardModel.
 
-@pytest.mark.integration
 Verifies:
 1. ALIGNMENT_REGISTRY["prm"] resolves to ProcessRewardModel
 2. AureliusConfig.enable_prm_training=True triggers the PRM code path
@@ -9,6 +8,7 @@ Verifies:
 4. Full forward pass with PRM-enabled config is finite and correct shape
 5. PRMInference.select_best works end-to-end on a tiny model
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

@@ -1,5 +1,4 @@
 """
-@pytest.mark.integration
 Integration test for PCGrad v2.
 
 Verifies end-to-end flow:
@@ -8,6 +7,7 @@ Verifies end-to-end flow:
   - Resolved gradients have better (less negative) dot product than originals
   - TRAINING_REGISTRY["pcgrad_v2"] is wired to PCGradV2
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

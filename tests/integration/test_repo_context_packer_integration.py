@@ -1,6 +1,5 @@
 """Integration test: repo_context_packer exposed via :mod:`src.agent`."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import os
@@ -51,3 +50,5 @@ def test_pack_toy_repo_three_py_files(tmp_path):
     assert "greet.py" in ctx.tree
     assert "io_utils.py" in ctx.tree
     assert ctx.token_estimate <= 2000
+
+pytestmark = pytest.mark.integration

@@ -1,6 +1,5 @@
 """Integration tests for dense embedding trainer registry wiring."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import subprocess
@@ -90,3 +89,5 @@ def test_hermetic_import_does_not_pull_src_model() -> None:
         f"hermetic import failed:\nSTDOUT:{result.stdout}\nSTDERR:{result.stderr}"
     )
     assert "OK" in result.stdout
+
+pytestmark = pytest.mark.integration

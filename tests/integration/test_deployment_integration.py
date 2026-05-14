@@ -1,11 +1,11 @@
 """Integration tests for src.deployment.
 
-@pytest.mark.integration
 Production deployment patterns from Aurelius production_readiness_floor,
 SLSA supply-chain attestation spec, Apache-2.0.
 
 Includes integration tests for GitHub Actions CI YAML generator (additive).
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

@@ -1,6 +1,5 @@
 """Integration test for Online RFT — end-to-end filter + train + stats."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import torch
@@ -21,6 +20,7 @@ from src.alignment.online_rft import (
 
 class _TinyModel(nn.Module):
     """Minimal transformer-free model: embedding + linear head."""
+pytestmark = pytest.mark.integration
 
     VOCAB = 64
 

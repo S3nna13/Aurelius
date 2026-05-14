@@ -1,6 +1,5 @@
 """Integration tests for the head registry in ``src/model``."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import torch
@@ -40,3 +39,5 @@ def test_build_head_end_to_end() -> None:
     x = torch.randn(1, 4, 16)
     y = head(x)
     assert y.shape == (1, 4, 1)
+
+pytestmark = pytest.mark.integration

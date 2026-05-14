@@ -1,6 +1,5 @@
 """Integration test for HydraSpeculative (Cycle 132-A).
 
-@pytest.mark.integration
 Exercises the full Hydra pipeline end-to-end with a tiny configuration:
   d_model=64, vocab_size=256, n_draft_heads=3, batch_size=2.
 
@@ -12,6 +11,7 @@ Checks:
   5. acceptance_rate() in [0, 1].
   6. Gradient flow through draft().
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

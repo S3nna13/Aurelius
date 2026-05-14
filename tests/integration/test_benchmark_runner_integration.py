@@ -1,6 +1,5 @@
 """Integration tests for the CLI benchmark runner."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import importlib
@@ -68,3 +67,5 @@ class BenchmarkRunnerIntegrationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+pytestmark = pytest.mark.integration

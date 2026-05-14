@@ -1,6 +1,5 @@
 """Integration tests: registry wiring and cross-template regression."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 from src.chat import CHAT_TEMPLATE_REGISTRY, Message
@@ -47,3 +46,5 @@ def test_templates_produce_distinct_wire_formats() -> None:
     assert chatml_out != llama3_out
     assert "<|im_start|>" in chatml_out
     assert "<|start_header_id|>" in llama3_out
+
+pytestmark = pytest.mark.integration

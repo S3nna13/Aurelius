@@ -1,6 +1,5 @@
 """Integration tests: CanaryTokenGuard registers and flows end-to-end."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 from src.model.config import AureliusConfig
@@ -89,3 +88,5 @@ def test_tool_output_wrap_then_scan_echo_detected() -> None:
     detection = guard.scan(wrapped, {token})
     assert detection.leaked is True
     assert detection.leaked_tokens == [token]
+
+pytestmark = pytest.mark.integration

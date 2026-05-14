@@ -1,10 +1,10 @@
 """Integration tests for the KV cache eviction primitives.
 
-@pytest.mark.integration
 Verifies additive integration into ``src.inference`` (no existing
 decoder exports were disturbed) and end-to-end scenarios on the two
 most safety-relevant policies: LRU and SINK_PRESERVING.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

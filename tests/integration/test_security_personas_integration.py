@@ -1,6 +1,5 @@
 """Integration tests for security personas in the chat surface."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 from src.chat import CHAT_TEMPLATE_REGISTRY, MESSAGE_FORMAT_REGISTRY
@@ -66,3 +65,5 @@ def test_personas_exposed_as_module_constants() -> None:
     assert RED_TEAM_PERSONA.id == "red_team"
     assert BLUE_TEAM_PERSONA.id == "blue_team"
     assert PURPLE_TEAM_PERSONA.id == "purple_team"
+
+pytestmark = pytest.mark.integration

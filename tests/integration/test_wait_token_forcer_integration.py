@@ -1,11 +1,11 @@
 """Integration tests for WaitTokenForcer.
 
-@pytest.mark.integration
 Verifies:
 * End-to-end injection budget enforcement across multiple calls.
 * reset() correctly restores state.
 * DECODER_REGISTRY["wait_token_forcer"] is wired correctly.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

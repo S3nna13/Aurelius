@@ -1,6 +1,5 @@
 """Integration tests for dictionary_learning exposure via src.interpretability."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import torch
@@ -53,3 +52,5 @@ def test_small_end_to_end_pipeline() -> None:
     # sparsity honored on re-encode
     nnz = (alpha_re.abs() > 0).sum(dim=1)
     assert int(nnz.max().item()) <= 3
+
+pytestmark = pytest.mark.integration

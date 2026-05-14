@@ -1,6 +1,5 @@
 """Integration tests for AgentSwarm via AGENT_LOOP_REGISTRY.
 
-@pytest.mark.integration
 Verifies:
 1. "agent_swarm" key is present in AGENT_LOOP_REGISTRY.
 2. Constructing AgentSwarm from the registry and dispatching 3 mock tasks
@@ -8,6 +7,7 @@ Verifies:
 3. A pre-existing AGENT_LOOP_REGISTRY key ("react") is still present — no
    accidental registry mutation.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

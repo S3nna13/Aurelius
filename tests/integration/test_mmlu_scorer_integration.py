@@ -1,6 +1,5 @@
 """Integration test: MMLU scorer is registered and runs end-to-end."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 from src import eval as eval_pkg
@@ -91,3 +90,5 @@ def test_end_to_end_three_problem_scoring():
     assert results[2].correct is False
     assert results[2].predicted_letter == "A"
     assert results[2].subject == "history"
+
+pytestmark = pytest.mark.integration

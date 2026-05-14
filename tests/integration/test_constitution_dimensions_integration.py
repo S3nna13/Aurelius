@@ -1,6 +1,5 @@
 """Integration tests for constitution dimensions registry + config flag."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 from src.alignment import ALIGNMENT_REGISTRY
@@ -32,3 +31,5 @@ def test_scorer_smoke_via_registry():
     scorer = cls()
     report = scorer.score("trajectory")
     assert len(report.grades) == 15
+
+pytestmark = pytest.mark.integration

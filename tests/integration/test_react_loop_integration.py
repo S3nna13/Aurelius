@@ -1,6 +1,5 @@
 """Integration tests for the ReAct loop registry wiring."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import agent as agent_pkg
@@ -24,6 +23,7 @@ def test_tool_call_parser_registry_unchanged():
 
 def test_end_to_end_with_echo_tool():
     """Drive a live loop through the registry with a trivial echo tool."""
+pytestmark = pytest.mark.integration
 
     ReActLoop = AGENT_LOOP_REGISTRY["react"]
 

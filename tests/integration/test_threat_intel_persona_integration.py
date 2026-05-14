@@ -1,6 +1,5 @@
 """Integration tests for the threat-intel persona in the chat surface."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 from src.chat import (
@@ -50,3 +49,5 @@ def test_other_registered_templates_unchanged() -> None:
     # Additive registration: existing keys still present.
     for key in ("chatml", "llama3", "harmony"):
         assert key in CHAT_TEMPLATE_REGISTRY
+
+pytestmark = pytest.mark.integration

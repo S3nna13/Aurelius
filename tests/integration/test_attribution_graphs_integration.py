@@ -1,6 +1,5 @@
 """Integration tests for attribution_graphs via src.interpretability."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import torch
@@ -40,3 +39,5 @@ def test_existing_interp_entries_intact():
         logit_lens,  # noqa: F401
         token_attribution,  # noqa: F401
     )
+
+pytestmark = pytest.mark.integration

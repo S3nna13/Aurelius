@@ -1,6 +1,5 @@
 """Integration tests for the Aurelius interface contract loader."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 from pathlib import Path
@@ -60,3 +59,5 @@ def test_validate_interface_contract_accepts_real_contract_artifacts():
         markdown_text=bundle.markdown_text,
         prompt_yaml_text=bundle.prompt_yaml_text,
     )
+
+pytestmark = pytest.mark.integration

@@ -1,6 +1,5 @@
 """Integration tests: RewardHackDetector registered, config-gated."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 from src.model.config import AureliusConfig
@@ -95,3 +94,5 @@ def test_detector_no_op_when_flag_off() -> None:
         raise AssertionError("flag should default OFF")
     assert cfg.safety_reward_hack_detector_enabled is False
     assert callable(RewardHackDetector)
+
+pytestmark = pytest.mark.integration

@@ -1,6 +1,5 @@
 """Integration tests for the longcontext strategy registry."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import sys
@@ -83,3 +82,5 @@ def test_streaming_append_roundtrip():
     kd, vd = comp.decompress(packed)
     assert torch.allclose(kd, k_full, atol=0.08)
     assert torch.allclose(vd, v_full, atol=0.08)
+
+pytestmark = pytest.mark.integration

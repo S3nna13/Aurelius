@@ -1,6 +1,5 @@
 """Integration: synthetic jailbreak generator in eval registry."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import src.eval as ev
@@ -27,3 +26,5 @@ def test_smoke_generate():
     probes = g.generate(5, seed=1)
     assert len(probes) == 5
     assert all(len(p.text) > 0 for p in probes)
+
+pytestmark = pytest.mark.integration

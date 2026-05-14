@@ -1,12 +1,12 @@
 """Integration test for ToolBench — end-to-end evaluation pipeline.
 
-@pytest.mark.integration
 Verifies:
 - 3 ToolBenchSamples (perfect / partial / wrong)
 - evaluate() returns all metrics in [0, 1]
 - format_compliance on 3 raw responses
 - BENCHMARK_REGISTRY["tool_bench"] is wired
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

@@ -1,6 +1,5 @@
 """Integration tests for ``agent.workflow_shell``."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import json
@@ -121,3 +120,5 @@ def test_workflow_shell_completes_and_blocks_with_json_safe_round_trips(tmp_path
     assert blocked.halted_reason == "approval denied"
     assert len(blocked.transcript) == 2
     assert blocked.transcript[1]["result"]["status"] == "denied"
+
+pytestmark = pytest.mark.integration

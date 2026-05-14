@@ -1,6 +1,5 @@
 """Integration tests for variant_adapter within src.model package."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import pytest
@@ -59,3 +58,5 @@ def test_adapter_survives_round_trip_through_registry():
     assert back.rank == 16
     assert back.target_modules == ("q_proj", "v_proj")
     assert back.metadata == {"note": "test"}
+
+pytestmark = pytest.mark.integration

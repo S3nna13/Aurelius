@@ -1,6 +1,5 @@
 """Integration tests for src.training.lr_range_test."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import torch
@@ -64,3 +63,5 @@ def test_tiny_nn_linear_train_step_fn() -> None:
     # Losses should be finite (or the sweep stopped on divergence).
     for loss in result.losses[:-1]:
         assert loss == loss  # not NaN
+
+pytestmark = pytest.mark.integration

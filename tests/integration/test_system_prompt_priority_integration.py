@@ -1,6 +1,5 @@
 """Integration: system-prompt priority encoder chat registry."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import src.chat as chat
@@ -50,3 +49,5 @@ def test_smoke_merge():
     ]
     out = enc.merge(frags)
     assert "dev" in out and "user" in out
+
+pytestmark = pytest.mark.integration

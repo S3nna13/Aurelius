@@ -1,6 +1,5 @@
 """Integration test for Prodigy: exposed via src.optimizers, trains tiny MLP."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import torch
@@ -35,3 +34,5 @@ def test_prodigy_trains_tiny_mlp_20_steps():
 
     # Require final loss lower than initial, allowing Prodigy warmup in between.
     assert losses[-1] < loss0
+
+pytestmark = pytest.mark.integration

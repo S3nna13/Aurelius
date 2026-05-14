@@ -1,6 +1,5 @@
 """Integration tests for the matryoshka embedding surface."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import importlib
@@ -27,3 +26,5 @@ def test_src_namespace_exposes_public_subpackages() -> None:
     assert src.eval is importlib.import_module("src.eval")
     assert "model" in src.__all__
     assert "chat" in src.__all__
+
+pytestmark = pytest.mark.integration

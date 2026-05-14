@@ -1,9 +1,9 @@
 """Integration tests for VisionProjector registry wiring (Kimi K2.5 §4, arXiv:2602.02276).
 
-@pytest.mark.integration
 Verifies end-to-end construction, forward pass, backward pass, and registry entry
 using a config dict (matching typical runtime usage pattern).
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

@@ -1,6 +1,5 @@
 """Integration tests for FSDPLite via the src.training package surface."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import torch
@@ -39,3 +38,5 @@ def test_train_step_on_tiny_mlp():
     updated = next(iter(wrapped.parameters()))
     assert not torch.equal(first_weight_shard, updated)
     assert torch.isfinite(loss).item()
+
+pytestmark = pytest.mark.integration

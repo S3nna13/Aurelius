@@ -1,6 +1,5 @@
 """Integration tests for context_window_extension.
 
-@pytest.mark.integration
 Verifies:
 * CONTEXT_EXTENSION_REGISTRY exposed on src.longcontext.
 * DynamicContextScaler in LONGCONTEXT_STRATEGY_REGISTRY.
@@ -9,6 +8,7 @@ Verifies:
   compute cos/sin at 1x, 2x, 4x, 8x train_len, verify all finite.
 * No prohibited external imports in the implementation file.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

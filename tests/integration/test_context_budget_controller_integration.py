@@ -1,12 +1,12 @@
 """Integration tests for ContextBudgetController registry wiring.
 
-@pytest.mark.integration
 Verifies that:
 - 'context_budget' key exists in LONGCONTEXT_STRATEGY_REGISTRY
 - The class can be instantiated from the registry
 - The full eviction scenario (spec integration test) works end-to-end
 - Pre-existing registry entries are not disturbed (regression guards)
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

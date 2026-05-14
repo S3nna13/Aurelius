@@ -1,6 +1,5 @@
 """Integration tests: SWE-bench-lite registry + end-to-end scoring."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import sys
@@ -31,6 +30,7 @@ def test_end_to_end_single_synthetic_problem() -> None:
     tests = textwrap.dedent(
         """\
         from pkg.math_utils import add
+pytestmark = pytest.mark.integration
 
 
         def test_add():

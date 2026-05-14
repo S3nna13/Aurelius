@@ -1,6 +1,5 @@
 """Integration tests: registry wiring + config flag for vibe code reviewer."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import src.eval as eval_mod
@@ -39,3 +38,5 @@ def test_reviewer_instantiable_from_registry():
     report = reviewer.review_file("x.py", code="# VIBE_SSRF_SINK\n")
     assert report.findings
     assert report.findings[0].cwe == "CWE-918"
+
+pytestmark = pytest.mark.integration

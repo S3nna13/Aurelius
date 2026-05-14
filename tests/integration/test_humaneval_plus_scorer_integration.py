@@ -1,6 +1,5 @@
 """Integration tests for HumanEval+ registration and end-to-end scoring."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import os
@@ -51,6 +50,7 @@ def test_end_to_end_two_problems():
     prompt = "def add(a, b):\n"
     base_test = textwrap.dedent(
         """
+pytestmark = pytest.mark.integration
         def check(candidate):
             assert candidate(1, 2) == 3
             assert candidate(0, 0) == 0

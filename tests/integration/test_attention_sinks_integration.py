@@ -1,12 +1,12 @@
 """Integration tests for AttentionSinkCache surface.
 
-@pytest.mark.integration
 Verify:
 * registry advertises both "kv_int8" and "attention_sinks"
 * the registered class instantiates and works end-to-end with a toy
   attention computation
 * importing the longcontext package does not touch src.model
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

@@ -1,9 +1,9 @@
 """Integration tests for scaling config YAMLs → TrainConfig → AureliusTransformer.
 
-@pytest.mark.integration
 Loads each production scaling config, verifies dimensions, and confirms a
 reduced model can be instantiated and run a forward pass.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

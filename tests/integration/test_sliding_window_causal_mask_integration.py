@@ -1,6 +1,5 @@
 """Integration: sliding-window mask in longcontext registry."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import torch
@@ -33,3 +32,5 @@ def test_smoke_with_flag_enabled():
     b = lc.SlidingWindowCausalMaskBuilder(window_size=min(8, cfg.longcontext_sliding_window_size))
     m = b.build(32, dtype=torch.float32)
     assert m.shape == (1, 1, 32, 32)
+
+pytestmark = pytest.mark.integration

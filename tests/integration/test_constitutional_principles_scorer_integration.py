@@ -1,6 +1,5 @@
 """Integration tests for the constitutional principles scorer registry entry."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 from src.safety import HARM_CLASSIFIER_REGISTRY
@@ -31,3 +30,5 @@ def test_registered_class_scores_sample() -> None:
     assert 0.0 <= report.overall <= 1.0
     principles = {p.principle for p in report.principle_scores}
     assert {"helpful", "honest", "harmless", "respectful", "concise"}.issubset(principles)
+
+pytestmark = pytest.mark.integration

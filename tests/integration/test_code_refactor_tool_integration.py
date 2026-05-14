@@ -1,6 +1,5 @@
 """Integration tests for the code refactor tool surface."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import pathlib
@@ -63,3 +62,5 @@ def test_rename_and_remove_unused_roundtrip(tmp_path: pathlib.Path) -> None:
     assert "greet" not in final
     assert "import os" not in final
     assert "import sys" in final
+
+pytestmark = pytest.mark.integration

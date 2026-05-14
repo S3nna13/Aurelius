@@ -1,6 +1,5 @@
 """Integration tests for multi-sample voting via ``src.inference``."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import re
@@ -68,3 +67,5 @@ def test_end_to_end_usc_on_five_samples():
     assert result.strategy == "usc"
     assert result.selected != samples[-1]
     assert result.selected in samples[:4]
+
+pytestmark = pytest.mark.integration

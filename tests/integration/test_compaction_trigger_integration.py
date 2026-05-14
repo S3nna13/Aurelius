@@ -1,6 +1,5 @@
 """Integration: CompactionTriggerManager wired into LONGCONTEXT_STRATEGY_REGISTRY."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 from src.longcontext import LONGCONTEXT_STRATEGY_REGISTRY
@@ -40,3 +39,5 @@ def test_feature_flag_off_preserves_default_behavior():
     cfg = AureliusConfig()
     assert cfg.longcontext_compaction_trigger_enabled is False
     assert "compaction_trigger" in LONGCONTEXT_STRATEGY_REGISTRY
+
+pytestmark = pytest.mark.integration

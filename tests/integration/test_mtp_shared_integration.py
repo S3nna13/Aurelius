@@ -1,12 +1,12 @@
 """Integration tests for SharedMTPHead via MODEL_COMPONENT_REGISTRY.
 
-@pytest.mark.integration
 Verifies:
   1. "mtp_shared" key present in MODEL_COMPONENT_REGISTRY.
   2. Construct from registry, forward pass, list of 3 tensors with correct shape.
   3. Shared weight verified on registry-constructed instance.
   4. Existing registry entries / public symbols are untouched (regression guard).
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

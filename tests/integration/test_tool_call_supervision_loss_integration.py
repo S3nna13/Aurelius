@@ -1,6 +1,5 @@
 """Integration: auxiliary loss registry + config."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import torch
@@ -30,3 +29,5 @@ def test_smoke_forward():
     loss = crit(logits, labels, mask)
     loss.backward()
     assert torch.isfinite(loss)
+
+pytestmark = pytest.mark.integration

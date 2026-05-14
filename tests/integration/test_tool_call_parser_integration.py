@@ -1,11 +1,11 @@
 """Integration tests for the agent tool-call parser surface.
 
-@pytest.mark.integration
 These tests verify cross-module wiring: the registry is populated on
 import, registered callables work end-to-end, and round-tripping a
 canonical tool call through ``format_* -> parse_* `` recovers the
 original semantic payload.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

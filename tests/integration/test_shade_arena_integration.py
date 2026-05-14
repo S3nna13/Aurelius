@@ -1,6 +1,5 @@
 """Integration test for SHADE-Arena harness registry + config wiring."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 from src.eval import (
@@ -49,3 +48,5 @@ def test_default_catalog_shape_exposed_via_package():
     for m, s in DEFAULT_SHADE_SCENARIOS:
         assert isinstance(m, MainTaskSpec)
         assert isinstance(s, SideTaskSpec)
+
+pytestmark = pytest.mark.integration

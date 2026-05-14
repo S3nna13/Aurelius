@@ -1,9 +1,9 @@
 """Integration tests for the prompt cache exposed via ``src.serving``.
 
-@pytest.mark.integration
 Ensures the cache is re-exported from the package and that adding it
 does not break importability of sibling serving modules.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

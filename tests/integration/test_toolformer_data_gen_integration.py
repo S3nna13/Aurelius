@@ -1,12 +1,12 @@
 """Integration tests for the Toolformer data generation pipeline.
 
-@pytest.mark.integration
 Validates:
   - symbols exported from agent surface
   - TOOLFORMER_DATA_REGISTRY registration
   - config keys wired correctly
   - end-to-end pipeline: text → annotated training examples
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

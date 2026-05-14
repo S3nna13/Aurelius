@@ -1,10 +1,10 @@
 """Integration tests for the code test runner.
 
-@pytest.mark.integration
 Confirm public exposure via :mod:`agent`, that prior registry
 entries remain intact, and that an end-to-end pytest invocation
 against a temporary directory produces a parsed :class:`TestResult`.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

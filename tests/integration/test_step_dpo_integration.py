@@ -1,6 +1,5 @@
 """Integration tests for Step-DPO surfaced via src.alignment."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import math
@@ -32,6 +31,7 @@ def test_existing_alignment_entries_intact():
 
 def test_end_to_end_small_training_reduces_loss():
     """Train a tiny logprob head to prefer chosen over rejected steps."""
+pytestmark = pytest.mark.integration
     torch.manual_seed(0)
 
     # Toy: two "steps" represented by feature vectors; a tiny linear scorer

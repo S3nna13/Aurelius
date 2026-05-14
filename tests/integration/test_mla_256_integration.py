@@ -1,6 +1,5 @@
 """Integration tests for MLA-256 registry wiring (GLM-5 §3.1, arXiv:2602.15763)."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import torch
@@ -70,3 +69,5 @@ def test_existing_registry_keys_unaffected():
     assert "mtp_shared" in MODEL_COMPONENT_REGISTRY, (
         "Pre-existing registry key 'mtp_shared' must not be removed"
     )
+
+pytestmark = pytest.mark.integration

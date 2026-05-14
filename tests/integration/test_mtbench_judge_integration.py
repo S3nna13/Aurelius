@@ -1,6 +1,5 @@
 """Integration: MT-Bench judge registered in METRIC_REGISTRY; end-to-end flow."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import src.eval as eval_pkg
@@ -84,3 +83,5 @@ def test_end_to_end_pairwise():
     agg = MTBenchJudge.aggregate_pairwise(results)
     assert agg["n_valid"] == 4
     assert abs(agg["win_rate_a"] + agg["win_rate_b"] + agg["tie_rate"] - 1.0) < 1e-9
+
+pytestmark = pytest.mark.integration

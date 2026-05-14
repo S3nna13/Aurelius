@@ -1,6 +1,5 @@
 """Integration tests for the adversarial code battle surface."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import src.alignment as alignment_surface
@@ -71,3 +70,5 @@ def test_two_round_battle_generates_preference_pairs() -> None:
         assert p["chosen"] != p["rejected"]
     # Final code should no longer contain the hardcoded API key literal.
     assert '"abcd1234xyz"' not in transcript.final_code
+
+pytestmark = pytest.mark.integration

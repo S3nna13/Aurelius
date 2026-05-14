@@ -1,6 +1,5 @@
 """Integration: tool sandbox denylist registry + config flag."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 
@@ -39,3 +38,5 @@ def test_smoke_guard_blocks_dangerous_call():
     v = guard.evaluate("shell", {"cmd": "rm -rf /"})
     assert v.allowed is False
     assert v.violated_rules
+
+pytestmark = pytest.mark.integration

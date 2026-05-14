@@ -1,11 +1,11 @@
 """End-to-end integration test for ``agent.mcp_client``.
 
-@pytest.mark.integration
 Uses a stub in-process JSON-RPC server object as the transport. No
 sockets, pipes, or external packages. Also verifies that the MCP
 client symbols are exposed via ``agent`` and that prior agent
 surface entries remain intact.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

@@ -1,6 +1,5 @@
 """Integration tests: CircuitBreaker registers and wraps fake service calls."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import pytest
@@ -43,6 +42,7 @@ def test_config_flag_can_be_enabled() -> None:
 
 class _FakeFlakyService:
     """Deterministic flaky service: fails first N calls, then succeeds."""
+pytestmark = pytest.mark.integration
 
     def __init__(self, fail_first: int) -> None:
         self.fail_first = fail_first

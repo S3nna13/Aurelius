@@ -1,6 +1,5 @@
 """Integration test for the Tree-of-Attacks-with-Pruning (TAP) probe."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 from src.eval import (
@@ -49,3 +48,5 @@ def test_small_probe_against_stubs_returns_tapresult():
     assert result.best_id in result.nodes
     assert isinstance(result.succeeded, bool)
     assert 0.0 <= result.best_score <= 1.0
+
+pytestmark = pytest.mark.integration

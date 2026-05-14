@@ -1,6 +1,5 @@
 """Integration tests for the model family surface (Cycle-122)."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import src.model as model_pkg
@@ -56,3 +55,5 @@ def test_aurelius_config_default_unchanged():
         assert forbidden not in field_names, (
             f"AureliusConfig unexpectedly grew a {forbidden!r} field"
         )
+
+pytestmark = pytest.mark.integration

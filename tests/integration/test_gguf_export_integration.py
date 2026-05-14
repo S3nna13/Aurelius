@@ -1,6 +1,5 @@
 """Integration tests for scripts/export_gguf.py — Safetensors → GGUF conversion."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import struct
@@ -42,6 +41,7 @@ def tiny_model() -> AureliusTransformer:
 @pytest.fixture
 def checkpoint_dir(tmp_path: Path, tiny_model: AureliusTransformer) -> Path:
     """Save a tiny model as safetensors and return the checkpoint directory."""
+pytestmark = pytest.mark.integration
     ckpt_dir = tmp_path / "checkpoint"
     ckpt_dir.mkdir()
     # Clone tensors to break weight sharing (tied embeddings) before saving

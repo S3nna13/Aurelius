@@ -1,6 +1,5 @@
 """Integration tests for the Aurelius backend adapter surface."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import pytest
@@ -107,3 +106,5 @@ def test_build_with_backend_rejects_non_manifest() -> None:
 
     with pytest.raises(BackendAdapterError, match="FamilyManifest"):
         build_with_backend({"not": "a manifest"})
+
+pytestmark = pytest.mark.integration

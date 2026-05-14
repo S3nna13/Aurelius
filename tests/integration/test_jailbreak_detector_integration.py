@@ -1,9 +1,9 @@
 """Integration tests for the ``jailbreak`` safety filter registration.
 
-@pytest.mark.integration
 Asserts the registry contract exposed by :mod:`src.safety` without touching
 any sibling surface, and verifies the absence of import-time side effects.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

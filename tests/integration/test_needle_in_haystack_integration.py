@@ -1,6 +1,5 @@
 """Integration tests for NIAH through the src.eval package surface."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import src.eval as eval_pkg
@@ -44,3 +43,5 @@ def test_niah_idempotent_registration():
     importlib.reload(eval_pkg)
     after = eval_pkg.BENCHMARK_REGISTRY["niah"]
     assert before is after or before.__name__ == after.__name__
+
+pytestmark = pytest.mark.integration

@@ -1,12 +1,12 @@
 """Integration tests for MoonVitPatchPacker via MODEL_COMPONENT_REGISTRY.
 
-@pytest.mark.integration
 Verifies:
   1. "moonvit_patch_packer" key present in MODEL_COMPONENT_REGISTRY.
   2. Construct from registry, forward pass, (patches, positions, mask) shapes correct.
   3. Output is a 3-tuple of tensors with expected dtypes.
   4. Existing MODEL_COMPONENT_REGISTRY entries are still present (regression guard).
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

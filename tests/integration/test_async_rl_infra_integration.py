@@ -1,12 +1,12 @@
 """Integration tests for Async RL Infrastructure — GLM-5 §4.1.
 
-@pytest.mark.integration
 Checks:
  1. ``TRAINING_REGISTRY["async_rl"]`` is registered in src/training/__init__.py
  2. Constructing an orchestrator, enqueueing 5 tasks, and dispatching all
     returns exactly 5 results.
  3. Pre-existing AUXILIARY_LOSS_REGISTRY key is still present (regression guard).
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

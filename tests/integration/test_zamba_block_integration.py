@@ -1,6 +1,5 @@
 """Integration tests for ZambaBlock.
 
-@pytest.mark.integration
 Build ZambaBlock(d_model=64, n_heads=4, head_dim=16, d_state=16,
                  attn_every_n=3, n_layers=6).
 
@@ -8,6 +7,7 @@ Input: [2, 8, 64].
 Verify: output shape, n_attention_layers=2, n_ssm_layers=4, backward works,
         shared_attn is a single module, registry wired.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

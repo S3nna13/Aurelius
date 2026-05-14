@@ -1,11 +1,11 @@
 """Integration test for the Absolute Zero self-play RL pipeline.
 
-@pytest.mark.integration
 Exercises the full propose → solve → leakage_detection → compute_pg flow
 with mock functions.  The solver is correct 50 % of the time (deterministic
 alternation), so the measured accuracy should be exactly 0.5 for an even
 number of tasks.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

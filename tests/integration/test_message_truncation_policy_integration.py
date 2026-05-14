@@ -1,9 +1,9 @@
 """Integration tests for message-truncation policies.
 
-@pytest.mark.integration
 Checks that the policy is exposed via the ``src.chat`` package surface
 and operates correctly on a real ChatML-produced message list.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

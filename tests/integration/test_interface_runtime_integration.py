@@ -1,6 +1,5 @@
 """Integration tests for ``agent.interface_runtime``."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import json
@@ -158,3 +157,5 @@ def test_interface_runtime_end_to_end_session_workstream_and_workflow(tmp_path):
     assert status["journal"]["entries"] >= 1
     assert runtime.get_thread(session.session_id, thread.thread_id).thread_id == thread.thread_id
     assert runtime.get_background_job(session.session_id, run.job_ids[0]).status == "completed"
+
+pytestmark = pytest.mark.integration

@@ -1,6 +1,5 @@
 """Integration tests for chunked prefill registry + end-to-end usage."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import torch
@@ -37,6 +36,7 @@ def test_package_exports_chunked_prefill_symbols():
 
 def test_end_to_end_toy_chunk_fn():
     """Simulate a prefill pass: embed-like transform applied chunk by chunk."""
+pytestmark = pytest.mark.integration
     torch.manual_seed(0)
     B, S, chunk_size = 2, 40, 8
     vocab = 37

@@ -1,6 +1,5 @@
 """Integration tests for the Aurelius interface CLI command group."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import json
@@ -279,3 +278,5 @@ def test_main_interface_skill_catalog_management_commands_run_end_to_end(tmp_pat
     assert any("Repo instructions." in layer for layer in layers_payload["layers"])
     assert any("Workspace tools." in layer for layer in layers_payload["layers"])
     assert any("mode instructions: review" == layer for layer in layers_payload["layers"])
+
+pytestmark = pytest.mark.integration

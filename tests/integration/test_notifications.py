@@ -1,6 +1,5 @@
 """Notification integration tests."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 from typing import Any
@@ -56,3 +55,5 @@ class TestNotifications:
         data = resp.json()
         for n in data.get("notifications", []):
             assert n["category"] == "startup"
+
+pytestmark = pytest.mark.integration

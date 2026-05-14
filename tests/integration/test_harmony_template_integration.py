@@ -1,12 +1,12 @@
 """Integration tests — Harmony template in the CHAT_TEMPLATE_REGISTRY.
 
-@pytest.mark.integration
 Verifies that:
   1. "harmony" is present in CHAT_TEMPLATE_REGISTRY.
   2. The registered object can be constructed from the registry and renders
      user+assistant messages with the expected GPT-OSS-120B delimiters.
   3. Existing keys in the registry (regression guard) are unaffected.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

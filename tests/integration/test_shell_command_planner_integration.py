@@ -1,9 +1,9 @@
 """Integration tests for the shell-command planner surface.
 
-@pytest.mark.integration
 Exercises that the :class:`ShellCommandPlanner` is exposed via
 ``agent``, plans a benign intent, and blocks forbidden commands.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

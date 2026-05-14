@@ -1,12 +1,12 @@
 """Integration tests for ConversationState within the chat surface.
 
-@pytest.mark.integration
 Verifies:
 - public exposure via ``src.chat``,
 - end-to-end multi-turn conversation with tool calls,
 - prior chat entries (imports from src.chat) remain intact,
 - integration with ContextCompactor from src.longcontext.
 """
+pytestmark = pytest.mark.integration
 
 from __future__ import annotations
 

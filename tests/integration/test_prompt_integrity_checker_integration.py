@@ -1,6 +1,5 @@
 """Integration tests for the prompt-integrity checker's safety-surface wiring."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 from src.chat.chatml_template import Message
@@ -46,3 +45,5 @@ def test_end_to_end_round_trip_via_registry() -> None:
     report = checker.check_round_trip(BASELINE, msgs)
     assert report.valid is True
     assert "round_trip_mismatch" not in report.signals
+
+pytestmark = pytest.mark.integration

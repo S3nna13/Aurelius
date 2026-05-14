@@ -1,6 +1,5 @@
 """Integration tests for BackgroundExecutor: registry wiring and end-to-end flow."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 
@@ -8,6 +7,7 @@ def test_background_executor_registered():
     """BackgroundExecutor must appear in AGENT_LOOP_REGISTRY."""
     import agent as agent
     from agent.background_executor import BackgroundExecutor
+pytestmark = pytest.mark.integration
 
     assert "background_executor" in agent.AGENT_LOOP_REGISTRY
     assert agent.AGENT_LOOP_REGISTRY["background_executor"] is BackgroundExecutor

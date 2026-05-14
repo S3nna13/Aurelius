@@ -1,6 +1,5 @@
 """Integration: n-gram dedup data registry."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import src.data as data
@@ -26,3 +25,5 @@ def test_smoke_cluster():
     assert cfg.data_ngram_deduplication_enabled is True
     g = data.NgramDeduplicationToolkit.cluster_duplicates(["aa", "aa", "bb"], n=1, threshold=1.0)
     assert len(g) == 2
+
+pytestmark = pytest.mark.integration

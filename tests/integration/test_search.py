@@ -1,6 +1,5 @@
 """Search integration tests."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 from typing import Any
@@ -38,3 +37,5 @@ class TestSearch:
         assert resp.status_code == 200
         data = resp.json()
         assert "results" in data
+
+pytestmark = pytest.mark.integration

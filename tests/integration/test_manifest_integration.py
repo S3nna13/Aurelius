@@ -1,6 +1,5 @@
 """Integration tests for the family manifest surface (Cycle-122)."""
 
-@pytest.mark.integration
 from __future__ import annotations
 
 import src.model as model_pkg
@@ -40,3 +39,5 @@ def test_aurelius_config_constructs_unchanged():
 
 def test_reference_is_registered_under_canonical_key():
     assert MODEL_MANIFEST_REGISTRY["aurelius/base-1.395b"] is AURELIUS_REFERENCE_MANIFEST
+
+pytestmark = pytest.mark.integration
