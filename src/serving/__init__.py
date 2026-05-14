@@ -63,3 +63,25 @@ from .vllm_engine import *  # noqa: F401, F403
 from .web_ui import *  # noqa: F401, F403
 from .websocket import *  # noqa: F401, F403
 from .xgrammar_decoder import *  # noqa: F401, F403
+
+# ---------------------------------------------------------------------------
+# Backwards-compatible registry aliases for integration tests
+# ---------------------------------------------------------------------------
+
+# DECODER_REGISTRY is the historical name for the structured-output decoder
+# registry.  New code should use STRUCTURED_OUTPUT_REGISTRY directly.
+from .structured_output_decoder import STRUCTURED_OUTPUT_REGISTRY  # noqa: E402
+
+DECODER_REGISTRY = STRUCTURED_OUTPUT_REGISTRY
+
+# STREAM_HANDLER_REGISTRY maps stream-type keys to handler/encoder classes.
+# "sse"       → generic SSE wire encoder (SSEStreamEncoder)
+# "sse_chat"  → chat-completion SSE streaming (SSEChatStream)
+from .sse_stream_encoder import SSEStreamEncoder  # noqa: E402
+from .sse_chat_stream import SSEChatStream  # noqa: E402
+
+STREAM_HANDLER_REGISTRY: dict[str, type] = {
+    "sse": SSEStreamEncoder,
+    "sse_chat": SSEChatStream,
+}
+
