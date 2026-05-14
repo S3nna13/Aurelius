@@ -18,6 +18,7 @@ from src.model.transformer import AureliusTransformer
 # ---------------------------------------------------------------------------
 
 
+
 pytestmark = pytest.mark.integration
 
 TINY_CONFIG = AureliusConfig(

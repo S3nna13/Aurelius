@@ -23,6 +23,7 @@ from src.model import (
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_factory_and_compatibility_exported_from_src_model():

@@ -7,6 +7,7 @@ import torch
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_exposed_via_src_alignment():

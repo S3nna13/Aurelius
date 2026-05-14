@@ -21,6 +21,7 @@ from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_merging_registry_contains_all_strategies() -> None:

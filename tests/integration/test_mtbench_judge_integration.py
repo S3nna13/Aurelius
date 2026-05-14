@@ -14,6 +14,7 @@ from src.eval.mtbench_judge import (
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_metric_registry_contains_mtbench():

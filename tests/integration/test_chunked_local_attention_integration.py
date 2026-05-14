@@ -17,6 +17,7 @@ import torch
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 FROZEN_ATTENTION_SHA256 = "c30d59b401bce355dc486222275923b153accd335b0e898794f23c2e09a90376"

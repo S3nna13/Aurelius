@@ -22,6 +22,7 @@ from src.eval.swebench_lite_scorer import apply_patch_via_python
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_surface_exports_present():

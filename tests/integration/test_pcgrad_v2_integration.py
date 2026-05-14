@@ -26,6 +26,7 @@ from src.training.pcgrad_v2 import PCGradV2, PCGradV2Config
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def make_conflicting_grads(n_params: int = 8, seed: int = 0) -> tuple[torch.Tensor, torch.Tensor]:

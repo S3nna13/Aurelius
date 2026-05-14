@@ -23,6 +23,7 @@ from src.inference.coconut import CoCoNut, CoCoNutConfig
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_coconut_integration():

@@ -8,6 +8,7 @@ import pytest
 
 
 
+
 pytestmark = pytest.mark.integration
 
 def test_task_decomposer_exposed_on_agent_surface():

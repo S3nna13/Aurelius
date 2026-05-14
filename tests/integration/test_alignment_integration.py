@@ -31,6 +31,8 @@ from src.alignment.spin_trainer import (
 # ---------------------------------------------------------------------------
 
 
+
+import pytest
 pytestmark = pytest.mark.integration
 
 VOCAB = 256

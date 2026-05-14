@@ -24,6 +24,7 @@ from src.eval.vision_grounding_eval import VisionGroundingEval, VisionGroundingE
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_vision_grounding_eval_end_to_end() -> None:

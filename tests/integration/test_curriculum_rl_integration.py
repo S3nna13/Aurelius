@@ -24,6 +24,7 @@ from src.training.curriculum_rl import CurriculumRLConfig, CurriculumRLSampler
 
 
 
+
 pytestmark = pytest.mark.integration
 
 @pytest.fixture

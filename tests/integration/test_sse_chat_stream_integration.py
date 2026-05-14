@@ -9,6 +9,7 @@ from src.serving import STREAM_HANDLER_REGISTRY, SSEChatStream, parse_sse_event
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_registered_in_stream_handler_registry() -> None:

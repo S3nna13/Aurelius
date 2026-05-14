@@ -10,6 +10,7 @@ from src.chat.llama3_template import Llama3Template
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_registry_has_both_templates() -> None:

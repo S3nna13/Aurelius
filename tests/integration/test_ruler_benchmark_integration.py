@@ -9,6 +9,7 @@ from src.eval.ruler_benchmark import RULERBenchmark
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_metric_registry_has_both_niah_and_ruler():

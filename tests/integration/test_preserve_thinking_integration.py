@@ -23,6 +23,7 @@ from agent.preserve_thinking import (
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_preserve_thinking_full_integration():

@@ -15,6 +15,7 @@ from src.longcontext import (
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_registry_contains_kivi_int4():

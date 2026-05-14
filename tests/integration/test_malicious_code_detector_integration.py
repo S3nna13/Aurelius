@@ -14,6 +14,7 @@ from src.safety import (
 # dangerous identifiers.
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 _PK = "pick" + "le"

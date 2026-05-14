@@ -23,6 +23,7 @@ from src.retrieval.corpus_indexer import Chunk, CorpusIndexer
 
 
 
+
 pytestmark = pytest.mark.integration
 
 def _write(root, rel, text):

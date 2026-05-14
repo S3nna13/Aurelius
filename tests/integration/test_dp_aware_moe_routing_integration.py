@@ -16,6 +16,7 @@ from __future__ import annotations
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_dp_aware_moe_routing_in_registry():

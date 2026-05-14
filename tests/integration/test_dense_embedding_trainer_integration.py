@@ -13,6 +13,7 @@ from src import retrieval
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_embedding_registry_has_dense() -> None:

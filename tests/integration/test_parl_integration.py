@@ -11,6 +11,7 @@ import torch
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_parl_in_registry():

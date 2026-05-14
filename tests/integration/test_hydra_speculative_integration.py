@@ -29,6 +29,7 @@ from src.inference.hydra_speculative import HydraConfig, HydraSpeculative
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 D_MODEL = 64

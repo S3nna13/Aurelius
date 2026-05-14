@@ -15,6 +15,7 @@ from src.model.manifest import (
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_registry_exported_from_package():

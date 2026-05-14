@@ -8,6 +8,7 @@ from src.alignment import ALIGNMENT_REGISTRY
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_toggle_in_registry():

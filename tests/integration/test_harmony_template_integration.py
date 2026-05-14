@@ -23,6 +23,7 @@ from src.chat.harmony_template import HarmonyTemplate
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_harmony_key_in_registry() -> None:

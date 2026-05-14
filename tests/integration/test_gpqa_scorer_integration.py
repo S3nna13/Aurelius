@@ -9,6 +9,7 @@ from src.eval.gpqa_scorer import GPQAProblem, GPQAScorer
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_prior_registry_entries_intact():

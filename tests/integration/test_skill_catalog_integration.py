@@ -11,6 +11,7 @@ from agent import SkillCatalog, SkillCatalogEntry
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def _repo_root(tmp_path: Path) -> Path:

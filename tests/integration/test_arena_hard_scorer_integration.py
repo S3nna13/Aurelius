@@ -13,6 +13,7 @@ from src.eval.arena_hard_scorer import (
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_metric_registry_has_arena_hard():

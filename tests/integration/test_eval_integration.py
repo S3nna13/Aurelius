@@ -22,6 +22,7 @@ from src.eval.webarena_scorer import (
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_webarena_scorer() -> None:

@@ -9,6 +9,7 @@ import sys
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_embedding_registry_exposes_code_aware():

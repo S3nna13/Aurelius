@@ -14,6 +14,7 @@ from src.alignment import StepDPOTrainer, StepPreferenceExample, step_dpo_loss
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_surface_exports_present():

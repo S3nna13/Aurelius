@@ -9,6 +9,7 @@ from src.model.config import AureliusConfig
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_tool_registered_in_agent_package():

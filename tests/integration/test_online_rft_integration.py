@@ -21,6 +21,7 @@ from src.alignment.online_rft import (
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 class _TinyModel(nn.Module):

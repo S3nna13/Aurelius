@@ -9,6 +9,7 @@ from src.data.rejection_sampling_data import PreferencePair, RejectionSampler
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_exposed_via_src_data_submodule():

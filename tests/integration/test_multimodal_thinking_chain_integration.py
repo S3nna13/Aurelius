@@ -24,6 +24,7 @@ from src.inference.multimodal_thinking_chain import (
 
 
 
+
 pytestmark = pytest.mark.integration
 
 def test_multimodal_thinking_chain_integration():

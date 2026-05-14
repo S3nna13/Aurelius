@@ -9,6 +9,7 @@ import agent as agent_pkg
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 EXPECTED_EXPORTS = {

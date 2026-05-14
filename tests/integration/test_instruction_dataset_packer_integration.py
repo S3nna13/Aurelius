@@ -14,6 +14,7 @@ from src.data.instruction_dataset_packer import (
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_exposed_via_src_data_module_import():

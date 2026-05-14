@@ -7,6 +7,7 @@ import src.eval as ev
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_benchmark_registry_entry():

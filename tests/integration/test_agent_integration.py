@@ -7,6 +7,7 @@ from agent.patch_synthesis import PatchSynthesizer
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 _SAMPLE_SOURCE = """\

@@ -8,6 +8,7 @@ from src.eval import NeedleInHaystackBenchmark
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def _oracle(prompt: str) -> str:

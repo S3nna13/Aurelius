@@ -9,6 +9,7 @@ from agent import AGENT_LOOP_REGISTRY, TOOL_CALL_PARSER_REGISTRY
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_react_registered():

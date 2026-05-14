@@ -5,6 +5,7 @@ from __future__ import annotations
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_function_calling_api_registered_in_api_shape_registry():

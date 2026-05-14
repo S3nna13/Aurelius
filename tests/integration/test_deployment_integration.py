@@ -30,6 +30,7 @@ from src.deployment.otel_instrumentation import Tracer
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_deploy_target_registry_is_populated() -> None:

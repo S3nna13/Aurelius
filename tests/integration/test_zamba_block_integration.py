@@ -25,6 +25,7 @@ from src.model.zamba_block import ZambaBlock, ZambaConfig, ZambaSharedAttention
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 D_MODEL = 64

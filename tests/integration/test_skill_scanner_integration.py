@@ -13,6 +13,7 @@ from src.safety import (
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 _CURL = "cu" + "rl"

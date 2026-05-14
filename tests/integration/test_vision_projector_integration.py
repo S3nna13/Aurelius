@@ -21,6 +21,7 @@ from src.model.vision_projector import VisionProjector, VisionProjectorConfig
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 TINY_VIT_HIDDEN = 32

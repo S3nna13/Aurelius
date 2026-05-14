@@ -14,6 +14,7 @@ from src.safety import (
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_registry_contains_canary_token_guard_entry() -> None:

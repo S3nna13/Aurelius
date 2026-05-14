@@ -22,6 +22,7 @@ from src.inference import (
 
 
 
+
 pytestmark = pytest.mark.integration
 
 def _fake_step_fn(step: BatchStep) -> dict:

@@ -8,6 +8,7 @@ from src import eval as ev
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_metric_registry_has_ifeval() -> None:

@@ -15,6 +15,7 @@ from agent import (
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_symbols_exposed_on_surface() -> None:

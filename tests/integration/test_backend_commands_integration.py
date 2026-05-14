@@ -11,6 +11,7 @@ from src.model.manifest import AURELIUS_REFERENCE_MANIFEST
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_main_parser_includes_backend_group():

@@ -10,6 +10,7 @@ from src.multimodal import ModalityContract, load_modality_contract
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_multimodal_package_exports_registry_surface():

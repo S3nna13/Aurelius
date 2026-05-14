@@ -31,6 +31,7 @@ from src.serving.responses_api import (
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 class TestRegistryIntegration:

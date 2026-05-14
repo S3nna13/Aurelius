@@ -17,6 +17,7 @@ from src.alignment import ALIGNMENT_REGISTRY
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_registry_contains_cross_stage_distillation():

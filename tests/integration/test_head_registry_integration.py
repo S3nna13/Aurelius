@@ -12,6 +12,7 @@ from src.model import AureliusConfig
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_head_registry_exported_from_model_package() -> None:

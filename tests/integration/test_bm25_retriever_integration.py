@@ -9,6 +9,7 @@ import sys
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_registry_entry_is_class_and_usable():

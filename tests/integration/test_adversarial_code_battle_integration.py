@@ -13,6 +13,7 @@ from src.model.config import AureliusConfig
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 _EV_CALL = "ev" + "al(user_input)"

@@ -16,6 +16,7 @@ from src.alignment.zero_vision_sft import ZeroVisionSFTConfig, ZeroVisionSFTTrai
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 VOCAB = 256

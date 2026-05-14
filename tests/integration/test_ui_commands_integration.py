@@ -26,6 +26,7 @@ from src.ui.status_hierarchy import (
 
 
 
+
 pytestmark = pytest.mark.integration
 
 def test_command_palette_registry_accessible_via_src_ui() -> None:

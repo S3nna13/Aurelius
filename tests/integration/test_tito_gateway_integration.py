@@ -19,6 +19,7 @@ from src.training.tito_gateway import TITOConfig
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_tito_key_in_training_registry():

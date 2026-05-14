@@ -25,6 +25,7 @@ from agent.proactive_trigger import (
 
 
 import pytest
+
 pytestmark = pytest.mark.integration
 
 def test_proactive_trigger_in_agent_loop_registry():
