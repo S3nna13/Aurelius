@@ -182,22 +182,34 @@ All `torch.load` calls use `weights_only=True`. Container images use non-root us
 **Endpoints:**
 - `POST /v1/chat/completions` — streaming + non-streaming, OpenAI-compatible
 - `GET /v1/models` — model listing
-- `GET /health` — liveness probe
-- `GET /metrics` — Prometheus scrape
-- `WebSocket /ws` — real-time streaming
+- `GET /health` — liveness probe (returns `engine_loaded` flag; 200 only when server is up)
+- `GET /health/ready` — readiness probe (200 only when model engine fully initialized; otherwise 503)
+- `GET /healthz` — legacy alias mirroring `/health` (for backward-compatible health checks)
+- `GET /metrics` — Prometheus metrics scrape endpoint
+- `WebSocket /ws` — real-time streaming chat
 
-**Gateway features:** CSP / HSTS / X-Frame-Options headers, per-IP rate limiting (memory or Redis), 1 MiB / 10 MiB request size limits, `X-Request-ID` tracing, host allow-listing, input parameter validation and response sanitization.
+**Gateway features:**
+CSP / HSTS (production only) / X-Frame-Options: DENY / X-Content-Type-Options / Referrer-Policy headers;
+per-IP rate limiting (memory or Redis backend); request size limits (1 MiB JSON body, 10 MiB streaming);
+`X-Request-ID` tracing; host allow‑list enforcement; input parameter validation; response sanitization.
 
 **Health & readiness:**
-- `GET /health` — liveness (returns `engine_loaded` flag; 200 only when UP)
-- `GET /health/ready` — readiness (waits for model engine initialization)
-- Docker `HEALTHCHECK` uses `/health`; Kubernetes probes configure both liveness and readiness.
+- `GET /health` — liveness. Returns `{"ok": true, "engine_loaded": <bool>, "version": "...", "uptime_seconds": ...}`. HTTP 200 when server is running.
+- `GET /health/ready` — readiness. Same JSON schema; returns 503 until the model engine finishes loading. Kubernetes `readinessProbe` should target this endpoint.
+- `GET /healthz` — legacy alias for existing HEALTHCHECK integrations (behaves identically to `/health`).
 
 **Rate limiting backends:**
 - **Memory** (default) — in-process token bucket; suitable for single‑instance deployments
 - **Redis** (set `AURELIUS_RATE_LIMIT_REDIS_URL`) — distributed Lua‑script token bucket; consistent limits across multiple API replicas
 
-**Deployment targets:** Docker Compose (`deployment/compose.yaml`), Kubernetes (`k8s/`), Helm charts.
+**Observability:**
+Prometheus metrics on `/metrics` include request rates, latency percentiles (p50/p95/p99), active connections, uptime, HTTP status totals, plus gateway-specific counters: rate-limit rejections (`aurelius_rate_limit_rejected_total`), validation failures (`aurelius_validation_failures_total`), and backend indicator (`aurelius_rate_limiter_backend` — 0=memory, 1=redis).
+
+**Deployment targets:**
+Docker Compose (`deployment/compose.yaml`), Kubernetes (`k8s/aurelius-deployment.yaml`, `k8s/aurelius-service.yaml`), Helm charts (`deployment/helm/aurelius/`).
+
+---
+
 
 ---
 
@@ -250,7 +262,7 @@ docker compose up --profile cache    # with Redis
 | `AURELIUS_API_KEYS` | — | Multi-key: `id:key:scope1,scope2;...` |
 | `AURELIUS_AUTH_ENABLED` | `true` | Require auth on non-loopback |
 | `AURELIUS_ALLOWED_HOSTS` | `*` | Comma-separated host allow-list |
-| `AURELIUS_RATE_LIMIT` | `60` | Max requests per window per IP |
+| `AURELIUS_RATE_LIMIT` | `120` | Max requests per window per IP |
 | `AURELIUS_RATE_WINDOW` | `60` | Rate limit window (seconds) |
 | `AURELIUS_RATE_LIMIT_REDIS_URL` | — | Redis URL for distributed rate limiting |
 | `AURELIUS_RATE_LIMIT_PREFIX` | `rl:` | Redis key prefix for rate-limit tokens |
