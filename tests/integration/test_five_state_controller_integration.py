@@ -1,5 +1,6 @@
 """Integration: FiveStateController wired through AGENT_LIFECYCLE_REGISTRY."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 from agent import AGENT_LIFECYCLE_REGISTRY

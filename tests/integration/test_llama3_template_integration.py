@@ -1,5 +1,6 @@
 """Integration tests: registry wiring and cross-template regression."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 from src.chat import CHAT_TEMPLATE_REGISTRY, Message

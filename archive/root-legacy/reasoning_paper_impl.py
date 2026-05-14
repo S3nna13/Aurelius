@@ -1,6 +1,6 @@
 import math
 from collections.abc import Callable
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import torch
 import torch.nn as nn
@@ -67,7 +67,7 @@ class SelfTaughtReasoner(nn.Module):
         self.hint_proj = nn.Linear(d_model, d_model)
         self.hint_norm = nn.LayerNorm(d_model)
 
-        self.frozen_backbone: Optional[nn.TransformerEncoder] = None
+        self.frozen_backbone: nn.TransformerEncoder | None = None
 
         self._init_weights()
 
@@ -110,15 +110,15 @@ class SelfTaughtReasoner(nn.Module):
     def forward(
         self,
         input_ids: torch.Tensor,
-        labels: Optional[torch.Tensor] = None,
-    ) -> Dict[str, torch.Tensor]:
+        labels: torch.Tensor | None = None,
+    ) -> dict[str, torch.Tensor]:
         embeds = self._embed(input_ids)
         seq_len = input_ids.shape[1]
         mask = self._causal_mask(seq_len).to(input_ids.device)
         hidden = self.backbone(embeds, mask=mask, is_causal=True)
         logits = self.rationale_head(hidden)
 
-        result: Dict[str, torch.Tensor] = {'logits': logits, 'hidden_states': hidden}
+        result: dict[str, torch.Tensor] = {'logits': logits, 'hidden_states': hidden}
         if labels is not None:
             loss = F.cross_entropy(
                 logits.view(-1, self.vocab_size),
@@ -128,7 +128,7 @@ class SelfTaughtReasoner(nn.Module):
             result['loss'] = loss
         return result
 
-    def generate_reasoning(self, question: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def generate_reasoning(self, question: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         self.eval()
         with torch.no_grad():
             reasoning = self._generate_autoregressive(question, self.rationale_head, self.reasoning_max_len)
@@ -159,7 +159,7 @@ class SelfTaughtReasoner(nn.Module):
         filter_mask = (scores > self.filter_threshold) & answer_correct
         return filter_mask
 
-    def train_step(self, batch: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def train_step(self, batch: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         return self.forward(
             input_ids=batch['input_ids'],
             labels=batch.get('labels'),
@@ -167,9 +167,9 @@ class SelfTaughtReasoner(nn.Module):
 
     def self_train_iterations(
         self,
-        dataset: List[Tuple[torch.Tensor, torch.Tensor]],
+        dataset: list[tuple[torch.Tensor, torch.Tensor]],
         n_rounds: int = 3,
-    ) -> List[float]:
+    ) -> list[float]:
         avg_losses = []
 
         if self.frozen_backbone is None:
@@ -323,7 +323,7 @@ class TreeOfThoughtSearcher(nn.Module):
             tokens.append(token)
         return torch.cat(tokens, dim=1)
 
-    def forward(self, problem: torch.Tensor) -> Dict[str, Any]:
+    def forward(self, problem: torch.Tensor) -> dict[str, Any]:
         path, scores = self.bfs(problem)
         return {'best_path': path, 'value_scores': scores}
 
@@ -332,14 +332,14 @@ class TreeOfThoughtSearcher(nn.Module):
         problem: torch.Tensor,
         n_branches: int = 5,
         depth: int = 3,
-    ) -> Tuple[torch.Tensor, List[float]]:
+    ) -> tuple[torch.Tensor, list[float]]:
         if problem.dim() == 1:
             problem = problem.unsqueeze(0)
 
-        paths: List[Tuple[torch.Tensor, float]] = [(problem.clone(), 0.0)]
+        paths: list[tuple[torch.Tensor, float]] = [(problem.clone(), 0.0)]
 
         for d in range(depth):
-            new_paths: List[Tuple[torch.Tensor, float]] = []
+            new_paths: list[tuple[torch.Tensor, float]] = []
 
             for state_ids, parent_score in paths:
                 candidate_tokens = self._generate_candidates(state_ids, n_branches)
@@ -357,7 +357,7 @@ class TreeOfThoughtSearcher(nn.Module):
 
         best_path = paths[0][0] if paths else problem
 
-        path_values: List[float] = []
+        path_values: list[float] = []
         for i in range(1, best_path.shape[1] + 1):
             segment = best_path[:, :i]
             val = self._evaluate_state(segment).item()
@@ -369,7 +369,7 @@ class TreeOfThoughtSearcher(nn.Module):
         self,
         problem: torch.Tensor,
         max_depth: int = 5,
-    ) -> Tuple[torch.Tensor, List[float]]:
+    ) -> tuple[torch.Tensor, list[float]]:
         if problem.dim() == 1:
             problem = problem.unsqueeze(0)
 
@@ -400,7 +400,7 @@ class TreeOfThoughtSearcher(nn.Module):
 
             candidate_tokens = self._generate_candidates(state_ids, 3)
 
-            candidates: List[Tuple[torch.Tensor, float]] = []
+            candidates: list[tuple[torch.Tensor, float]] = []
             for k in range(3):
                 new_token = candidate_tokens[:, k:k+1]
                 new_state = torch.cat([state_ids, new_token], dim=1)
@@ -414,7 +414,7 @@ class TreeOfThoughtSearcher(nn.Module):
 
         backtrack(problem, 0)
 
-        path_values: List[float] = []
+        path_values: list[float] = []
         for i in range(1, best_path.shape[1] + 1):
             segment = best_path[:, :i]
             val = self._evaluate_state(segment).item()
@@ -509,7 +509,7 @@ class QuietStarEngine(nn.Module):
         input_ids: torch.Tensor,
         n_think_tokens: int = 4,
         return_thought_info: bool = False,
-    ) -> Dict[str, torch.Tensor]:
+    ) -> dict[str, torch.Tensor]:
         batch_size, seq_len = input_ids.shape
         device = input_ids.device
         base_embeds = self._embed(input_ids)
@@ -530,8 +530,8 @@ class QuietStarEngine(nn.Module):
             else:
                 thought_generated.append(None)
 
-        final_embeds_list: List[torch.Tensor] = []
-        thought_positions: List[int] = []
+        final_embeds_list: list[torch.Tensor] = []
+        thought_positions: list[int] = []
 
         insert_pos = 0
         for pos in range(seq_len):
@@ -568,7 +568,7 @@ class QuietStarEngine(nn.Module):
         hidden = self.main_backbone(final_embeds, mask=mask, is_causal=True)
         logits = self.lm_head(hidden)
 
-        result: Dict[str, torch.Tensor] = {'logits': logits}
+        result: dict[str, torch.Tensor] = {'logits': logits}
 
         if return_thought_info:
             thought_mask = torch.zeros(final_seq_len, dtype=torch.bool, device=device)
@@ -678,10 +678,10 @@ class SkillLibraryVoyager(nn.Module):
         self.action_decoder = nn.TransformerDecoder(action_layer, n_encoder_layers)
         self.action_head = nn.Linear(d_model, d_model)
 
-        self.skill_names: List[str] = []
-        self.skill_programs: Dict[str, str] = {}
-        self.skill_embeddings: List[torch.Tensor] = []
-        self.verification_fns: Dict[str, Callable] = {}
+        self.skill_names: list[str] = []
+        self.skill_programs: dict[str, str] = {}
+        self.skill_embeddings: list[torch.Tensor] = []
+        self.verification_fns: dict[str, Callable] = {}
 
         self.register_buffer('skill_matrix', torch.zeros(max_skills, d_skill))
         self.n_skills: int = 0
@@ -707,7 +707,7 @@ class SkillLibraryVoyager(nn.Module):
         name: str,
         program: str,
         embedding: torch.Tensor,
-        verification_fn: Optional[Callable] = None,
+        verification_fn: Callable | None = None,
     ) -> None:
         if self.n_skills >= self.max_skills:
             return
@@ -731,7 +731,7 @@ class SkillLibraryVoyager(nn.Module):
         self,
         task_embedding: torch.Tensor,
         top_k: int = 3,
-    ) -> List[Tuple[str, torch.Tensor, float]]:
+    ) -> list[tuple[str, torch.Tensor, float]]:
         if self.n_skills == 0:
             return []
 
@@ -812,5 +812,5 @@ class SkillLibraryVoyager(nn.Module):
         self,
         task_embedding: torch.Tensor,
         top_k: int = 3,
-    ) -> List[Tuple[str, torch.Tensor, float]]:
+    ) -> list[tuple[str, torch.Tensor, float]]:
         return self.retrieve(task_embedding, top_k)

@@ -1,5 +1,6 @@
 """Integration tests: preference_ranking_loss exposed via src.alignment."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import torch

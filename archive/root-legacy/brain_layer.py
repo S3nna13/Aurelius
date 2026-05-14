@@ -4,7 +4,6 @@ import sys
 from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -52,8 +51,8 @@ class InputEncoder(nn.Module):
         self.norm = RMSNorm(d_brain)
         self.gate = GatedResidual(d_brain)
 
-    def forward(self, text_h: torch.Tensor, tool_h: Optional[torch.Tensor] = None,
-                mem_h: Optional[torch.Tensor] = None, state_id: int = 0) -> torch.Tensor:
+    def forward(self, text_h: torch.Tensor, tool_h: torch.Tensor | None = None,
+                mem_h: torch.Tensor | None = None, state_id: int = 0) -> torch.Tensor:
         b = text_h.shape[0]
         text = self.text_proj(text_h.mean(dim=1))
         tool = self.tool_proj(tool_h).mean(dim=1) if tool_h is not None else torch.zeros(b, text.shape[-1], device=text.device)
@@ -83,7 +82,7 @@ class WorkingMemory(nn.Module):
         self.register_buffer('step', torch.zeros(1, dtype=torch.long))
         self.register_buffer('goal', torch.zeros(d_brain))
 
-    def forward(self, s: torch.Tensor, goal: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def forward(self, s: torch.Tensor, goal: torch.Tensor | None = None) -> torch.Tensor:
         b = s.shape[0]
         self.step.add_(1)
         if goal is not None:
@@ -181,7 +180,7 @@ class LongTermMemory(nn.Module):
 class ReasoningCore(nn.Module):
     """Multi-step reasoning with decomposition, self-consistency, and recursive thought."""
 
-    def __init__(self, d_brain: int, lm_call: Optional[Callable] = None):
+    def __init__(self, d_brain: int, lm_call: Callable | None = None):
         super().__init__()
         self.d_brain = d_brain
         self.lm_call = lm_call
@@ -449,7 +448,7 @@ class UncertaintyEstimator(nn.Module):
         self.aleatoric = MLP(d_brain, d_brain // 2, 1)
         self.entropy_proj = nn.Linear(d_brain, 1)
 
-    def forward(self, h: torch.Tensor, logits: Optional[torch.Tensor] = None) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(self, h: torch.Tensor, logits: torch.Tensor | None = None) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         epi = torch.sigmoid(self.epistemic(h))
         alea = F.softplus(self.aleatoric(h))
         entropy = torch.sigmoid(self.entropy_proj(h)) if logits is None else \
@@ -520,7 +519,7 @@ class NeuralBrainLayer(nn.Module):
 
     def __init__(self, d_brain: int = 1024, d_model: int = 1536, n_slots: int = 64,
                  n_tools: int = 32, n_agents: int = 10, n_actions: int = 8,
-                 max_steps: int = 50, lm_call: Optional[Callable] = None):
+                 max_steps: int = 50, lm_call: Callable | None = None):
         super().__init__()
         self.d_brain = d_brain
         self.max_steps = max_steps
@@ -542,9 +541,9 @@ class NeuralBrainLayer(nn.Module):
 
         self.register_buffer('budget', torch.tensor(1.0))
 
-    def forward(self, text_h: torch.Tensor, tool_h: Optional[torch.Tensor] = None,
-                mem_h: Optional[torch.Tensor] = None, state_id: int = 0,
-                goal: Optional[torch.Tensor] = None,
+    def forward(self, text_h: torch.Tensor, tool_h: torch.Tensor | None = None,
+                mem_h: torch.Tensor | None = None, state_id: int = 0,
+                goal: torch.Tensor | None = None,
                 full_trace: bool = False) -> dict:
         """Run the full brain loop: Input → Encode → Retrieve → Reason → Verify → Output → Learn."""
         self.wm.reset()

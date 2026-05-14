@@ -1,5 +1,6 @@
 """End-to-end integration test for :class:`CorpusIndexer`.
 
+@pytest.mark.integration
 Exercises the full public surface via the package-level ``src.retrieval``
 namespace: walk -> chunk -> BM25 index -> query -> persist -> reload.
 Also asserts that prior exports from :mod:`src.retrieval` remain intact,

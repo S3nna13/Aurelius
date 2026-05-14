@@ -1,5 +1,6 @@
 """Integration tests: FIM formatter is exposed on src.chat surface."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import src.chat as chat

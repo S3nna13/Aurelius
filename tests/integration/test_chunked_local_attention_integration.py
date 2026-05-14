@@ -1,5 +1,6 @@
 """Integration tests for ChunkedLocalAttention.
 
+@pytest.mark.integration
 Verifies that (a) the class is exposed via ``src.model``, (b) adding the new
 module did NOT modify the frozen ``src/model/attention.py`` file, and (c) an
 end-to-end forward pass runs without error.

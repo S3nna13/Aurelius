@@ -1,5 +1,6 @@
 """Integration tests: validator is exposed via ``src.serving`` and works end-to-end."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import importlib

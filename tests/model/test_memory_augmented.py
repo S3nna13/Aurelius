@@ -195,17 +195,16 @@ def test_memory_write_read_cycle():
     # Zero out all memory first
     bank.reset()
 
-    # Write a distinctive pattern into the first TOP_K slots
-    known_keys = torch.zeros(TOP_K, KEY_DIM)
+    # Write a distinctive pattern into the first TOP_K slots: use ones for both keys and values
+    known_keys = torch.ones(TOP_K, KEY_DIM)
     known_values = torch.ones(TOP_K, VALUE_DIM)  # all ones
     bank.write(known_keys, known_values)
 
-    # Query with the same known key pattern — should retrieve ~1.0 values
-    queries = torch.zeros(1, 1, KEY_DIM)  # (B=1, n_q=1, key_dim)
+    # Query with a matching key (all ones) — should retrieve ~1.0 values from the written slots
+    queries = torch.ones(1, 1, KEY_DIM)  # (B=1, n_q=1, key_dim)
     retrieved, weights = bank.read(queries)
 
     # Retrieved values should be close to 1 (the known pattern)
-    # At least the mean should be significantly > 0
     mean_val = retrieved.mean().item()
     assert mean_val > 0.5, (
         f"Expected retrieved values close to 1.0, got mean={mean_val:.4f}. "

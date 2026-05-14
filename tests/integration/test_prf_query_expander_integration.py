@@ -1,5 +1,6 @@
 """Integration: PRF query expander retrieval registry."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import src.retrieval as ret

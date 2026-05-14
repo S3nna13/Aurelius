@@ -1,5 +1,6 @@
 """Integration test for preserve_thinking module.
 
+@pytest.mark.integration
 Scenario:
   - Build a PreserveThinkingBuffer with max_snapshots=3.
   - Add 5 snapshots (triggering 2 evictions).

@@ -1,5 +1,6 @@
 """Integration tests for MuonClip optimizer.
 
+@pytest.mark.integration
 Verifies:
   1. "muonclip" is present in OPTIMIZER_REGISTRY exposed by src.optimizers.
   2. An optimizer constructed from the registry trains a tiny nn.Linear(4, 2)

@@ -1,5 +1,6 @@
 """Integration test: TauBenchScorer is registered and runs end-to-end.
 
+@pytest.mark.integration
 Verifies:
 - BENCHMARK_REGISTRY and METRIC_REGISTRY contain "taubench"
 - All prior registry entries remain intact

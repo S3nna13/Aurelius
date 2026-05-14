@@ -1,5 +1,6 @@
 """Integration tests for the chat.conversation_memory surface."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import src.chat as chat_pkg

@@ -1,5 +1,6 @@
 """Integration tests for paged_kv registration and end-to-end use."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import torch

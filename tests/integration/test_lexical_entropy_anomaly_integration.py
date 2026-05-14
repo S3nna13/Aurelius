@@ -1,5 +1,6 @@
 """Integration: lexical entropy safety filter."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import src.safety as safety

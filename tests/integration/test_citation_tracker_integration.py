@@ -1,5 +1,6 @@
 """Integration tests for the citation tracker wired through the registry."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import importlib

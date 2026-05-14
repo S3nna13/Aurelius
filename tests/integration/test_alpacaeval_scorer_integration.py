@@ -1,5 +1,6 @@
 """Integration: AlpacaEval scorer registered in METRIC_REGISTRY; end-to-end."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import src.eval as eval_pkg

@@ -1,5 +1,6 @@
 """Integration tests for MoonVitPatchPacker via MODEL_COMPONENT_REGISTRY.
 
+@pytest.mark.integration
 Verifies:
   1. "moonvit_patch_packer" key present in MODEL_COMPONENT_REGISTRY.
   2. Construct from registry, forward pass, (patches, positions, mask) shapes correct.

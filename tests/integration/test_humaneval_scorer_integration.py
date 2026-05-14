@@ -1,5 +1,6 @@
 """Integration tests: humaneval registered and reachable via src.eval."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import pytest

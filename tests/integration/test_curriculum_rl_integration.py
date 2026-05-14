@@ -1,4 +1,5 @@
 """
+@pytest.mark.integration
 Integration test for CurriculumRLSampler.
 
 Verifies:

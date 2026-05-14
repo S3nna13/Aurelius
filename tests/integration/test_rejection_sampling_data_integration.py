@@ -1,5 +1,6 @@
 """Integration test: rejection-sampling DPO pair synthesis end-to-end."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 from itertools import count

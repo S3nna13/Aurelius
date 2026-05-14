@@ -1,5 +1,6 @@
 """Integration tests: jailbreak_detector + prompt_injection_scanner side-by-side.
 
+@pytest.mark.integration
 These assert that the safety surface exposes both classifiers via
 :data:`src.safety.SAFETY_FILTER_REGISTRY` and that they produce sensible
 joint verdicts on realistic adversarial and benign content.

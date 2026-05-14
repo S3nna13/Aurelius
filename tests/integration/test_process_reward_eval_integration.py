@@ -1,5 +1,6 @@
 """Integration test for ProcessRewardEval.
 
+@pytest.mark.integration
 Builds 5 SolutionEval instances with mixed step correctness and PRM scores,
 calls evaluate(), and verifies all keys are present, all values are in valid
 ranges, and the registry is correctly wired.

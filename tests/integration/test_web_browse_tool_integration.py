@@ -1,5 +1,6 @@
 """Integration: web_browse_tool wiring into agent package + config flag."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import agent as agent_pkg

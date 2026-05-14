@@ -1,5 +1,6 @@
 """Integration tests — Harmony template in the CHAT_TEMPLATE_REGISTRY.
 
+@pytest.mark.integration
 Verifies that:
   1. "harmony" is present in CHAT_TEMPLATE_REGISTRY.
   2. The registered object can be constructed from the registry and renders

@@ -1,5 +1,6 @@
 """Integration test for ChunkPrefillScheduler.
 
+@pytest.mark.integration
 Scenario
 --------
 Three requests with different prompt lengths are added and stepped through

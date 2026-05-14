@@ -1,5 +1,6 @@
 """Integration test for JSON-mode constrained decoder."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import torch

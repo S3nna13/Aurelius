@@ -1,5 +1,6 @@
 """Integration test: repo_context_packer exposed via :mod:`src.agent`."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import os

@@ -1,5 +1,6 @@
 """Integration tests for AST-aware FIM and patch synthesis pipelines."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 from agent.ast_fim import ASTAnalyzer, FIMFormat, FIMSpan, FIMTokenizer

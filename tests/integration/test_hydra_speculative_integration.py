@@ -1,5 +1,6 @@
 """Integration test for HydraSpeculative (Cycle 132-A).
 
+@pytest.mark.integration
 Exercises the full Hydra pipeline end-to-end with a tiny configuration:
   d_model=64, vocab_size=256, n_draft_heads=3, batch_size=2.
 

@@ -1,5 +1,6 @@
 """Integration tests for the model-stealing defense module.
 
+@pytest.mark.integration
 Verifies that :class:`~src.security.ModelStealingDefense` is exposed via the
 ``src.security`` subpackage, that prior security entries remain intact, and
 that an end-to-end extraction-defense scenario escalates the threat level

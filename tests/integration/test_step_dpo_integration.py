@@ -1,5 +1,6 @@
 """Integration tests for Step-DPO surfaced via src.alignment."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import math

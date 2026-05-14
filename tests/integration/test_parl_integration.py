@@ -1,5 +1,6 @@
 """Integration tests for PARL reward via ALIGNMENT_REGISTRY."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import torch

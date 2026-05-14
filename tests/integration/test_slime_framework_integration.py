@@ -1,5 +1,6 @@
 """Integration tests for the Slime RL Framework wired into TRAINING_REGISTRY."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import pytest

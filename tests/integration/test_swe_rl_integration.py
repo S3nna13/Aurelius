@@ -1,4 +1,5 @@
 """
+@pytest.mark.integration
 Integration test for SWERLTrainer.
 
 Verifies end-to-end flow:

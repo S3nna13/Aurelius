@@ -1,5 +1,6 @@
 """Integration tests for the cross-encoder reranker registry wiring.
 
+@pytest.mark.integration
 Verifies:
     1. ``RERANKER_REGISTRY`` exposes ``"cross_encoder"``.
     2. The registered class can be instantiated with a tiny config and

@@ -1,5 +1,6 @@
 """Integration: tokenizer_contract wired into src.data package."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import src.data as data_pkg

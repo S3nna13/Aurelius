@@ -1,5 +1,6 @@
 """Integration test: GQAAbsorbedAttention end-to-end.
 
+@pytest.mark.integration
 Builds GQAAbsorbedAttention(d_model=64, n_heads=4, n_kv_heads=2, head_dim=16).
 Verifies both paths produce matching outputs, kv_heads_ratio=0.5, backward
 works, and registry is wired correctly.

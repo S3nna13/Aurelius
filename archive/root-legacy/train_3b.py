@@ -26,20 +26,20 @@ if __name__ == '__main__':
     model = AureliusModel3B(model_cfg)
     stats = count_parameters(model)
 
-    logger.info(f"\n=== AURELIUS 3B (Agent + Skills) ===")
+    logger.info("\n=== AURELIUS 3B (Agent + Skills) ===")
     total_b = stats['total'] / 1e9
     logger.info(f"Total parameters: {stats['total']:,} ({total_b:.2f}B)")
 
-    logger.info(f"\nComponent breakdown:")
+    logger.info("\nComponent breakdown:")
     for comp, count in sorted(stats['components'].items(), key=lambda x: -x[1]):
         logger.info(f"  {comp}: {count:,} ({100*count/stats['total']:.1f}%)")
 
     model.gradient_checkpointing = True
 
     mp_trainer = MixedPrecisionTrainer(model, enabled=True)
-    logger.info(f"\nMixed precision: enabled (BF16)")
+    logger.info("\nMixed precision: enabled (BF16)")
 
-    logger.info(f"\nAgent components:")
+    logger.info("\nAgent components:")
     n_known = model_cfg.get('n_known_tools', 128)
     n_sim = model_cfg.get('n_simulations', 16)
     skill_dim = model_cfg.get('skill_dim', 256)
@@ -62,7 +62,7 @@ if __name__ == '__main__':
     logger.info(f"  Estimated memory per GPU: {mem_per_gpu:.1f}GB")
     logger.info(f"  Strategy: {config['infrastructure']['distributed_strategy']}")
 
-    logger.info(f"\nReady for agent training. Run:")
-    logger.info(f"  trainer = AgentTrainer(model, config)")
-    logger.info(f"  trainer.train_supervised(batch)")
-    logger.info(f"  trainer.train_rl()")
+    logger.info("\nReady for agent training. Run:")
+    logger.info("  trainer = AgentTrainer(model, config)")
+    logger.info("  trainer.train_supervised(batch)")
+    logger.info("  trainer.train_rl()")

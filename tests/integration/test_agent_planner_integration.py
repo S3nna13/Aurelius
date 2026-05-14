@@ -1,5 +1,6 @@
 """Integration tests for the Tree-of-Thoughts planner surface.
 
+@pytest.mark.integration
 Ensures the ``beam_plan`` entry is wired into ``AGENT_LOOP_REGISTRY``
 without disturbing existing entries (notably ``react``), and that a
 planner built from the registry produces a usable execution queue end

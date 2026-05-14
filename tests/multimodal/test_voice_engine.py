@@ -1,3 +1,8 @@
+import sys
+import pytest
+
+pytestmark = pytest.mark.skipif(sys.platform != 'darwin', reason='requires macOS')
+
 import shutil
 
 import pytest

@@ -1,5 +1,6 @@
 """Integration tests for Toggle token-efficient RL registry wiring."""
 
+@pytest.mark.integration
 import torch
 
 from src.alignment import ALIGNMENT_REGISTRY

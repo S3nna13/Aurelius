@@ -1,5 +1,6 @@
 """Integration tests for multi-sample voting via ``src.inference``."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import re

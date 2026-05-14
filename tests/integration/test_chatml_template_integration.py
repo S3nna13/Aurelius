@@ -1,5 +1,6 @@
 """Integration tests for the chat surface registry.
 
+@pytest.mark.integration
 Verifies:
   * `src.chat` can be imported without pulling torch / model.config.
   * CHAT_TEMPLATE_REGISTRY["chatml"] is a working template.

@@ -1,5 +1,6 @@
 """Integration tests for TokenDropout inside a tiny LM training step."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import torch

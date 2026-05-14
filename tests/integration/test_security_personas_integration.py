@@ -1,5 +1,6 @@
 """Integration tests for security personas in the chat surface."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 from src.chat import CHAT_TEMPLATE_REGISTRY, MESSAGE_FORMAT_REGISTRY

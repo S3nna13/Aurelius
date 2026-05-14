@@ -1,5 +1,6 @@
 """Integration tests for the Toolformer data generation pipeline.
 
+@pytest.mark.integration
 Validates:
   - symbols exported from agent surface
   - TOOLFORMER_DATA_REGISTRY registration

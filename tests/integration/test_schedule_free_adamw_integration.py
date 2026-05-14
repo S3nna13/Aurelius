@@ -1,5 +1,6 @@
 """Integration test for Schedule-Free AdamW.
 
+@pytest.mark.integration
 Verifies:
   * the optimizer is exposed via ``src.optimizers``
   * end-to-end training of a 2-layer MLP for 10 steps decreases the loss

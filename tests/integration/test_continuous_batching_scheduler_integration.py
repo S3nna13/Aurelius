@@ -1,5 +1,6 @@
 """Integration test for the Orca-style continuous batching scheduler.
 
+@pytest.mark.integration
 Drives the scheduler with a fake ``step_fn`` that returns ``input_ids[-1] + 1``
 for each active request, verifying that FIFO admission, iteration-level
 batching, and completion all compose end-to-end.

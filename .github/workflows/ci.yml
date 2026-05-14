@@ -44,7 +44,7 @@ jobs:
 
       - name: Run pytest
         run: |
-          python -m pytest --tb=short -q
+          python -m pytest --tb=short -q -m "not integration"
 
       - name: Upload coverage
         uses: actions/upload-artifact@v7

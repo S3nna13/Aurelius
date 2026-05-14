@@ -1,5 +1,6 @@
 """Integration tests for the Aurelius multimodal contract package and encoder registries."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import json

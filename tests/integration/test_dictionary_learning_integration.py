@@ -1,5 +1,6 @@
 """Integration tests for dictionary_learning exposure via src.interpretability."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import torch

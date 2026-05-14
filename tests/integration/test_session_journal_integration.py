@@ -1,5 +1,6 @@
 """Integration tests for the session journal CLI surface."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import json

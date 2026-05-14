@@ -1,5 +1,6 @@
 """Integration tests for NIAH through the src.eval package surface."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import src.eval as eval_pkg

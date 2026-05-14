@@ -1,5 +1,6 @@
 """Integration tests for the backend CLI command group."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import json

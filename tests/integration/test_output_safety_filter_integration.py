@@ -1,5 +1,6 @@
 """Integration tests for the composed output safety filter."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 from src.safety import (

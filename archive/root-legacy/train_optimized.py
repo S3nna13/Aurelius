@@ -200,7 +200,7 @@ def print_infrastructure_plan(config: dict):
     ])
     total_b = total_params / 1e9
 
-    logger.info(f"\n=== AURELIUS 1B INFRASTRUCTURE ===")
+    logger.info("\n=== AURELIUS 1B INFRASTRUCTURE ===")
     logger.info(f"Total parameters: {total_b:.2f}B")
     logger.info(f"Distributed strategy: {strat}")
     logger.info(f"GPUs: {gpus} × {gpu_type}")
@@ -210,15 +210,15 @@ def print_infrastructure_plan(config: dict):
     act_mem = model_cfg['d_model'] * model_cfg['max_seq_len'] * model_cfg['n_layers'] * 2 * 8 / gpus
     mem_per_gpu += act_mem / (1024**3)
     logger.info(f"Estimated memory per GPU: {mem_per_gpu:.1f}GB")
-    logger.info(f"Memory savings active:")
+    logger.info("Memory savings active:")
     if train_cfg := config.get('training'):
         if train_cfg.get('gradient_checkpointing'):
-            logger.info(f"  - Gradient checkpointing (saves ~60% activation memory)")
+            logger.info("  - Gradient checkpointing (saves ~60% activation memory)")
         if train_cfg.get('mixed_precision') == 'bf16':
-            logger.info(f"  - BF16 mixed precision (halves weight memory)")
+            logger.info("  - BF16 mixed precision (halves weight memory)")
         if train_cfg.get('cpu_offload'):
-            logger.info(f"  - CPU offloading (moves optimizer states to CPU)")
-    logger.info(f"  - AMC LTS paged memory table (LRU eviction)")
+            logger.info("  - CPU offloading (moves optimizer states to CPU)")
+    logger.info("  - AMC LTS paged memory table (LRU eviction)")
     if infra.get('kv_cache_quant_bits', 0) > 0:
         logger.info(f"  - KV cache quantization ({infra['kv_cache_quant_bits']}-bit)")
 

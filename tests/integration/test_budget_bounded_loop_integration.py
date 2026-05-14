@@ -1,5 +1,6 @@
 """Integration: budget-bounded agent loop registry + config flags."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 

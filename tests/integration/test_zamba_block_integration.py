@@ -1,5 +1,6 @@
 """Integration tests for ZambaBlock.
 
+@pytest.mark.integration
 Build ZambaBlock(d_model=64, n_heads=4, head_dim=16, d_state=16,
                  attn_every_n=3, n_layers=6).
 

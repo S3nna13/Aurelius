@@ -1,5 +1,6 @@
 """Integration tests for HumanEval+ registration and end-to-end scoring."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import os

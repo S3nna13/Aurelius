@@ -1,5 +1,6 @@
 """Integration tests: CanaryTokenGuard registers and flows end-to-end."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 from src.model.config import AureliusConfig

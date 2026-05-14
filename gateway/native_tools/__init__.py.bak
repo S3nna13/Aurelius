@@ -1,0 +1,426 @@
+"""
+Native Computer Use Tool Integration — CUA Driver Wrapper
+Direct macOS background control with safety guardrails.
+
+Integrates the existing `computer_use` cua-driver into Aurelius
+as native tools (no gateway round-trip). Provides sandboxed
+filesystem and shell as well.
+"""
+
+import re
+import subprocess
+import shlex
+from pathlib import Path
+from typing import Dict, Any, Optional
+from dataclasses import dataclass
+
+
+class ToolSafetyError(Exception):
+    """Raised when a dangerous operation is blocked."""
+    pass
+
+
+# ─── DANGEROUS COMMAND PATTERNS ──────────────────────────────────────────────
+
+DANGEROUS_PATTERNS = [
+    r"rm\s+-rf\s+/",              # recursive root delete
+    r"rm\s+-rf\s+~",              # recursive home delete
+    r"sudo\s+",                   # any sudo
+    r"format\s+",                 # disk format
+    r"shutdown\b",                # shutdown
+    r"reboot\b",                  # reboot
+    r"chmod\s+777\s+/",           # chmod root recursively
+    r">\s*/dev/sda",              # raw disk write
+    r"dd\s+.*\s+of=/dev/",        # dd to device
+    r"mkfs\s+",                   # filesystem format
+    r":\(\)\{:\|:&};:",           # fork bomb
+    r"eval\s+`",                  # command substitution abuse
+]
+
+
+@dataclass
+class ToolResult:
+    success: bool
+    output: str
+    error: Optional[str] = None
+    exit_code: int = 0
+
+
+# ─── NATIVE COMPUTER USE (CUA DRIVER) ─────────────────────────────────────────
+
+class NativeComputerUseTool:
+    """
+    Direct cua-driver wrapper for macOS background control.
+    Uses the existing computer_use infrastructure but provides
+    a more agent-friendly API with built-in safety checks.
+    """
+
+    def __init__(self, safety_guardrails: bool = True, require_confirmation: bool = False):
+        try:
+            from computer_use import cua_driver
+            self.driver = cua_driver
+        except ImportError:
+            raise ImportError(
+                "cua-driver not found. Install via: pip install computer_use\n"
+                "Or ensure hermes-agent computer_use tool is available."
+            )
+        self.safety = safety_guardrails
+        self.require_confirmation = require_confirmation
+        self._last_screenshot = None
+
+    # ─── SCREENSHOTS ──────────────────────────────────────────────────────────
+
+    def screenshot(self, annotate: bool = False) -> ToolResult:
+        """
+        Capture current screen state.
+
+        Args:
+            annotate: if True, overlay numbered element markers (for vision)
+
+        Returns:
+            ToolResult with base64-encoded PNG image
+        """
+        try:
+            # cua-driver capture returns PIL Image or path
+            img = self.driver.capture_screen(annotate=annotate)
+            # Convert to bytes for transmission (implementation depends on driver)
+            self._last_screenshot = img
+            return ToolResult(success=True, output=img)
+        except Exception as e:
+            return ToolResult(success=False, output="", error=str(e), exit_code=1)
+
+    # ─── MOUSE/POINTER ACTIONS ────────────────────────────────────────────────
+
+    def click(self, element_id: int) -> ToolResult:
+        """
+        Click an identified UI element by its ref index.
+
+        Args:
+            element_id: element index from computer_use snapshot
+
+        Returns:
+            ToolResult success status
+        """
+        try:
+            self.driver.click_element(element_id)
+            return ToolResult(success=True, output=f"Clicked element {element_id}")
+        except Exception as e:
+            return ToolResult(success=False, output="", error=str(e), exit_code=1)
+
+    def double_click(self, element_id: int) -> ToolResult:
+        self.driver.double_click_element(element_id)
+        return ToolResult(success=True, output=f"Double-clicked {element_id}")
+
+    def right_click(self, element_id: int) -> ToolResult:
+        self.driver.right_click_element(element_id)
+        return ToolResult(success=True, output=f"Right-clicked {element_id}")
+
+    def drag(self, from_element: int, to_element: int) -> ToolResult:
+        """Drag from one element to another."""
+        self.driver.drag_element(from_element, to_element)
+        return ToolResult(success=True, output=f"Dragged {from_element}→{to_element}")
+
+    # ─── KEYBOARD INPUT ───────────────────────────────────────────────────────
+
+    def type(self, text: str, confirm: bool = False) -> ToolResult:
+        """
+        Type text into focused element.
+
+        Args:
+            text: text to type
+            confirm: if True, append Return/Enter key
+
+        Safety:
+            - Password detection heuristic (all-asterisk or long random strings)
+            - Can be disabled with safety_guardrails=False
+        """
+        if self.safety:
+            if self._is_password(text):
+                raise ToolSafetyError(
+                    "Password entry requires explicit confirmation. "
+                    "Pass confirm=True if intentional."
+                )
+
+        try:
+            self.driver.type_text(text)
+            if confirm:
+                self.driver.press_key("return")
+            return ToolResult(success=True, output=f"Typed: {text[:50]}")
+        except Exception as e:
+            return ToolResult(success=False, output="", error=str(e))
+
+    def press_key(self, key: str) -> ToolResult:
+        """
+        Press a single key or key combo.
+
+        Args:
+            key: e.g. "cmd+s", "ctrl+alt+t", "tab", "escape"
+        """
+        self.driver.press_key(key)
+        return ToolResult(success=True, output=f"Pressed: {key}")
+
+    # ─── SCROLLING ─────────────────────────────────────────────────────────────
+
+    def scroll(self, direction: str, amount: int = 3) -> ToolResult:
+        """
+        Scroll viewport.
+
+        Args:
+            direction: "up" | "down" | "left" | "right"
+            amount: number of "ticks" (each ~100px)
+        """
+        if direction not in ("up", "down", "left", "right"):
+            raise ValueError("direction must be up/down/left/right")
+
+        for _ in range(amount):
+            self.driver.scroll(direction)
+        return ToolResult(success=True, output=f"Scrolled {direction} ×{amount}")
+
+    # ─── GENERIC COMMAND EXECUTION ────────────────────────────────────────────
+
+    def execute(self, command: str) -> ToolResult:
+        """
+        Execute a shell command via cua-driver (if supported)
+        OR use sandboxed shell (see SandboxedShell below).
+
+        Safety: dangerous patterns blocked if safety_guardrails=True.
+        """
+        if self.safety:
+            for pattern in DANGEROUS_PATTERNS:
+                if re.search(pattern, command, re.IGNORECASE):
+                    raise ToolSafetyError(f"Blocked dangerous command: {pattern}")
+
+        try:
+            # cua-driver may have execute method; fallback to subprocess
+            if hasattr(self.driver, "execute"):
+                output = self.driver.execute(command)
+            else:
+                # Fallback: run in sandbox (see SandboxedShell)
+                sandbox = SandboxedShell()
+                result = sandbox.run(command)
+                output = result["stdout"]
+                if result["stderr"]:
+                    output += f"\n[stderr] {result['stderr']}"
+            return ToolResult(success=True, output=output)
+        except Exception as e:
+            return ToolResult(success=False, output="", error=str(e))
+
+    # ─── SAFETY HELPERS ───────────────────────────────────────────────────────
+
+    def _is_password(self, text: str) -> bool:
+        """
+        Heuristic to detect password entry:
+        - all asterisks (masked typing)
+        - long random-looking strings (>=20 chars, mixed char classes)
+        """
+        if all(c == '*' for c in text) and len(text) >= 6:
+            return True
+        if len(text) >= 20 and re.search(r'[A-Za-z]', text) and re.search(r'[0-9!@#$%^&*]', text):
+            return True
+        return False
+
+
+# ─── SANDBOXED FILESYSTEM ─────────────────────────────────────────────────────
+
+class SandboxedFilesystem:
+    """
+    Filesystem operations restricted to a sandbox directory.
+    Prevents escape to system paths.
+    """
+
+    def __init__(self, sandbox_root: str = "/tmp/aurelius_sandbox"):
+        self.root = Path(sandbox_root).resolve()
+        self.root.mkdir(parents=True, exist_ok=True)
+
+    def _safe_path(self, user_path: str) -> Path:
+        """Resolve user path within sandbox only."""
+        # Prevent directory traversal
+        full = (self.root / user_path).resolve()
+        if not str(full).startswith(str(self.root)):
+            raise ToolSafetyError(f"Path escapes sandbox: {user_path}")
+        return full
+
+    def read(self, path: str, max_bytes: int = 10 * 1024 * 1024) -> ToolResult:
+        """Read file from sandbox."""
+        try:
+            full_path = self._safe_path(path)
+            if not full_path.exists():
+                return ToolResult(success=False, output="", error="File not found", exit_code=1)
+            size = full_path.stat().st_size
+            if size > max_bytes:
+                return ToolResult(
+                    success=False,
+                    output="",
+                    error=f"File too large ({size} > {max_bytes} bytes)",
+                    exit_code=1
+                )
+            content = full_path.read_text()
+            return ToolResult(success=True, output=content)
+        except Exception as e:
+            return ToolResult(success=False, output="", error=str(e), exit_code=1)
+
+    def write(self, path: str, content: str) -> ToolResult:
+        """Write file to sandbox (creates parent dirs)."""
+        try:
+            full_path = self._safe_path(path)
+            full_path.parent.mkdir(parents=True, exist_ok=True)
+            full_path.write_text(content)
+            return ToolResult(success=True, output=f"Written: {path}")
+        except Exception as e:
+            return ToolResult(success=False, output="", error=str(e), exit_code=1)
+
+    def list(self, path: str = ".") -> ToolResult:
+        """List directory contents."""
+        try:
+            full_path = self._safe_path(path)
+            if not full_path.is_dir():
+                return ToolResult(success=False, output="", error="Not a directory")
+            files = [f.name for f in full_path.iterdir()]
+            return ToolResult(success=True, output="\n".join(files))
+        except Exception as e:
+            return ToolResult(success=False, output="", error=str(e))
+
+
+# ─── SANDBOXED SHELL ──────────────────────────────────────────────────────────
+
+class SandboxedShell:
+    """
+    Restricted shell with command whitelist and sandboxed cwd.
+    """
+
+    ALLOWED_COMMANDS = [
+        "python", "python3",
+        "node", "nodejs",
+        "git", "git_status", "git_diff",  # mapped to git subcommands
+        "ls", "cat", "head", "tail",
+        "grep", "find",
+        "pwd", "whoami",
+        "echo",
+        # test runners
+        "pytest", "nosetests",
+        # linters
+        "ruff", "flake8", "black", "isort",
+    ]
+
+    def __init__(self, timeout_seconds: int = 30, sandbox_cwd: str = "/tmp/aurelius_sandbox"):
+        self.timeout = timeout_seconds
+        self.cwd = Path(sandbox_cwd)
+        self.cwd.mkdir(parents=True, exist_ok=True)
+
+    def run(self, command: str) -> ToolResult:
+        """
+        Execute command in sandbox with safety checks.
+
+        Returns:
+            ToolResult with stdout/stderr
+        """
+        cmd_parts = shlex.split(command)
+        if not cmd_parts:
+            return ToolResult(success=False, output="", error="Empty command")
+
+        base_cmd = cmd_parts[0]
+
+        # Check whitelist
+        if base_cmd not in self.ALLOWED_COMMANDS:
+            raise ToolSafetyError(f"Command '{base_cmd}' not in allowed list")
+
+        # Git subcommands: map "git status" → "git --git-dir=... status"
+        if base_cmd == "git":
+            # Require explicit subcommand in ALLOWED_COMMANDS
+            if len(cmd_parts) < 2 or cmd_parts[1] not in self.ALLOWED_COMMANDS:
+                raise ToolSafetyError(f"Git subcommand '{cmd_parts[1] if len(cmd_parts)>1 else ''}' not allowed")
+
+        try:
+            result = subprocess.run(
+                cmd_parts,
+                capture_output=True,
+                text=True,
+                timeout=self.timeout,
+                cwd=self.cwd,
+            )
+            return ToolResult(
+                success=(result.returncode == 0),
+                output=result.stdout,
+                error=result.stderr if result.stderr else None,
+                exit_code=result.returncode,
+            )
+        except subprocess.TimeoutExpired:
+            return ToolResult(
+                success=False,
+                output="",
+                error=f"Command timed out after {self.timeout}s",
+                exit_code=124,
+            )
+        except Exception as e:
+            return ToolResult(success=False, output="", error=str(e), exit_code=1)
+
+
+# ─── BROWSER AUTOMATION ───────────────────────────────────────────────────────
+
+class NativeBrowserTool:
+    """
+    Control Safari/Chrome via AppleScript (macOS only).
+    """
+
+    def __init__(self):
+        self._apple_script = lambda script: subprocess.run(
+            ["osascript", "-e", script],
+            capture_output=True, text=True
+        )
+
+    def open_url(self, url: str, browser: str = "safari") -> ToolResult:
+        """Open URL in browser."""
+        script = f'''
+        tell application "{browser.capitalize()}"
+            activate
+            open location "{url}"
+        end tell
+        '''
+        result = self._apple_script(script)
+        return ToolResult(
+            success=(result.returncode == 0),
+            output=result.stdout,
+            error=result.stderr,
+        )
+
+    def click_text(self, text: str) -> ToolResult:
+        """Click first link/button matching text."""
+        script = f'''
+        tell application "System Events"
+            click UI element "{text}" of UI element 1 of group 1 of window 1 of application process "Safari"
+        end tell
+        '''
+        result = self._apple_script(script)
+        return ToolResult(success=(result.returncode == 0), output=result.stdout, error=result.stderr)
+
+
+# ─── FACTORY ───────────────────────────────────────────────────────────────────
+
+def get_native_tools():
+    """Return dict of all native tool instances."""
+    return {
+        "computer": NativeComputerUseTool(safety_guardrails=True),
+        "filesystem": SandboxedFilesystem(),
+        "shell": SandboxedShell(),
+        "browser": NativeBrowserTool(),
+    }
+
+
+# ─── AGENT ACTION MAPPING ─────────────────────────────────────────────────────
+
+TOOL_ACTION_MAP = {
+    "computer.use": lambda tool, args: tool.execute(args.get("command", "")),
+    "computer.click": lambda tool, args: tool.click(args["element_id"]),
+    "computer.type": lambda tool, args: tool.type(args["text"], confirm=args.get("confirm", False)),
+    "computer.scroll": lambda tool, args: tool.scroll(args["direction"], args.get("amount", 3)),
+    "computer.screenshot": lambda tool, args: tool.screenshot(annotate=args.get("annotate", False)),
+
+    "file.read": lambda tool, args: tool.read(args["path"]),
+    "file.write": lambda tool, args: tool.write(args["path"], args["content"]),
+    "file.list": lambda tool, args: tool.list(args.get("path", ".")),
+
+    "shell.run": lambda tool, args: tool.run(args["command"]),
+
+    "browser.open": lambda tool, args: tool.open_url(args["url"], args.get("browser", "safari")),
+    "browser.click": lambda tool, args: tool.click_text(args["text"]),
+}

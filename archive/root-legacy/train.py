@@ -76,6 +76,6 @@ if __name__ == '__main__':
         consolidation_weight=train_cfg['consolidation_loss_weight'],
     )
 
-    logger.info(f"Model ready. Memory system initialized.")
-    logger.info(f"Memory tier: Working (2048 ctx) + Episodic (512 slots) + LTS (1024 entries)")
-    logger.info(f"Surprise-gated writes | Graph-based consolidation | Cross-attention reads")
+    logger.info("Model ready. Memory system initialized.")
+    logger.info("Memory tier: Working (2048 ctx) + Episodic (512 slots) + LTS (1024 entries)")
+    logger.info("Surprise-gated writes | Graph-based consolidation | Cross-attention reads")

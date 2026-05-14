@@ -1,5 +1,6 @@
 """Integration tests: BPE tokenizer trainer is exposed via src.data."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import src.data as data_pkg

@@ -1,5 +1,6 @@
 """Integration: Mythos coding rubric registered in METRIC_REGISTRY."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import src.eval as eval_pkg

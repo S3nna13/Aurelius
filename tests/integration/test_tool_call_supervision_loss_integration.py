@@ -1,5 +1,6 @@
 """Integration: auxiliary loss registry + config."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import torch

@@ -1,5 +1,6 @@
 """Integration: function-calling validator wiring in src.serving + config."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 

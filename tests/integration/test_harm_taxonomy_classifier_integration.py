@@ -1,4 +1,5 @@
 """Integration tests for the harm taxonomy classifier within the safety
+@pytest.mark.integration
 surface's public registry.
 """
 

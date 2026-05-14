@@ -1,5 +1,6 @@
 """Integration tests for MLA-256 registry wiring (GLM-5 §3.1, arXiv:2602.15763)."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import torch

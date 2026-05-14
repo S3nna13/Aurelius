@@ -1,5 +1,6 @@
 """Integration tests for the Aurelius backend adapter surface."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import pytest

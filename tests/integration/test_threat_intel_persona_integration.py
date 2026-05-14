@@ -1,5 +1,6 @@
 """Integration tests for the threat-intel persona in the chat surface."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 from src.chat import (

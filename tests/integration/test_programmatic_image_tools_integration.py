@@ -1,5 +1,6 @@
 """Integration test for programmatic_image_tools.
 
+@pytest.mark.integration
 Creates a synthetic 3×32×32 tensor with two distinct bright blobs and calls
 all four functions in sequence, asserting that counts match, areas sum
 correctly, and no exceptions are raised.

@@ -1,5 +1,6 @@
 """Integration tests for ``agent.interface_runtime``."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import json

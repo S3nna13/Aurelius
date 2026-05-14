@@ -1,5 +1,6 @@
 """Integration: MT-Bench judge registered in METRIC_REGISTRY; end-to-end flow."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import src.eval as eval_pkg

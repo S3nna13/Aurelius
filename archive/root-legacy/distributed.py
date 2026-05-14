@@ -1,6 +1,6 @@
 import logging
 import sys
-from typing import Any, Dict, Optional
+from typing import Any
 
 import torch
 import torch.distributed as dist
@@ -75,7 +75,7 @@ class ModelParallelGroup:
             return None
         return self._dp_group
 
-    def get_world_info(self) -> Dict[str, Any]:
+    def get_world_info(self) -> dict[str, Any]:
         if not self._initialized:
             return {
                 'tp_size': 1,
@@ -192,7 +192,7 @@ class AureliusFSDPWrapper:
 
 
 class ActivationCheckpointing:
-    def __init__(self, model: nn.Module, checkpoint_blocks: Optional[list] = None):
+    def __init__(self, model: nn.Module, checkpoint_blocks: list | None = None):
         self.model = model
         self._original_forwards = {}
         self._active = False

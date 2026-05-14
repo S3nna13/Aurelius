@@ -1,5 +1,6 @@
 """Integration test for the Agent Red Teaming (ART) benchmark."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 from src.eval import (

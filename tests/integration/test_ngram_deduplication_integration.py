@@ -1,5 +1,6 @@
 """Integration: n-gram dedup data registry."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import src.data as data

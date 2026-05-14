@@ -5,7 +5,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 import logging
 from collections.abc import Callable
-from typing import Any, Dict, Optional, Union
+from typing import Any
 
 import torch
 import torch.nn as nn
@@ -137,7 +137,7 @@ class IntegratedNeuralBrain(nn.Module):
         self.process_reward = ProcessRewardModel(d_model=d_model)
 
         # ── Tool registry for dispatch ──
-        self._tool_registry: Dict[int, Callable] = {}
+        self._tool_registry: dict[int, Callable] = {}
 
         # ── Efficiency modules (5) ──
         self.flash_attn = TiledFlashAttention(
@@ -165,11 +165,11 @@ class IntegratedNeuralBrain(nn.Module):
 
     def forward(
         self,
-        x: Optional[Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]] = None,
-        input_ids: Optional[torch.Tensor] = None,
-        hidden_states: Optional[torch.Tensor] = None,
+        x: torch.Tensor | Tuple[torch.Tensor, torch.Tensor] | None = None,
+        input_ids: torch.Tensor | None = None,
+        hidden_states: torch.Tensor | None = None,
         training: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         if x is not None:
             if isinstance(x, tuple):
                 hidden_states, input_ids = x

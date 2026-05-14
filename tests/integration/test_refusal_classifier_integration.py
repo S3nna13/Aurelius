@@ -1,5 +1,6 @@
 """Integration tests for the ``refusal`` harm-classifier registration."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 

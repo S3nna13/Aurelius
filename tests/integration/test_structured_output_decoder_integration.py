@@ -1,5 +1,6 @@
 """Integration tests for src.serving.structured_output_decoder.
 
+@pytest.mark.integration
 Verifies that:
  1. The decoder classes are accessible via src.serving and the registries.
  2. Config-driven construction works (enable_structured_output flag).

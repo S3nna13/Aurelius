@@ -1,5 +1,6 @@
 """Integration tests for LossVarianceMonitor in a simulated training loop."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import math

@@ -1,4 +1,5 @@
 """Integration tests: :class:`RecoveringDispatcher` over a real
+@pytest.mark.integration
 :class:`ToolRegistryDispatcher`.
 """
 

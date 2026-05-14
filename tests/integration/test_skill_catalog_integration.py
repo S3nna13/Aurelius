@@ -1,5 +1,6 @@
 """Integration tests for ``agent.skill_catalog``."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import json

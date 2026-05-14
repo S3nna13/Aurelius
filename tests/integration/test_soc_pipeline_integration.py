@@ -1,5 +1,6 @@
 """Integration: SOC pipeline wired through DEFENSIVE_PIPELINE_REGISTRY."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 from src.model.config import AureliusConfig

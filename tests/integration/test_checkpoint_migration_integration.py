@@ -1,5 +1,6 @@
 """Integration tests for checkpoint migration exports and config stability."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 from src.model import MIGRATION_REGISTRY, AureliusConfig, CheckpointMigrator

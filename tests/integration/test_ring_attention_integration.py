@@ -1,5 +1,6 @@
 """Integration tests for the ring_attention strategy surface.
 
+@pytest.mark.integration
 Verifies:
 * LONGCONTEXT_STRATEGY_REGISTRY advertises "ring_attention" alongside the
   prior entries (kv_int8, attention_sinks) — additive, non-destructive.

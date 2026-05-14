@@ -1,5 +1,6 @@
 """Integration tests for BackgroundExecutor: registry wiring and end-to-end flow."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 

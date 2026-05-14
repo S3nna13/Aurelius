@@ -1,5 +1,6 @@
 """Integration: sink logit bias registry on inference surface."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import torch

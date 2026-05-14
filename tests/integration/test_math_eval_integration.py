@@ -1,4 +1,5 @@
 """
+@pytest.mark.integration
 Integration tests for src/eval/math_eval.py
 
 Verifies:

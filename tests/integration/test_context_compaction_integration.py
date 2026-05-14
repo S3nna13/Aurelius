@@ -1,5 +1,6 @@
 """Integration tests for context_compaction registration in longcontext."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 from src import longcontext

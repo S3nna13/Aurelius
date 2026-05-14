@@ -1,5 +1,6 @@
 """Integration test for the 40-dim behavioral-audit taxonomy."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 from src.eval import (

@@ -1,5 +1,6 @@
 """Integration tests for chunked prefill registry + end-to-end usage."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import torch

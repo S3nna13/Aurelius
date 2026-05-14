@@ -1,5 +1,6 @@
 """Integration tests: command palette, status hierarchy, and keyboard nav.
 
+@pytest.mark.integration
 Verifies cross-module contracts from the integration_requirements spec.
 """
 

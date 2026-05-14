@@ -1,5 +1,6 @@
 """Integration tests for the ReAct loop registry wiring."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import agent as agent_pkg

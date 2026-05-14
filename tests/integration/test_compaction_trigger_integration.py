@@ -1,5 +1,6 @@
 """Integration: CompactionTriggerManager wired into LONGCONTEXT_STRATEGY_REGISTRY."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 from src.longcontext import LONGCONTEXT_STRATEGY_REGISTRY

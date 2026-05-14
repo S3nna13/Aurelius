@@ -1,4 +1,5 @@
 """
+@pytest.mark.integration
 Integration test for src/eval/vision_grounding_eval.py
 
 Verifies:

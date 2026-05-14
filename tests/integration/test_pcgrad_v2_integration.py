@@ -1,4 +1,5 @@
 """
+@pytest.mark.integration
 Integration test for PCGrad v2.
 
 Verifies end-to-end flow:

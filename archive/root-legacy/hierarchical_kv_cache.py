@@ -1,4 +1,3 @@
-from typing import Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -32,7 +31,7 @@ class LearnedEvictionPolicy(nn.Module):
 
     def evict(
         self, k: torch.Tensor, v: torch.Tensor, scores: torch.Tensor, n_evict: int
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         b, h, n, d = k.shape
         keep = n - n_evict
         if n_evict <= 0:
@@ -94,7 +93,7 @@ class HierarchicalKVCache(nn.Module):
 
         self.eviction_policy = LearnedEvictionPolicy(d_model)
 
-    def _quantize(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def _quantize(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         scale = x.abs().amax(dim=-1, keepdim=True).clamp(min=1e-5) / 127.0
         q = (x / scale).round().clamp(-128, 127).to(torch.int8)
         return q, scale
@@ -234,7 +233,7 @@ class HierarchicalKVCache(nn.Module):
             self.t3_scores[:, t3_n:t3_n + n_evict] = scores_half
             self.t3_n.fill_(t3_n + n_evict)
 
-    def read(self, query: Optional[torch.Tensor] = None, n_tokens: Optional[int] = None) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def read(self, query: torch.Tensor | None = None, n_tokens: int | None = None) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         b = self.t1_k.shape[0]
         t1_n = self.t1_n[0].item()
         t2_n = self.t2_n[0].item()
@@ -276,7 +275,7 @@ class HierarchicalKVCache(nn.Module):
 
         return k, v, labels
 
-    def read_tier(self, tier: int) -> Tuple[torch.Tensor, torch.Tensor]:
+    def read_tier(self, tier: int) -> tuple[torch.Tensor, torch.Tensor]:
         if tier == 1:
             n = self.t1_n[0].item()
             return self.t1_k[:, :, :n], self.t1_v[:, :, :n]
@@ -290,7 +289,7 @@ class HierarchicalKVCache(nn.Module):
             return k, v
         raise ValueError(f'Invalid tier: {tier}')
 
-    def get_kv_for_layer(self, layer_idx: int) -> Optional[Tuple[torch.Tensor, torch.Tensor, torch.Tensor]]:
+    def get_kv_for_layer(self, layer_idx: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor] | None:
         k, v, labels = self.read()
         return k, v, labels
 
@@ -327,9 +326,9 @@ class MultiScaleAttention(nn.Module):
     def forward(
         self,
         x: torch.Tensor,
-        cache_output: Tuple[torch.Tensor, torch.Tensor, torch.Tensor],
+        cache_output: tuple[torch.Tensor, torch.Tensor, torch.Tensor],
         causal_mask: bool = True,
-        padding_mask: Optional[torch.Tensor] = None,
+        padding_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         k, v, tier_labels = cache_output
         b, n_q, _ = x.shape

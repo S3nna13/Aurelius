@@ -1,5 +1,6 @@
 """Integration tests: CircuitBreaker registers and wraps fake service calls."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import pytest

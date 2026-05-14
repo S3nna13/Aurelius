@@ -1,5 +1,6 @@
 """Integration test: GPQA scorer is registered and runs end-to-end."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 from src import eval as eval_pkg

@@ -1,5 +1,6 @@
 """Integration test for SHADE-Arena harness registry + config wiring."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 from src.eval import (

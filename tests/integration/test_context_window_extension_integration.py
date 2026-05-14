@@ -1,5 +1,6 @@
 """Integration tests for context_window_extension.
 
+@pytest.mark.integration
 Verifies:
 * CONTEXT_EXTENSION_REGISTRY exposed on src.longcontext.
 * DynamicContextScaler in LONGCONTEXT_STRATEGY_REGISTRY.

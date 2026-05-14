@@ -1,5 +1,6 @@
 """Integration tests for AttentionSinkCache surface.
 
+@pytest.mark.integration
 Verify:
 * registry advertises both "kv_int8" and "attention_sinks"
 * the registered class instantiates and works end-to-end with a toy

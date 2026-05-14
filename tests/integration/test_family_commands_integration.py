@@ -1,5 +1,6 @@
 """Integration tests for the family CLI subcommand group."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import argparse

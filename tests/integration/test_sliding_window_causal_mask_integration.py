@@ -1,5 +1,6 @@
 """Integration: sliding-window mask in longcontext registry."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import torch

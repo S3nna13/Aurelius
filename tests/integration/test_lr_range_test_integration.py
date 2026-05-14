@@ -1,5 +1,6 @@
 """Integration tests for src.training.lr_range_test."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import torch

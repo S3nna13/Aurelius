@@ -1,5 +1,6 @@
 """Integration tests for the prompt-integrity checker's safety-surface wiring."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 from src.chat.chatml_template import Message

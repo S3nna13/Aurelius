@@ -1,5 +1,6 @@
 """Integration tests for FSDPLite via the src.training package surface."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import torch

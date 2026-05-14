@@ -1,4 +1,5 @@
 """Integration tests: HallucinationGuard wired into the safety registry and
+@pytest.mark.integration
 constructable from AureliusConfig behind a feature flag that defaults OFF."""
 
 from __future__ import annotations

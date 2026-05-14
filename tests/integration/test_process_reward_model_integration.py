@@ -1,5 +1,6 @@
 """Integration tests for ProcessRewardModel.
 
+@pytest.mark.integration
 Verifies:
 1. ALIGNMENT_REGISTRY["prm"] resolves to ProcessRewardModel
 2. AureliusConfig.enable_prm_training=True triggers the PRM code path

@@ -1,5 +1,6 @@
 """Integration tests: release-track router + model package surface."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import src.model as model_pkg

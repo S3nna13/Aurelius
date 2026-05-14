@@ -1,5 +1,6 @@
 """Integration tests for scripts/export_gguf.py — Safetensors → GGUF conversion."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import struct

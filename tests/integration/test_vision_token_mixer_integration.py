@@ -1,5 +1,6 @@
 """Integration test for VisionTokenMixer — early-fusion 10% vision token interleaving.
 
+@pytest.mark.integration
 Verifies end-to-end mix_batch behaviour on 3 samples:
   - Output dict keys present
   - Sequence lengths consistent

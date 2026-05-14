@@ -1,5 +1,6 @@
 """Integration tests for SwarmBench wired into BENCHMARK_REGISTRY."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 from agent.agent_swarm import CriticalPathAnalyzer, SubAgentResult

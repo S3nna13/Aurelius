@@ -1,5 +1,6 @@
 """Integration tests for the GGUF / llama.cpp-style engine adapter."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import json

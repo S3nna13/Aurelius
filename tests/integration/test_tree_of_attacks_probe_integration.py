@@ -1,5 +1,6 @@
 """Integration test for the Tree-of-Attacks-with-Pruning (TAP) probe."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 from src.eval import (

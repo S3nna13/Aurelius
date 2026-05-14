@@ -1,5 +1,6 @@
 """Integration tests for variant_adapter within src.model package."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import pytest

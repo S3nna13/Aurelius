@@ -1,5 +1,6 @@
 """Integration tests for the public ``agent`` namespace."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import importlib

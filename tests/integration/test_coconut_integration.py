@@ -1,5 +1,6 @@
 """Integration test for CoCoNut — Chain of Continuous Thought.
 
+@pytest.mark.integration
 Builds CoCoNut from a config dict (d_model=64, n_continuous_steps=4),
 passes [2, 8, 64] hidden states through it, verifies output shape,
 trace length, backward pass, and registry wiring.

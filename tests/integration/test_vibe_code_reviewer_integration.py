@@ -1,5 +1,6 @@
 """Integration tests: registry wiring + config flag for vibe code reviewer."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import src.eval as eval_mod

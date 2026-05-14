@@ -1,5 +1,6 @@
 """Integration tests for the YaRN position-extension utility surface.
 
+@pytest.mark.integration
 Verify:
 * The utility is exposed via ``src.longcontext`` (not registered in
   ``LONGCONTEXT_STRATEGY_REGISTRY`` — it's a helper, not a strategy).

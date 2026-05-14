@@ -1,5 +1,6 @@
 """Integration tests: MMR registration + BM25 -> MMR end-to-end pipeline."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import torch

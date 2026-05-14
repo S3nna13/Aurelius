@@ -1,5 +1,6 @@
 """Integration tests: reasoning_level_controller wired into DECODER_REGISTRY.
 
+@pytest.mark.integration
 Verifies that the reasoning-level entry is discoverable via the inference
 package's DECODER_REGISTRY and behaves correctly when called through it.
 

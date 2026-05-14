@@ -1,5 +1,6 @@
 """Integration tests for the standalone fusion utilities.
 
+@pytest.mark.integration
 Covers three things:
 
 1. Public re-export through :mod:`src.retrieval` (the four functions and

@@ -1,5 +1,6 @@
 """Integration tests for ContextBudgetController registry wiring.
 
+@pytest.mark.integration
 Verifies that:
 - 'context_budget' key exists in LONGCONTEXT_STRATEGY_REGISTRY
 - The class can be instantiated from the registry

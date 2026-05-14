@@ -1,5 +1,6 @@
 """Integration tests for src.eval — WebArena scorer integration.
 
+@pytest.mark.integration
 WebArena benchmark (Zhou et al. 2307.13854, Apache-2.0), GitHub Actions (MIT spec),
 clean-room implementation.
 """

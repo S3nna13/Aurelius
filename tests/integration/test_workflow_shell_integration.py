@@ -1,5 +1,6 @@
 """Integration tests for ``agent.workflow_shell``."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import json

@@ -1,5 +1,6 @@
 """Integration test for Prodigy: exposed via src.optimizers, trains tiny MLP."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import torch

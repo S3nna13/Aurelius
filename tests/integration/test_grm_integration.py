@@ -1,5 +1,6 @@
 """Integration tests for the GRM entry in ALIGNMENT_REGISTRY.
 
+@pytest.mark.integration
 Verifies:
 1. "grm" key exists in ALIGNMENT_REGISTRY after import.
 2. The class can be constructed from the registry and score a 4-dim dict.

@@ -1,5 +1,6 @@
 """Integration tests: RewardHackDetector registered, config-gated."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 from src.model.config import AureliusConfig

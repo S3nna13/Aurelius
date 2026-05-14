@@ -1,4 +1,5 @@
 """Integration: role_attention_mask works with ChatML-encoded convos
+@pytest.mark.integration
 and is exposed through ``src.chat`` without breaking existing registry
 entries.
 """

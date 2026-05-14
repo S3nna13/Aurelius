@@ -1,5 +1,6 @@
 """Integration tests for SPIN and KTO alignment trainers.
 
+@pytest.mark.integration
 Verifies that SPINTrainer and KTOTrainer are correctly registered in the
 ALIGNMENT_REGISTRY and can complete a full forward + gradient step on a tiny
 model without producing NaN values.

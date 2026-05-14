@@ -1,5 +1,6 @@
 """Integration test for Eagle3 speculative decoding (Cycle 130-A).
 
+@pytest.mark.integration
 Verifies end-to-end behaviour:
 - Eagle3Decoder instantiation with a small config
 - Mock target model returning random probability vectors

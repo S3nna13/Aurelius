@@ -1,5 +1,6 @@
 """Integration tests for hierarchical_context_mgr registration in longcontext.
 
+@pytest.mark.integration
 GLM-5 §6.2 — verifies LONGCONTEXT_STRATEGY_REGISTRY wiring.
 """
 

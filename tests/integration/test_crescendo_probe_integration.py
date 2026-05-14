@@ -1,5 +1,6 @@
 """Integration test for the Crescendo multi-turn jailbreak probe."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 from src.eval import (

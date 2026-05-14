@@ -1,5 +1,6 @@
 """Integration test for SwarmScaler — 50 mixed-priority tasks, 10 workers.
 
+@pytest.mark.integration
 Validates:
 - All 50 tasks complete
 - 10 WorkerStats entries returned

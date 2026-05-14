@@ -1,5 +1,6 @@
 """Integration test for STILL3Trainer.
 
+@pytest.mark.integration
 Verifies:
 - TRAINING_REGISTRY["still3"] is correctly wired.
 - filter_and_prepare discards uniform-reward groups and retains varied ones.

@@ -1,5 +1,6 @@
 """Integration tests for the head registry in ``src/model``."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import torch

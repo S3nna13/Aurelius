@@ -1,5 +1,6 @@
 """Integration tests for the CLI benchmark runner."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import importlib

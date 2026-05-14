@@ -1,5 +1,6 @@
 """Integration tests for LambdaAttention.
 
+@pytest.mark.integration
 Verifies that (a) the class is exposed via ``src.model``, (b) adding the new
 module did NOT modify the frozen files, (c) the existing registry is intact,
 and (d) an end-to-end forward/backward pass runs without error.

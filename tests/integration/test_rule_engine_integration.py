@@ -1,5 +1,6 @@
 """Integration tests for the Guard0 rule engine.
 
+@pytest.mark.integration
 Checks that:
   * RuleEngine is registered in SAFETY_FILTER_REGISTRY.
   * The ``safety_rule_engine_enabled`` config flag exists and defaults to False.

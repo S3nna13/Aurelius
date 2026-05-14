@@ -1,5 +1,6 @@
 """Integration tests for the compressive_memory strategy surface."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import subprocess

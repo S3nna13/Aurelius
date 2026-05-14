@@ -1,5 +1,6 @@
 """Integration: CodeAwareTokenizer wired into BM25Retriever for code retrieval."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import src.retrieval as retrieval

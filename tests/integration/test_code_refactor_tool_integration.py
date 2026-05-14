@@ -1,5 +1,6 @@
 """Integration tests for the code refactor tool surface."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import pathlib

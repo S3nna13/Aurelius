@@ -1,5 +1,6 @@
 """Integration test for ToolBench — end-to-end evaluation pipeline.
 
+@pytest.mark.integration
 Verifies:
 - 3 ToolBenchSamples (perfect / partial / wrong)
 - evaluate() returns all metrics in [0, 1]

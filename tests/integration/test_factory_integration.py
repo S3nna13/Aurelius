@@ -1,5 +1,6 @@
 """Integration: factory + compatibility exposed from src.model; config stable."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 from dataclasses import fields

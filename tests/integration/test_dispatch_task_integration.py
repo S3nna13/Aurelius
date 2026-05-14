@@ -1,5 +1,6 @@
 """Integration tests for the dispatch-task primitive via the agent surface."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 

@@ -1,5 +1,6 @@
 """Integration test for FlashMLAAttention.
 
+@pytest.mark.integration
 Covers the full lifecycle:
   - Build from config
   - Forward in both modes

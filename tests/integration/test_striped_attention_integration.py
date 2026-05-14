@@ -1,5 +1,6 @@
 """Integration test for StripedAttention (Brandon et al. 2023).
 
+@pytest.mark.integration
 Builds a StripedAttention with the canonical tiny config (d_model=64, n_heads=4,
 window_size=4), feeds a [2, 16, 64] input through the full forward pass, and
 verifies that:

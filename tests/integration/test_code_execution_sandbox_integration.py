@@ -1,5 +1,6 @@
 """Integration tests for the code execution sandbox.
 
+@pytest.mark.integration
 Confirm public exposure via :mod:`agent` and basic end-to-end
 ``execute`` / ``execute_file`` behaviour. Also sanity-checks that prior
 agent-surface registry entries remain intact.

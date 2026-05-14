@@ -1,5 +1,6 @@
 """Integration tests: SWE-bench-lite registry + end-to-end scoring."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import sys

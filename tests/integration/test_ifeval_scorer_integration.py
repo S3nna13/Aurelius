@@ -1,5 +1,6 @@
 """Integration tests: IFEval registry + end-to-end scoring."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 from src import eval as ev

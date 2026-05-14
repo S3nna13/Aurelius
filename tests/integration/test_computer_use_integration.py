@@ -1,5 +1,6 @@
 """Integration tests for the computer_use surface end-to-end pipeline.
 
+@pytest.mark.integration
 Parse JSON accessibility tree → predict GUI action → verify action.
 Also covers BrowserDriver lifecycle and Trajectory record/replay.
 

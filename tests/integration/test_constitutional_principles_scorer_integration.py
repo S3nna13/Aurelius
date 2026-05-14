@@ -1,5 +1,6 @@
 """Integration tests for the constitutional principles scorer registry entry."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 from src.safety import HARM_CLASSIFIER_REGISTRY

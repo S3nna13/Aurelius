@@ -1,5 +1,5 @@
 import sys
-from typing import Any, Optional
+from typing import Any
 
 import torch
 import torch.nn as nn
@@ -26,7 +26,7 @@ class FlashAttention(nn.Module):
         self.out = nn.Linear(d_model, d_model, bias=False)
 
     def forward(self, x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor,
-                mask: Optional[torch.Tensor] = None) -> torch.Tensor:
+                mask: torch.Tensor | None = None) -> torch.Tensor:
         b, t, d = x.shape
         qkv = self.qkv(x).reshape(b, t, 3, self.n_heads, self.head_dim).permute(2, 0, 3, 1, 4)
         q, k, v = qkv[0], qkv[1], qkv[2]
@@ -66,8 +66,8 @@ class AureliusBlock14B(nn.Module):
             self.gate_agent = nn.Parameter(torch.zeros(1))
 
     def forward(self, x: torch.Tensor, cos: torch.Tensor, sin: torch.Tensor,
-                mask: Optional[torch.Tensor] = None,
-                tool_descs: Optional[torch.Tensor] = None) -> torch.Tensor:
+                mask: torch.Tensor | None = None,
+                tool_descs: torch.Tensor | None = None) -> torch.Tensor:
         x = x + self.attn(self.norm1(x), cos, sin, mask)
         x = x + self.ffn(self.norm2(x))
         mem_out = self.memory(self.norm3(x))
@@ -175,7 +175,7 @@ class AureliusModel14B(nn.Module):
                 nn.init.xavier_uniform_(p, gain=0.5)
 
     def forward(self, input_ids: torch.Tensor,
-                tool_descs: Optional[torch.Tensor] = None,
+                tool_descs: torch.Tensor | None = None,
                 return_agent_state: bool = False,
                 use_brain: bool = True) -> dict[str, Any]:
         b, t = input_ids.shape

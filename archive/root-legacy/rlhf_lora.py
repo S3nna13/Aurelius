@@ -1,5 +1,5 @@
 import math
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import torch
 import torch.nn as nn
@@ -8,7 +8,7 @@ from aurelius.aurelius_model_3b import AureliusModel3B
 
 
 class PagedOptimizerState:
-    def __init__(self, params, lr: float = 1e-4, betas: Tuple[float, float] = (0.9, 0.999),
+    def __init__(self, params, lr: float = 1e-4, betas: tuple[float, float] = (0.9, 0.999),
                  eps: float = 1e-8, weight_decay: float = 0.0):
         self.params = list(params)
         self.lr = lr
@@ -78,7 +78,7 @@ class LoraLayer(nn.Module):
 
 
 class LoraMemoryModel(nn.Module):
-    def __init__(self, config: dict, base_model: Optional[AureliusModel3B] = None):
+    def __init__(self, config: dict, base_model: AureliusModel3B | None = None):
         super().__init__()
         if base_model is None:
             self.model = AureliusModel3B(config)
@@ -86,7 +86,7 @@ class LoraMemoryModel(nn.Module):
             self.model = base_model
         self.freeze_base_model()
         self.lora_adapters = nn.ModuleDict()
-        self._hooks: List[torch.utils.hooks.RemovableHandle] = []
+        self._hooks: list[torch.utils.hooks.RemovableHandle] = []
         self.lora_enabled = False
 
     def freeze_base_model(self):
@@ -102,7 +102,7 @@ class LoraMemoryModel(nn.Module):
         return hook
 
     def add_lora(self, r: int = 8, alpha: float = 16, dropout: float = 0.1,
-                 target_modules: Optional[List[str]] = None):
+                 target_modules: list[str] | None = None):
         if target_modules is None:
             target_modules = ['qkv', 'mem_proj']
         self.lora_enabled = True
@@ -140,10 +140,10 @@ class LoraMemoryModel(nn.Module):
     def enable_lora(self):
         self.lora_enabled = True
 
-    def get_trainable_parameters(self) -> List[torch.nn.Parameter]:
+    def get_trainable_parameters(self) -> list[torch.nn.Parameter]:
         return [p for p in self.lora_adapters.parameters() if p.requires_grad]
 
-    def forward(self, input_ids: torch.Tensor, **kwargs) -> Dict[str, torch.Tensor]:
+    def forward(self, input_ids: torch.Tensor, **kwargs) -> dict[str, torch.Tensor]:
         return self.model(input_ids, **kwargs)
 
 
@@ -180,9 +180,9 @@ class RewardModel(nn.Module):
 
 class MemoryOffloadingRLHFCache:
     def __init__(self):
-        self.cache: Dict[str, Dict[str, Any]] = {}
+        self.cache: dict[str, dict[str, Any]] = {}
 
-    def cache_rollout(self, key: str, activations: Dict[str, Any]):
+    def cache_rollout(self, key: str, activations: dict[str, Any]):
         cpu_acts = {}
         for k, v in activations.items():
             if isinstance(v, torch.Tensor):
@@ -191,7 +191,7 @@ class MemoryOffloadingRLHFCache:
                 cpu_acts[k] = v
         self.cache[key] = cpu_acts
 
-    def load_rollout(self, key: str) -> Optional[Dict[str, Any]]:
+    def load_rollout(self, key: str) -> dict[str, Any] | None:
         return self.cache.get(key)
 
     def clear(self):
@@ -212,7 +212,7 @@ class PPOTrainer(nn.Module):
         self.gamma = gamma
         self.gae_lambda = gae_lambda
         self._cache = MemoryOffloadingRLHFCache()
-        self._ref_log_probs: Optional[torch.Tensor] = None
+        self._ref_log_probs: torch.Tensor | None = None
 
     def _log_probs(self, logits: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
         log_probs = F.log_softmax(logits, dim=-1)
@@ -232,7 +232,7 @@ class PPOTrainer(nn.Module):
 
     def train_step(self, query: torch.Tensor, response: torch.Tensor,
                    reward_model: RewardModel, kl_coef: float = 0.1,
-                   clip_range: float = 0.2) -> Dict[str, torch.Tensor]:
+                   clip_range: float = 0.2) -> dict[str, torch.Tensor]:
         self.train()
         response_len = response.shape[1]
         response_start = query.shape[1]

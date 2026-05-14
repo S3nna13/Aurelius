@@ -1,5 +1,6 @@
 """Integration tests for PluginHookRegistry wired into AGENT_LOOP_REGISTRY."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 from agent import AGENT_LOOP_REGISTRY

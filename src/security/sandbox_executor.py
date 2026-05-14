@@ -142,14 +142,15 @@ class _DaemonThreadPoolExecutor(concurrent.futures.ThreadPoolExecutor):
             if self._thread_name_prefix
             else f"ThreadPoolExecutor-{num_threads}"
         )
+        # Python 3.13+ removed _create_worker_context from ThreadPoolExecutor internals.
+        if hasattr(self, "_create_worker_context"):
+            worker_args = (weakref.ref(self, weakref_cb), self._create_worker_context(), self._work_queue)
+        else:
+            worker_args = (weakref.ref(self, weakref_cb), self._work_queue)
         thread = threading.Thread(
             name=thread_name,
             target=_worker,
-            args=(
-                weakref.ref(self, weakref_cb),
-                self._create_worker_context(),
-                self._work_queue,
-            ),
+            args=worker_args,
         )
         thread.daemon = True
         thread.start()

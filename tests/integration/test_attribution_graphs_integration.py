@@ -1,5 +1,6 @@
 """Integration tests for attribution_graphs via src.interpretability."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import torch

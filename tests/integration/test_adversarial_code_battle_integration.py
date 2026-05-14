@@ -1,5 +1,6 @@
 """Integration tests for the adversarial code battle surface."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import src.alignment as alignment_surface

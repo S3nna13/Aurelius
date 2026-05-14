@@ -1,5 +1,6 @@
 """Integration tests for the family manifest surface (Cycle-122)."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import src.model as model_pkg

@@ -1,5 +1,6 @@
 """Integration tests for the longcontext strategy registry."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import sys

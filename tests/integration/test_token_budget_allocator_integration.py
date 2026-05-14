@@ -1,5 +1,6 @@
 """Integration: token budget allocator chat registry."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import src.chat as chat

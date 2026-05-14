@@ -1,5 +1,6 @@
 """Integration tests for RULER benchmark registration and end-to-end run."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import src.eval as eval_pkg

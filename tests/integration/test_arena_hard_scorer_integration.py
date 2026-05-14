@@ -1,5 +1,6 @@
 """Integration tests for Arena-Hard: registry entry + end-to-end 3-model round-robin."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 from src import eval as eval_pkg

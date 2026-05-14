@@ -1,5 +1,6 @@
 """Integration tests for WaitTokenForcer.
 
+@pytest.mark.integration
 Verifies:
 * End-to-end injection budget enforcement across multiple calls.
 * reset() correctly restores state.

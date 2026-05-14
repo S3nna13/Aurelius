@@ -1,5 +1,6 @@
 """Integration test for Online RFT — end-to-end filter + train + stats."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import torch

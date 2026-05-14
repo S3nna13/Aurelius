@@ -1,5 +1,6 @@
 """Integration tests for the MARS optimizer."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import torch

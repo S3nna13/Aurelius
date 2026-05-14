@@ -1,5 +1,6 @@
 """Integration tests for the task decomposer via the public agent surface."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import json

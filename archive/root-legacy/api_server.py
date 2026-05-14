@@ -5,7 +5,7 @@ import os
 import threading
 import time
 from contextlib import asynccontextmanager
-from typing import Any, Optional
+from typing import Any
 
 import torch
 from fastapi import FastAPI, HTTPException
@@ -100,7 +100,7 @@ class HealthResponse(BaseModel):
     uptime_seconds: float
     requests_served: int
     cuda_available: bool
-    cuda_memory_allocated_mb: Optional[float] = None
+    cuda_memory_allocated_mb: float | None = None
 
 
 @asynccontextmanager

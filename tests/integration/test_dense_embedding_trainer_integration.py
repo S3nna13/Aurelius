@@ -1,5 +1,6 @@
 """Integration tests for dense embedding trainer registry wiring."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import subprocess

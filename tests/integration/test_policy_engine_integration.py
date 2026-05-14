@@ -1,5 +1,6 @@
 """Integration tests: PolicyEngine is registered and end-to-end usable."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 from src.safety import (

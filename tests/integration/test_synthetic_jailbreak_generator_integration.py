@@ -1,5 +1,6 @@
 """Integration: synthetic jailbreak generator in eval registry."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import src.eval as ev

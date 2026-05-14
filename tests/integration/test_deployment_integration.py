@@ -1,5 +1,6 @@
 """Integration tests for src.deployment.
 
+@pytest.mark.integration
 Production deployment patterns from Aurelius production_readiness_floor,
 SLSA supply-chain attestation spec, Apache-2.0.
 

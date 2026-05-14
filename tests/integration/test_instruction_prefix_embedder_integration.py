@@ -1,5 +1,6 @@
 """Integration tests for InstructionPrefixEmbedder via ``src.retrieval``."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import pytest

@@ -1,5 +1,6 @@
 """Integration: tool sandbox denylist registry + config flag."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 

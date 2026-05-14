@@ -1,5 +1,6 @@
 """Integration tests for the safe tool dispatcher surface."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import agent as agent_surface

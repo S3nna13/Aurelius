@@ -1,5 +1,6 @@
 """Integration tests for KIVI INT4 KV cache quantization registry wiring."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import torch

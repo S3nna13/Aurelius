@@ -1,5 +1,6 @@
 """Integration tests for CrossStageDistillation registry wiring.
 
+@pytest.mark.integration
 Verifies:
 1. "cross_stage_distillation" key is present in ALIGNMENT_REGISTRY.
 2. The class can be constructed from the registry and .loss() returns a finite scalar.

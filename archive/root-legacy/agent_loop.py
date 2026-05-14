@@ -1,7 +1,6 @@
 import logging
 import sys
 from dataclasses import dataclass, field
-from typing import Optional
 
 import torch
 import torch.nn as nn
@@ -17,7 +16,7 @@ class AgentStep:
     observation: torch.Tensor
     thought: str
     action: dict
-    result: Optional[torch.Tensor] = None
+    result: torch.Tensor | None = None
     reward: float = 0.0
     skill_used: int = -1
     timestamp: float = 0.0
@@ -27,7 +26,7 @@ class AgentStep:
 class AgentEpisode:
     steps: list = field(default_factory=list)
     total_reward: float = 0.0
-    task_embedding: Optional[torch.Tensor] = None
+    task_embedding: torch.Tensor | None = None
 
 
 class AgentLoopController(nn.Module):

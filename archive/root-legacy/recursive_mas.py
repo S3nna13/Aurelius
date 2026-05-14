@@ -2,7 +2,7 @@
 
 import logging
 from collections.abc import Callable
-from typing import Any, Dict, Optional
+from typing import Any
 
 import torch
 import torch.nn as nn
@@ -48,7 +48,7 @@ class RecursiveLink(nn.Module):
     def forward(
         self,
         h_prev: torch.Tensor,
-        h_new: Optional[torch.Tensor] = None,
+        h_new: torch.Tensor | None = None,
     ) -> torch.Tensor:
         h_proj = self.input_proj(h_prev)
         h_norm = self.norm(h_proj)
@@ -110,9 +110,9 @@ class RecursiveAgentWrapper(nn.Module):
     def forward(
         self,
         h: torch.Tensor,
-        tool_descs: Optional[torch.Tensor] = None,
+        tool_descs: torch.Tensor | None = None,
         return_all_rounds: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         b, t, d = h.shape
         device = h.device
         latent = h[:, -1:]  # (b, 1, d)
@@ -194,9 +194,9 @@ class InnerOuterOptimizer:
     def inner_step(
         self,
         h: torch.Tensor,
-        targets: Dict[str, torch.Tensor],
-        tool_descs: Optional[torch.Tensor] = None,
-    ) -> Dict[str, float]:
+        targets: dict[str, torch.Tensor],
+        tool_descs: torch.Tensor | None = None,
+    ) -> dict[str, float]:
         self.mas.train()
         self.inner_optim.zero_grad()
         out = self.mas(h, tool_descs, return_all_rounds=True)
@@ -222,8 +222,8 @@ class InnerOuterOptimizer:
         self,
         h: torch.Tensor,
         rewards: torch.Tensor,
-        tool_descs: Optional[torch.Tensor] = None,
-    ) -> Dict[str, float]:
+        tool_descs: torch.Tensor | None = None,
+    ) -> dict[str, float]:
         self.mas.train()
         self.outer_optim.zero_grad()
         out = self.mas(h, tool_descs, return_all_rounds=True)
@@ -251,11 +251,11 @@ class InnerOuterOptimizer:
     def train_step(
         self,
         h: torch.Tensor,
-        targets: Dict[str, torch.Tensor],
+        targets: dict[str, torch.Tensor],
         task_embed: torch.Tensor,
         rewards: torch.Tensor,
-        tool_descs: Optional[torch.Tensor] = None,
-    ) -> Dict[str, float]:
+        tool_descs: torch.Tensor | None = None,
+    ) -> dict[str, float]:
         inner_metrics = self.inner_step(h, targets, tool_descs)
         outer_metrics = self.outer_step(h, rewards, tool_descs)
         return {**inner_metrics, **outer_metrics}

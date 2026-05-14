@@ -1,5 +1,6 @@
 """Integration tests for the hybrid retriever and the retrieval registry."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 from src.retrieval import RETRIEVER_REGISTRY, BM25Retriever, HybridRetriever

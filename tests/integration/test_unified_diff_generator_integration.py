@@ -1,5 +1,6 @@
 """Integration tests for the unified-diff generator surface.
 
+@pytest.mark.integration
 Verifies that :class:`UnifiedDiffGenerator` and :class:`DiffResult` are
 exposed via :mod:`agent`, that prior agent registry entries remain
 intact, and that generated diffs round-trip through the production

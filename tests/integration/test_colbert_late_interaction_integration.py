@@ -1,5 +1,6 @@
 """Integration tests: ColBERT scorer wired into RERANKER_REGISTRY."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import torch

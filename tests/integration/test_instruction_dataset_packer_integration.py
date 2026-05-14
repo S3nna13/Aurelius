@@ -1,5 +1,6 @@
 """Integration tests for InstructionDatasetPacker via src.data surface."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import torch

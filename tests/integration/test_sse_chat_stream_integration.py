@@ -1,5 +1,6 @@
 """Integration tests for SSE chat-completion stream registration + config."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 from src.model.config import AureliusConfig

@@ -1,5 +1,6 @@
 """Integration tests for constitution dimensions registry + config flag."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 from src.alignment import ALIGNMENT_REGISTRY

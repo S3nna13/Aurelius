@@ -1,5 +1,6 @@
 """Integration: SSE encoder on serving surface."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import src.serving as serving

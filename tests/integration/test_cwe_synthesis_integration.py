@@ -1,5 +1,6 @@
 """Integration tests for CWE synthetic pair generator.
 
+@pytest.mark.integration
 - Verifies LOADER_REGISTRY wiring in src.data package
 - Verifies config flag default OFF
 - Verifies batch diversity over several seeds

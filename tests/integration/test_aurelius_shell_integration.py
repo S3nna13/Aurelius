@@ -1,5 +1,6 @@
 """Integration tests for the Aurelius terminal shell surface."""
 
+@pytest.mark.integration
 from __future__ import annotations
 
 import json
