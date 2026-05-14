@@ -22,12 +22,13 @@ from src.deployment.container_builder import (
 from src.deployment.helm_chart import HelmChart, HelmChartGenerator, HelmChartValues
 from src.deployment.otel_instrumentation import Tracer
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Registry smoke tests
 # ---------------------------------------------------------------------------
 
+
+pytestmark = pytest.mark.integration
 
 def test_deploy_target_registry_is_populated() -> None:
     """DEPLOY_TARGET_REGISTRY imported from src.deployment is a non-empty dict."""

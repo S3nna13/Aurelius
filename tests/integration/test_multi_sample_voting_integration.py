@@ -8,6 +8,8 @@ import src.inference as inference_pkg
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_exposed_via_inference_package():
     assert hasattr(inference_pkg, "MultiSampleVoter")
     assert hasattr(inference_pkg, "VoteResult")
@@ -71,4 +73,3 @@ def test_end_to_end_usc_on_five_samples():
 
 
 
-pytestmark = pytest.mark.integration

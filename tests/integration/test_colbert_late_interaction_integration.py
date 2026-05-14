@@ -9,6 +9,8 @@ from src.retrieval.colbert_late_interaction import ColBERTConfig, ColBERTScorer
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_colbert_in_reranker_registry() -> None:
     assert "colbert" in RERANKER_REGISTRY
     assert RERANKER_REGISTRY["colbert"] is ColBERTScorer
@@ -30,4 +32,3 @@ def test_registry_construct_and_score() -> None:
 
 
 
-pytestmark = pytest.mark.integration

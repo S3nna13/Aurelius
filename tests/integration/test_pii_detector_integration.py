@@ -15,6 +15,7 @@ from src.safety.pii_detector import PIIDetector
 
 
 
+
 pytestmark = pytest.mark.integration
 
 def test_registry_has_pii() -> None:

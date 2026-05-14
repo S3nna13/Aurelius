@@ -29,6 +29,7 @@ from src.retrieval import (
 )
 
 
+
 pytestmark = pytest.mark.integration
 
 def _embed(text: str) -> list[float]:

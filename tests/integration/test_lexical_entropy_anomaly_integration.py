@@ -8,6 +8,8 @@ from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_registry():
     assert safety.SAFETY_FILTER_REGISTRY["lexical_entropy"] is safety.LexicalEntropyAnomalyDetector
 
@@ -30,4 +32,3 @@ def test_smoke_score_with_flag():
 
 
 
-pytestmark = pytest.mark.integration

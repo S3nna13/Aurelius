@@ -10,6 +10,8 @@ from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_registry():
     assert lc.LONGCONTEXT_STRATEGY_REGISTRY["swa_causal_mask"] is lc.SlidingWindowCausalMaskBuilder
 
@@ -36,4 +38,3 @@ def test_smoke_with_flag_enabled():
 
 
 
-pytestmark = pytest.mark.integration

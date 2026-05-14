@@ -8,6 +8,8 @@ from src.chat.llama3_template import Llama3Template
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_registry_has_both_templates() -> None:
     assert "chatml" in CHAT_TEMPLATE_REGISTRY
     assert "llama3" in CHAT_TEMPLATE_REGISTRY
@@ -50,4 +52,3 @@ def test_templates_produce_distinct_wire_formats() -> None:
 
 
 
-pytestmark = pytest.mark.integration

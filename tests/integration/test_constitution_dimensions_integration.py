@@ -9,6 +9,8 @@ from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_alignment_registry_has_constitution_dimensions():
     assert "constitution_dimensions" in ALIGNMENT_REGISTRY
     assert ALIGNMENT_REGISTRY["constitution_dimensions"] is ConstitutionScorer
@@ -35,4 +37,3 @@ def test_scorer_smoke_via_registry():
 
 
 
-pytestmark = pytest.mark.integration

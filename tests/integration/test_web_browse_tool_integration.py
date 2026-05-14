@@ -7,6 +7,8 @@ from agent.web_browse_tool import DEFAULT_TOOL_DESCRIPTOR, WebBrowseTool
 from src.model.config import AureliusConfig
 
 
+pytestmark = pytest.mark.integration
+
 def test_tool_registered_in_agent_package():
     assert hasattr(agent_pkg, "TOOL_REGISTRY")
     assert "web_browse" in agent_pkg.TOOL_REGISTRY
@@ -54,4 +56,3 @@ def test_end_to_end_build_validate_summarize():
 
 
 
-pytestmark = pytest.mark.integration

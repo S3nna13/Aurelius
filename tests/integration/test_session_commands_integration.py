@@ -12,6 +12,8 @@ from src.model import AureliusInterfaceFramework
 
 
 
+pytestmark = pytest.mark.integration
+
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
@@ -246,4 +248,3 @@ def test_main_session_export_and_import_commands_run_end_to_end(tmp_path, capsys
 
 
 
-pytestmark = pytest.mark.integration

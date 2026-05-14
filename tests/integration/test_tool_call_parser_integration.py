@@ -14,6 +14,7 @@ import importlib
 import sys
 
 
+
 pytestmark = pytest.mark.integration
 
 def test_registry_contains_xml_and_json_keys() -> None:

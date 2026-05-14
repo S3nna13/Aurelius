@@ -13,6 +13,8 @@ from src.longcontext import (
 )
 
 
+pytestmark = pytest.mark.integration
+
 def test_registry_contains_chunked_prefill():
     assert "chunked_prefill" in LONGCONTEXT_STRATEGY_REGISTRY
     assert LONGCONTEXT_STRATEGY_REGISTRY["chunked_prefill"] is ChunkedPrefill
@@ -39,7 +41,6 @@ def test_end_to_end_toy_chunk_fn():
     """Simulate a prefill pass: embed-like transform applied chunk by chunk."""
 
 
-pytestmark = pytest.mark.integration
 
     torch.manual_seed(0)
     B, S, chunk_size = 2, 40, 8

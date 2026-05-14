@@ -14,6 +14,8 @@ from src.model.family import (
 )
 
 
+pytestmark = pytest.mark.integration
+
 def test_family_registry_exported_from_package():
     assert hasattr(model_pkg, "MODEL_FAMILY_REGISTRY")
     assert model_pkg.MODEL_FAMILY_REGISTRY is MODEL_FAMILY_REGISTRY
@@ -59,4 +61,3 @@ def test_aurelius_config_default_unchanged():
 
 
 
-pytestmark = pytest.mark.integration

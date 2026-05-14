@@ -10,6 +10,8 @@ from agent.interface_runtime import AureliusInterfaceRuntime
 
 
 
+pytestmark = pytest.mark.integration
+
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
@@ -282,4 +284,3 @@ def test_main_interface_skill_catalog_management_commands_run_end_to_end(tmp_pat
 
 
 
-pytestmark = pytest.mark.integration

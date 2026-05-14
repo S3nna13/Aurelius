@@ -17,12 +17,13 @@ from agent.proactive_trigger import (
     interval_trigger,
 )
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # 1. Registry wired into AGENT_LOOP_REGISTRY
 # ---------------------------------------------------------------------------
 
+
+pytestmark = pytest.mark.integration
 
 def test_proactive_trigger_in_agent_loop_registry():
     assert "proactive_trigger" in AGENT_LOOP_REGISTRY, (

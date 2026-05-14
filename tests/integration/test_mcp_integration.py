@@ -21,12 +21,13 @@ from src.mcp.tool_schema_registry import (
     validate_tool_call,
 )
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Fixture: isolated registry
 # ---------------------------------------------------------------------------
 
+
+pytestmark = pytest.mark.integration
 
 @pytest.fixture()
 def clean_registry():

@@ -18,12 +18,13 @@ from src.eval.process_reward_eval import (
     StepPrediction,
 )
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Fixture: 5 solutions with mixed step correctness and PRM scores
 # ---------------------------------------------------------------------------
 
+
+pytestmark = pytest.mark.integration
 
 def _build_solutions() -> list[SolutionEval]:
     threshold = 0.5

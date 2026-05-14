@@ -22,11 +22,12 @@ from src.inference import DECODER_REGISTRY
 from src.inference.hydra_speculative import HydraConfig, HydraSpeculative
 
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Shared fixtures / constants
 # ---------------------------------------------------------------------------
+
+pytestmark = pytest.mark.integration
 
 D_MODEL = 64
 VOCAB_SIZE = 256

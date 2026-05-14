@@ -8,6 +8,8 @@ from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_dedup_registry():
     assert data.DEDUP_REGISTRY["ngram_jaccard"] is data.NgramDeduplicationToolkit
 
@@ -29,4 +31,3 @@ def test_smoke_cluster():
 
 
 
-pytestmark = pytest.mark.integration

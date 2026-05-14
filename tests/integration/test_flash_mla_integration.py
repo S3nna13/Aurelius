@@ -21,11 +21,12 @@ from src.model import MODEL_COMPONENT_REGISTRY
 from src.model.flash_mla import FlashMLAAttention, FlashMLAConfig
 
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Shared setup
 # ---------------------------------------------------------------------------
+
+pytestmark = pytest.mark.integration
 
 INTEGRATION_CFG = FlashMLAConfig(
     d_model=64,

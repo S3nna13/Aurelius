@@ -16,6 +16,8 @@ from src.model import AureliusInterfaceFramework
 
 
 
+pytestmark = pytest.mark.integration
+
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
@@ -161,4 +163,3 @@ def test_interface_runtime_end_to_end_session_workstream_and_workflow(tmp_path):
 
 
 
-pytestmark = pytest.mark.integration

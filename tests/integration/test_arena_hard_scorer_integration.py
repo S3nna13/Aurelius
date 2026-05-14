@@ -11,6 +11,8 @@ from src.eval.arena_hard_scorer import (
 )
 
 
+pytestmark = pytest.mark.integration
+
 def test_metric_registry_has_arena_hard():
     assert "arena_hard" in eval_pkg.METRIC_REGISTRY
     assert eval_pkg.METRIC_REGISTRY["arena_hard"] is ArenaHardScorer
@@ -39,7 +41,6 @@ def test_end_to_end_three_model_round_robin():
 
 
 
-pytestmark = pytest.mark.integration
 
     def judge(prompt: str) -> str:
         a_start = prompt.index("[The Start of Assistant A's Answer]")

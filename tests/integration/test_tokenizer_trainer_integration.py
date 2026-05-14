@@ -10,6 +10,8 @@ from src.data import (
 )
 
 
+pytestmark = pytest.mark.integration
+
 def test_surface_exposed() -> None:
     assert hasattr(data_pkg, "BPEConfig")
     assert hasattr(data_pkg, "BPETrainer")
@@ -74,4 +76,3 @@ def test_save_load_via_trainer(tmp_path) -> None:
 
 
 
-pytestmark = pytest.mark.integration

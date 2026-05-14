@@ -23,12 +23,13 @@ from src.serving.responses_api import (
     ResponsesAPIValidator,
 )
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Registry integration
 # ---------------------------------------------------------------------------
 
+
+pytestmark = pytest.mark.integration
 
 class TestRegistryIntegration:
     def test_responses_key_in_api_shape_registry(self):

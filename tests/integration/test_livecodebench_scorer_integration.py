@@ -8,6 +8,8 @@ import src.eval as ev
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_metric_registry_has_livecodebench():
     assert "livecodebench" in ev.METRIC_REGISTRY
 
@@ -97,4 +99,3 @@ def test_end_to_end_two_problem_score():
 
 
 
-pytestmark = pytest.mark.integration

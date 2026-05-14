@@ -15,12 +15,13 @@ import src.inference as inference
 from src.inference import DECODER_REGISTRY, LEVEL_CONFIGS
 
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # 1. "reasoning_level" key is registered
 # ---------------------------------------------------------------------------
 
+
+pytestmark = pytest.mark.integration
 
 def test_reasoning_level_key_in_decoder_registry() -> None:
     assert "reasoning_level" in DECODER_REGISTRY

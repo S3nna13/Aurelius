@@ -11,6 +11,7 @@ from __future__ import annotations
 
 
 
+
 pytestmark = pytest.mark.integration
 
 def test_ui_package_exports_three_registries():

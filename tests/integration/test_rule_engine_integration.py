@@ -19,6 +19,7 @@ from src.safety import (
 )
 
 
+
 pytestmark = pytest.mark.integration
 
 def test_rule_engine_registered_in_safety_filter_registry():

@@ -20,12 +20,13 @@ from src.longcontext.context_budget_controller import (
     SegmentPriority,
 )
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Registry wiring
 # ---------------------------------------------------------------------------
 
+
+pytestmark = pytest.mark.integration
 
 def test_context_budget_in_registry():
     """'context_budget' key must exist in LONGCONTEXT_STRATEGY_REGISTRY."""

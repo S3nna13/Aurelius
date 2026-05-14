@@ -5,6 +5,8 @@ from __future__ import annotations
 import importlib
 
 
+pytestmark = pytest.mark.integration
+
 def test_validator_exposed_via_src_serving_package():
     import src.serving as serving
 
@@ -98,4 +100,3 @@ def test_registry_classes_are_instantiable_and_validate():
 
 
 
-pytestmark = pytest.mark.integration

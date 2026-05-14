@@ -14,6 +14,8 @@ from src.model import (
 )
 
 
+pytestmark = pytest.mark.integration
+
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
@@ -63,4 +65,3 @@ def test_validate_interface_contract_accepts_real_contract_artifacts():
 
 
 
-pytestmark = pytest.mark.integration

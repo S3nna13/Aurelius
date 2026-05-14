@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 
+pytestmark = pytest.mark.integration
+
 def test_background_executor_registered():
     """BackgroundExecutor must appear in AGENT_LOOP_REGISTRY."""
     import agent as agent
@@ -10,7 +12,6 @@ def test_background_executor_registered():
 
 
 
-pytestmark = pytest.mark.integration
 
     assert "background_executor" in agent.AGENT_LOOP_REGISTRY
     assert agent.AGENT_LOOP_REGISTRY["background_executor"] is BackgroundExecutor

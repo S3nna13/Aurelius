@@ -10,6 +10,8 @@ from src.eval.ifeval_scorer import IFEvalConstraint, IFEvalProblem
 
 
 
+pytestmark = pytest.mark.integration
+
 class BenchmarkRunnerIntegrationTests(unittest.TestCase):
     def test_exposed_via_src_cli(self):
         cli_pkg = importlib.import_module("src.cli")
@@ -71,4 +73,3 @@ if __name__ == "__main__":
 
 
 
-pytestmark = pytest.mark.integration

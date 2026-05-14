@@ -17,6 +17,8 @@ from src.model.transformer import AureliusTransformer
 # Shared tiny config
 # ---------------------------------------------------------------------------
 
+pytestmark = pytest.mark.integration
+
 TINY_CONFIG = AureliusConfig(
     n_layers=2,
     d_model=64,
@@ -44,7 +46,6 @@ def checkpoint_dir(tmp_path: Path, tiny_model: AureliusTransformer) -> Path:
     """Save a tiny model as safetensors and return the checkpoint directory."""
 
 
-pytestmark = pytest.mark.integration
 
     ckpt_dir = tmp_path / "checkpoint"
     ckpt_dir.mkdir()

@@ -17,12 +17,13 @@ import torch.nn as nn
 from src.optimizers import OPTIMIZER_REGISTRY, MuonClip
 
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # 1. Registry contains "muonclip"
 # ---------------------------------------------------------------------------
 
+
+pytestmark = pytest.mark.integration
 
 def test_muonclip_in_registry():
     assert "muonclip" in OPTIMIZER_REGISTRY, "'muonclip' key missing from OPTIMIZER_REGISTRY"

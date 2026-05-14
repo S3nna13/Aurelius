@@ -14,11 +14,12 @@ from src.model import MODEL_COMPONENT_REGISTRY
 from src.model.vision_projector import VisionProjector, VisionProjectorConfig
 
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Shared tiny config used across integration tests
 # ---------------------------------------------------------------------------
+
+pytestmark = pytest.mark.integration
 
 TINY_VIT_HIDDEN = 32
 TINY_LLM_HIDDEN = 64

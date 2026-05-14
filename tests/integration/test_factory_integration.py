@@ -21,6 +21,8 @@ from src.model import (
 )
 
 
+pytestmark = pytest.mark.integration
+
 def test_factory_and_compatibility_exported_from_src_model():
     # Smoke-check that every public surface imports cleanly.
     assert callable(build_backbone_from_manifest)
@@ -68,4 +70,3 @@ def test_compatibility_roundtrip_on_reference_manifest():
 
 
 
-pytestmark = pytest.mark.integration

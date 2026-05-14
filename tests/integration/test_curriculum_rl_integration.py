@@ -17,12 +17,13 @@ from src.training import TRAINING_REGISTRY
 from src.training.curriculum_rl import CurriculumRLConfig, CurriculumRLSampler
 
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Fixture: fully-wired sampler with 10 tasks
 # ---------------------------------------------------------------------------
 
+
+pytestmark = pytest.mark.integration
 
 @pytest.fixture
 def wired_sampler():

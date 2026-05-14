@@ -8,6 +8,8 @@ import src.multimodal as multimodal_pkg
 from src.multimodal import ModalityContract, load_modality_contract
 
 
+pytestmark = pytest.mark.integration
+
 def test_multimodal_package_exports_registry_surface():
     for name in (
         "ModalityContract",
@@ -56,7 +58,6 @@ def test_all_four_encoder_registries_are_non_none():
     """All 4 required registries must be importable and non-None from src.multimodal."""
 
 
-pytestmark = pytest.mark.integration
 
     assert multimodal_pkg.VISION_ENCODER_REGISTRY is not None
     assert multimodal_pkg.AUDIO_ENCODER_REGISTRY is not None

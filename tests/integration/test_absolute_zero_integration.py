@@ -20,12 +20,13 @@ from src.alignment.absolute_zero import (
     AbsoluteZeroTrainer,
 )
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Mock helpers
 # ---------------------------------------------------------------------------
 
+
+pytestmark = pytest.mark.integration
 
 def _build_propose_fn():
     """Returns a propose_fn that emits non-leaking token sequences.

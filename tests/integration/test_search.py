@@ -6,6 +6,8 @@ from typing import Any
 
 
 
+pytestmark = pytest.mark.integration
+
 class TestSearch:
     URL = "/api/search"
 
@@ -41,4 +43,3 @@ class TestSearch:
 
 
 
-pytestmark = pytest.mark.integration

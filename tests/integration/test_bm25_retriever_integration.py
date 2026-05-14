@@ -7,6 +7,8 @@ import sys
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_registry_entry_is_class_and_usable():
     # Clean re-import to verify no side effects on import.
     for mod in [m for m in list(sys.modules) if m.startswith("src.retrieval")]:
@@ -51,4 +53,3 @@ def test_import_has_no_side_effects(tmp_path, monkeypatch):
 
 
 
-pytestmark = pytest.mark.integration

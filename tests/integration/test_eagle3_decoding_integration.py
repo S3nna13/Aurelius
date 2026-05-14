@@ -19,11 +19,12 @@ from src.inference.eagle3_decoding import (
     Eagle3Decoder,
 )
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+pytestmark = pytest.mark.integration
 
 D_MODEL = 64
 VOCAB_SIZE = 256

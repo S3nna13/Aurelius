@@ -21,12 +21,13 @@ import src.longcontext as lc
 from src.model.config import AureliusConfig
 
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Registry surface tests
 # ---------------------------------------------------------------------------
 
+
+pytestmark = pytest.mark.integration
 
 def test_context_extension_registry_exposed() -> None:
     """CONTEXT_EXTENSION_REGISTRY must be importable from src.longcontext."""

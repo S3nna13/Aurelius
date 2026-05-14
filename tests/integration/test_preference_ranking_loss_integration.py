@@ -15,6 +15,8 @@ from src.alignment import (
 )
 
 
+pytestmark = pytest.mark.integration
+
 def test_exposed_via_package():
     for name in [
         "bradley_terry_loss",
@@ -60,4 +62,3 @@ def test_one_pass_through_all_losses():
 
 
 
-pytestmark = pytest.mark.integration

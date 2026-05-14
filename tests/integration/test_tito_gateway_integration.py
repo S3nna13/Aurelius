@@ -11,12 +11,13 @@ from src.training.tito_gateway import TITOConfig
 
 
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # 1. Registry key existence
 # ---------------------------------------------------------------------------
 
+
+pytestmark = pytest.mark.integration
 
 def test_tito_key_in_training_registry():
     """'tito' must be registered in TRAINING_REGISTRY."""

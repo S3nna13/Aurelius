@@ -15,11 +15,12 @@ import torch
 
 from src.inference.soft_thinking import SoftThinkingConfig, SoftThinkingMixer
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
+
+pytestmark = pytest.mark.integration
 
 D_MODEL = 64
 VOCAB = 256

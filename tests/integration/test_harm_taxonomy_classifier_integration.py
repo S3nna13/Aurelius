@@ -15,6 +15,7 @@ from src.safety import (
 )
 
 
+
 pytestmark = pytest.mark.integration
 
 def test_registry_contains_harm_taxonomy() -> None:

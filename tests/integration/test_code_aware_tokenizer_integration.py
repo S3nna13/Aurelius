@@ -6,6 +6,8 @@ import src.retrieval as retrieval
 from src.retrieval import BM25Retriever, CodeAwareTokenizer
 
 
+pytestmark = pytest.mark.integration
+
 CODE_CORPUS = [
     # doc 0: python utility
     "def get_user_name(user_id):\n    return db.users.find(user_id)\n",
@@ -103,4 +105,3 @@ def test_end_to_end_registry_bm25_still_works():
 
 
 
-pytestmark = pytest.mark.integration

@@ -13,6 +13,8 @@ from src.retrieval import (
 )
 
 
+pytestmark = pytest.mark.integration
+
 def test_registry_has_mmr_and_cross_encoder():
     assert "mmr" in RERANKER_REGISTRY
     assert RERANKER_REGISTRY["mmr"] is MMRReranker
@@ -75,4 +77,3 @@ def test_registry_instantiation_via_name():
 
 
 
-pytestmark = pytest.mark.integration

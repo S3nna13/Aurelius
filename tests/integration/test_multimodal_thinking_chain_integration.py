@@ -17,12 +17,13 @@ from src.inference.multimodal_thinking_chain import (
     VisionStepLimitError,
 )
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Integration test: full chain exercise
 # ---------------------------------------------------------------------------
 
+
+pytestmark = pytest.mark.integration
 
 def test_multimodal_thinking_chain_integration():
     """Build a constrained chain, verify accounting, limits, and registry."""

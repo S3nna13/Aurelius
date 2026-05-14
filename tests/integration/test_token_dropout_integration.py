@@ -11,6 +11,8 @@ from src.training.token_dropout import TokenDropout
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_exposed_via_src_training() -> None:
     # Must be accessible via the package surface.
     assert hasattr(training_pkg, "TokenDropout")
@@ -81,4 +83,3 @@ def test_integration_determinism() -> None:
 
 
 
-pytestmark = pytest.mark.integration

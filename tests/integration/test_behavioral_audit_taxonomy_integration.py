@@ -17,6 +17,8 @@ from src.model.config import AureliusConfig
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_behavioral_audit_registered_under_eval_registries():
     assert "behavioral_audit_taxonomy" in METRIC_REGISTRY
     assert "behavioral_audit_taxonomy" in BENCHMARK_REGISTRY
@@ -65,4 +67,3 @@ def test_end_to_end_audit_on_simple_trajectory():
 
 
 
-pytestmark = pytest.mark.integration

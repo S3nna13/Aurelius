@@ -16,12 +16,13 @@ from src.alignment import ALIGNMENT_REGISTRY
 from src.alignment.length_reward import LengthReward, LengthRewardConfig
 
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
+pytestmark = pytest.mark.integration
 
 @pytest.fixture(scope="module")
 def lr():

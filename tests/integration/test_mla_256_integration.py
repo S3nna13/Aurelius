@@ -11,6 +11,8 @@ from src.model.mla_256 import MLA256Attention, MLA256Config
 # ---------------------------------------------------------------------------
 # Shared tiny config used across integration tests
 # ---------------------------------------------------------------------------
+pytestmark = pytest.mark.integration
+
 TINY = MLA256Config(d_model=64, n_heads=4, head_dim=16, kv_lrank=8)
 
 
@@ -73,4 +75,3 @@ def test_existing_registry_keys_unaffected():
 
 
 
-pytestmark = pytest.mark.integration

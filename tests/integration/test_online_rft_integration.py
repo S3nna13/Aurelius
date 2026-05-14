@@ -19,12 +19,13 @@ from src.alignment.online_rft import (
 # ---------------------------------------------------------------------------
 
 
+pytestmark = pytest.mark.integration
+
 class _TinyModel(nn.Module):
     """Minimal transformer-free model: embedding + linear head."""
 
 
 
-pytestmark = pytest.mark.integration
 
     VOCAB = 64
 

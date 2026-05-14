@@ -12,11 +12,12 @@ from __future__ import annotations
 import torch
 
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # 1. "dsa_attention" present in MODEL_COMPONENT_REGISTRY
 # ---------------------------------------------------------------------------
+pytestmark = pytest.mark.integration
+
 def test_dsa_attention_in_registry():
     from src.model import MODEL_COMPONENT_REGISTRY
 

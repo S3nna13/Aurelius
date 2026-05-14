@@ -15,6 +15,8 @@ from src.model import (
 )
 
 
+pytestmark = pytest.mark.integration
+
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
@@ -118,4 +120,3 @@ def test_framework_round_trip_with_real_contract_bundle():
 
 
 
-pytestmark = pytest.mark.integration

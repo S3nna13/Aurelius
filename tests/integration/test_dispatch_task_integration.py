@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 
+pytestmark = pytest.mark.integration
+
 def test_dispatch_task_exposed_on_agent_surface():
     import agent as agent
 
@@ -67,4 +69,3 @@ def test_end_to_end_dispatch_three_inputs():
 
 
 
-pytestmark = pytest.mark.integration

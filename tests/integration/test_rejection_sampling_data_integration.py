@@ -7,6 +7,8 @@ from itertools import count
 from src.data.rejection_sampling_data import PreferencePair, RejectionSampler
 
 
+pytestmark = pytest.mark.integration
+
 def test_exposed_via_src_data_submodule():
     # The module is reachable via the src.data package path.
     import src.data.rejection_sampling_data as mod
@@ -85,4 +87,3 @@ def test_end_to_end_all_pairs_for_one_prompt():
 
 
 
-pytestmark = pytest.mark.integration

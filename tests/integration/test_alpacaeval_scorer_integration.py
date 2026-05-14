@@ -11,6 +11,8 @@ from src.eval.alpacaeval_scorer import (
 )
 
 
+pytestmark = pytest.mark.integration
+
 def test_metric_registry_contains_alpacaeval():
     assert "alpacaeval" in eval_pkg.METRIC_REGISTRY
     assert eval_pkg.METRIC_REGISTRY["alpacaeval"] is AlpacaEvalScorer
@@ -77,4 +79,3 @@ def test_end_to_end_three_problem_scoring():
 
 
 
-pytestmark = pytest.mark.integration

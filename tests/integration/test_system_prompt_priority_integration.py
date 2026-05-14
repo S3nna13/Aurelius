@@ -8,6 +8,8 @@ from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_encoder_in_template_registry():
     assert "system_prompt_priority" in chat.CHAT_TEMPLATE_REGISTRY
     assert isinstance(
@@ -53,4 +55,3 @@ def test_smoke_merge():
 
 
 
-pytestmark = pytest.mark.integration

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 
 
+
 pytestmark = pytest.mark.integration
 
 def test_loader_registry_exposes_cwe_generator():

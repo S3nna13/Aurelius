@@ -11,6 +11,8 @@ from agent.plugin_hook import HOOK_REGISTRY, PluginHookRegistry
 # ---------------------------------------------------------------------------
 
 
+pytestmark = pytest.mark.integration
+
 def test_plugin_hook_in_agent_loop_registry():
     assert "plugin_hook" in AGENT_LOOP_REGISTRY, (
         "'plugin_hook' must be registered in AGENT_LOOP_REGISTRY"
@@ -62,4 +64,3 @@ def test_existing_agent_loop_registry_keys_intact():
 
 
 
-pytestmark = pytest.mark.integration

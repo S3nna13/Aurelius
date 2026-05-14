@@ -8,6 +8,8 @@ import pytest
 
 
 
+pytestmark = pytest.mark.integration
+
 class TestNotifications:
     URL = "/api/notifications"
 
@@ -59,4 +61,3 @@ class TestNotifications:
 
 
 
-pytestmark = pytest.mark.integration

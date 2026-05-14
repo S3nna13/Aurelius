@@ -16,12 +16,13 @@ from src.model import MODEL_COMPONENT_REGISTRY
 from src.model.gqa_absorbed import GQAAbsorbedAttention, GQAAbsorbedConfig
 
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Shared integration fixture
 # ---------------------------------------------------------------------------
 
+
+pytestmark = pytest.mark.integration
 
 @pytest.fixture(scope="module")
 def integration_model() -> GQAAbsorbedAttention:

@@ -7,6 +7,8 @@ from src.serving import STREAM_HANDLER_REGISTRY, SSEChatStream, parse_sse_event
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_registered_in_stream_handler_registry() -> None:
     assert "sse_chat" in STREAM_HANDLER_REGISTRY
     assert STREAM_HANDLER_REGISTRY["sse_chat"] is SSEChatStream
@@ -45,4 +47,3 @@ def test_end_to_end_stream_produces_parseable_frames() -> None:
 
 
 
-pytestmark = pytest.mark.integration

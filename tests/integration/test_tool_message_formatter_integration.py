@@ -15,6 +15,7 @@ from src.chat.tool_message_formatter import ToolMessageFormatter, ToolResult
 
 
 
+
 pytestmark = pytest.mark.integration
 
 def test_registry_wiring_chatml_roundtrip():

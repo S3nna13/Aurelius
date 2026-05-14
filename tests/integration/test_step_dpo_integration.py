@@ -12,6 +12,8 @@ from src.alignment import StepDPOTrainer, StepPreferenceExample, step_dpo_loss
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_surface_exports_present():
     assert hasattr(alignment, "StepPreferenceExample")
     assert hasattr(alignment, "StepDPOTrainer")
@@ -34,7 +36,6 @@ def test_end_to_end_small_training_reduces_loss():
     """Train a tiny logprob head to prefer chosen over rejected steps."""
 
 
-pytestmark = pytest.mark.integration
 
     torch.manual_seed(0)
 

@@ -36,11 +36,12 @@ from src.computer_use.trajectory_replay import (
     TrajectoryReplayer,
 )
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Shared fixture
 # ---------------------------------------------------------------------------
+
+pytestmark = pytest.mark.integration
 
 SAMPLE_TREE: dict = {
     "width": 1280,

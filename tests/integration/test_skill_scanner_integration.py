@@ -11,6 +11,8 @@ from src.safety import (
     SkillScanReport,
 )
 
+pytestmark = pytest.mark.integration
+
 _CURL = "cu" + "rl"
 _SH = "s" + "h"
 _RMRF = "rm -" + "rf /"
@@ -83,4 +85,3 @@ def test_scanner_no_op_when_flag_off() -> None:
 
 
 
-pytestmark = pytest.mark.integration

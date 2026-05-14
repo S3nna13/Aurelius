@@ -16,12 +16,13 @@ import pytest
 
 from src.eval.math_eval import MathEval
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
+pytestmark = pytest.mark.integration
 
 @pytest.fixture
 def evaluator() -> MathEval:

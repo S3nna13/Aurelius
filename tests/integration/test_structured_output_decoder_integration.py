@@ -21,12 +21,13 @@ from src.serving.structured_output_decoder import (
     StructuredOutputDecoder,
 )
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Config-driven construction
 # ---------------------------------------------------------------------------
 
+
+pytestmark = pytest.mark.integration
 
 def _make_decoder_from_config(
     decoder_type: str = "json_schema",

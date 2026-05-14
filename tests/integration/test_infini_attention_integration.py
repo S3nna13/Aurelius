@@ -11,6 +11,8 @@ import src.longcontext as lc
 from src.longcontext.infini_attention import InfiniAttention
 
 
+pytestmark = pytest.mark.integration
+
 def test_registry_has_infini_entry():
     assert "infini" in lc.LONGCONTEXT_STRATEGY_REGISTRY
     assert lc.LONGCONTEXT_STRATEGY_REGISTRY["infini"] is InfiniAttention
@@ -67,4 +69,3 @@ def test_importing_longcontext_does_not_import_model():
 
 
 
-pytestmark = pytest.mark.integration

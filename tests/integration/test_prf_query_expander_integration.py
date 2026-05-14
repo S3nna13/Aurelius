@@ -7,6 +7,8 @@ from src.model.config import AureliusConfig
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_query_expander_registry():
     assert ret.QUERY_EXPANDER_REGISTRY["prf"] is ret.PRFQueryExpander
 
@@ -26,4 +28,3 @@ def test_smoke_expand():
 
 
 
-pytestmark = pytest.mark.integration

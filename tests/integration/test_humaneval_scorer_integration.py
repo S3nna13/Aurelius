@@ -8,6 +8,8 @@ import src.eval as ev
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_metric_registry_has_humaneval():
     assert "humaneval" in ev.METRIC_REGISTRY
 
@@ -39,7 +41,6 @@ def test_end_to_end_pass_at_1_on_toy_problem():
         prompt='def add(a, b):\n    """Return a+b."""\n',
 
 
-pytestmark = pytest.mark.integration
 
         canonical_solution="    return a + b\n",
         test=(

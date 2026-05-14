@@ -9,6 +9,8 @@ from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_controller_registered_in_lifecycle_registry():
     assert "five_state" in AGENT_LIFECYCLE_REGISTRY
     assert AGENT_LIFECYCLE_REGISTRY["five_state"] is FiveStateController
@@ -42,4 +44,3 @@ def test_feature_flag_off_preserves_default_behavior():
 
 
 
-pytestmark = pytest.mark.integration

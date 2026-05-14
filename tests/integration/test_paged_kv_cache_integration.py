@@ -8,6 +8,8 @@ from src import longcontext as lc
 from src.longcontext.paged_kv_cache import PagedKVCache
 
 
+pytestmark = pytest.mark.integration
+
 EXPECTED_PRIOR = [
     "kv_int8",
     "attention_sinks",
@@ -53,4 +55,3 @@ def test_end_to_end_allocate_write_read():
 
 
 
-pytestmark = pytest.mark.integration

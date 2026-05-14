@@ -15,6 +15,8 @@ from src.model import (
 )
 
 
+pytestmark = pytest.mark.integration
+
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
@@ -113,4 +115,3 @@ def test_session_manager_persists_session_workstream_and_queue_state(tmp_path):
 
 
 
-pytestmark = pytest.mark.integration

@@ -18,6 +18,8 @@ from src.model.config import AureliusConfig
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_shade_arena_registered():
     assert "shade_arena" in METRIC_REGISTRY
     assert "shade_arena" in BENCHMARK_REGISTRY
@@ -52,4 +54,3 @@ def test_default_catalog_shape_exposed_via_package():
 
 
 
-pytestmark = pytest.mark.integration

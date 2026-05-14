@@ -10,6 +10,8 @@ from src.safety.constitutional_principles_scorer import (
 )
 
 
+pytestmark = pytest.mark.integration
+
 def test_registry_has_constitutional_key() -> None:
     assert "constitutional" in HARM_CLASSIFIER_REGISTRY
     assert HARM_CLASSIFIER_REGISTRY["constitutional"] is ConstitutionalPrinciplesScorer
@@ -34,4 +36,3 @@ def test_registered_class_scores_sample() -> None:
 
 
 
-pytestmark = pytest.mark.integration

@@ -25,12 +25,13 @@ from src.inference.chunk_prefill_scheduler import (
     Request,
 )
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Registry wiring
 # ---------------------------------------------------------------------------
 
+
+pytestmark = pytest.mark.integration
 
 def test_decoder_registry_wired():
     assert "chunk_prefill" in DECODER_REGISTRY

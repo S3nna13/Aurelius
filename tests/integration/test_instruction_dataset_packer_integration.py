@@ -12,6 +12,8 @@ from src.data.instruction_dataset_packer import (
 )
 
 
+pytestmark = pytest.mark.integration
+
 def test_exposed_via_src_data_module_import():
     # Must be importable via dotted module path.
     from src.data import instruction_dataset_packer as mod  # noqa: F401
@@ -89,4 +91,3 @@ def test_pack_iter_on_generator():
 
 
 
-pytestmark = pytest.mark.integration

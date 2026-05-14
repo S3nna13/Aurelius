@@ -15,12 +15,13 @@ from src.model.transformer import AureliusTransformer
 from src.training.trainer import TrainConfig
 
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
+
+pytestmark = pytest.mark.integration
 
 def _make_tiny_aurelius_config(train_cfg: TrainConfig) -> AureliusConfig:
     """Return a tiny AureliusConfig derived from a loaded TrainConfig.

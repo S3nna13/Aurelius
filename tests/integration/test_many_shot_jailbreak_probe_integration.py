@@ -18,6 +18,8 @@ from src.model.config import AureliusConfig
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_many_shot_jailbreak_probe_registered():
     assert "many_shot_jailbreak_probe" in METRIC_REGISTRY
     assert "many_shot_jailbreak_probe" in BENCHMARK_REGISTRY
@@ -44,4 +46,3 @@ def test_end_to_end_sweep_against_stubs():
 
 
 
-pytestmark = pytest.mark.integration

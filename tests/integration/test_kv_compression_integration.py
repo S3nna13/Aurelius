@@ -7,6 +7,8 @@ import sys
 import torch
 
 
+pytestmark = pytest.mark.integration
+
 def test_registry_entry_importable_and_usable():
     from src.longcontext import LONGCONTEXT_STRATEGY_REGISTRY
 
@@ -86,4 +88,3 @@ def test_streaming_append_roundtrip():
 
 
 
-pytestmark = pytest.mark.integration

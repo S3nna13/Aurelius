@@ -11,6 +11,8 @@ from src.eval.mythos_coding_rubric import (
 )
 
 
+pytestmark = pytest.mark.integration
+
 def test_metric_registry_contains_mythos():
     assert "mythos_coding_rubric" in eval_pkg.METRIC_REGISTRY
     assert eval_pkg.METRIC_REGISTRY["mythos_coding_rubric"] is MythosCodingRubric
@@ -92,4 +94,3 @@ def test_end_to_end_scoring_bad_trajectory_fails():
 
 
 
-pytestmark = pytest.mark.integration

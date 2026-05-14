@@ -19,12 +19,13 @@ from src.ui.status_hierarchy import (
     StatusTree,
 )
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # src.ui namespace exposes COMMAND_PALETTE_REGISTRY
 # ---------------------------------------------------------------------------
 
+
+pytestmark = pytest.mark.integration
 
 def test_command_palette_registry_accessible_via_src_ui() -> None:
     """COMMAND_PALETTE_REGISTRY must be importable from src.ui."""

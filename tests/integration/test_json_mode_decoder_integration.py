@@ -13,6 +13,8 @@ from src.inference import (
 )
 
 
+pytestmark = pytest.mark.integration
+
 def test_exports_exposed_on_package() -> None:
     assert hasattr(inference, "JSONMaskBuilder")
     assert hasattr(inference, "JSONDecoderState")
@@ -62,4 +64,3 @@ def test_prefix_validity_helper() -> None:
 
 
 
-pytestmark = pytest.mark.integration

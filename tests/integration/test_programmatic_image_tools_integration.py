@@ -18,6 +18,7 @@ from src.data.programmatic_image_tools import (
 )
 
 
+
 pytestmark = pytest.mark.integration
 
 def test_full_pipeline_two_blobs():

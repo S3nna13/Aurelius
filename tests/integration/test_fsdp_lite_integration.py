@@ -10,6 +10,8 @@ from src.training import FSDPLite, ShardSpec
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_exposed_via_src_training():
     assert hasattr(training_pkg, "FSDPLite")
     assert hasattr(training_pkg, "ShardSpec")
@@ -42,4 +44,3 @@ def test_train_step_on_tiny_mlp():
 
 
 
-pytestmark = pytest.mark.integration

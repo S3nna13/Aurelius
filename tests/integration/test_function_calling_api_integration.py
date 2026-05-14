@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 
+pytestmark = pytest.mark.integration
+
 def test_function_calling_api_registered_in_api_shape_registry():
     from src.serving import API_SHAPE_REGISTRY, FunctionCallValidator
 
@@ -73,4 +75,3 @@ def test_end_to_end_happy_path_via_registry():
 
 
 
-pytestmark = pytest.mark.integration

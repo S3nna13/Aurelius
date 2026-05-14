@@ -6,6 +6,8 @@ from src.model import MIGRATION_REGISTRY, AureliusConfig, CheckpointMigrator
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_checkpoint_migrator_exported_from_model_package() -> None:
     assert CheckpointMigrator is not None
     migrator = CheckpointMigrator()
@@ -38,4 +40,3 @@ def test_end_to_end_migration_through_public_api() -> None:
 
 
 
-pytestmark = pytest.mark.integration

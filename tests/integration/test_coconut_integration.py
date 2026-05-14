@@ -15,12 +15,13 @@ from src.inference import DECODER_REGISTRY
 from src.inference.coconut import CoCoNut, CoCoNutConfig
 
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Integration test
 # ---------------------------------------------------------------------------
 
+
+pytestmark = pytest.mark.integration
 
 def test_coconut_integration():
     # -----------------------------------------------------------------------

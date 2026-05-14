@@ -26,12 +26,13 @@ from src.model.config import AureliusConfig
 from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Registry presence
 # ---------------------------------------------------------------------------
 
+
+pytestmark = pytest.mark.integration
 
 def test_prior_registry_entries_intact():
     reg = eval_pkg.METRIC_REGISTRY

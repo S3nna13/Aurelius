@@ -16,12 +16,13 @@ from agent import AGENT_LOOP_REGISTRY
 from agent.agent_swarm import SubAgentResult
 
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
 
+
+pytestmark = pytest.mark.integration
 
 def test_agent_swarm_in_registry():
     """'agent_swarm' must be a key in AGENT_LOOP_REGISTRY."""

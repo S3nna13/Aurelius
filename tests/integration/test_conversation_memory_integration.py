@@ -8,6 +8,8 @@ from src.retrieval.bm25_retriever import BM25Retriever
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_public_symbols_exposed():
     for name in ("ConversationMemory", "Fact", "InMemoryStore", "JSONFileStore"):
         assert hasattr(chat_pkg, name), f"{name} missing from src.chat"
@@ -84,4 +86,3 @@ def test_fact_and_inmemory_store_via_surface():
 
 
 
-pytestmark = pytest.mark.integration

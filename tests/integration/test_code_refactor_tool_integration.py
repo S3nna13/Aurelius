@@ -9,6 +9,8 @@ from agent import CodeRefactorTool, RefactorResult
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_exposed_via_src_agent() -> None:
     # Additive export present.
     assert "CodeRefactorTool" in agent_pkg.__all__
@@ -66,4 +68,3 @@ def test_rename_and_remove_unused_roundtrip(tmp_path: pathlib.Path) -> None:
 
 
 
-pytestmark = pytest.mark.integration

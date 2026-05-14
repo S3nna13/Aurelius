@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 
+pytestmark = pytest.mark.integration
+
 def test_budget_bounded_registered():
     import agent as agent
 
@@ -39,4 +41,3 @@ def test_smoke_run_with_flag_agnostic():
 
 
 
-pytestmark = pytest.mark.integration

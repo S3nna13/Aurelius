@@ -7,6 +7,8 @@ import json
 import pytest
 
 
+pytestmark = pytest.mark.integration
+
 def test_task_decomposer_exposed_on_agent_surface():
     import agent as agent
 
@@ -88,4 +90,3 @@ def test_end_to_end_cycle_rejected():
 
 
 
-pytestmark = pytest.mark.integration

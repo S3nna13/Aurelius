@@ -9,6 +9,8 @@ from src.interpretability import DictionaryLearner, DictionaryResult
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_exposed_at_package_level() -> None:
     assert hasattr(interp, "DictionaryLearner")
     assert hasattr(interp, "DictionaryResult")
@@ -56,4 +58,3 @@ def test_small_end_to_end_pipeline() -> None:
 
 
 
-pytestmark = pytest.mark.integration

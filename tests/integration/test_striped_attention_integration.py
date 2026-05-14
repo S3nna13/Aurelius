@@ -20,11 +20,12 @@ from src.model import MODEL_COMPONENT_REGISTRY
 from src.model.striped_attention import StripedAttention, StripedAttentionConfig
 
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Integration config (tiny, matches spec)
 # ---------------------------------------------------------------------------
+
+pytestmark = pytest.mark.integration
 
 D_MODEL = 64
 N_HEADS = 4

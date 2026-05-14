@@ -13,6 +13,8 @@ from src.model.manifest import (
 )
 
 
+pytestmark = pytest.mark.integration
+
 def test_registry_exported_from_package():
     assert hasattr(model_pkg, "MODEL_MANIFEST_REGISTRY")
     assert model_pkg.MODEL_MANIFEST_REGISTRY is MODEL_MANIFEST_REGISTRY
@@ -43,4 +45,3 @@ def test_reference_is_registered_under_canonical_key():
 
 
 
-pytestmark = pytest.mark.integration

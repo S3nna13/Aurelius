@@ -16,6 +16,8 @@ from src.eval.tree_of_attacks_probe import (
 )
 
 
+pytestmark = pytest.mark.integration
+
 def test_tap_registered_under_eval_registries():
     assert "tree_of_attacks_probe" in METRIC_REGISTRY
     assert "tree_of_attacks_probe" in BENCHMARK_REGISTRY
@@ -52,4 +54,3 @@ def test_small_probe_against_stubs_returns_tapresult():
 
 
 
-pytestmark = pytest.mark.integration

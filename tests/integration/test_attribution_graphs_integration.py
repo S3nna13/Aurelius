@@ -8,6 +8,8 @@ import torch.nn as nn
 import src.interpretability as interp
 
 
+pytestmark = pytest.mark.integration
+
 def test_exposed_via_package():
     for name in (
         "AttributionNode",
@@ -43,4 +45,3 @@ def test_existing_interp_entries_intact():
 
 
 
-pytestmark = pytest.mark.integration

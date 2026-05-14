@@ -13,6 +13,8 @@ from src.eval import (
 )
 
 
+pytestmark = pytest.mark.integration
+
 def test_package_level_imports_work():
     # Also confirm a few collateral symbols re-exported correctly.
     assert callable(multi_needle_build_sample)
@@ -71,4 +73,3 @@ def test_three_seeds_produce_pairwise_distinct_prompts():
 
 
 
-pytestmark = pytest.mark.integration

@@ -9,6 +9,8 @@ import src.model as model_pkg
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_matryoshka_embedding_exported_from_model_package() -> None:
     assert hasattr(model_pkg, "MatryoshkaConfig")
     assert hasattr(model_pkg, "MatryoshkaEmbedding")
@@ -30,4 +32,3 @@ def test_src_namespace_exposes_public_subpackages() -> None:
 
 
 
-pytestmark = pytest.mark.integration

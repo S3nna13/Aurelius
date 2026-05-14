@@ -13,6 +13,7 @@ import torch
 
 from src.alignment.zero_vision_sft import ZeroVisionSFTConfig, ZeroVisionSFTTrainer
 
+
 pytestmark = pytest.mark.integration
 
 VOCAB = 256

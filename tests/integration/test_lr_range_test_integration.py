@@ -10,6 +10,8 @@ from src.training import LRRangeTest, LRRangeTestResult
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_exposed_via_src_training() -> None:
     assert hasattr(training, "LRRangeTest")
     assert hasattr(training, "LRRangeTestResult")
@@ -67,4 +69,3 @@ def test_tiny_nn_linear_train_step_fn() -> None:
 
 
 
-pytestmark = pytest.mark.integration

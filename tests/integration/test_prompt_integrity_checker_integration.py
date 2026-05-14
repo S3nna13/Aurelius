@@ -7,6 +7,8 @@ from src.safety import SAFETY_FILTER_REGISTRY
 from src.safety.prompt_integrity_checker import PromptIntegrityChecker
 
 
+pytestmark = pytest.mark.integration
+
 BASELINE = "You are Aurelius. Obey tool protocol."
 
 
@@ -49,4 +51,3 @@ def test_end_to_end_round_trip_via_registry() -> None:
 
 
 
-pytestmark = pytest.mark.integration

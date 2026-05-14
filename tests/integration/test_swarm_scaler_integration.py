@@ -20,6 +20,7 @@ from agent.swarm_scaler import SwarmScaler, SwarmScalerConfig, WorkerStats
 
 
 
+
 pytestmark = pytest.mark.integration
 
 def _worker_fn(payload: dict) -> dict:

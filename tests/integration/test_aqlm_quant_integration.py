@@ -9,12 +9,13 @@ from src.model.aqlm_quant import AQLMConfig, AQLMLinear
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_aqlm_integration_end_to_end():
     """Full integration: init -> quantize -> forward -> backward -> checks."""
 
 
 
-pytestmark = pytest.mark.integration
 
     # --- Build layer ---
     cfg = AQLMConfig(

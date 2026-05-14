@@ -10,6 +10,8 @@ from src.optimizers import Mars
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_mars_exposed_via_package():
     assert hasattr(optimizers, "Mars")
     assert optimizers.Mars is Mars
@@ -48,4 +50,3 @@ def test_train_tiny_mlp_loss_decreases():
 
 
 
-pytestmark = pytest.mark.integration

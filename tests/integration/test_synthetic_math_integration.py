@@ -16,6 +16,7 @@ from src.data.synthetic_math import (
 )
 
 
+
 pytestmark = pytest.mark.integration
 
 def test_registry_wired():

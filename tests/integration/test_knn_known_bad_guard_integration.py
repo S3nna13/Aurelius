@@ -8,6 +8,8 @@ from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_registry():
     assert safety.SAFETY_FILTER_REGISTRY["knn_known_bad_guard"] is safety.KnnKnownBadGuard
 
@@ -43,4 +45,3 @@ def test_smoke_check():
 
 
 
-pytestmark = pytest.mark.integration

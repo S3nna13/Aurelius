@@ -25,11 +25,12 @@ from src.alignment.spin_trainer import (
     SPINTrainer,
 )
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Tiny causal LM
 # ---------------------------------------------------------------------------
+
+pytestmark = pytest.mark.integration
 
 VOCAB = 256
 D_MODEL = 64

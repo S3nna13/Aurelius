@@ -11,6 +11,8 @@ from src import retrieval
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_embedding_registry_has_dense() -> None:
     assert "dense" in retrieval.EMBEDDING_REGISTRY
     assert retrieval.EMBEDDING_REGISTRY["dense"] is retrieval.DenseEmbedder
@@ -93,4 +95,3 @@ def test_hermetic_import_does_not_pull_src_model() -> None:
 
 
 
-pytestmark = pytest.mark.integration

@@ -15,12 +15,13 @@ from src.chat import CHAT_TEMPLATE_REGISTRY
 from src.chat.harmony_template import HarmonyTemplate
 
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # 1. Registry contains "harmony"
 # ---------------------------------------------------------------------------
 
+
+pytestmark = pytest.mark.integration
 
 def test_harmony_key_in_registry() -> None:
     assert "harmony" in CHAT_TEMPLATE_REGISTRY, (

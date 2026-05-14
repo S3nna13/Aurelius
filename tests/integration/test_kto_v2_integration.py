@@ -5,6 +5,8 @@ from __future__ import annotations
 import torch
 
 
+pytestmark = pytest.mark.integration
+
 def test_exposed_via_src_alignment():
     import src.alignment as A
 
@@ -26,7 +28,6 @@ def test_end_to_end_tiny_batch_training_step():
 
 
 
-pytestmark = pytest.mark.integration
 
     torch.manual_seed(0)
     # Tiny "policy": a single learnable bias applied to fixed reference logprobs.

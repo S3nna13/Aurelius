@@ -6,6 +6,8 @@ from typing import Any
 
 
 
+pytestmark = pytest.mark.integration
+
 class TestAuth:
     URL = "/api/auth"
 
@@ -63,4 +65,3 @@ class TestAuth:
 
 
 
-pytestmark = pytest.mark.integration

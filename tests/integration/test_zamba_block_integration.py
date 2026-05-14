@@ -18,11 +18,12 @@ from src.model import MODEL_COMPONENT_REGISTRY
 from src.model.zamba_block import ZambaBlock, ZambaConfig, ZambaSharedAttention
 
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Shared setup
 # ---------------------------------------------------------------------------
+
+pytestmark = pytest.mark.integration
 
 D_MODEL = 64
 N_HEADS = 4

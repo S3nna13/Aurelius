@@ -14,6 +14,8 @@ from src.model import (
 )
 
 
+pytestmark = pytest.mark.integration
+
 def test_router_symbols_exported_from_model_package() -> None:
     for name in (
         "ReleaseTrackRouter",
@@ -60,4 +62,3 @@ def test_resolve_by_variant_id_through_package_registry() -> None:
 
 
 
-pytestmark = pytest.mark.integration

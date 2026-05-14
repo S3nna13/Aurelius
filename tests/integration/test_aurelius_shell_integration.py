@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 
 
+pytestmark = pytest.mark.integration
+
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
@@ -93,4 +95,3 @@ def test_shell_capability_and_journal_commands_are_reachable_from_execute_comman
 
 
 
-pytestmark = pytest.mark.integration

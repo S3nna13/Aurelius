@@ -11,6 +11,8 @@ import src.longcontext as lc
 from src.longcontext.compressive_transformer import CompressiveMemory
 
 
+pytestmark = pytest.mark.integration
+
 def test_registry_has_compressive_memory_entry():
     assert "compressive_memory" in lc.LONGCONTEXT_STRATEGY_REGISTRY
     assert lc.LONGCONTEXT_STRATEGY_REGISTRY["compressive_memory"] is CompressiveMemory
@@ -84,4 +86,3 @@ def test_importing_longcontext_does_not_import_model():
 
 
 
-pytestmark = pytest.mark.integration

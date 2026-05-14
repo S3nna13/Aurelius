@@ -6,6 +6,8 @@ from src import eval as ev
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_metric_registry_has_ifeval() -> None:
     assert "ifeval" in ev.METRIC_REGISTRY
 
@@ -43,4 +45,3 @@ def test_end_to_end_single_problem_two_constraints() -> None:
 
 
 
-pytestmark = pytest.mark.integration

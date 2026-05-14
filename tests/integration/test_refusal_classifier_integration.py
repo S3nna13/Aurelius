@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 
+pytestmark = pytest.mark.integration
+
 def test_registry_contains_refusal_entry() -> None:
     import src.safety as safety
 
@@ -77,4 +79,3 @@ def test_refusal_score_has_expected_fields() -> None:
 
 
 
-pytestmark = pytest.mark.integration

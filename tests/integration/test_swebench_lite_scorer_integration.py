@@ -8,6 +8,8 @@ import textwrap
 from src import eval as eval_pkg
 
 
+pytestmark = pytest.mark.integration
+
 def test_metric_registry_has_swebench_lite() -> None:
     assert "swebench_lite" in eval_pkg.METRIC_REGISTRY
 
@@ -35,7 +37,6 @@ def test_end_to_end_single_synthetic_problem() -> None:
 
 
 
-pytestmark = pytest.mark.integration
 
         def test_add():
             assert add(2, 3) == 5

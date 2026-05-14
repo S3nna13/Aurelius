@@ -8,6 +8,8 @@ import src.agent as agent
 
 
 
+pytestmark = pytest.mark.integration
+
 def _mkfile(root, rel, content):
     path = os.path.join(str(root), rel)
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -54,4 +56,3 @@ def test_pack_toy_repo_three_py_files(tmp_path):
 
 
 
-pytestmark = pytest.mark.integration

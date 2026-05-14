@@ -7,6 +7,8 @@ import torch
 import src.training as training
 
 
+pytestmark = pytest.mark.integration
+
 def test_auxiliary_loss_registry():
     assert hasattr(training, "AUXILIARY_LOSS_REGISTRY")
     assert (
@@ -33,4 +35,3 @@ def test_smoke_forward():
 
 
 
-pytestmark = pytest.mark.integration

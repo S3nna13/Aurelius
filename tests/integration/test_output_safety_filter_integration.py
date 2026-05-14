@@ -16,6 +16,8 @@ from src.safety import (
 )
 
 
+pytestmark = pytest.mark.integration
+
 def test_registry_contains_output_filter() -> None:
     assert "output_filter" in SAFETY_FILTER_REGISTRY
     assert SAFETY_FILTER_REGISTRY["output_filter"] is OutputSafetyFilter
@@ -70,4 +72,3 @@ def test_end_to_end_chunked_stream() -> None:
 
 
 
-pytestmark = pytest.mark.integration

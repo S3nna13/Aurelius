@@ -16,12 +16,13 @@ import torch
 from src.alignment import ALIGNMENT_REGISTRY
 from src.alignment.grm import DIMENSIONS, GenerativeRewardModel
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # 1. "grm" in ALIGNMENT_REGISTRY
 # ---------------------------------------------------------------------------
 
+
+pytestmark = pytest.mark.integration
 
 def test_grm_key_in_registry():
     assert "grm" in ALIGNMENT_REGISTRY, (

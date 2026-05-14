@@ -8,12 +8,13 @@ from __future__ import annotations
 
 
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # 1. "dp_aware_moe_routing" present in MODEL_COMPONENT_REGISTRY
 # ---------------------------------------------------------------------------
 
+
+pytestmark = pytest.mark.integration
 
 def test_dp_aware_moe_routing_in_registry():
     from src.model import MODEL_COMPONENT_REGISTRY

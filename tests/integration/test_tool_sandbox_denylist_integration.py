@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 
+pytestmark = pytest.mark.integration
+
 def test_tool_guard_registry_registered():
     import agent as agent
 
@@ -42,4 +44,3 @@ def test_smoke_guard_blocks_dangerous_call():
 
 
 
-pytestmark = pytest.mark.integration

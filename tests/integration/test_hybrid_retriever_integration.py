@@ -6,6 +6,8 @@ from src.retrieval import RETRIEVER_REGISTRY, BM25Retriever, HybridRetriever
 
 
 
+pytestmark = pytest.mark.integration
+
 def _embed(text: str) -> list[float]:
     t = text.lower()
     return [float(t.count(c)) for c in "abcdefghij"]
@@ -81,4 +83,3 @@ def test_sparse_only_hybrid_matches_plain_bm25_end_to_end():
 
 
 
-pytestmark = pytest.mark.integration

@@ -22,12 +22,13 @@ from src.eval.tool_bench import (
     ToolCall,
 )
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers
 # ---------------------------------------------------------------------------
 
+
+pytestmark = pytest.mark.integration
 
 def _tc(name: str, **params) -> ToolCall:
     return ToolCall(tool_name=name, parameters=dict(params))

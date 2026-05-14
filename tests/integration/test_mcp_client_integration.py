@@ -25,12 +25,13 @@ from agent.mcp_client import MCP_PROTOCOL_VERSION
 
 
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # stub server: a toy MCP server exposing a calculator tool, a readme
 # resource, and a greet prompt. JSON-RPC over Python call.
 # ---------------------------------------------------------------------------
+pytestmark = pytest.mark.integration
+
 class StubMCPServer:
     def __init__(self) -> None:
         self.initialized = False

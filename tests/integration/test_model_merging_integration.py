@@ -19,6 +19,8 @@ from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_merging_registry_contains_all_strategies() -> None:
     assert set(MERGING_REGISTRY.keys()) >= {"linear", "slerp", "ties", "dare"}
     assert MERGING_REGISTRY["linear"] is linear_merge
@@ -58,4 +60,3 @@ def test_end_to_end_linear_via_modelmerger() -> None:
 
 
 
-pytestmark = pytest.mark.integration

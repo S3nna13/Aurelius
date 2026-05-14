@@ -13,6 +13,7 @@ from agent import ShellCommand, ShellCommandPlanner, ShellPlan
 
 
 
+
 pytestmark = pytest.mark.integration
 
 def test_exposed_via_agent_surface() -> None:

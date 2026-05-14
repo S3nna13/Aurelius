@@ -11,6 +11,8 @@ from src.alignment.adversarial_code_battle import (
 from src.model.config import AureliusConfig
 
 
+pytestmark = pytest.mark.integration
+
 _EV_CALL = "ev" + "al(user_input)"
 _SHELL_TRUE = "she" + "ll=T" + "rue"
 
@@ -74,4 +76,3 @@ def test_two_round_battle_generates_preference_pairs() -> None:
 
 
 
-pytestmark = pytest.mark.integration

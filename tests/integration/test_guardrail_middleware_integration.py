@@ -19,6 +19,7 @@ from src.serving import (
     MiddlewareDecision,
 )
 
+
 pytestmark = pytest.mark.integration
 
 PRIOR_PUBLIC_NAMES = [

@@ -13,6 +13,8 @@ from agent import (
 )
 
 
+pytestmark = pytest.mark.integration
+
 def test_symbols_exposed_on_surface() -> None:
     for name in (
         "ToolRegistryDispatcher",
@@ -98,4 +100,3 @@ def test_end_to_end_echo_and_add() -> None:
 
 
 
-pytestmark = pytest.mark.integration

@@ -27,12 +27,13 @@ from src.training.swe_rl import (
     SWETask,
 )
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
+pytestmark = pytest.mark.integration
 
 @pytest.fixture
 def trainer() -> SWERLTrainer:

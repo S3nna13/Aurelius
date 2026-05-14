@@ -10,6 +10,8 @@ from src.model import AureliusConfig
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_head_registry_exported_from_model_package() -> None:
     assert hasattr(model_pkg, "HEAD_REGISTRY")
     assert hasattr(model_pkg, "build_head")
@@ -43,4 +45,3 @@ def test_build_head_end_to_end() -> None:
 
 
 
-pytestmark = pytest.mark.integration

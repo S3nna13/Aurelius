@@ -16,12 +16,13 @@ from src.eval import BENCHMARK_REGISTRY
 from src.eval.vision_grounding_eval import VisionGroundingEval, VisionGroundingEvalConfig
 
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Integration test
 # ---------------------------------------------------------------------------
 
+
+pytestmark = pytest.mark.integration
 
 def test_vision_grounding_eval_end_to_end() -> None:
     """Full pipeline: construct evaluator, run evaluate(), check output."""

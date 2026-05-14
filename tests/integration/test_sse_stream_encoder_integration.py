@@ -5,6 +5,8 @@ from __future__ import annotations
 import src.serving as serving
 
 
+pytestmark = pytest.mark.integration
+
 def test_stream_handler_registry():
     assert hasattr(serving, "STREAM_HANDLER_REGISTRY")
     assert serving.STREAM_HANDLER_REGISTRY["sse"] is serving.SSEStreamEncoder
@@ -27,4 +29,3 @@ def test_smoke_encode():
 
 
 
-pytestmark = pytest.mark.integration

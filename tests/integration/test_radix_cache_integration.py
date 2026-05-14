@@ -21,11 +21,12 @@ from src.inference.radix_cache import (
     RadixCacheConfig,
 )
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+pytestmark = pytest.mark.integration
 
 COMMON_PREFIX = [1, 2, 3, 4]
 

@@ -9,6 +9,8 @@ from src.security.soc_pipeline import DEFAULT_SOC_PIPELINE, SOCPipeline
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_soc_pipeline_registered_in_defensive_registry():
     assert "default" in DEFENSIVE_PIPELINE_REGISTRY
     assert isinstance(DEFENSIVE_PIPELINE_REGISTRY["default"], SOCPipeline)
@@ -51,4 +53,3 @@ def test_feature_flag_off_preserves_default_construction():
 
 
 
-pytestmark = pytest.mark.integration

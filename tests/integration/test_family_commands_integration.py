@@ -9,6 +9,8 @@ import json
 from src.cli import family_commands as fc
 
 
+pytestmark = pytest.mark.integration
+
 def test_build_family_parser_attaches_subparsers():
     parser = argparse.ArgumentParser(prog="aurelius")
     sub = parser.add_subparsers(dest="command")
@@ -78,7 +80,6 @@ def test_main_cli_still_starts_with_help():
 
 
 
-pytestmark = pytest.mark.integration
 
     parser = cli_main._build_parser()
     # Should still have the pre-existing commands at minimum.

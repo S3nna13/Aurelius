@@ -12,6 +12,8 @@ from src.safety import (
 )
 
 
+pytestmark = pytest.mark.integration
+
 def test_registry_contains_reward_hack_detector() -> None:
     assert "reward_hack_detector" in SAFETY_FILTER_REGISTRY
     assert SAFETY_FILTER_REGISTRY["reward_hack_detector"] is RewardHackDetector
@@ -98,4 +100,3 @@ def test_detector_no_op_when_flag_off() -> None:
 
 
 
-pytestmark = pytest.mark.integration

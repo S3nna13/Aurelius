@@ -13,12 +13,13 @@ from __future__ import annotations
 
 import torch
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # 1. Registry membership
 # ---------------------------------------------------------------------------
 
+
+pytestmark = pytest.mark.integration
 
 def test_mtp_shared_in_registry():
     from src.model import MODEL_COMPONENT_REGISTRY

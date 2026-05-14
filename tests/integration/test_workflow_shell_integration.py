@@ -10,6 +10,8 @@ from src.model import AureliusInterfaceFramework
 
 
 
+pytestmark = pytest.mark.integration
+
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
@@ -124,4 +126,3 @@ def test_workflow_shell_completes_and_blocks_with_json_safe_round_trips(tmp_path
 
 
 
-pytestmark = pytest.mark.integration

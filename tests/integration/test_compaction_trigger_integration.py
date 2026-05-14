@@ -12,6 +12,8 @@ from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_compaction_trigger_registered():
     assert "compaction_trigger" in LONGCONTEXT_STRATEGY_REGISTRY
     assert LONGCONTEXT_STRATEGY_REGISTRY["compaction_trigger"] is CompactionTriggerManager
@@ -43,4 +45,3 @@ def test_feature_flag_off_preserves_default_behavior():
 
 
 
-pytestmark = pytest.mark.integration

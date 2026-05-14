@@ -14,12 +14,13 @@ from src.eval.webarena_scorer import (
     WebArenaScorer,
 )
 
-pytestmark = pytest.mark.integration
 
 # ---------------------------------------------------------------------------
 # WebArena scorer integration
 # ---------------------------------------------------------------------------
 
+
+pytestmark = pytest.mark.integration
 
 def test_webarena_scorer() -> None:
     """Score 3 results against WEBARENA_TASK_REGISTRY tasks and verify metrics structure."""

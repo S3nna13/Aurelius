@@ -7,6 +7,8 @@ from src.eval.mmlu_scorer import MMLUProblem, MMLUScorer
 
 
 
+pytestmark = pytest.mark.integration
+
 def test_prior_registry_entries_intact():
     reg = eval_pkg.METRIC_REGISTRY
     for key in (
@@ -94,4 +96,3 @@ def test_end_to_end_three_problem_scoring():
 
 
 
-pytestmark = pytest.mark.integration
