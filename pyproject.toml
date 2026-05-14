@@ -12,7 +12,7 @@ dependencies = [
     "numpy>=1.26.0",
     "torchao>=0.3.0",
     "liger-kernel>=0.5.0",
-    "sageattention>=2.0.0",
+    "sageattention>=1.0.6",
     "datasets>=2.19.0",
 ]
 # pip>=26.1 required at environment level for CVE-2026-3219
