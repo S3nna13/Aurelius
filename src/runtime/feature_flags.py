@@ -113,11 +113,7 @@ class FeatureFlagRegistry:
                 name=name,
                 enabled=bool(cfg.get("enabled", False)),
                 rollout_pct=float(cfg.get("rollout_pct", 100.0)),
-                metadata={
-                    k: v
-                    for k, v in cfg.items()
-                    if k not in {"enabled", "rollout_pct"}
-                },
+                metadata={k: v for k, v in cfg.items() if k not in {"enabled", "rollout_pct"}},
             )
 
     def _env_override(self, name: str) -> bool | None:
@@ -142,9 +138,7 @@ class FeatureFlagRegistry:
 
     # -- public query / mutation API -----------------------------------------
 
-    def is_enabled(
-        self, name_or_flag: str | RuntimeFlag, user_id: str | None = None
-    ) -> bool:
+    def is_enabled(self, name_or_flag: str | RuntimeFlag, user_id: str | None = None) -> bool:
         """Check whether a feature flag is enabled.
 
         Accepts either a ``RuntimeFlag`` enum member (runtime-flag path) or a

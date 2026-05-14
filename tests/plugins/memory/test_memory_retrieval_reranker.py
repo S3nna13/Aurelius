@@ -83,7 +83,7 @@ class TestMemoryRetrievalReranker:
         reranker = MemoryRetrievalReranker(strategy=RerankStrategy.HYBRID)
         items = [
             MemoryItem("old_high", score=1.0, timestamp=0.0),  # max score, min time
-            MemoryItem("new_low", score=0.0, timestamp=1.0),   # min score, max time
+            MemoryItem("new_low", score=0.0, timestamp=1.0),  # min score, max time
         ]
         result = reranker.rerank(items)
         # Both get equal hybrid score of 0.5 — stable sort may pick either, just verify they're both there

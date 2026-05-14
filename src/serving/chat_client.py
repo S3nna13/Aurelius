@@ -244,6 +244,7 @@ def interactive_session(client: ChatClient, *, stream: bool = True) -> None:
 if __name__ == "__main__":
     import argparse
     import logging
+
     logger = logging.getLogger(__name__)
 
     parser = argparse.ArgumentParser(description="Aurelius Chat Client")

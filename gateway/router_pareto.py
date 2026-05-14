@@ -11,42 +11,44 @@ Key idea:
   or constraint-based (budget/latency) point.
 """
 
+import logging
 import time
 from collections import deque
 from dataclasses import dataclass
 
 import numpy as np
-import logging
-logger = logging.getLogger(__name__)
 
+logger = logging.getLogger(__name__)
 
 
 @dataclass
 class BackendConfig:
     """Static configuration for a backend."""
-    name: str                                          # e.g. "local", "step", "claude"
-    label: str                                         # display name
-    cost_per_1k_tokens: float                          # USD per 1K output tokens
-    latency_per_token_ms: float                        # estimated per-token latency
-    quality: float                                     # estimated quality score [0-1]
-    priority: int = 1                                  # lower = higher priority
-    max_context: int = 32768                            # max context tokens supported
+
+    name: str  # e.g. "local", "step", "claude"
+    label: str  # display name
+    cost_per_1k_tokens: float  # USD per 1K output tokens
+    latency_per_token_ms: float  # estimated per-token latency
+    quality: float  # estimated quality score [0-1]
+    priority: int = 1  # lower = higher priority
+    max_context: int = 32768  # max context tokens supported
     # Runtime estimates updated by ParetoRouter based on history
     empirical_multiplier_cost: float = 1.0
     empirical_multiplier_latency: float = 1.0
-    empirical_quality_delta: float = 0.0                # quality adjustment from baseline
+    empirical_quality_delta: float = 0.0  # quality adjustment from baseline
 
 
 @dataclass
 class Request:
     """Incoming request properties for routing decision."""
+
     prompt: str
     max_tokens: int = 512
-    context_len: int = 0                                 # actual prompt length
-    task_type: str = "chat"                              # chat | code | reasoning | creative
-    quality_requirement: float = 0.80                    # min quality [0-1]
-    latency_requirement_ms: int | None = None         # max allowed latency
-    budget_per_1k_tokens: float | None = None         # max cost willing to pay
+    context_len: int = 0  # actual prompt length
+    task_type: str = "chat"  # chat | code | reasoning | creative
+    quality_requirement: float = 0.80  # min quality [0-1]
+    latency_requirement_ms: int | None = None  # max allowed latency
+    budget_per_1k_tokens: float | None = None  # max cost willing to pay
 
 
 @dataclass
@@ -115,7 +117,10 @@ class ParetoFrontierRouter:
             # Apply constraints
             if estimate.estimated_quality < req.quality_requirement:
                 continue
-            if req.latency_requirement_ms and estimate.estimated_latency_ms > req.latency_requirement_ms:
+            if (
+                req.latency_requirement_ms
+                and estimate.estimated_latency_ms > req.latency_requirement_ms
+            ):
                 continue
             if req.budget_per_1k_tokens and estimate.estimated_cost > req.budget_per_1k_tokens:
                 continue
@@ -125,8 +130,10 @@ class ParetoFrontierRouter:
         if not candidates:
             # No backend meets constraints — pick least-worst quality
             # but warn
-            print(f"[WARN] No backend meets constraints for {req.task_type} task; "
-                  f"falling back to highest-quality available")
+            print(
+                f"[WARN] No backend meets constraints for {req.task_type} task; "
+                f"falling back to highest-quality available"
+            )
             # Re-evaluate without quality constraint
             candidates = [
                 self._estimate(b, req)
@@ -150,13 +157,15 @@ class ParetoFrontierRouter:
 
     def record(self, backend_name: str, cost: float, latency_ms: float, quality: float):
         """Record actual outcome for empirical tuning."""
-        self.history.append({
-            "backend": backend_name,
-            "cost": cost,
-            "latency_ms": latency_ms,
-            "quality": quality,
-            "ts": time.time(),
-        })
+        self.history.append(
+            {
+                "backend": backend_name,
+                "cost": cost,
+                "latency_ms": latency_ms,
+                "quality": quality,
+                "ts": time.time(),
+            }
+        )
 
         # Trigger frontier recompute if enough new data
         if len(self.history) % self._frontier_update_interval == 0:
@@ -176,7 +185,8 @@ class ParetoFrontierRouter:
         # Cost = tokens × base_cost × empirical_multiplier
         cost = (
             req.max_tokens
-            * backend.cost_per_1k_tokens / 1000
+            * backend.cost_per_1k_tokens
+            / 1000
             * backend.empirical_multiplier_cost
             * ctx_factor
         )
@@ -209,7 +219,9 @@ class ParetoFrontierRouter:
             reason="baseline",
         )
 
-    def _select_pareto_optimal(self, candidates: list[RoutingDecision], req: Request) -> RoutingDecision:
+    def _select_pareto_optimal(
+        self, candidates: list[RoutingDecision], req: Request
+    ) -> RoutingDecision:
         """
         Choose point on Pareto frontier.
 
@@ -240,7 +252,9 @@ class ParetoFrontierRouter:
         # Latency constraint enforcement
         if req.latency_requirement_ms:
             # Filter to those meeting latency
-            latency_ok = [c for c in candidates if c.estimated_latency_ms <= req.latency_requirement_ms]
+            latency_ok = [
+                c for c in candidates if c.estimated_latency_ms <= req.latency_requirement_ms
+            ]
             if latency_ok:
                 # Choose highest quality among latency-ok
                 best = max(latency_ok, key=lambda c: c.estimated_quality)
@@ -318,19 +332,29 @@ class ParetoFrontierRouter:
                     continue
 
                 # Does other dominate b?
-                if (o_est.estimated_cost <= b_est.estimated_cost and
-                    o_est.estimated_latency_ms <= b_est.estimated_latency_ms and
-                    o_est.estimated_quality >= b_est.estimated_quality):
-                    if (o_est.estimated_cost < b_est.estimated_cost or
-                        o_est.estimated_latency_ms < b_est.estimated_latency_ms or
-                        o_est.estimated_quality > b_est.estimated_quality):
+                if (
+                    o_est.estimated_cost <= b_est.estimated_cost
+                    and o_est.estimated_latency_ms <= b_est.estimated_latency_ms
+                    and o_est.estimated_quality >= b_est.estimated_quality
+                ):
+                    if (
+                        o_est.estimated_cost < b_est.estimated_cost
+                        or o_est.estimated_latency_ms < b_est.estimated_latency_ms
+                        or o_est.estimated_quality > b_est.estimated_quality
+                    ):
                         dominated = True
                         break
             if not dominated:
                 frontier.append(b)
 
         # Sort by cost ascending
-        frontier.sort(key=lambda b: self._estimate(b, dummy_req).estimated_cost if self._estimate(b, dummy_req) else float('inf'))
+        frontier.sort(
+            key=lambda b: (
+                self._estimate(b, dummy_req).estimated_cost
+                if self._estimate(b, dummy_req)
+                else float("inf")
+            )
+        )
         return frontier
 
     def get_frontier_report(self) -> str:
@@ -341,7 +365,7 @@ class ParetoFrontierRouter:
             est = self._estimate(backend, dummy_req)
             if est:
                 lines.append(
-                    f"{i+1}. {backend.name:12s} "
+                    f"{i + 1}. {backend.name:12s} "
                     f"cost=${est.estimated_cost:.4f} "
                     f"lat={est.estimated_latency_ms:.0f}ms "
                     f"qual={est.estimated_quality:.3f}"
@@ -350,6 +374,7 @@ class ParetoFrontierRouter:
 
 
 # ─── FACTORY: DEFAULT BACKENDS ─────────────────────────────────────────────────
+
 
 def default_backends() -> list[BackendConfig]:
     """
@@ -361,7 +386,7 @@ def default_backends() -> list[BackendConfig]:
             name="local",
             label="Aurelius Local",
             cost_per_1k_tokens=0.0,
-            latency_per_token_ms=5.0,        # 7B @ 4-bit on RTX 4090
+            latency_per_token_ms=5.0,  # 7B @ 4-bit on RTX 4090
             quality=0.92,
             priority=1,
         ),
@@ -415,9 +440,9 @@ if __name__ == "__main__":
     # Record outcome after serving
     router.record(
         backend_name=decision.backend.name,
-        cost=decision.estimated_cost,          # replace with actual billing
-        latency_ms=150.0,                      # replace with actual measured
-        quality=0.93,                          # replace with human/eval score
+        cost=decision.estimated_cost,  # replace with actual billing
+        latency_ms=150.0,  # replace with actual measured
+        quality=0.93,  # replace with human/eval score
     )
 
     print("\n" + router.get_frontier_report())

@@ -93,8 +93,8 @@ class MetricsCollector:
                     "avg": round(sum(latencies) / max(n, 1), 2),
                 },
                 "errors": dict(self._errors),
-            "rate_limit_rejections": self._rate_limit_rejections,
-            "validation_failures": self._validation_failures,
+                "rate_limit_rejections": self._rate_limit_rejections,
+                "validation_failures": self._validation_failures,
             }
 
     def prometheus_text(self) -> str:
@@ -122,7 +122,6 @@ class MetricsCollector:
             "# HELP aurelius_requests_per_second Requests per second",
             "# TYPE aurelius_requests_per_second gauge",
             f"aurelius_requests_per_second {snap['requests_per_second']}",
-
             "",
             "# HELP aurelius_rate_limit_rejected_total Total requests rejected by rate limiter",
             "# TYPE aurelius_rate_limit_rejected_total counter",

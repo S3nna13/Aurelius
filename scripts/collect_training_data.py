@@ -10,6 +10,8 @@ import tempfile
 from pathlib import Path
 
 SYSTEM = "You are Aurelius, a helpful AI assistant."
+
+
 def msg(r, c):
     return {"role": r, "content": c}
 
@@ -106,6 +108,7 @@ def collect(src, tmp, limit=2000):
     print(f"  {hf_id.split('/')[-1]}: +{count}", flush=True)
     return out if count > 0 else None
 
+
 def run_collection_loop(root: Path, rust: Path, desktop: Path) -> None:
     for r in range(1000):
         random.shuffle(SOURCES)
@@ -121,13 +124,22 @@ def run_collection_loop(root: Path, rust: Path, desktop: Path) -> None:
             subprocess.run([str(rust), str(merged), str(desktop), str(out)], capture_output=True)
             shutil.copy2(merged, desktop)
             lines = sum(1 for _ in open(desktop))
-            print(f"  Desktop: {lines} ex, {desktop.stat().st_size / 1024 / 1024:.1f} MB", flush=True)
+            print(
+                f"  Desktop: {lines} ex, {desktop.stat().st_size / 1024 / 1024:.1f} MB", flush=True
+            )
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Collect & convert training data from HuggingFace datasets")
+    parser = argparse.ArgumentParser(
+        description="Collect & convert training data from HuggingFace datasets"
+    )
     parser.add_argument("--root", type=Path, default=Path.cwd(), help="Aurelius project root")
-    parser.add_argument("--output", type=Path, default=Path.home() / "Desktop/Aurelius_Training_Data.jsonl", help="Final merged JSONL output")
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path.home() / "Desktop/Aurelius_Training_Data.jsonl",
+        help="Final merged JSONL output",
+    )
     args = parser.parse_args()
 
     ROOT = args.root.expanduser().resolve()

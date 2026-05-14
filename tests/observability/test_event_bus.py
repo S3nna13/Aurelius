@@ -46,6 +46,7 @@ class TestEventBus:
         ev = bus.publish_typed("bar", {"y": 2}, trace_id="t2")
         assert ev.event_type == "bar"
         import gc
+
         gc.collect()
         assert ev.trace_id == "t2"
         assert len(received) == 1

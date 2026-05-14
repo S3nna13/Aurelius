@@ -69,7 +69,6 @@ class MinPSampling(LogitProcessor):
         return logits
 
 
-
 class TopPLogitsProcessor(LogitProcessor):
     """Nucleus (top-p) filtering: keep tokens comprising the top-p cumulative mass.
 
@@ -115,6 +114,7 @@ class TopPLogitsProcessor(LogitProcessor):
             ),
         )
         return filtered_logits
+
 
 class NoRepeatNGram(LogitProcessor):
     """Block tokens that would create an n-gram already seen in input_ids.

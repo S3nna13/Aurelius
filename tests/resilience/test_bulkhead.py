@@ -40,7 +40,9 @@ class TestBulkheadBasics:
         t2.join()
 
         # one must finish before the other starts
-        assert order.index("end-a") < order.index("start-b") or order.index("end-b") < order.index("start-a")
+        assert order.index("end-a") < order.index("start-b") or order.index("end-b") < order.index(
+            "start-a"
+        )
 
     def test_queue_full_raises(self) -> None:
         bh = Bulkhead(max_concurrent=1, max_queue=0, queue_timeout=0.01)

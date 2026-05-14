@@ -110,4 +110,5 @@ class TestSingleton:
 
     def test_singleton_is_shared_instance(self):
         from plugins.memory.decaying_store import DECAYING_MEMORY as dm
+
         assert dm is DECAYING_MEMORY

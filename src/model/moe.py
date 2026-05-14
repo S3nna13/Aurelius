@@ -207,7 +207,7 @@ class SparseMoELayer(nn.Module):
         B, T, D = x.shape
         router_out = self.router(x)
         # MoERouter returns a RouterOutput
-        dispatch_weights = router_out.router_probs   # (B, T, top_k)
+        dispatch_weights = router_out.router_probs  # (B, T, top_k)
         dispatch_indices = router_out.expert_indices  # (B, T, top_k)
         router_loss = router_out.aux_loss
 

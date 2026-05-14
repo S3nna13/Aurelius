@@ -150,4 +150,3 @@ def make_mmap_dataset(
         raise FileNotFoundError(f"No shards matching {pattern} in {shard_dir}")
     datasets = [MemoryMappedDataset(p, seq_len=seq_len, stride=stride, dtype=dtype) for p in files]
     return torch.utils.data.ConcatDataset(datasets)
-

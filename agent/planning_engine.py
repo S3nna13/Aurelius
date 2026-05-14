@@ -191,15 +191,11 @@ class PlanningEngine:
                 if dep_id == node.id:
                     raise PlanValidationError(f"self-loop detected on node {node.id!r}")
                 if dep_id not in ids:
-                    raise PlanValidationError(
-                        f"node {node.id!r} depends on unknown id {dep_id!r}"
-                    )
+                    raise PlanValidationError(f"node {node.id!r} depends on unknown id {dep_id!r}")
 
         depth = self._max_depth(plan.root)
         if depth > self.max_depth:
-            raise PlanValidationError(
-                f"plan depth {depth} exceeds max_depth={self.max_depth}"
-            )
+            raise PlanValidationError(f"plan depth {depth} exceeds max_depth={self.max_depth}")
 
         # Validate no cycles in the explicit dependency DAG across all nodes.
         self._validate_dependency_dag(nodes)
@@ -219,9 +215,7 @@ class PlanningEngine:
                     dependents[dep].append(n.id)
 
         order: list[TaskNode] = []
-        queue: deque[str] = deque(
-            n.id for n in leaves if indegree[n.id] == 0
-        )
+        queue: deque[str] = deque(n.id for n in leaves if indegree[n.id] == 0)
         while queue:
             tid = queue.popleft()
             order.append(by_id[tid])
@@ -411,9 +405,7 @@ class PlanExecutor:
                         try:
                             fallback_obs = self.fallback(node)
                             node.status = TaskStatus.COMPLETED
-                            node.observation = (
-                                fallback_obs if fallback_obs is not None else ""
-                            )
+                            node.observation = fallback_obs if fallback_obs is not None else ""
                             if self.on_step:
                                 self.on_step(node, "fallback")
                             return {

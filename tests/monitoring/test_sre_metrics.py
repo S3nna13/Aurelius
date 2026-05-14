@@ -119,9 +119,11 @@ class TestHistogram:
         h = Histogram()
         threads = []
         for i in range(10):
+
             def record_values():
                 for j in range(100):
                     h.record(float(i * 100 + j))
+
             t = threading.Thread(target=record_values)
             threads.append(t)
             t.start()
@@ -364,9 +366,11 @@ class TestSREMetricsCollector:
         c = SREMetricsCollector()
         threads = []
         for i in range(10):
+
             def record_data():
                 for j in range(100):
                     c.record_request(float(j), success=(j % 10 != 0))
+
             t = threading.Thread(target=record_data)
             threads.append(t)
             t.start()
@@ -378,6 +382,7 @@ class TestSREMetricsCollector:
     def test_concurrent_record_request_and_collect(self):
         """Test concurrent recording and collecting doesn't crash."""
         import threading
+
         c = SREMetricsCollector()
         errors = []
 

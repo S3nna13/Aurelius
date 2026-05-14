@@ -161,9 +161,7 @@ class TestLayeredMemory:
             mem.promote("nonexistent-id")
 
     def test_evict_expired(self):
-        custom = MemoryLayer(
-            level=0, name="TTLTest", ttl_seconds=1, max_entries=100
-        )
+        custom = MemoryLayer(level=0, name="TTLTest", ttl_seconds=1, max_entries=100)
         mem = LayeredMemory(layers=[custom])
         mem.store("will expire", "TTLTest")
         time.sleep(1.1)

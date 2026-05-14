@@ -291,12 +291,7 @@ class TestPipelineFunction:
 
     def test_pipeline_function_chain(self):
         """Test pipeline function with chaining."""
-        result = (
-            pipeline([1, 2, 3, 4, 5])
-            .filter(lambda x: x > 2)
-            .map(lambda x: x ** 2)
-            .collect()
-        )
+        result = pipeline([1, 2, 3, 4, 5]).filter(lambda x: x > 2).map(lambda x: x**2).collect()
         assert result == [9, 16, 25]
 
 
@@ -322,6 +317,7 @@ class TestPipelineEdgeCases:
 
     def test_filter_with_exception_predicate(self):
         """Test that filter preserves exceptions from predicate."""
+
         def bad_pred(x):
             if x == 2:
                 raise ValueError("bad")
@@ -333,6 +329,7 @@ class TestPipelineEdgeCases:
 
     def test_map_with_exception_transform(self):
         """Test that map preserves exceptions from transform."""
+
         def bad_transform(x):
             if x == 2:
                 raise ValueError("bad")
@@ -344,6 +341,7 @@ class TestPipelineEdgeCases:
 
     def test_group_by_with_exception_key(self):
         """Test that group_by preserves exceptions from key function."""
+
         def bad_key(x):
             if x == 2:
                 raise ValueError("bad")

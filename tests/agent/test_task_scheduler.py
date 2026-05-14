@@ -19,6 +19,7 @@ from agent.task_scheduler import (
 # Helper cron parsers
 # ---------------------------------------------------------------------------
 
+
 class TestParseCronField:
     def test_star(self):
         assert len(_parse_cron_field("*", 0, 59)) == 60
@@ -108,6 +109,7 @@ class TestNextCronTime:
 # Job dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestJob:
     def test_job_id_unique(self):
         j1 = Job()
@@ -132,6 +134,7 @@ class TestJob:
 # TaskScheduler — construction
 # ---------------------------------------------------------------------------
 
+
 class TestSchedulerConstruction:
     def test_new_scheduler_has_no_jobs(self):
         s = TaskScheduler()
@@ -145,6 +148,7 @@ class TestSchedulerConstruction:
 # ---------------------------------------------------------------------------
 # schedule_cron
 # ---------------------------------------------------------------------------
+
 
 class TestScheduleCron:
     def test_cron_requires_5_fields(self):
@@ -170,6 +174,7 @@ class TestScheduleCron:
 # schedule_delayed
 # ---------------------------------------------------------------------------
 
+
 class TestScheduleDelayed:
     def test_delayed_one_shot(self):
         s = TaskScheduler()
@@ -193,6 +198,7 @@ class TestScheduleDelayed:
 # ---------------------------------------------------------------------------
 # schedule_interval
 # ---------------------------------------------------------------------------
+
 
 class TestScheduleInterval:
     def test_interval_requires_positive(self):
@@ -220,6 +226,7 @@ class TestScheduleInterval:
 # cancel
 # ---------------------------------------------------------------------------
 
+
 class TestCancel:
     def test_cancel_existing_job(self):
         s = TaskScheduler()
@@ -235,6 +242,7 @@ class TestCancel:
 # ---------------------------------------------------------------------------
 # pause / resume
 # ---------------------------------------------------------------------------
+
 
 class TestPauseResume:
     def test_pause_existing_job(self):
@@ -282,6 +290,7 @@ class TestPauseResume:
 # list_jobs
 # ---------------------------------------------------------------------------
 
+
 class TestListJobs:
     def test_empty_by_default(self):
         s = TaskScheduler()
@@ -305,6 +314,7 @@ class TestListJobs:
 # Context manager / lifecycle
 # ---------------------------------------------------------------------------
 
+
 class TestLifecycle:
     def test_context_manager_starts_and_stops(self):
         s = TaskScheduler()
@@ -325,6 +335,7 @@ class TestLifecycle:
 # ---------------------------------------------------------------------------
 # Functional integration tests
 # ---------------------------------------------------------------------------
+
 
 class TestSchedulerIntegration:
     def test_delayed_task_runs_once(self):

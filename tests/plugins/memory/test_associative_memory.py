@@ -143,7 +143,7 @@ class TestAssociativeMemorySimilarity:
         assert sim == 0.0
 
     def test_similarity_mismatched_length(self):
-        '''zip truncates to shorter vector; similarity computed on truncated prefix.'''
+        """zip truncates to shorter vector; similarity computed on truncated prefix."""
         # [1.0, 0.5] vs [1.0] → zip gives [(1.0, 1.0)] → dot=1.0, |a|=sqrt(1.25), |b|=1.0
         sim = AssociativeMemory.similarity([1.0, 0.5], [1.0])
         assert 0.8 < sim < 1.0  # partial match on first dimension only

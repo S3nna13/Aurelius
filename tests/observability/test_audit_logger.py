@@ -46,9 +46,7 @@ class TestAuditLogEntry:
         assert parsed["metadata"] == {"x": 1}
 
     def test_immutable(self) -> None:
-        entry = AuditLogEntry(
-            timestamp=1.0, actor="a", action="b", resource="c", status="d"
-        )
+        entry = AuditLogEntry(timestamp=1.0, actor="a", action="b", resource="c", status="d")
         with pytest.raises(AttributeError):
             entry.actor = "x"  # type: ignore[misc]
 

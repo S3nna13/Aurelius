@@ -15,6 +15,7 @@ from aurelius_cli.pipeline_commands import (
 # Expression compilation
 # ---------------------------------------------------------------------------
 
+
 def test_compile_lambda_expression():
     fn = _compile_expr("lambda x: x > 5")
     assert fn(10) is True
@@ -36,6 +37,7 @@ def test_compile_expression_with_method_call():
 # Argument parsing
 # ---------------------------------------------------------------------------
 
+
 def test_pipeline_parser_accepts_all_flags():
     build_pipeline_parser(argparse.ArgumentParser().add_subparsers())  # register subparser
     # We can't easily parse top-level; but we can build a parser and parse args via separate parser.
@@ -53,6 +55,7 @@ def test_pipeline_parser_accepts_all_flags():
 # ---------------------------------------------------------------------------
 # Integration-like tests (no subprocess; call handler directly)
 # ---------------------------------------------------------------------------
+
 
 def _run_handler(stdin_text: str, extra_args: list[str] | None = None) -> tuple[int, str, str]:
     """Helper: invoke handle_pipeline with mocked stdin/stdout."""
@@ -75,76 +78,73 @@ def _run_handler(stdin_text: str, extra_args: list[str] | None = None) -> tuple[
 
 
 def test_pipeline_filter_only():
-    stdin = '\n'.join([json.dumps(i) for i in range(10)])
+    stdin = "\n".join([json.dumps(i) for i in range(10)])
     rc, out, _ = _run_handler(stdin, ["--filter", "x % 2 == 0"])
     assert rc == 0
-    results = [json.loads(line) for line in out.strip().split('\n') if line]
+    results = [json.loads(line) for line in out.strip().split("\n") if line]
     assert results == [0, 2, 4, 6, 8]
 
 
 def test_pipeline_map_only():
-    stdin = '\n'.join(json.dumps(i) for i in [1, 2, 3])
+    stdin = "\n".join(json.dumps(i) for i in [1, 2, 3])
     rc, out, _ = _run_handler(stdin, ["--map", "x * 10"])
     assert rc == 0
-    results = [json.loads(line) for line in out.strip().split('\n')]
+    results = [json.loads(line) for line in out.strip().split("\n")]
     assert results == [10, 20, 30]
 
 
 def test_pipeline_head():
-    stdin = '\n'.join(json.dumps(i) for i in range(100))
+    stdin = "\n".join(json.dumps(i) for i in range(100))
     rc, out, _ = _run_handler(stdin, ["--head", "3"])
     assert rc == 0
-    results = [json.loads(line) for line in out.strip().split('\n')]
+    results = [json.loads(line) for line in out.strip().split("\n")]
     assert results == [0, 1, 2]
 
 
 def test_pipeline_tail():
-    stdin = '\n'.join(json.dumps(i) for i in range(5))
+    stdin = "\n".join(json.dumps(i) for i in range(5))
     rc, out, _ = _run_handler(stdin, ["--tail", "2"])
     assert rc == 0
-    results = [json.loads(line) for line in out.strip().split('\n')]
+    results = [json.loads(line) for line in out.strip().split("\n")]
     assert results == [3, 4]
 
 
 def test_pipeline_sort():
-    stdin = '\n'.join(json.dumps(i) for i in [5, 1, 3, 2, 4])
+    stdin = "\n".join(json.dumps(i) for i in [5, 1, 3, 2, 4])
     rc, out, _ = _run_handler(stdin, ["--sort", "x"])
     assert rc == 0
-    results = [json.loads(line) for line in out.strip().split('\n')]
+    results = [json.loads(line) for line in out.strip().split("\n")]
     assert results == [1, 2, 3, 4, 5]
 
 
 def test_pipeline_sort_reverse():
-    stdin = '\n'.join(json.dumps(i) for i in [1, 2, 3])
+    stdin = "\n".join(json.dumps(i) for i in [1, 2, 3])
     rc, out, _ = _run_handler(stdin, ["--sort", "x", "--reverse"])
     assert rc == 0
-    results = [json.loads(line) for line in out.strip().split('\n')]
+    results = [json.loads(line) for line in out.strip().split("\n")]
     assert results == [3, 2, 1]
 
 
 def test_pipeline_dedup():
-    stdin = '\n'.join(json.dumps(i) for i in [1, 2, 2, 3, 1, 4])
+    stdin = "\n".join(json.dumps(i) for i in [1, 2, 2, 3, 1, 4])
     rc, out, _ = _run_handler(stdin, ["--dedup"])
     assert rc == 0
-    results = [json.loads(line) for line in out.strip().split('\n')]
+    results = [json.loads(line) for line in out.strip().split("\n")]
     # Dedup by JSON string equality; order preserved (first occurrence kept)
     assert results == [1, 2, 3, 4]
 
 
 def test_pipeline_dedup_key():
-    stdin = '\n'.join(
-        json.dumps({"id": i, "v": i * 10}) for i in [1, 2, 1, 3, 2]
-    )
+    stdin = "\n".join(json.dumps({"id": i, "v": i * 10}) for i in [1, 2, 1, 3, 2])
     rc, out, _ = _run_handler(stdin, ["--dedup-key", "x['id']"])
     assert rc == 0
-    results = [json.loads(line) for line in out.strip().split('\n')]
+    results = [json.loads(line) for line in out.strip().split("\n")]
     assert results == [{"id": 1, "v": 10}, {"id": 2, "v": 20}, {"id": 3, "v": 30}]
 
 
 def test_pipeline_chained_filter_map_head():
-    stdin = '\n'.join(json.dumps(i) for i in range(20))
+    stdin = "\n".join(json.dumps(i) for i in range(20))
     rc, out, _ = _run_handler(stdin, ["--filter", "x % 3 == 0", "--map", "x // 2", "--head", "3"])
     assert rc == 0
-    results = [json.loads(line) for line in out.strip().split('\n')]
+    results = [json.loads(line) for line in out.strip().split("\n")]
     assert results == [0, 1, 3]  # filter keep multiples of 3, map //2, head 3
-

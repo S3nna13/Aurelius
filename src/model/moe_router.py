@@ -22,8 +22,8 @@ class RouterConfig:
     aux_loss_coef: float = 0.01
     jitter_noise: float = 0.0
     # Dynamic load-balancing flags (DeepSeek Step 3.5 Flash §3.3)
-    use_temperature: bool = False   # learnable per-expert temperature scaling
-    use_bias: bool = False         # EMA load-proportional bias
+    use_temperature: bool = False  # learnable per-expert temperature scaling
+    use_bias: bool = False  # EMA load-proportional bias
     bias_ema_decay: float = 0.9  # decay for load EMA (higher → slower)
     bias_max: float = 1.0
     capacity_factor: float = 1.25  # Legacy compatibility; unused by MoERouter

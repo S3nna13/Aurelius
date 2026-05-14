@@ -61,9 +61,7 @@ class TestRecordAction:
 
     def test_passes_metadata(self) -> None:
         t = AgentTelemetry()
-        entry = t.record_action(
-            "alice", "read", "doc/1", "success", metadata={"ip": "127.0.0.1"}
-        )
+        entry = t.record_action("alice", "read", "doc/1", "success", metadata={"ip": "127.0.0.1"})
         assert entry.metadata == {"ip": "127.0.0.1"}
 
     def test_passes_trace_id(self) -> None:

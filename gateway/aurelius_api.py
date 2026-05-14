@@ -30,13 +30,13 @@ app = FastAPI(
 
 
 # ─── Safety input limits ────────────────────────────────────────────────
-SAFE_MAX_PROMPT_TOKENS = 32_768   # hard cap; prevents memory exhaustion
-SAFE_MAX_TEMPERATURE    = 2.0     # sensible range
-SAFE_MIN_TEMPERATURE    = 0.0
-SAFE_MAX_TOP_P          = 1.0
-SAFE_MIN_TOP_P          = 0.01
-SAFE_MAX_REP_PENALTY    = 2.0
-SAFE_MIN_REP_PENALTY    = 1.0
+SAFE_MAX_PROMPT_TOKENS = 32_768  # hard cap; prevents memory exhaustion
+SAFE_MAX_TEMPERATURE = 2.0  # sensible range
+SAFE_MIN_TEMPERATURE = 0.0
+SAFE_MAX_TOP_P = 1.0
+SAFE_MIN_TOP_P = 0.01
+SAFE_MAX_REP_PENALTY = 2.0
+SAFE_MIN_REP_PENALTY = 1.0
 
 
 def validate_chat_params(body: dict) -> None:
@@ -121,6 +121,7 @@ app.add_middleware(
 
 # ─── Security Hardening Middlewares ─────────────────────────────
 
+
 @app.middleware("http")
 async def security_headers(request, call_next):
     response = await call_next(request)
@@ -144,7 +145,7 @@ async def security_headers(request, call_next):
 
 
 MAX_REQUEST_SIZE = int(os.environ.get("AURELIUS_MAX_REQUEST_SIZE", "1048576"))
-MAX_STREAM_SIZE   = int(os.environ.get("AURELIUS_MAX_STREAM_SIZE", "10485760"))
+MAX_STREAM_SIZE = int(os.environ.get("AURELIUS_MAX_STREAM_SIZE", "10485760"))
 
 
 @app.middleware("http")
@@ -252,12 +253,13 @@ class ActionRequest(BaseModel):
 class WorkspaceRequest(BaseModel):
     path: str = ""
 
+
 class BatchRequest(BaseModel):
     """Multiple prompts for static batch inference."""
+
     prompts: list[str]
     temperature: float = 0.7
     max_tokens: int = 512
-
 
 
 sessions: dict[str, dict[str, Any]] = {}
@@ -274,11 +276,11 @@ async def root():
 async def health() -> dict:
     """Liveness probe — service is up."""
     return {
-    "status": "ok",
-    "uptime": time.time(),
-    "sessions": len(sessions),
-    "engine_loaded": _engine is not None,
-}
+        "status": "ok",
+        "uptime": time.time(),
+        "sessions": len(sessions),
+        "engine_loaded": _engine is not None,
+    }
 
 
 @app.get("/health/ready")
@@ -428,6 +430,7 @@ async def _load_engine() -> None:
         # Load tokenizer for batch endpoint
         try:
             from transformers import AutoTokenizer
+
             _tokenizer = AutoTokenizer.from_pretrained(
                 model_path,
                 trust_remote_code=True,
@@ -456,7 +459,6 @@ async def _init_rate_limiter() -> None:
     except Exception as e:
         print(f"[startup] Rate limiter init failed: {e}")
         _rate_limiter = None
-
 
 
 def _get_engine() -> Callable[[EngineChatRequest], str]:
@@ -554,7 +556,6 @@ async def batch_completions(req: BatchRequest) -> dict:
     return {"completions": completions, "count": len(completions)}
 
 
-
 @app.get("/v1/models")
 async def list_models() -> dict:
     """Return a minimal list of available models."""
@@ -573,11 +574,13 @@ async def list_models() -> dict:
 
 def start(host: str = "127.0.0.1", port: int = 8080):
     import uvicorn
+
     uvicorn.run(app, host=host, port=port)
 
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser(description="Aurelius FastAPI inference server")
     parser.add_argument("--host", default="0.0.0.0", help="Bind host (default: 0.0.0.0)")  # noqa: S104
     parser.add_argument("--port", type=int, default=8080, help="Bind port (default: 8080)")

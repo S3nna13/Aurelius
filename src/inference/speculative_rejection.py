@@ -81,8 +81,6 @@ def nucleus_sample_with_logit(
     log_p = log_probs[token_id].item()
     return int(token_id), float(log_p)
 
-
-
     log_probs = F.log_softmax(logits, dim=-1)
     probs = log_probs.exp()
 

@@ -127,9 +127,7 @@ class CapabilityContract:
         from .feature_flags import FEATURE_FLAG_REGISTRY, RuntimeFlag  # noqa: PLC0415
 
         enabled_flags: tuple[str, ...] = tuple(
-            flag.name.lower()
-            for flag in RuntimeFlag
-            if FEATURE_FLAG_REGISTRY.is_enabled(flag)
+            flag.name.lower() for flag in RuntimeFlag if FEATURE_FLAG_REGISTRY.is_enabled(flag)
         )
         runtime = RuntimeCapability(
             has_rust=has_rust, has_node=has_node, feature_flags=enabled_flags

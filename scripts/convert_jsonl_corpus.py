@@ -9,7 +9,12 @@ from pathlib import Path
 def main() -> None:
     parser = argparse.ArgumentParser(description="Convert JSONL chat data to flat text corpus")
     parser.add_argument("--jsonl", type=Path, required=True, help="Input JSONL file")
-    parser.add_argument("--output", type=Path, default=Path("data/reference_corpus/jsonl_corpus.txt"), help="Output text file")
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path("data/reference_corpus/jsonl_corpus.txt"),
+        help="Output text file",
+    )
     args = parser.parse_args()
 
     jsonl_path = args.jsonl.expanduser().resolve()

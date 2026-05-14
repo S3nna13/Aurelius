@@ -182,7 +182,9 @@ def test_engine_build_plan_bad_decompose_type_raises():
 
 
 def test_validate_plan_duplicate_ids():
-    root = TaskNode(id="dup", description="root", children=[TaskNode(id="dup", description="child")])
+    root = TaskNode(
+        id="dup", description="root", children=[TaskNode(id="dup", description="child")]
+    )
     plan = Plan(root=root)
     engine = PlanningEngine()
     with pytest.raises(PlanValidationError, match="duplicate"):
@@ -190,7 +192,9 @@ def test_validate_plan_duplicate_ids():
 
 
 def test_validate_plan_self_loop():
-    root = TaskNode(id="r", description="root", children=[TaskNode(id="a", description="a", dependencies=["a"])])
+    root = TaskNode(
+        id="r", description="root", children=[TaskNode(id="a", description="a", dependencies=["a"])]
+    )
     plan = Plan(root=root)
     engine = PlanningEngine()
     with pytest.raises(PlanValidationError, match="self-loop"):

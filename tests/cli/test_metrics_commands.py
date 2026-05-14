@@ -7,8 +7,6 @@ from aurelius_cli.metrics_commands import _run_demo, build_metrics_parser
 pytest.importorskip("src.monitoring.sre_metrics")
 
 
-
-
 def build_parser() -> argparse.ArgumentParser:
     """Helper: build top-level parser with metrics subparser attached."""
     parser = argparse.ArgumentParser()
@@ -35,13 +33,20 @@ class TestMetricsParser:
 
     def test_metrics_demo_parses_custom_values(self):
         parser = build_parser()
-        args = parser.parse_args([
-            "metrics", "demo",
-            "--requests", "500",
-            "--error-rate", "0.1",
-            "--latency-mean", "200",
-            "--latency-std", "30"
-        ])
+        args = parser.parse_args(
+            [
+                "metrics",
+                "demo",
+                "--requests",
+                "500",
+                "--error-rate",
+                "0.1",
+                "--latency-mean",
+                "200",
+                "--latency-std",
+                "30",
+            ]
+        )
         assert args.requests == 500
         assert args.error_rate == pytest.approx(0.1)
         assert args.latency_mean == pytest.approx(200.0)

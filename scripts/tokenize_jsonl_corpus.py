@@ -4,6 +4,7 @@
 import argparse
 import random
 from pathlib import Path
+
 import numpy as np
 from tokenizers import Tokenizer, models, pre_tokenizers, trainers
 
@@ -11,7 +12,9 @@ from tokenizers import Tokenizer, models, pre_tokenizers, trainers
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train BPE tokenizer and encode corpus")
     parser.add_argument("--corpus", type=Path, required=True, help="Path to jsonl_corpus.txt")
-    parser.add_argument("--out-dir", type=Path, default=Path("data/pretrain/jsonl"), help="Output directory")
+    parser.add_argument(
+        "--out-dir", type=Path, default=Path("data/pretrain/jsonl"), help="Output directory"
+    )
     parser.add_argument("--vocab-size", type=int, default=8192, help="Tokenizer vocabulary size")
     args = parser.parse_args()
 

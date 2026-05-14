@@ -99,9 +99,7 @@ class CircuitBreaker:
                     self._half_open_calls = 0
                     self._success_count = 0
                 else:
-                    raise CircuitBreakerOpenError(
-                        f"Circuit {self.name!r} is OPEN"
-                    )
+                    raise CircuitBreakerOpenError(f"Circuit {self.name!r} is OPEN")
             if self._state is _State.HALF_OPEN:
                 if self._half_open_calls >= self.half_open_max_calls:
                     raise CircuitBreakerOpenError(

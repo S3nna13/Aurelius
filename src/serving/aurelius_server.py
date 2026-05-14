@@ -50,8 +50,9 @@ from typing import Any
 from agent.command_dispatcher import CommandDispatcher
 from agent.nl_command_parser import NLCommandParseError, NLCommandParser
 from agent.skill_executor import ExecutionResult, SkillContext, SkillExecutor
-from .mission_control import ActivityLog
 from src.workflow.workflow_monitor import WorkflowMonitor, WorkflowStatus
+
+from .mission_control import ActivityLog
 
 
 class _LogRingBuffer(logging.Handler):

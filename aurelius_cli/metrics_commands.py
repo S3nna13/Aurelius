@@ -69,16 +69,20 @@ def _run_demo(args: argparse.Namespace) -> int:
     # Zero-request case – avoid any collector calls
     if requests == 0:
         if json_output:
-            print(json.dumps({
-                "total_requests": 0,
-                "errors": 0,
-                "error_rate": None,
-                "p50_latency_ms": None,
-                "p90_latency_ms": None,
-                "p99_latency_ms": None,
-                "health_score": None,
-                "saturation": None,
-            }))
+            print(
+                json.dumps(
+                    {
+                        "total_requests": 0,
+                        "errors": 0,
+                        "error_rate": None,
+                        "p50_latency_ms": None,
+                        "p90_latency_ms": None,
+                        "p99_latency_ms": None,
+                        "health_score": None,
+                        "saturation": None,
+                    }
+                )
+            )
             return 0
 
         print(f"{'Total requests':<15}: 0")

@@ -80,9 +80,9 @@ class TestPriorityMemoryStore:
         # Store now has a,b,c (3 items, full). Putting d triggers eviction.
         store.put(MemoryItem("c", "z", priority=Priority.MEDIUM))  # 3rd item, no eviction yet
         store.put(MemoryItem("d", "w", priority=Priority.MEDIUM))  # 4th item → eviction
-        assert store.get("b") is None   # b evicted (lowest access_count among ties)
-        assert store.get("a") == "x"   # a survives (higher access_count)
-        assert store.get("c") == "z"   # c survives (inserted before d, same tie)
+        assert store.get("b") is None  # b evicted (lowest access_count among ties)
+        assert store.get("a") == "x"  # a survives (higher access_count)
+        assert store.get("c") == "z"  # c survives (inserted before d, same tie)
 
     def test_overwrite_does_not_count_as_eviction(self, store):
         store.put(MemoryItem("a", "v1", priority=Priority.LOW))

@@ -91,7 +91,9 @@ class TestResiliencePipelineBasics:
             return "done"
 
         class TrackedRateLimiter(RateLimiter):
-            def acquire(self, tokens: int = 1, blocking: bool = True, timeout: float | None = None) -> bool:  # noqa: ARG002
+            def acquire(
+                self, tokens: int = 1, blocking: bool = True, timeout: float | None = None
+            ) -> bool:  # noqa: ARG002
                 order.append("rate")
                 return True
 
@@ -120,7 +122,9 @@ class TestResiliencePipelineBasics:
         assert order == ["rate", "bulkhead", "circuit", "retry", "fn"]
 
     def test_pipeline_half_open_success(self) -> None:
-        cb = CircuitBreaker(failure_threshold=1, recovery_timeout=0.05, success_threshold_half_open=1)
+        cb = CircuitBreaker(
+            failure_threshold=1, recovery_timeout=0.05, success_threshold_half_open=1
+        )
         pipe = ResiliencePipeline(circuit_breaker=cb)
         with pytest.raises(RuntimeError):
             pipe.execute(_fail)

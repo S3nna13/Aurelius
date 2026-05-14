@@ -56,7 +56,7 @@ def build_schedule_parser(subparsers: argparse._SubParsersAction) -> None:
         ),
         epilog=(
             "examples:\\n"
-            "  aurelius schedule cron \"0 2 * * *\" -- python backup.py\\n"
+            '  aurelius schedule cron "0 2 * * *" -- python backup.py\\n'
             "  aurelius schedule interval 60 -- curl -X POST https://hc.io/ping\\n"
             "  aurelius schedule once 300 -- say 'task complete'\\n"
             "  aurelius schedule list\\n"
@@ -67,9 +67,7 @@ def build_schedule_parser(subparsers: argparse._SubParsersAction) -> None:
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    subs = parser.add_subparsers(
-        dest="schedule_cmd", required=True, help="scheduling mode"
-    )
+    subs = parser.add_subparsers(dest="schedule_cmd", required=True, help="scheduling mode")
 
     # cron (creation)
     cron = subs.add_parser("cron", help="Schedule a cron-expression job")
@@ -84,9 +82,7 @@ def build_schedule_parser(subparsers: argparse._SubParsersAction) -> None:
     )
 
     # interval
-    interval = subs.add_parser(
-        "interval", help="Schedule a repeating job every N seconds"
-    )
+    interval = subs.add_parser("interval", help="Schedule a repeating job every N seconds")
     interval.add_argument("seconds", type=float, help="Interval in seconds")
     interval.add_argument(
         "shell_cmd",
@@ -231,5 +227,3 @@ def handle_schedule(args: argparse.Namespace) -> int:
     else:
         print(f"error: unknown subcommand {args.schedule_cmd}", file=sys.stderr)
         return 2
-
-

@@ -38,19 +38,13 @@ class Bulkhead:
     name: str = "default"
 
     _semaphore: threading.Semaphore = field(init=False, repr=False)
-    _queue: deque[threading.Event] = field(
-        default_factory=lambda: deque(maxlen=0), repr=False
-    )
+    _queue: deque[threading.Event] = field(default_factory=lambda: deque(maxlen=0), repr=False)
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
     _active: int = field(default=0, repr=False)
 
     def __post_init__(self) -> None:
-        object.__setattr__(
-            self, "_semaphore", threading.Semaphore(self.max_concurrent)
-        )
-        object.__setattr__(
-            self, "_queue", deque(maxlen=self.max_queue)
-        )
+        object.__setattr__(self, "_semaphore", threading.Semaphore(self.max_concurrent))
+        object.__setattr__(self, "_queue", deque(maxlen=self.max_queue))
 
     # ------------------------------------------------------------------ #
     # Public API
@@ -94,9 +88,7 @@ class Bulkhead:
         event = threading.Event()
         with self._lock:
             if len(self._queue) >= self.max_queue:
-                raise BulkheadFullError(
-                    f"Bulkhead {self.name!r} queue is full"
-                )
+                raise BulkheadFullError(f"Bulkhead {self.name!r} queue is full")
             self._queue.append(event)
 
         if not event.wait(timeout=self.queue_timeout):
@@ -105,9 +97,7 @@ class Bulkhead:
                     self._queue.remove(event)
                 except ValueError:
                     pass
-            raise BulkheadFullError(
-                f"Bulkhead {self.name!r} queue wait timed out"
-            )
+            raise BulkheadFullError(f"Bulkhead {self.name!r} queue wait timed out")
 
         with self._lock:
             self._active += 1

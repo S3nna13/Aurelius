@@ -73,4 +73,3 @@ def sample_tokens(
     filtered = proc(logits, input_ids)
     probs = torch.softmax(filtered, dim=-1)
     return torch.multinomial(probs, num_samples=num_samples)
-

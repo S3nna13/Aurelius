@@ -151,8 +151,7 @@ class MetricsCollector:
         with self._lock:
             counters = {k: v.value for k, v in self._counters.items()}
             gauges = {
-                k: {"value": v.value, "last_update": v.last_update}
-                for k, v in self._gauges.items()
+                k: {"value": v.value, "last_update": v.last_update} for k, v in self._gauges.items()
             }
             histograms = {k: list(v.values) for k, v in self._histograms.items()}
         return {

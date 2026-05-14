@@ -18,6 +18,7 @@ from collections.abc import Callable
 _HAVE_REDIS = False
 try:
     import redis  # type: ignore
+
     _HAVE_REDIS = True
 except Exception:  # pragma: no cover
     redis = None  # type: ignore
@@ -60,9 +61,7 @@ class RedisRateLimiter:
         prefix: str = "rl:",
     ) -> None:
         if not _HAVE_REDIS or redis is None:
-            raise RuntimeError(
-                "redis-py is not installed. Install with: pip install redis"
-            )
+            raise RuntimeError("redis-py is not installed. Install with: pip install redis")
         self._limit = limit
         self._window = window
         self._prefix = prefix
@@ -108,9 +107,7 @@ def get_rate_limiter() -> Callable[[str], bool]:
     redis_url = os.environ.get("AURELIUS_RATE_LIMIT_REDIS_URL")
     if redis_url:
         if not _HAVE_REDIS:
-            raise RuntimeError(
-                "AURELIUS_RATE_LIMIT_REDIS_URL set but redis-py is not available"
-            )
+            raise RuntimeError("AURELIUS_RATE_LIMIT_REDIS_URL set but redis-py is not available")
         return RedisRateLimiter(
             limit=limit,
             window=window,

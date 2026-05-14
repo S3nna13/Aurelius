@@ -34,7 +34,9 @@ class TestCircuitBreakerBasics:
             cb.call(_ok)
 
     def test_half_open_then_closed(self) -> None:
-        cb = CircuitBreaker(failure_threshold=1, recovery_timeout=0.05, success_threshold_half_open=1)
+        cb = CircuitBreaker(
+            failure_threshold=1, recovery_timeout=0.05, success_threshold_half_open=1
+        )
         with pytest.raises(RuntimeError):
             cb.call(_fail)
         assert cb.state == "open"

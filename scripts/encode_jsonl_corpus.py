@@ -14,7 +14,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Encode JSONL conversations to token ID shards")
     parser.add_argument("--jsonl", type=Path, required=True, help="Input JSONL file")
     parser.add_argument("--tokenizer", type=Path, required=True, help="Tokenizer JSON path")
-    parser.add_argument("--out-dir", type=Path, default=Path("data/pretrain/jsonl"), help="Output directory")
+    parser.add_argument(
+        "--out-dir", type=Path, default=Path("data/pretrain/jsonl"), help="Output directory"
+    )
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     args = parser.parse_args()
 

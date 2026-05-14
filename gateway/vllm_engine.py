@@ -189,7 +189,6 @@ class VLLMEngine:
         outputs = llm.generate(prompt_token_ids=input_ids_list, sampling_params=sampling_params)
         return [o.outputs[0].text for o in outputs]
 
-
     def is_available(self) -> bool:
         """Return True if vllm is importable, False otherwise."""
         try:
