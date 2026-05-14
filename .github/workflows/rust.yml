@@ -43,16 +43,16 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@v4
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@b3b06ba2ba8d33e8fa1d0c457d8f63657e1b2c5e # stable
+        uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: "1.89"
           components: clippy, rustfmt
 
       - name: Cache cargo
-        uses: Swatinem/rust-cache@9d47c0584c1a4c68c8351e0771a1cf8a7bdcf3c6 # v2
+        uses: Swatinem/rust-cache@v2
         with:
           workspaces: ${{ matrix.crate }}
 
@@ -79,20 +79,20 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@v4
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@b3b06ba2ba8d33e8fa1d0c457d8f63657e1b2c5e # stable
+        uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: "1.89"
 
       - name: Cache cargo
-        uses: Swatinem/rust-cache@9d47c0584c1a4c68c8351e0771a1cf8a7bdcf3c6 # v2
+        uses: Swatinem/rust-cache@v2
         with:
           workspaces: ${{ matrix.crate }}
 
       - name: Setup Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        uses: actions/setup-node@v4
         with:
           node-version: '22'
 
@@ -100,7 +100,7 @@ jobs:
         run: npm ci
 
       - name: Restore cached Rust build artifacts
-        uses: Swatinem/rust-cache@9d47c0584c1a4c68c8351e0771a1cf8a7bdcf3c6 # v2
+        uses: Swatinem/rust-cache@v2
         with:
           workspaces: ${{ matrix.crate }}
 
@@ -113,15 +113,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@v4
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@b3b06ba2ba8d33e8fa1d0c457d8f63657e1b2c5e # stable
+        uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: "1.89"
 
       - name: Install cargo-audit
-        uses: rustsec/audit-check@043c4e1b683d6b1e6d3b1d27e4e4e8a13e2363e1 # v2
+        uses: rustsec/audit-check@v2
 
       - name: Run cargo audit
         run: cargo audit
