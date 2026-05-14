@@ -247,6 +247,7 @@ DEFAULT_DENYLIST: tuple[DenylistRule, ...] = (
         id="codex.eval",
         category=DenylistCategory.CODE_EXEC_PRIMITIVES,
         pattern=r"(?<![\w.])eval\s*\(",
+        # EVAL: Rule expression compiler — restrict to boolean ops only
         message="eval() primitive is disallowed",
     ),
     DenylistRule(

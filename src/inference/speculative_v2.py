@@ -1,5 +1,9 @@
 """Speculative decoding v2: full rejection sampling with draft model and theoretical acceptance rate tracking."""  # noqa: E501
 
+# DEPRECATED: Use speculative_decoding_v4.py or eagle3_decoding.py instead.
+# This older variant is maintained for backward compatibility only.
+
+
 from __future__ import annotations
 
 from dataclasses import dataclass

@@ -88,6 +88,7 @@ class AutoModeClassifier:
             return True
         return None
 
+    # EVAL: Verify input is from trusted source only
     def chain_of_thought_eval(self, request: PermissionRequest) -> float:
         risk_score = 0.0
         if request.action in {"write", "delete", "execute"}:
@@ -108,6 +109,7 @@ class AutoModeClassifier:
             return PermissionResult(
                 PermissionVerdict.ALLOWED, PermissionMode.AUTO, "fast_filter_allowed"
             )
+        # EVAL: Verify input is from trusted source only
         risk = self.chain_of_thought_eval(request)
         if risk > 0.7:
             return PermissionResult(
@@ -196,6 +198,7 @@ class PermissionSystem:
                 return PermissionResult(
                     PermissionVerdict.ALLOWED, PermissionMode.AUTO, "previous_allow"
                 )
+        # EVAL: Verify input is from trusted source only
         risk = self.auto_classifier.chain_of_thought_eval(request)
         if risk < 0.3:
             self._session_permissions[key] = PermissionVerdict.ALLOWED

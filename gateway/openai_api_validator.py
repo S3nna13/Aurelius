@@ -15,6 +15,9 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from typing import Any
+import logging
+logger = logging.getLogger(__name__)
+
 
 __all__ = [
     "APIValidationError",
@@ -668,4 +671,4 @@ def _selftest() -> None:  # pragma: no cover - smoke
 
 if __name__ == "__main__":  # pragma: no cover
     _selftest()
-    print(json.dumps({"ok": True}))
+    logger.info(json.dumps({"ok": True}))

@@ -1,5 +1,9 @@
 """Speculative decoding with tree-based draft + acceptance (Yggdrasil-inspired).
 
+# DEPRECATED: Use speculative_decoding_v4.py or eagle3_decoding.py instead.
+# This older variant is maintained for backward compatibility only.
+
+
 Core reference: Leviathan et al. 2023 (arXiv:2211.17192) for the basic
 speculative decoding algorithm. Yggdrasil (NeurIPS 2025, arXiv:2512.23858)
 for the equal-growth tree structure and tree-based verification.

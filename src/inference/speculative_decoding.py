@@ -1,5 +1,9 @@
 """Speculative decoding: draft model proposes tokens, target model verifies in parallel.
 
+# DEPRECATED: Use speculative_decoding_v4.py or eagle3_decoding.py instead.
+# This older variant is maintained for backward compatibility only.
+
+
 Classic speculative decoding following:
   - Leviathan et al. 2023 ("Fast Inference from Transformers via Speculative Decoding")
   - Chen et al. 2023 ("Accelerating Large Language Model Decoding with Speculative Sampling")

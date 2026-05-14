@@ -219,6 +219,9 @@ if __name__ == "__main__":
     )
     from .chat_session import load_model_for_chat
     from .system_prompts import SYSTEM_PROMPTS
+    import logging
+    logger = logging.getLogger(__name__)
+
 
     parser = argparse.ArgumentParser(description="Aurelius terminal chat REPL")
     parser.add_argument(

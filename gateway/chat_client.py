@@ -195,34 +195,34 @@ def interactive_session(client: ChatClient, *, stream: bool = True) -> None:
         client: Configured ChatClient instance.
         stream: Whether to stream responses.
     """
-    print(f"Aurelius Chat Client - connected to {client.base_url}")
-    print(f"Model: {client.model}")
-    print("Commands: /clear (reset history), /system <prompt>, /quit")
+    logger.info(f"Aurelius Chat Client - connected to {client.base_url}")
+    logger.info(f"Model: {client.model}")
+    logger.info("Commands: /clear (reset history), /system <prompt>, /quit")
     print("-" * 60)
 
     while True:
         try:
             user_input = input("\nYou: ").strip()
         except (EOFError, KeyboardInterrupt):
-            print("\nGoodbye.")
+            logger.info("\nGoodbye.")
             break
 
         if not user_input:
             continue
 
         if user_input == "/quit":
-            print("Goodbye.")
+            logger.info("Goodbye.")
             break
 
         if user_input == "/clear":
             client.clear_history()
-            print("[History cleared]")
+            logger.info("[History cleared]")
             continue
 
         if user_input.startswith("/system "):
             new_prompt = user_input[len("/system ") :]
             client.set_system_prompt(new_prompt)
-            print(f"[System prompt updated: {new_prompt[:80]}...]")
+            logger.info(f"[System prompt updated: {new_prompt[:80]}...]")
             continue
 
         print("\nAurelius: ", end="", flush=True)
@@ -236,13 +236,15 @@ def interactive_session(client: ChatClient, *, stream: bool = True) -> None:
                 response = client.chat(user_input)
                 print(response)
         except httpx.ConnectError:
-            print("[Error: Cannot connect to server. Is it running?]")
+            logger.info("[Error: Cannot connect to server. Is it running?]")
         except httpx.HTTPStatusError as exc:
-            print(f"[Error: HTTP {exc.response.status_code}]")
+            logger.info(f"[Error: HTTP {exc.response.status_code}]")
 
 
 if __name__ == "__main__":
     import argparse
+    import logging
+    logger = logging.getLogger(__name__)
 
     parser = argparse.ArgumentParser(description="Aurelius Chat Client")
     parser.add_argument(

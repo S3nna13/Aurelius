@@ -1,5 +1,9 @@
 """Speculative decoding v3: clean implementation with vectorized acceptance sampling.
 
+# DEPRECATED: Use speculative_decoding_v4.py or eagle3_decoding.py instead.
+# This older variant is maintained for backward compatibility only.
+
+
 Implements the speculative decoding algorithm from "Fast Inference from Transformers
 via Speculative Decoding" (Leviathan et al., 2023).  A small draft model proposes
 n_draft_tokens in a single autoregressive roll-out; the target model verifies all of
