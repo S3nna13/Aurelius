@@ -85,3 +85,12 @@ STREAM_HANDLER_REGISTRY: dict[str, type] = {
     "sse_chat": SSEChatStream,
 }
 
+# ---------------------------------------------------------------------------
+# Resilience registry — additive registry for resilience patterns
+# ---------------------------------------------------------------------------
+from .circuit_breaker import CircuitBreaker  # noqa: E402
+
+RESILIENCE_REGISTRY: dict[str, type] = {
+    "circuit_breaker": CircuitBreaker,
+}
+
