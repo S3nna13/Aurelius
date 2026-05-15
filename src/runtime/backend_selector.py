@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import enum
-import os
 from dataclasses import dataclass, field
 
-from src.runtime.profile_schema import HardwareProfile, MemoryPolicy, RuntimePolicy
 from src.runtime.capability_report import CapabilityMode, CapabilityReport
+from src.runtime.profile_schema import HardwareProfile, MemoryPolicy
 
 
-class BackendType(str, enum.Enum):
+class BackendType(enum.StrEnum):
     PYTORCH_EAGER = "pytorch_eager"
     TORCH_COMPILE = "torch_compile"
     LLAMA_CPP_GGUF = "llama_cpp_gguf"
@@ -53,15 +52,14 @@ class BackendSelection:
             BackendType.VLLM: CapabilityMode.FULL_LOCAL,
             BackendType.REMOTE_AURELIUS: CapabilityMode.REMOTE,
         }
-        exec_mode = exec_mode_map.get(self.backend, CapabilityMode.FULL_LOCAL)
+        exec_mode_map.get(self.backend, CapabilityMode.FULL_LOCAL)
         if self.capability_mode == CapabilityMode.REMOTE:
-            exec_mode = CapabilityMode.REMOTE
+            pass
         elif self.capability_mode == CapabilityMode.VERIFIER_ONLY:
-            exec_mode = CapabilityMode.VERIFIER_ONLY
+            pass
         elif self.capability_mode == CapabilityMode.SPLIT:
-            exec_mode = CapabilityMode.SPLIT
+            pass
 
-        local_or_remote = "local" if "remote" not in self.backend.value else "remote"
 
         return CapabilityReport.create_full_local(
             model=model,
@@ -105,7 +103,7 @@ class BackendSelector:
 
         vram = hardware.gpu_vram_gb
         total_mem = hardware.total_ram_gb
-        effective_mem = max(vram, total_mem) if hardware.unified_memory else max(vram, 0)
+        max(vram, total_mem) if hardware.unified_memory else max(vram, 0)
 
         # Check available backends
         has_cuda = hardware.cuda_available

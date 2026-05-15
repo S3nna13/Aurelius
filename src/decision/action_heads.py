@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import enum
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 
-class HeadOutput(str, enum.Enum):
+class HeadOutput(enum.StrEnum):
     """Enum for head output types."""
     TOOL_CALL = "tool_call"
     MEMORY_OP = "memory_op"

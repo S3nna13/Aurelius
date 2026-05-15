@@ -17,12 +17,11 @@ from __future__ import annotations
 
 import json
 import sys
-from typing import Any
 
 try:
     from rich.console import Console
-    from rich.table import Table
     from rich.panel import Panel
+    from rich.table import Table
     _RICH = True
 except ImportError:
     _RICH = False
@@ -34,9 +33,9 @@ def _console() -> Console | None:
 
 def cmd_doctor() -> int:
     """Full health/dependency/environment diagnostic."""
+    import importlib
     import platform
     import sys
-    import importlib
     con = _console()
     
     results: list[dict] = []
@@ -203,7 +202,7 @@ def cmd_status() -> int:
     """Show current system status."""
     try:
         from src.runtime.hardware_detector import HardwareDetector
-        from src.runtime.memory_budget import MemoryBudgetManager, MemoryBudgetConfig
+        from src.runtime.memory_budget import MemoryBudgetConfig, MemoryBudgetManager
         from src.skills.registry import SkillRegistry
         
         # Hardware
@@ -221,7 +220,7 @@ def cmd_status() -> int:
         registry = SkillRegistry()
         skill_count = registry.discover_from_path()
         
-        print(f"Aurelius v2 Status")
+        print("Aurelius v2 Status")
         print(f"{'='*50}")
         print(f"  Hardware: {info.cpu_arch} | RAM: {info.total_ram_gb}GB")
         if info.gpu_name:

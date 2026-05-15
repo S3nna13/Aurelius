@@ -9,14 +9,25 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from src.skills.manifest import SkillManifest, RiskLevel, SkillStatus, SkillExecutionMode, SkillPermission
-from src.skills.permissions import PermissionCheck, PermissionContext, PermissionGate
+from src.skills.manifest import (
+    RiskLevel,
+    SkillExecutionMode,
+    SkillManifest,
+    SkillPermission,
+    SkillStatus,
+)
+from src.skills.permissions import (
+    PermissionCheck,
+    PermissionContext,
+    PermissionGate,
+)
 from src.skills.telemetry import SkillTelemetry, TelemetryEvent
 
 
 @dataclass
 class SkillEntry:
     """A registered skill with its manifest, loaded state, and telemetry."""
+
     manifest: SkillManifest
     loaded: bool = False
     module: Any = None
@@ -59,13 +70,16 @@ class SkillRegistry:
             for skill_file in category_dir.glob("skill.json"):
                 try:
                     data = json.loads(skill_file.read_text())
-                    perms = [SkillPermission(name=p["name"], scope=p.get("scope", "limited")) for p in data.get("permissions", [])]
-                    modes = [SkillExecutionMode(m) for m in data.get("supported_modes", ["dry_run", "execute", "verify"])]
+                    perm_list = data.get("permissions", [])
+                    perms = [
+                        SkillPermission(name=p["name"], scope=p.get("scope", "limited"))
+                        for p in perm_list
+                    ]
+                    mode_list = data.get("supported_modes", [])
+                    modes = [SkillExecutionMode(m) for m in mode_list]
                     manifest = SkillManifest(
-                        id=data["id"],
-                        name=data["name"],
-                        version=data["version"],
-                        category=data["category"],
+                        id=data["id"], name=data["name"],
+                        version=data["version"], category=data["category"],
                         summary=data["summary"],
                         description=data.get("description", ""),
                         permissions=perms,
@@ -84,7 +98,7 @@ class SkillRegistry:
                         self.register(manifest)
                         count += 1
                 except Exception:
-                    # Skip malformed skill manifests during discovery
+                    # Skip malformed manifests
                     pass
         return count
 
@@ -92,27 +106,32 @@ class SkillRegistry:
         """Get a skill by ID."""
         return self._skills.get(skill_id)
 
-    def list_skills(self, category: str | None = None) -> list[SkillEntry]:
+    def list_skills(
+        self, category: str | None = None,
+    ) -> list[SkillEntry]:
         """List all registered skills, optionally filtered by category."""
         skills = list(self._skills.values())
         if category:
-            skills = [s for s in skills if s.manifest.category == category]
+            return [s for s in skills if s.manifest.category == category]
         return skills
 
     def search(self, query: str) -> list[SkillEntry]:
         """Search skills by name, summary, tags, or ID."""
-        query_lower = query.lower()
+        ql = query.lower()
         results = []
         for entry in self._skills.values():
             m = entry.manifest
-            searchable = f"{m.id} {m.name} {m.summary} {' '.join(m.tags)}".lower()
-            if query_lower in searchable:
+            searchable = (
+                f"{m.id} {m.name} {m.summary}"
+                f" {' '.join(m.tags)}"
+            ).lower()
+            if ql in searchable:
                 results.append(entry)
         return results
 
     def categories(self) -> list[str]:
         """Return sorted list of unique skill categories."""
-        cats = set(s.manifest.category for s in self._skills.values())
+        cats = {s.manifest.category for s in self._skills.values()}
         return sorted(cats)
 
     def load_skill(self, skill_id: str) -> bool:
@@ -142,17 +161,25 @@ class SkillRegistry:
         return True
 
     def check_permissions(
-        self, skill_id: str, context: PermissionContext | None = None,
+        self, skill_id: str,
+        context: PermissionContext | None = None,
     ) -> list[PermissionCheck]:
-        """Check permissions for a skill. Returns list of PermissionCheck results."""
+        """Check permissions for a skill."""
         entry = self._skills.get(skill_id)
         if not entry:
-            return [PermissionCheck(permission="skill_not_found", grant="denied", reason=f"Skill {skill_id} not registered")]
+            reason = f"Skill {skill_id} not registered"
+            return [PermissionCheck(
+                permission="skill_not_found",
+                grant="denied", reason=reason,
+            )]
         checks = self._permission_gate.check(entry.manifest, context)
         entry._permission_checks = checks
         return checks
 
-    def record_use(self, skill_id: str, success: bool = True, runtime_ms: int = 0) -> None:
+    def record_use(
+        self, skill_id: str,
+        success: bool = True, runtime_ms: int = 0,
+    ) -> None:
         """Record skill usage telemetry."""
         entry = self._skills.get(skill_id)
         if entry and entry.telemetry:
@@ -163,22 +190,33 @@ class SkillRegistry:
         """Return registry statistics."""
         return {
             "total_skills": len(self._skills),
-            "loaded_skills": sum(1 for s in self._skills.values() if s.loaded),
+            "loaded_skills": sum(
+                1 for s in self._skills.values() if s.loaded
+            ),
             "categories": self.categories(),
             "by_category": {
-                cat: sum(1 for s in self._skills.values() if s.manifest.category == cat)
+                cat: sum(
+                    1 for s in self._skills.values()
+                    if s.manifest.category == cat
+                )
                 for cat in self.categories()
             },
             "by_status": {
-                status.value: sum(1 for s in self._skills.values() if s.manifest.status == status)
+                status.value: sum(
+                    1 for s in self._skills.values()
+                    if s.manifest.status == status
+                )
                 for status in SkillStatus
             },
             "by_risk": {
-                risk.value: sum(1 for s in self._skills.values() if s.manifest.risk_level == risk)
+                risk.value: sum(
+                    1 for s in self._skills.values()
+                    if s.manifest.risk_level == risk
+                )
                 for risk in RiskLevel
             },
         }
 
     @staticmethod
     def _default_base_path() -> str:
-        return os.path.join(os.path.dirname(__file__))
+        return os.path.dirname(__file__)

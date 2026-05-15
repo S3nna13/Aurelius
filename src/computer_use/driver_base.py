@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 
-class CUAMode(str, enum.Enum):
+class CUAMode(enum.StrEnum):
     VERIFIER_ONLY = "verifier_only"
     REMOTE_DRIVER = "remote_driver"
     BROWSER_ONLY = "browser_only"

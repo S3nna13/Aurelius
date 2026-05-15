@@ -9,7 +9,7 @@ from typing import Any
 from src.runtime.profile_schema import CapabilityMode
 
 
-class CapabilityStatus(str, enum.Enum):
+class CapabilityStatus(enum.StrEnum):
     """Status of each capability on the current profile."""
     LIVE = "live"
     REMOTE = "remote"
@@ -106,7 +106,7 @@ class CapabilityReport:
         quantization: str = "q4",
         context: int = 32768,
         hardware: str = "mac_silicon_32gb",
-    ) -> "CapabilityReport":
+    ) -> CapabilityReport:
         """Create a report for a fully-local, live configuration."""
         caps = {
             "chat": CapabilityInfo("chat", CapabilityStatus.LIVE, "Interactive chat", True),
@@ -142,7 +142,7 @@ class CapabilityReport:
         backend: str = "remote_aurelius",
         context: int = 128000,
         hardware: str = "jetson_nano_4gb",
-    ) -> "CapabilityReport":
+    ) -> CapabilityReport:
         """Create a report for a controller-only with remote inference configuration."""
         caps = {
             "chat": CapabilityInfo("chat", CapabilityStatus.REMOTE, "Remote model inference", False),

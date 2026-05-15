@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 
-class ExportFormat(str, enum.Enum):
+class ExportFormat(enum.StrEnum):
     SAFETENSORS = "safetensors"
     GGUF = "gguf"
     MLX = "mlx"

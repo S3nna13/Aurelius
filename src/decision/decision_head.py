@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 
-class DecisiveAction(str, enum.Enum):
+class DecisiveAction(enum.StrEnum):
     ANSWER_NOW = "answer_now"
     USE_TOOL = "use_tool"
     USE_SKILL = "use_skill"

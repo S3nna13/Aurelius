@@ -1,9 +1,11 @@
 """Tests for Aurelius v2 Runtime foundation modules."""
 import unittest
-from src.runtime.memory_budget import MemoryBudgetManager, MemoryBudgetConfig, PressureLevel
-from src.runtime.capability_report import CapabilityReport, CapabilityMode
-from src.skills.manifest import SkillManifest, RiskLevel, SkillPermission, SkillExecutionMode
-from src.skills.permissions import PermissionGate, PermissionContext, PermissionGrant
+
+from src.runtime.capability_report import CapabilityMode, CapabilityReport
+from src.runtime.memory_budget import MemoryBudgetConfig, MemoryBudgetManager, PressureLevel
+from src.skills.manifest import RiskLevel, SkillExecutionMode, SkillManifest, SkillPermission
+from src.skills.permissions import PermissionContext, PermissionGate, PermissionGrant
+
 
 class TestMemoryBudget(unittest.TestCase):
     def test_low_pressure(self):

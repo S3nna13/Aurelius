@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from src.skills.manifest import SkillManifest, SkillStatus
+from src.skills.manifest import SkillStatus
 from src.skills.registry import SkillRegistry
 
 

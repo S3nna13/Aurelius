@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import enum
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
 
 from src.skills.manifest import RiskLevel, SkillManifest, SkillPermission
 
 
-class PermissionGrant(str, enum.Enum):
+class PermissionGrant(enum.StrEnum):
     GRANTED = "granted"
     DENIED = "denied"
     REQUIRES_APPROVAL = "requires_approval"

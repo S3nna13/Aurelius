@@ -6,7 +6,7 @@ import enum
 from dataclasses import dataclass, field
 
 
-class PressureLevel(str, enum.Enum):
+class PressureLevel(enum.StrEnum):
     LOW = "low"
     MODERATE = "moderate"
     HIGH = "high"

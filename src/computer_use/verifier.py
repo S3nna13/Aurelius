@@ -10,7 +10,6 @@ Blocks:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
 
 from src.computer_use.driver_base import CUAAction, CUAObservation
 

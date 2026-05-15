@@ -28,7 +28,7 @@ def _format_ram(used: float, total: float) -> str:
     """Format RAM usage string."""
     if total <= 0:
         return "?/??GB"
-    pct = (used / total) * 100
+    (used / total) * 100
     bar_width = 10
     filled = int(bar_width * used / total)
     bar_filled = "█" * filled

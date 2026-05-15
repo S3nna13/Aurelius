@@ -7,21 +7,21 @@ from dataclasses import dataclass, field
 from typing import Any
 
 
-class RiskLevel(str, enum.Enum):
+class RiskLevel(enum.StrEnum):
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
     CRITICAL = "critical"
 
 
-class SkillStatus(str, enum.Enum):
+class SkillStatus(enum.StrEnum):
     STABLE = "stable"
     EXPERIMENTAL = "experimental"
     DEPRECATED = "deprecated"
     UNSAFE = "unsafe"
 
 
-class SkillExecutionMode(str, enum.Enum):
+class SkillExecutionMode(enum.StrEnum):
     DRY_RUN = "dry_run"
     PLAN = "plan"
     EXECUTE = "execute"

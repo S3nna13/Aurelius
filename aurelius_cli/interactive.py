@@ -6,7 +6,6 @@ Handles the interactive REPL loop, slash commands, and mode switching.
 from __future__ import annotations
 
 import logging
-import sys
 from dataclasses import dataclass
 from typing import Any
 
@@ -194,7 +193,7 @@ class InteractiveSession:
         """Print welcome message with current status."""
         self._print(f"  Mode: {self.mode_state.mode}")
         self._print(f"  Model: {self.mode_state.model}")
-        self._print(f"  Type /help for commands, /quit to exit")
+        self._print("  Type /help for commands, /quit to exit")
         self._print("")
 
     def _print_exit(self) -> None:
@@ -251,7 +250,7 @@ class InteractiveSession:
         if self.runtime_client:
             self._print(f"\n  [Processing in {self.mode_state.mode} mode...]")
             self._print(f"  Model: {self.mode_state.model}")
-            self._print(f"  (Full inference requires runtime backend)")
+            self._print("  (Full inference requires runtime backend)")
         else:
             self._print(f"\n  [{self.mode_state.mode}] Received: {message[:80]}...")
             self._print("  (Connect to runtime backend for full inference)")
@@ -342,7 +341,7 @@ class InteractiveSession:
         """Show capability report."""
         if self.runtime_client:
             report = self.runtime_client.capability_report()
-            self._print(f"\n  Capability Report:")
+            self._print("\n  Capability Report:")
             for key, val in report.items():
                 self._print(f"    {key}: {val}")
         else:
@@ -436,7 +435,7 @@ class InteractiveSession:
         """Runtime status."""
         if self.runtime_client:
             status = self.runtime_client.get_runtime_status(self.config)
-            self._print(f"\n  Runtime Status:")
+            self._print("\n  Runtime Status:")
             self._print(f"    Model: {status.model_name}")
             self._print(f"    Backend: {status.backend}")
             self._print(f"    Session count: {status.session_count}")

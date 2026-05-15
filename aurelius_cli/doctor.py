@@ -9,9 +9,7 @@ import platform
 import subprocess
 import sys
 from dataclasses import dataclass, field
-from enum import Enum
 from pathlib import Path
-from typing import Any
 
 logger = __import__("logging").getLogger(__name__)
 

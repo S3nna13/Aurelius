@@ -9,12 +9,12 @@ Implements:
 from __future__ import annotations
 
 import enum
-from dataclasses import dataclass, field
-from typing import Any
 import hashlib
+from dataclasses import dataclass
+from typing import Any
 
 
-class QuantBits(str, enum.Enum):
+class QuantBits(enum.StrEnum):
     BITS_2 = "2bit"
     BITS_4 = "4bit"
     BITS_8 = "8bit"

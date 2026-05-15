@@ -1,9 +1,13 @@
 """Aurelius v2 Efficiency — KV cache, attention, compression, quantization, sparsity."""
 
-from src.efficiency.kv_cache import PagedKVCache, KVCacheQuantizer, PrefixCache
-from src.efficiency.attention import CrossLayerKVSharing, AttentionSinkManager, DynamicSparseAttention
+from src.efficiency.attention import (
+    AttentionSinkManager,
+    CrossLayerKVSharing,
+    DynamicSparseAttention,
+)
+from src.efficiency.compression import ContextCompressor, KVCacheCompressor
+from src.efficiency.kv_cache import KVCacheQuantizer, PagedKVCache, PrefixCache
 from src.efficiency.prefill import ChunkedPrefillScheduler
-from src.efficiency.compression import KVCacheCompressor, ContextCompressor
 
 __all__ = [
     "PagedKVCache", "KVCacheQuantizer", "PrefixCache",

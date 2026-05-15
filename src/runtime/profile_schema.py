@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 
-class CapabilityMode(str, enum.Enum):
+class CapabilityMode(enum.StrEnum):
     """Describes which tier of capabilities is available on current profile."""
 
     FULL_LOCAL = "full_local"
@@ -29,7 +29,7 @@ class CapabilityMode(str, enum.Enum):
     """Local device only orchestrates and routes work."""
 
 
-class MemoryPolicy(str, enum.Enum):
+class MemoryPolicy(enum.StrEnum):
     """Memory pressure policy applied at runtime."""
 
     CONSERVATIVE = "conservative"
@@ -38,7 +38,7 @@ class MemoryPolicy(str, enum.Enum):
     FRONTIER = "frontier"
 
 
-class QuantLevel(str, enum.Enum):
+class QuantLevel(enum.StrEnum):
     """Supported quantization levels."""
 
     NONE = "none"

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import platform
-import shutil
 import subprocess
 from dataclasses import dataclass, field
 from typing import Any

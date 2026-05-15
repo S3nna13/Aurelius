@@ -23,10 +23,10 @@ Serves:
 
 from __future__ import annotations
 
-from dataclasses import asdict
 from typing import Any
-from fastapi import FastAPI, HTTPException, Query
-from pydantic import BaseModel, Field
+
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 
 app = FastAPI(title="Aurelius v2 API", version="2.0.0")
 
@@ -71,7 +71,7 @@ async def api_health() -> dict[str, Any]:
     """Health endpoint with RAM/VRAM/unified memory."""
     try:
         from src.runtime.hardware_detector import HardwareDetector
-        from src.runtime.memory_budget import MemoryBudgetManager, MemoryBudgetConfig
+        from src.runtime.memory_budget import MemoryBudgetConfig, MemoryBudgetManager
 
         detector = HardwareDetector()
         info = detector.detect()
@@ -176,8 +176,8 @@ async def api_backends() -> dict[str, Any]:
 async def api_backend_select(model: str = "forge") -> dict[str, Any]:
     """Select best backend for the given model."""
     try:
-        from src.runtime.hardware_detector import HardwareDetector
         from src.runtime.backend_selector import BackendSelector
+        from src.runtime.hardware_detector import HardwareDetector
 
         detector = HardwareDetector()
         info = detector.detect()
@@ -202,9 +202,8 @@ async def api_backend_select(model: str = "forge") -> dict[str, Any]:
 async def api_capabilities(model: str = "forge") -> CapabilityResponse:
     """Generate capability report for current profile."""
     try:
-        from src.runtime.hardware_detector import HardwareDetector
         from src.runtime.backend_selector import BackendSelector
-        from src.runtime.capability_report import CapabilityReport
+        from src.runtime.hardware_detector import HardwareDetector
 
         detector = HardwareDetector()
         info = detector.detect()
@@ -316,9 +315,9 @@ async def api_skill_detail(skill_id: str) -> dict[str, Any]:
 async def api_skill_run(skill_id: str, mode: str = "dry_run") -> dict[str, Any]:
     """Run a native skill."""
     try:
-        from src.skills.registry import SkillRegistry
         from src.skills.executor import SkillExecutor
         from src.skills.manifest import SkillExecutionMode
+        from src.skills.registry import SkillRegistry
 
         registry = SkillRegistry()
         registry.discover_from_path()
@@ -358,9 +357,8 @@ async def api_skill_telemetry(skill_id: str) -> dict[str, Any]:
 async def api_chat(request: ChatRequest) -> ChatResponse:
     """Chat endpoint with full execution metadata."""
     try:
-        from src.runtime.hardware_detector import HardwareDetector
         from src.runtime.backend_selector import BackendSelector
-        from src.runtime.capability_report import CapabilityReport
+        from src.runtime.hardware_detector import HardwareDetector
 
         detector = HardwareDetector()
         info = detector.detect()

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from src.skills.manifest import SkillManifest, SkillStatus
+from src.skills.manifest import SkillManifest
 
 
 @dataclass
