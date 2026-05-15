@@ -192,7 +192,7 @@ class MemoryBudgetManager:
         used = self.get_used_total_gb()
         free = self.get_free_gb()
         level = self.pressure_level()
-        steps = [s.name for s in self.DEGRADEATION_LADDER if s.applied]
+        steps = [s.name for s in self.DEGRADATION_LADDER if s.applied]
 
         # Derive recommendations based on pressure
         recommended_model: str | None = None
