@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent.patch_synthesis import (
+from src.agent.patch_synthesis import (
     PATCH_REGISTRY,
     Patch,
     PatchError,

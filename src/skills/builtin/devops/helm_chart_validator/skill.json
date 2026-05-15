@@ -1,0 +1,45 @@
+{
+  "id": "devops.helm_chart_validator",
+  "name": "Helm Chart Validator",
+  "version": "1.0.0",
+  "category": "devops",
+  "summary": "Validate Helm charts for correctness.",
+  "description": "Validate Helm charts for correctness.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    },
+    {
+      "name": "terminal",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "medium",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.devops.helm_chart_validator:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "helm",
+    "kubernetes"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

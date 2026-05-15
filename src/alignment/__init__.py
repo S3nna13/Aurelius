@@ -298,3 +298,10 @@ from .praxis import PrecisionFusion as PrecisionFusion
 from .praxis import SteeringRewardCorrespondence as SteeringRewardCorrespondence
 
 ALIGNMENT_REGISTRY["praxis"] = PRAXISTrainer
+
+# Backwards-compatibility aliases for the unified namespace
+import sys as _sys
+_this = _sys.modules[__name__]
+_sys.modules['alignment'] = _this
+_sys.modules['src.alignment'] = _this
+_sys.modules['aurelius.alignment'] = _this

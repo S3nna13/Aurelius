@@ -6,7 +6,7 @@ full reflexion loop end-to-end.
 
 from __future__ import annotations
 
-from agent.reflexion_agent import (
+from src.agent.reflexion_agent import (
     ReflexionAgent,
     ReflexionAttempt,
     ReflexionConfig,

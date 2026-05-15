@@ -1,0 +1,49 @@
+{
+  "id": "coding.git_merge_conflict_repair",
+  "name": "Git Merge Conflict Repair",
+  "version": "1.0.0",
+  "category": "coding",
+  "summary": "Detect and resolve git merge conflicts intelligently.",
+  "description": "Detect and resolve git merge conflicts intelligently.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    },
+    {
+      "name": "file_write",
+      "scope": "limited"
+    },
+    {
+      "name": "terminal",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "medium",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.coding.git_merge_conflict_repair:run",
+  "inputs_schema": "schemas/git_merge_conflict_repair.input.json",
+  "outputs_schema": "schemas/git_merge_conflict_repair.output.json",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "git",
+    "merge"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

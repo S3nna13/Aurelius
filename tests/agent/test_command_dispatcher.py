@@ -6,15 +6,15 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from agent.command_dispatcher import (
+from src.agent.command_dispatcher import (
     COMMAND_DISPATCHER_REGISTRY,
     DEFAULT_COMMAND_DISPATCHER,
     CommandDispatcher,
     CommandDispatchError,
     DispatchResult,
 )
-from agent.nl_command_parser import ParsedCommand
-from agent.skill_executor import SkillContext
+from src.agent.nl_command_parser import ParsedCommand
+from src.agent.skill_executor import SkillContext
 
 # ---------------------------------------------------------------------------
 # Helpers

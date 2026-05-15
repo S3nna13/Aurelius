@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from tools.tool_schema_registry import (
+from src.tools.tool_schema_registry import (
     TOOL_SCHEMA_REGISTRY,
     ParameterSchema,
     ToolSchemaRegistry,

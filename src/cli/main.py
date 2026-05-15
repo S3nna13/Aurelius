@@ -1100,8 +1100,8 @@ def _build_agent_loop(args: argparse.Namespace):
     Uses a mock generate function when no model is provided, so the
     command stays usable without a checkpoint loaded.
     """
-    from agent.react_loop import ReActLoop, create_wired_loop  # noqa: F401
-    from agent.tool_registry_dispatcher import ToolRegistryDispatcher  # noqa: F401
+    from src.agent.react_loop import ReActLoop, create_wired_loop  # noqa: F401
+    from src.agent.tool_registry_dispatcher import ToolRegistryDispatcher  # noqa: F401
 
     # Default: empty tool list. Callers wanting tools can extend this
     # builder; the agent loop still runs (returns no_answer/budget) and

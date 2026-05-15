@@ -1,0 +1,45 @@
+{
+  "id": "coding.python_packaging_repair",
+  "name": "Python Packaging Repair",
+  "version": "1.0.0",
+  "category": "coding",
+  "summary": "Fix pyproject.toml, setup.py, and package configuration.",
+  "description": "Fix pyproject.toml, setup.py, and package configuration.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    },
+    {
+      "name": "file_write",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.coding.python_packaging_repair:run",
+  "inputs_schema": "schemas/python_packaging_repair.input.json",
+  "outputs_schema": "schemas/python_packaging_repair.output.json",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "python",
+    "packaging"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

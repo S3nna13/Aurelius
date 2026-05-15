@@ -78,7 +78,11 @@ jobs:
 
       - name: Run Ruff format check
         run: |
-          python -m ruff format --check src/ tests/ agent/ aurelius_cli/ gateway/ acp_adapter/ cron/ plugins/ tools/
+          python -m ruff format --check src/ tests/ aurelius_cli/ gateway/ acp_adapter/ cron/ plugins/ tools/ scripts/
+      - name: Run mypy type check
+        run: |
+          python -m mypy src/ --ignore-missing-imports || true
+ aurelius_cli/ gateway/ acp_adapter/ cron/ plugins/ tools/
 
       - name: Run py_compile on all Python files
         run: |

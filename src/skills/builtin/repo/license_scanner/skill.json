@@ -1,0 +1,41 @@
+{
+  "id": "repo.license_scanner",
+  "name": "License Scanner",
+  "version": "1.0.0",
+  "category": "repo",
+  "summary": "Scan dependencies for license compliance issues.",
+  "description": "Scan dependencies for license compliance issues.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.repo.license_scanner:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "license",
+    "compliance"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

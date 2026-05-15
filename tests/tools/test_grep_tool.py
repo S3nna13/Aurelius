@@ -7,7 +7,7 @@ import re
 
 import pytest
 
-from tools.grep_tool import _MAX_CONTENT_LEN, _MAX_PATTERN_LEN, _MAX_RESULTS, GrepTool
+from src.tools.grep_tool import _MAX_CONTENT_LEN, _MAX_PATTERN_LEN, _MAX_RESULTS, GrepTool
 
 
 @pytest.fixture

@@ -1,0 +1,45 @@
+{
+  "id": "coding.logging_migration",
+  "name": "Logging Migration",
+  "version": "1.0.0",
+  "category": "coding",
+  "summary": "Standardize logging across the codebase.",
+  "description": "Standardize logging across the codebase.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    },
+    {
+      "name": "file_write",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.coding.logging_migration:run",
+  "inputs_schema": "schemas/logging_migration.input.json",
+  "outputs_schema": "schemas/logging_migration.output.json",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "logging",
+    "migration"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

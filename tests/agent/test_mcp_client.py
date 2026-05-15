@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent.mcp_client import (
+from src.agent.mcp_client import (
     MCP_PROTOCOL_VERSION,
     MCPClient,
     MCPPrompt,

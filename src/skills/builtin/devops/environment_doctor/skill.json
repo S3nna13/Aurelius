@@ -1,0 +1,45 @@
+{
+  "id": "devops.environment_doctor",
+  "name": "Environment Doctor",
+  "version": "1.0.0",
+  "category": "devops",
+  "summary": "Full health check of dev environment dependencies.",
+  "description": "Full health check of dev environment dependencies.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    },
+    {
+      "name": "terminal",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.devops.environment_doctor:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "devops",
+    "doctor"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

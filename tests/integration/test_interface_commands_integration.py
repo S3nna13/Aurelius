@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 
 import src.cli.main as cli_main
-from agent.interface_runtime import AureliusInterfaceRuntime
+from src.agent.interface_runtime import AureliusInterfaceRuntime
 
 
 

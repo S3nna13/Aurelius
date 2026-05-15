@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent.tool_use_tracker import (
+from src.agent.tool_use_tracker import (
     TOOL_USE_TRACKER_REGISTRY,
     ToolBudget,
     ToolCall,

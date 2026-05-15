@@ -47,12 +47,11 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Any
 
-from agent.command_dispatcher import CommandDispatcher
-from agent.nl_command_parser import NLCommandParseError, NLCommandParser
-from agent.skill_executor import ExecutionResult, SkillContext, SkillExecutor
+from src.agent.command_dispatcher import CommandDispatcher
+from src.agent.nl_command_parser import NLCommandParseError, NLCommandParser
+from src.agent.skill_executor import ExecutionResult, SkillContext, SkillExecutor
+from src.serving.mission_control import ActivityLog
 from src.workflow.workflow_monitor import WorkflowMonitor, WorkflowStatus
-
-from .mission_control import ActivityLog
 
 
 class _LogRingBuffer(logging.Handler):
@@ -87,7 +86,7 @@ _MAX_CONTENT_LENGTH = 1_048_576
 
 #: Path to built frontend assets — resolved relative to this file.
 #: Goes up 2 levels: gateway/ → Aurelius root (parent.parent)
-_FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+_FRONTEND_DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist"
 
 
 class _JSONMixin:
@@ -1038,7 +1037,7 @@ class AureliusHandler(BaseHTTPRequestHandler, _JSONMixin):
             self._send_json(403, {"error": "Invalid license key"})
 
     def _handle_modes(self) -> None:
-        from agent.agent_mode_registry import AGENT_MODE_REGISTRY
+        from src.agent.agent_mode_registry import AGENT_MODE_REGISTRY
 
         modes = []
         for registry in AGENT_MODE_REGISTRY.values():
@@ -1216,7 +1215,7 @@ if __name__ == "__main__":
 
     arg_parser = argparse.ArgumentParser(description="Aurelius Unified Server")
     arg_parser.add_argument("--port", type=int, default=7870)
-    arg_parser.add_argument("--host", default="0.0.0.0")  # nosec B104 — default for home network LAN access; user can override with --host  # noqa: S104
+    arg_parser.add_argument("--host", default="127.0.0.1")  # nosec B104 — default for home network LAN access; user can override with --host  # noqa: S104
     args = arg_parser.parse_args()
 
     server = create_aurelius_server(args.host, args.port)

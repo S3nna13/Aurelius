@@ -1,0 +1,45 @@
+{
+  "id": "cua.accessibility_tree_inspector",
+  "name": "Accessibility Tree Inspector",
+  "version": "1.0.0",
+  "category": "cua",
+  "summary": "Inspect and analyze accessibility trees.",
+  "description": "Inspect and analyze accessibility trees.",
+  "permissions": [
+    {
+      "name": "browser",
+      "scope": "limited"
+    },
+    {
+      "name": "cua",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.cua.accessibility_tree_inspector:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run",
+    "skill_safety_gate"
+  ],
+  "tags": [
+    "accessibility"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

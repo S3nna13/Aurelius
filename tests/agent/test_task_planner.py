@@ -4,7 +4,7 @@ Tests for agent/task_planner.py  (≥28 tests)
 
 import pytest
 
-from agent.task_planner import (
+from src.agent.task_planner import (
     TASK_PLANNER_REGISTRY,
     TaskPlanner,
 )

@@ -1,0 +1,49 @@
+{
+  "id": "coding.typescript_lint_cleanup",
+  "name": "TypeScript Lint Cleanup",
+  "version": "1.0.0",
+  "category": "coding",
+  "summary": "Fix ESLint/biome lint errors in TypeScript.",
+  "description": "Fix ESLint/biome lint errors in TypeScript.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    },
+    {
+      "name": "file_write",
+      "scope": "limited"
+    },
+    {
+      "name": "terminal",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.coding.typescript_lint_cleanup:run",
+  "inputs_schema": "schemas/typescript_lint_cleanup.input.json",
+  "outputs_schema": "schemas/typescript_lint_cleanup.output.json",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "typescript",
+    "lint"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from agent.interface_runtime import AureliusInterfaceRuntime
-from agent.session_manager import SessionManager
-from agent.skill_catalog import SkillCatalog
+from src.agent.interface_runtime import AureliusInterfaceRuntime
+from src.agent.session_manager import SessionManager
+from src.agent.skill_catalog import SkillCatalog
 from src.model import (
     ApprovalRequest,
     AureliusInterfaceFramework,

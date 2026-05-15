@@ -1,0 +1,45 @@
+{
+  "id": "ml.mtp_acceptance_evaluator",
+  "name": "MTP Acceptance Evaluator",
+  "version": "1.0.0",
+  "category": "ml",
+  "summary": "Evaluate multi-token prediction acceptance rates.",
+  "description": "Evaluate multi-token prediction acceptance rates.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    },
+    {
+      "name": "terminal",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.ml.mtp_acceptance_evaluator:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "ml",
+    "mtp"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 600
+}

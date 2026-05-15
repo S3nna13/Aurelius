@@ -1,0 +1,46 @@
+{
+  "id": "security.ssrf_hardening",
+  "name": "SSRF Hardening",
+  "version": "1.0.0",
+  "category": "security",
+  "summary": "Audit and harden against Server-Side Request Forgery.",
+  "description": "Audit and harden against Server-Side Request Forgery.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    },
+    {
+      "name": "file_write",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "high",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.security.ssrf_hardening:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run",
+    "skill_safety_gate"
+  ],
+  "tags": [
+    "security",
+    "ssrf"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 600
+}

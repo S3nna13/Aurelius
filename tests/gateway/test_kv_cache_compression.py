@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import torch
 
-from gateway.kv_cache_compression import (
+from src.serving.kv_cache_compression import (
     CompressedPagedKVCache,
     KVCacheCompressor,
 )
@@ -112,14 +112,14 @@ class TestCompressedPagedKVCache:
     """CompressedPagedKVCache wrapper."""
 
     def test_wrapper_instantiates(self):
-        from gateway.paged_kv_cache import PagedKVCache
+        from src.serving.paged_kv_cache import PagedKVCache
 
         base = PagedKVCache(n_layers=32, n_kv_heads=8, head_dim=64)
         wrapped = CompressedPagedKVCache(base)
         assert wrapped.total_compression_ratio == 1.0  # no blocks yet
 
     def test_compression_ratio_reported(self):
-        from gateway.paged_kv_cache import PagedKVCache
+        from src.serving.paged_kv_cache import PagedKVCache
 
         base = PagedKVCache(n_layers=32, n_kv_heads=8, head_dim=64)
         wrapped = CompressedPagedKVCache(

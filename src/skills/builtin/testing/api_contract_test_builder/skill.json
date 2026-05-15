@@ -1,0 +1,45 @@
+{
+  "id": "testing.api_contract_test_builder",
+  "name": "API Contract Test Builder",
+  "version": "1.0.0",
+  "category": "testing",
+  "summary": "Generate API contract tests from OpenAPI specs.",
+  "description": "Generate API contract tests from OpenAPI specs.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    },
+    {
+      "name": "file_write",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.testing.api_contract_test_builder:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "api",
+    "testing"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

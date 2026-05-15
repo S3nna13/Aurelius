@@ -6,7 +6,7 @@ import time
 
 import pytest
 
-from agent.execution_monitor import (
+from src.agent.execution_monitor import (
     EXECUTION_MONITOR_REGISTRY,
     BudgetConfig,
     ExecutionEvent,

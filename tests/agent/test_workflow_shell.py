@@ -7,10 +7,10 @@ from pathlib import Path
 
 import pytest
 
-from agent.interface_runtime import AureliusInterfaceRuntime
-from agent.session_manager import SessionManager
-from agent.skill_catalog import SkillCatalog
-from agent.workflow_shell import WorkflowShell
+from src.agent.interface_runtime import AureliusInterfaceRuntime
+from src.agent.session_manager import SessionManager
+from src.agent.skill_catalog import SkillCatalog
+from src.agent.workflow_shell import WorkflowShell
 from src.model import AureliusInterfaceFramework, InterfaceFrameworkError
 
 

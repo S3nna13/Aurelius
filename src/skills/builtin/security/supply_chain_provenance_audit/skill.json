@@ -1,0 +1,46 @@
+{
+  "id": "security.supply_chain_provenance_audit",
+  "name": "Supply Chain Provenance Audit",
+  "version": "1.0.0",
+  "category": "security",
+  "summary": "Audit dependency supply chain provenance.",
+  "description": "Audit dependency supply chain provenance.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    },
+    {
+      "name": "network",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "high",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.security.supply_chain_provenance_audit:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run",
+    "skill_safety_gate"
+  ],
+  "tags": [
+    "security",
+    "supply-chain"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 600
+}

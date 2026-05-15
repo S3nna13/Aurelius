@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent.memory_writer import (
+from src.agent.memory_writer import (
     MEMORY_WRITER_REGISTRY,
     MemoryRecord,
     MemoryType,

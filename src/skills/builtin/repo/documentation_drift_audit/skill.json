@@ -1,0 +1,41 @@
+{
+  "id": "repo.documentation_drift_audit",
+  "name": "Documentation Drift Audit",
+  "version": "1.0.0",
+  "category": "repo",
+  "summary": "Find docs no longer matching implementation.",
+  "description": "Find docs no longer matching implementation.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.repo.documentation_drift_audit:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "docs",
+    "audit"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

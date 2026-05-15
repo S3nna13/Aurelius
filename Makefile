@@ -118,13 +118,13 @@ rust-build-all: rust-build-data-engine rust-build-token-counter rust-build-sessi
 rust-test: ## Run all Rust crate tests
 	@for crate in crates/data-engine crates/token-counter crates/session-manager crates/search-index crates/redis-client crates/api-gateway tools/data-cli; do \
 		echo "Testing $$crate..."; \
-		(cd "$$crate" && cargo test --quiet 2>/dev/null) || true; \
+		(cd "$$crate" && cargo test --quiet 2>/dev/null) || exit 1; \
 	done
 
 rust-lint: ## Run clippy on all Rust crates
 	@for crate in crates/data-engine crates/token-counter crates/session-manager crates/search-index crates/redis-client crates/api-gateway tools/data-cli; do \
 		echo "Linting $$crate..."; \
-		(cd "$$crate" && cargo clippy -- -D warnings 2>/dev/null) || true; \
+		(cd "$$crate" && cargo clippy -- -D warnings 2>/dev/null) || exit 1; \
 	done
 
 # --- Frontend ---
@@ -238,7 +238,7 @@ audit-deps: ## Audit all dependencies for vulnerabilities
 	@echo "=== Python ==="
 	$(PYTHON) -m pip_audit --desc || true
 	@echo "=== Rust ==="
-	cargo audit || true
+	cargo audit
 	@echo "=== Node.js (middle) ==="
 	cd middle && npm audit --audit-level=high || true
 	@echo "=== Node.js (frontend) ==="

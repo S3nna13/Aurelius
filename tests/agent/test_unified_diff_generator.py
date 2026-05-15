@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent.unified_diff_generator import DiffResult, UnifiedDiffGenerator
+from src.agent.unified_diff_generator import DiffResult, UnifiedDiffGenerator
 
 
 def test_modify_single_file_contains_hunk_header():

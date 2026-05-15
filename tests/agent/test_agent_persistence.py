@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from agent.agent_memory import AgentMemory
-from agent.agent_persistence import AgentPersistence
-from agent.agent_runtime import AgentMessage, AgentRuntime, AgentSpec, AgentStatus
-from agent.react_loop import AgentStep, AgentTrace
+from src.agent.agent_memory import AgentMemory
+from src.agent.agent_persistence import AgentPersistence
+from src.agent.agent_runtime import AgentMessage, AgentRuntime, AgentSpec, AgentStatus
+from src.agent.react_loop import AgentStep, AgentTrace
 
 
 def test_save_and_load_memory_round_trip_preserves_entries(tmp_path) -> None:

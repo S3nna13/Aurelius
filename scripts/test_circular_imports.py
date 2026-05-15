@@ -45,9 +45,9 @@ except Exception as e:
 print()
 
 # Test 2: Direct imports (as specified in task)
-print("Test 2: from agent.plan_and_execute import PlanAndExecuteAgent...")
+print("Test 2: from src.agent.plan_and_execute import PlanAndExecuteAgent...")
 try:
-    from agent.plan_and_execute import PlanAndExecuteAgent
+    from src.agent.plan_and_execute import PlanAndExecuteAgent
 
     print(f"[OK] PlanAndExecuteAgent imported successfully: {PlanAndExecuteAgent}")
 except Exception as e:
@@ -55,9 +55,9 @@ except Exception as e:
     traceback.print_exc()
     sys.exit(1)
 
-print("Test 3: from agent.code_execution_tool import CodeExecutionTool...")
+print("Test 3: from src.agent.code_execution_tool import CodeExecutionTool...")
 try:
-    from agent.code_execution_tool import CodeExecutionTool
+    from src.agent.code_execution_tool import CodeExecutionTool
 
     print(f"[OK] CodeExecutionTool imported successfully: {CodeExecutionTool}")
 except Exception as e:
@@ -69,8 +69,8 @@ print()
 
 # Test 4: Combined import as specified in the task
 print("Test 4: Combined import (task verification command)...")
-from agent.code_execution_tool import CodeExecutionTool
-from agent.plan_and_execute import PlanAndExecuteAgent
+from src.agent.code_execution_tool import CodeExecutionTool
+from src.agent.plan_and_execute import PlanAndExecuteAgent
 
 print("OK")
 

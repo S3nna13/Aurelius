@@ -1,0 +1,50 @@
+{
+  "id": "coding.python_async_debugging",
+  "name": "Python Async Debugging",
+  "version": "1.0.0",
+  "category": "coding",
+  "summary": "Diagnose asyncio/ThreadPoolExecutor/thread issues.",
+  "description": "Diagnose asyncio/ThreadPoolExecutor/thread issues.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    },
+    {
+      "name": "file_write",
+      "scope": "limited"
+    },
+    {
+      "name": "terminal",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "medium",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.coding.python_async_debugging:run",
+  "inputs_schema": "schemas/python_async_debugging.input.json",
+  "outputs_schema": "schemas/python_async_debugging.output.json",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "python",
+    "async",
+    "debugging"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

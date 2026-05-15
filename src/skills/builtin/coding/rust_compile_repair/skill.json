@@ -1,0 +1,49 @@
+{
+  "id": "coding.rust_compile_repair",
+  "name": "Rust Compile Repair",
+  "version": "1.0.0",
+  "category": "coding",
+  "summary": "Fix Rust compilation errors and borrow checker issues.",
+  "description": "Fix Rust compilation errors and borrow checker issues.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    },
+    {
+      "name": "file_write",
+      "scope": "limited"
+    },
+    {
+      "name": "terminal",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "medium",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.coding.rust_compile_repair:run",
+  "inputs_schema": "schemas/rust_compile_repair.input.json",
+  "outputs_schema": "schemas/rust_compile_repair.output.json",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "rust",
+    "compilation"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

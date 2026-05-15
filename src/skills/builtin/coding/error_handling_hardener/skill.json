@@ -1,0 +1,45 @@
+{
+  "id": "coding.error_handling_hardener",
+  "name": "Error Handling Hardener",
+  "version": "1.0.0",
+  "category": "coding",
+  "summary": "Ensure error paths are covered and handled properly.",
+  "description": "Ensure error paths are covered and handled properly.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    },
+    {
+      "name": "file_write",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.coding.error_handling_hardener:run",
+  "inputs_schema": "schemas/error_handling_hardener.input.json",
+  "outputs_schema": "schemas/error_handling_hardener.output.json",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "error-handling",
+    "resilience"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

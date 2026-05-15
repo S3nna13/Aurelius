@@ -1,0 +1,42 @@
+{
+  "id": "cua.cua_action_planner",
+  "name": "CUA Action Planner",
+  "version": "1.0.0",
+  "category": "cua",
+  "summary": "Plan CUA action sequences from user intent.",
+  "description": "Plan CUA action sequences from user intent.",
+  "permissions": [
+    {
+      "name": "cua",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "high",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.cua.cua_action_planner:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run",
+    "skill_safety_gate"
+  ],
+  "tags": [
+    "cua",
+    "planning"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

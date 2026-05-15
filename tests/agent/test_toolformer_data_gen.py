@@ -23,7 +23,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from agent.toolformer_data_gen import (
+from src.agent.toolformer_data_gen import (
     Tool,
     ToolCallAnnotation,
     ToolformerConfig,

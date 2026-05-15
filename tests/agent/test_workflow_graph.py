@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent.workflow_graph import (
+from src.agent.workflow_graph import (
     AGENT_REGISTRY,
     WorkflowGraph,
     WorkflowResult,

@@ -1,0 +1,41 @@
+{
+  "id": "devops.cuda_tensorrt_check",
+  "name": "CUDA/TensorRT Checker",
+  "version": "1.0.0",
+  "category": "devops",
+  "summary": "Verify CUDA and TensorRT installations.",
+  "description": "Verify CUDA and TensorRT installations.",
+  "permissions": [
+    {
+      "name": "terminal",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.devops.cuda_tensorrt_check:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "cuda",
+    "tensorrt"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

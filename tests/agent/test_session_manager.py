@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from agent.session_manager import SessionManager, SessionRecord
+from src.agent.session_manager import SessionManager, SessionRecord
 from src.model import (
     AureliusInterfaceFramework,
     InterfaceFrameworkError,

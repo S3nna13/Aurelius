@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent.web_browse_tool import (
+from src.agent.web_browse_tool import (
     DEFAULT_TOOL_DESCRIPTOR,
     PrivateHostBlocked,
     UrlValidationError,

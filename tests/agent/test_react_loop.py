@@ -7,7 +7,7 @@ from collections.abc import Iterator
 
 import pytest
 
-from agent.react_loop import ReActLoop
+from src.agent.react_loop import ReActLoop
 
 
 def _scripted(responses: list[str]):

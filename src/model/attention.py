@@ -13,6 +13,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from .alibi_attention import build_alibi_bias, get_alibi_slopes
 from .config import AureliusConfig
 
 
@@ -187,6 +188,22 @@ class GroupedQueryAttention(nn.Module):
                 )
                 self.duo_manager = DuoAttentionManager(duo_cfg)
 
+        # ALiBi positional bias (MPT-style: replaces RoPE when use_alibi=True)
+        self.use_alibi = getattr(config, 'use_alibi', False)
+        self.alibi_bias_max = getattr(config, 'alibi_bias_max', 8.0)
+        if self.use_alibi:
+            # Compute scaled slopes: m_i = alibi_bias_max * 2^(-8*i/n_heads)
+            slopes = get_alibi_slopes(config.n_heads) * self.alibi_bias_max
+            alibi_bias = build_alibi_bias(
+                config.n_heads,
+                config.max_seq_len,
+                slopes=slopes,
+                causal=True,
+            )
+            self.register_buffer('alibi_slopes', slopes, persistent=False)
+            self.register_buffer('alibi_bias', alibi_bias, persistent=False)
+
+
     def forward(
         self,
         x: torch.Tensor,
@@ -233,8 +250,10 @@ class GroupedQueryAttention(nn.Module):
         v_new = self.v_proj(x).view(B, S, self.n_kv_heads, self.head_dim)
 
         # Apply RoPE to queries and new keys (freqs_cis covers only the new S positions)
-        q = apply_rope(q, freqs_cis)
-        k_new = apply_rope(k_new, freqs_cis)
+        if not self.use_alibi:
+            q = apply_rope(q, freqs_cis)
+            k_new = apply_rope(k_new, freqs_cis)
+        # else: ALiBi uses no positional encoding in q/k
 
         # Optional INT8 KV-cache quantization (simulate quantization noise)
         if self.kv_quantization == "int8":
@@ -277,7 +296,28 @@ class GroupedQueryAttention(nn.Module):
         # is_causal=True only during full prefill with no explicit mask or cache
         is_causal = mask is None and past_kv is None
 
-        if self._capture_scores:
+        if self.use_alibi:
+            # Manual attention with ALiBi bias (no RoPE used)
+            # q, k have no positional encoding; bias provides position info
+            S_total = k.shape[1]
+            # Compute raw scores: (B, n_heads, S, S_total)
+            scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.head_dim)
+            # Select ALiBi bias slice for (queries from [pos_start:pos_start+S], keys from [0:S_total])
+            if past_kv is None:
+                bias_slice = self.alibi_bias[:, :S, :S_total]
+            else:
+                past_len = past_kv[0].shape[1] if isinstance(past_kv, tuple) else past_kv['k'].shape[1]
+                bias_slice = self.alibi_bias[:, past_len:past_len + S, :S_total]
+            scores = scores + bias_slice.unsqueeze(0)  # (1, n_heads, S, S_total) broadcast
+            if mask is not None:
+                scores = scores + mask
+            attn = F.softmax(scores, dim=-1)
+            if self.training and self.attn_dropout > 0.0:
+                attn = F.dropout(attn, p=self.attn_dropout, training=self.training)
+            out = torch.matmul(attn, v)
+
+        elif self._capture_scores:
+
             # Manual attention computation to capture probability scores.
             # This path is only used during offline calibration.
             scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(self.head_dim)

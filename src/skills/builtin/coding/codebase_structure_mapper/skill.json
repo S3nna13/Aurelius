@@ -1,0 +1,41 @@
+{
+  "id": "coding.codebase_structure_mapper",
+  "name": "Codebase Structure Mapper",
+  "version": "1.0.0",
+  "category": "coding",
+  "summary": "Map repository structure, entry points, and dependencies.",
+  "description": "Map repository structure, entry points, and dependencies.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.coding.codebase_structure_mapper:run",
+  "inputs_schema": "schemas/codebase_structure_mapper.input.json",
+  "outputs_schema": "schemas/codebase_structure_mapper.output.json",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "analysis",
+    "mapping"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

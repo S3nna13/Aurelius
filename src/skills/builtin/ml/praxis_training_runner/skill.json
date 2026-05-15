@@ -1,0 +1,49 @@
+{
+  "id": "ml.praxis_training_runner",
+  "name": "PRAXIS Training Runner",
+  "version": "1.0.0",
+  "category": "ml",
+  "summary": "Run PRAXIS alignment training with all components.",
+  "description": "Run PRAXIS alignment training with all components.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    },
+    {
+      "name": "terminal",
+      "scope": "limited"
+    },
+    {
+      "name": "network",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "medium",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.ml.praxis_training_runner:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "ml",
+    "praxis"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 600
+}

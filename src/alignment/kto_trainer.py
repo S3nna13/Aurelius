@@ -327,6 +327,6 @@ class KTOTrainer:
 # Registry
 # ---------------------------------------------------------------------------
 
-from src.alignment import ALIGNMENT_REGISTRY  # noqa: E402
+from . import ALIGNMENT_REGISTRY  # noqa: E402
 
 ALIGNMENT_REGISTRY["kto"] = KTOTrainer

@@ -5,8 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from agent.react_loop import AgentStep, AgentTrace
-from agent.training_pipeline import (
+from src.agent.react_loop import AgentStep, AgentTrace
+from src.agent.training_pipeline import (
     AgentTrainingCollector,
     trace_to_training_entry,
 )

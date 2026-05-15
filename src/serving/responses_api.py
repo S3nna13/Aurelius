@@ -288,7 +288,7 @@ RESPONSES_API_REGISTRY: dict[str, type[ResponsesAPIHandler]] = {
 # Additive: register into the shared API_SHAPE_REGISTRY so the Responses API
 # shape is discoverable alongside existing validators/decoders.
 try:
-    from .openai_api_validator import API_SHAPE_REGISTRY  # type: ignore[import]
+    from src.serving.openai_api_validator import API_SHAPE_REGISTRY  # type: ignore[import]
 
     API_SHAPE_REGISTRY["responses"] = ResponsesAPIHandler
 except Exception:  # noqa: S110

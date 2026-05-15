@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent.socratic_tutor import (
+from src.agent.socratic_tutor import (
     DEFAULT_SOCRATIC_TUTOR,
     SOCRATIC_TUTOR_REGISTRY,
     ConceptMastery,

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent.skill_evolver import (
+from src.agent.skill_evolver import (
     DEFAULT_SKILL_EVOLVER,
     SKILL_EVOLVER_REGISTRY,
     CrystallizedSkill,

@@ -12,7 +12,7 @@ import json
 
 import pytest
 
-from agent.tool_call_parser import (
+from src.agent.tool_call_parser import (
     JSONToolCallParser,
     ParsedToolCall,
     ToolCallParseError,

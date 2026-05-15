@@ -1,0 +1,49 @@
+{
+  "id": "coding.ci_failure_diagnosis",
+  "name": "CI Failure Diagnosis",
+  "version": "1.0.0",
+  "category": "coding",
+  "summary": "Analyze CI logs and fix failing pipeline jobs.",
+  "description": "Analyze CI logs and fix failing pipeline jobs.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    },
+    {
+      "name": "file_write",
+      "scope": "limited"
+    },
+    {
+      "name": "terminal",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "medium",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.coding.ci_failure_diagnosis:run",
+  "inputs_schema": "schemas/ci_failure_diagnosis.input.json",
+  "outputs_schema": "schemas/ci_failure_diagnosis.output.json",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "ci",
+    "debugging"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

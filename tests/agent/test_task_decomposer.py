@@ -6,7 +6,7 @@ import json
 
 import pytest
 
-from agent.task_decomposer import (
+from src.agent.task_decomposer import (
     SubTask,
     TaskDAG,
     TaskDecomposer,

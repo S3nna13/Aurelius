@@ -7,7 +7,7 @@ import time
 
 import pytest
 
-from agent.repo_context_packer import (
+from src.agent.repo_context_packer import (
     FileSnippet,
     RepoContext,
     RepoContextPacker,

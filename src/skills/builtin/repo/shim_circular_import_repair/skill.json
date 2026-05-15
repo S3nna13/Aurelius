@@ -1,0 +1,45 @@
+{
+  "id": "repo.shim_circular_import_repair",
+  "name": "Shim & Circular Import Repair",
+  "version": "1.0.0",
+  "category": "repo",
+  "summary": "Fix circular imports using shims and refactoring.",
+  "description": "Fix circular imports using shims and refactoring.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    },
+    {
+      "name": "file_write",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "medium",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.repo.shim_circular_import_repair:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "imports",
+    "refactoring"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

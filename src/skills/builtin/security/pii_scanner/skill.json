@@ -1,0 +1,42 @@
+{
+  "id": "security.pii_scanner",
+  "name": "PII Scanner",
+  "version": "1.0.0",
+  "category": "security",
+  "summary": "Scan for exposed personally identifiable information.",
+  "description": "Scan for exposed personally identifiable information.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "high",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.security.pii_scanner:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run",
+    "skill_safety_gate"
+  ],
+  "tags": [
+    "security",
+    "pii"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 600
+}

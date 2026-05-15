@@ -42,6 +42,7 @@ class ExecutionConfig:
 
     timeout_seconds: float = 5.0
     max_output_len: int = 1000
+    max_memory_mb: int | None = None
     allowed_modules: list[str] = field(
         default_factory=lambda: [
             "math",
@@ -73,6 +74,49 @@ class ExecutionResult:
 # ---------------------------------------------------------------------------
 # Code extraction
 # ---------------------------------------------------------------------------
+
+def _code_exec_worker(q: multiprocessing.Queue, code: str, config: ExecutionConfig) -> None:
+    """Worker that runs in child process and puts ExecutionResult dict on queue."""
+    stdout_buf = io.StringIO()
+    stderr_buf = io.StringIO()
+    exc_info: dict[str, Any] = {}
+    restricted_globals = _make_restricted_globals()
+    try:
+        compiled = compile(code, "<sandbox>", "exec")
+        with contextlib.redirect_stdout(stdout_buf), contextlib.redirect_stderr(stderr_buf):
+            # Apply memory limit if configured
+            if config.max_memory_mb is not None:
+                try:
+                    import resource as _res
+                    mem_bytes = config.max_memory_mb * 1024 * 1024
+                    for _rl_name in ("RLIMIT_AS", "RLIMIT_DATA"):
+                        _rl = getattr(_res, _rl_name, None)
+                        if _rl is not None:
+                            try:
+                                _res.setrlimit(_rl, (mem_bytes, mem_bytes))
+                            except (ValueError, OSError):
+                                pass
+                except ImportError:
+                    pass
+            exec(compiled, restricted_globals)  # nosec B102
+        result = {
+            "success": True,
+            "stdout": stdout_buf.getvalue(),
+            "stderr": stderr_buf.getvalue(),
+            "return_value": "",
+            "error": None,
+        }
+    except Exception as exc:
+        result = {
+            "success": False,
+            "stdout": stdout_buf.getvalue(),
+            "stderr": stderr_buf.getvalue(),
+            "return_value": "",
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+    q.put(result)
+
+
 
 
 def extract_code_blocks(text: str, language: str = "python") -> list[str]:
@@ -267,49 +311,8 @@ def execute_python(code: str, config: ExecutionConfig) -> ExecutionResult:
     # IPC to retrieve result from child
     result_queue = multiprocessing.Queue()
 
-    def _worker(q: multiprocessing.Queue, code: str, config: ExecutionConfig) -> None:
-        """Worker that runs in child process and puts ExecutionResult dict on queue."""
-        stdout_buf = io.StringIO()
-        stderr_buf = io.StringIO()
-        exc_info: dict[str, Any] = {}
-        restricted_globals = _make_restricted_globals()
-        try:
-            compiled = compile(code, "<sandbox>", "exec")
-            with contextlib.redirect_stdout(stdout_buf), contextlib.redirect_stderr(stderr_buf):
-                # Apply memory limit if configured
-                if config.max_memory_mb is not None:
-                    try:
-                        import resource as _res
 
-                        mem_bytes = config.max_memory_mb * 1024 * 1024
-                        for _rl_name in ("RLIMIT_AS", "RLIMIT_DATA"):
-                            _rl = getattr(_res, _rl_name, None)
-                            if _rl is not None:
-                                try:
-                                    _res.setrlimit(_rl, (mem_bytes, mem_bytes))
-                                except (ValueError, OSError):
-                                    pass
-                    except ImportError:
-                        pass
-                exec(compiled, restricted_globals)  # nosec B102
-            result = {
-                "success": True,
-                "stdout": stdout_buf.getvalue(),
-                "stderr": stderr_buf.getvalue(),
-                "return_value": "",
-                "error": None,
-            }
-        except Exception as exc:
-            result = {
-                "success": False,
-                "stdout": stdout_buf.getvalue(),
-                "stderr": stderr_buf.getvalue(),
-                "return_value": "",
-                "error": f"{type(exc).__name__}: {exc}",
-            }
-        q.put(result)
-
-    proc = multiprocessing.Process(target=_worker, args=(result_queue, code, config), daemon=True)
+    proc = multiprocessing.Process(target=_code_exec_worker, args=(result_queue, code, config), daemon=True)
     proc.start()
     proc.join(timeout=config.timeout_seconds)
 

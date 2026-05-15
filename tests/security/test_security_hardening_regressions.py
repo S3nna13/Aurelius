@@ -90,7 +90,7 @@ class TestConversationStorePathTraversal:
 
 def test_js_import_regex_no_redos():
     """AUR-SEC-2026-0003: _JS_IMPORT_RE must not catastrophically backtrack on adversarial input."""
-    from agent.repo_context_packer import _JS_IMPORT_RE
+    from src.agent.repo_context_packer import _JS_IMPORT_RE
 
     adversarial = "import " + "a" * 50_000
     start = time.perf_counter()
@@ -103,7 +103,7 @@ def test_js_import_regex_no_redos():
 
 def test_go_import_regex_no_redos():
     """AUR-SEC-2026-0003: _GO_IMPORT_RE must not catastrophically backtrack on adversarial input."""
-    from agent.repo_context_packer import _GO_IMPORT_RE
+    from src.agent.repo_context_packer import _GO_IMPORT_RE
 
     adversarial = "import " + "a" * 50_000
     start = time.perf_counter()

@@ -12,7 +12,7 @@ import torch
 import torch.nn.functional as F
 from torch import Tensor
 
-from src.alignment import ALIGNMENT_REGISTRY
+from . import ALIGNMENT_REGISTRY
 
 
 @dataclass

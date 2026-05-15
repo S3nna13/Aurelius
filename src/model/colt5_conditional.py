@@ -266,7 +266,7 @@ class _RMSNorm(nn.Module):
 def _register() -> None:
     """Register CoLT5 components in MODEL_COMPONENT_REGISTRY."""
     try:
-        from src.model import MODEL_COMPONENT_REGISTRY  # noqa: PLC0415
+        from . import MODEL_COMPONENT_REGISTRY  # noqa: PLC0415
 
         MODEL_COMPONENT_REGISTRY["colt5_ffn"] = CoLT5FFN
         MODEL_COMPONENT_REGISTRY["colt5_block"] = CoLT5Block

@@ -15,8 +15,8 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any, TextIO
 
-from agent.interface_runtime import AureliusInterfaceRuntime
-from agent.session_manager import SessionManager
+from src.agent.interface_runtime import AureliusInterfaceRuntime
+from src.agent.session_manager import SessionManager
 from src.model.interface_framework import AureliusInterfaceFramework, InterfaceFrameworkError
 
 __all__ = [

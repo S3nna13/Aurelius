@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from tools.web_tool import _is_safe_url
+from src.tools.web_tool import _is_safe_url
 
 
 def test_validator_blocks_file_scheme():

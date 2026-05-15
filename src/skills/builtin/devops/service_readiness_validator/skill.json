@@ -1,0 +1,45 @@
+{
+  "id": "devops.service_readiness_validator",
+  "name": "Service Readiness Validator",
+  "version": "1.0.0",
+  "category": "devops",
+  "summary": "Validate service health and readiness probes.",
+  "description": "Validate service health and readiness probes.",
+  "permissions": [
+    {
+      "name": "network",
+      "scope": "limited"
+    },
+    {
+      "name": "terminal",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.devops.service_readiness_validator:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "health-check",
+    "kubernetes"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

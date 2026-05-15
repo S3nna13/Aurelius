@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent.proactive_trigger import (
+from src.agent.proactive_trigger import (
     ProactiveTriggerConfig,
     ProactiveTriggerRegistry,
     TriggerSpec,

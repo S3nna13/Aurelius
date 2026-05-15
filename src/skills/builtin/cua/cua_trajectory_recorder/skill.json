@@ -1,0 +1,46 @@
+{
+  "id": "cua.cua_trajectory_recorder",
+  "name": "CUA Trajectory Recorder",
+  "version": "1.0.0",
+  "category": "cua",
+  "summary": "Record CUA action trajectories for replay.",
+  "description": "Record CUA action trajectories for replay.",
+  "permissions": [
+    {
+      "name": "cua",
+      "scope": "limited"
+    },
+    {
+      "name": "file_write",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "medium",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.cua.cua_trajectory_recorder:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run",
+    "skill_safety_gate"
+  ],
+  "tags": [
+    "cua",
+    "recording"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

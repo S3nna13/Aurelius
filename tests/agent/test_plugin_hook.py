@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent.plugin_hook import HOOK_POINTS, HOOK_REGISTRY, PluginHookRegistry
+from src.agent.plugin_hook import HOOK_POINTS, HOOK_REGISTRY, PluginHookRegistry
 
 # ---------------------------------------------------------------------------
 # Helpers

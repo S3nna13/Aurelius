@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from agent.agent_persistence import AgentPersistence
-from agent.skill_registry import SkillRegistry, SkillSpec
+from src.agent.agent_persistence import AgentPersistence
+from src.agent.skill_registry import SkillRegistry, SkillSpec
 
 
 def _make_skill(

@@ -1,0 +1,41 @@
+{
+  "id": "ml.model_config_validator",
+  "name": "Model Config Validator",
+  "version": "1.0.0",
+  "category": "ml",
+  "summary": "Validate model configuration files.",
+  "description": "Validate model configuration files.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.ml.model_config_validator:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "ml",
+    "config"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 600
+}

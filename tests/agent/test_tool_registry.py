@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from agent.tool_registry import ToolRegistry, ToolSpec
+from src.agent.tool_registry import ToolRegistry, ToolSpec
 
 
 def _echo(message: str) -> dict[str, str]:

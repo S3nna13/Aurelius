@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from agent.agent_swarm import CriticalPathAnalyzer, SubAgentResult
+from src.agent.agent_swarm import CriticalPathAnalyzer, SubAgentResult
 from src.eval import BENCHMARK_REGISTRY
 from src.eval.swarm_bench import SwarmBenchResult, SwarmTask
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent.agent_mode_registry import (
+from src.agent.agent_mode_registry import (
     AGENT_MODE_REGISTRY,
     DEFAULT_MODE_REGISTRY,
     AgentMode,

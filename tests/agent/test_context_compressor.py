@@ -4,7 +4,7 @@ Tests for agent/context_compressor.py  (≥28 tests)
 
 import pytest
 
-from agent.context_compressor import (
+from src.agent.context_compressor import (
     CONTEXT_COMPRESSOR_REGISTRY,
     CompressionConfig,
     ContextCompressor,

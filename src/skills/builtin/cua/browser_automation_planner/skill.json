@@ -1,0 +1,46 @@
+{
+  "id": "cua.browser_automation_planner",
+  "name": "Browser Automation Planner",
+  "version": "1.0.0",
+  "category": "cua",
+  "summary": "Plan browser automation via CDP.",
+  "description": "Plan browser automation via CDP.",
+  "permissions": [
+    {
+      "name": "browser",
+      "scope": "limited"
+    },
+    {
+      "name": "network",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "medium",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.cua.browser_automation_planner:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run",
+    "skill_safety_gate"
+  ],
+  "tags": [
+    "browser",
+    "automation"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

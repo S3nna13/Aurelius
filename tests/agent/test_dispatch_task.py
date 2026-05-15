@@ -6,7 +6,7 @@ import time
 
 import pytest
 
-from agent.dispatch_task import (
+from src.agent.dispatch_task import (
     Dispatcher,
     DispatchOutcome,
     DispatchTask,

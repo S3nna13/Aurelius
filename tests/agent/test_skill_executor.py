@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent.skill_executor import (
+from src.agent.skill_executor import (
     DEFAULT_SKILL_EXECUTOR,
     SKILL_EXECUTOR_REGISTRY,
     ExecutionResult,

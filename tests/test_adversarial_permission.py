@@ -6,7 +6,7 @@ mode bypass, classifier evasion, and hook injection.
 
 from __future__ import annotations
 
-from agent.permission_system import PermissionVerdict
+from src.agent.permission_system import PermissionVerdict
 
 from .test_security_audit import PermissionAuditor
 
@@ -86,7 +86,7 @@ class AdversarialPenTest:
         return hook_triggered
 
     def _req(self, action, target, reason=""):
-        from agent.permission_system import PermissionRequest
+        from src.agent.permission_system import PermissionRequest
 
         return PermissionRequest(action=action, target=target, context={"reason": reason})
 

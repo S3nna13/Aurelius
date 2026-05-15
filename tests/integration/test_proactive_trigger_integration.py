@@ -10,7 +10,7 @@ from __future__ import annotations
 
 
 from agent import AGENT_LOOP_REGISTRY
-from agent.proactive_trigger import (
+from src.agent.proactive_trigger import (
 
     ProactiveTriggerRegistry,
     condition_trigger,

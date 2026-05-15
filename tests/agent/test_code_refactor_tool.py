@@ -6,7 +6,7 @@ import ast
 
 import pytest
 
-from agent.code_refactor_tool import CodeRefactorTool, RefactorResult
+from src.agent.code_refactor_tool import CodeRefactorTool, RefactorResult
 
 
 @pytest.fixture()

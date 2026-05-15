@@ -1,0 +1,41 @@
+{
+  "id": "ml.flop_estimator",
+  "name": "FLOP Estimator",
+  "version": "1.0.0",
+  "category": "ml",
+  "summary": "Estimate FLOPs for model inference and training.",
+  "description": "Estimate FLOPs for model inference and training.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.ml.flop_estimator:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "ml",
+    "flops"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 600
+}

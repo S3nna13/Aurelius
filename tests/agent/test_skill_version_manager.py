@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent.skill_version_manager import (
+from src.agent.skill_version_manager import (
     DEFAULT_SKILL_VERSION_MANAGER,
     SKILL_VERSION_REGISTRY,
     SkillVersion,

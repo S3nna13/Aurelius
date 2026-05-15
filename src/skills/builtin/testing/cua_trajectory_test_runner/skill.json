@@ -1,0 +1,42 @@
+{
+  "id": "testing.cua_trajectory_test_runner",
+  "name": "CUA Trajectory Test Runner",
+  "version": "1.0.0",
+  "category": "testing",
+  "summary": "Validate CUA trajectories against safety constraints.",
+  "description": "Validate CUA trajectories against safety constraints.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "medium",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.testing.cua_trajectory_test_runner:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "cua",
+    "testing",
+    "safety"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

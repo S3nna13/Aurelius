@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from agent.plugin_loader import (
+from src.agent.plugin_loader import (
     DEFAULT_PLUGIN_LOADER,
     PLUGIN_LOADER_REGISTRY,
     LoadedPlugin,

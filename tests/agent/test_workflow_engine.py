@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent.workflow_engine import (
+from src.agent.workflow_engine import (
     DEFAULT_WORKFLOW_EXECUTOR,
     WORKFLOW_EXECUTOR_REGISTRY,
     WorkflowDAG,

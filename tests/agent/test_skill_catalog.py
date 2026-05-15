@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from agent.skill_catalog import SkillCatalog, SkillCatalogEntry
+from src.agent.skill_catalog import SkillCatalog, SkillCatalogEntry
 from src.model import InterfaceFrameworkError
 
 

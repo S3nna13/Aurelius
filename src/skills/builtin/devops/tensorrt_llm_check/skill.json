@@ -1,0 +1,40 @@
+{
+  "id": "devops.tensorrt_llm_check",
+  "name": "TensorRT-LLM Checker",
+  "version": "1.0.0",
+  "category": "devops",
+  "summary": "Verify TensorRT-LLM installation and GPU support.",
+  "description": "Verify TensorRT-LLM installation and GPU support.",
+  "permissions": [
+    {
+      "name": "terminal",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.devops.tensorrt_llm_check:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "tensorrt-llm"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

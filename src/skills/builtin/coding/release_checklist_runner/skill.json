@@ -1,0 +1,49 @@
+{
+  "id": "coding.release_checklist_runner",
+  "name": "Release Checklist Runner",
+  "version": "1.0.0",
+  "category": "coding",
+  "summary": "Run release validation checklist before shipping.",
+  "description": "Run release validation checklist before shipping.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    },
+    {
+      "name": "file_write",
+      "scope": "limited"
+    },
+    {
+      "name": "terminal",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.coding.release_checklist_runner:run",
+  "inputs_schema": "schemas/release_checklist_runner.input.json",
+  "outputs_schema": "schemas/release_checklist_runner.output.json",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "release",
+    "validation"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

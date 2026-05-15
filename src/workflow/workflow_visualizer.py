@@ -153,3 +153,9 @@ class WorkflowVisualizer:
 
 # Public registry
 WORKFLOW_VISUALIZER_REGISTRY: dict = {"default": WorkflowVisualizer}
+
+# Backwards-compatibility aliases for unified namespace
+import sys as _sys
+_this = _sys.modules[__name__]
+# Alias legacy cron namespace
+_sys.modules['cron.workflow_visualizer'] = _this

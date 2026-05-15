@@ -323,7 +323,7 @@ class SandboxedShell:
         "isort",
     ]
 
-    def __init__(self, timeout_seconds: int = 30, sandbox_cwd: str = "/tmp/aurelius_sandbox"  # noqa: S108):  # noqa: S108
+    def __init__(self, timeout_seconds: int = 30, sandbox_cwd: str = "/tmp/aurelius_sandbox"):  # noqa: S108
         self.timeout = timeout_seconds
         self.cwd = Path(sandbox_cwd)
         self.cwd.mkdir(parents=True, exist_ok=True)

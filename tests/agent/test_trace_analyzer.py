@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from agent.execution_tracer import ExecutionEvent, ExecutionEventType
-from agent.trace_analyzer import TraceAnalyzer
+from src.agent.execution_tracer import ExecutionEvent, ExecutionEventType
+from src.agent.trace_analyzer import TraceAnalyzer
 
 
 def _evt(

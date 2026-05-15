@@ -1,0 +1,45 @@
+{
+  "id": "productivity.task_decomposition_planner",
+  "name": "Task Decomposition Planner",
+  "version": "1.0.0",
+  "category": "productivity",
+  "summary": "Break complex tasks into ordered subtasks.",
+  "description": "Break complex tasks into ordered subtasks.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    },
+    {
+      "name": "file_write",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.productivity.task_decomposition_planner:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "planning",
+    "decomposition"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

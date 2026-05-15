@@ -1,0 +1,45 @@
+{
+  "id": "operator.runtime_profile_migrator",
+  "name": "Runtime Profile Migrator",
+  "version": "1.0.0",
+  "category": "operator",
+  "summary": "Migrate runtime profiles between schema versions.",
+  "description": "Migrate runtime profiles between schema versions.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    },
+    {
+      "name": "file_write",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "medium",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.operator.runtime_profile_migrator:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "operator",
+    "migration"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

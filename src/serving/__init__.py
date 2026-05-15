@@ -94,3 +94,10 @@ RESILIENCE_REGISTRY: dict[str, type] = {
     "circuit_breaker": CircuitBreaker,
 }
 
+
+# Backwards-compatibility aliases for the unified namespace
+import sys as _sys
+_this = _sys.modules[__name__]
+_sys.modules['serving'] = _this
+_sys.modules['src.serving'] = _this
+_sys.modules['aurelius.serving'] = _this

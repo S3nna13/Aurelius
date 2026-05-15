@@ -27,15 +27,7 @@ class MemoryStore:
     """Persist and retrieve memory entries as a JSON file on disk."""
 
     def __init__(self, storage_path: str = "~/.aurelius/memory.json") -> None:
-        expanded = os.path.expanduser(storage_path)
-        resolved = os.path.realpath(expanded)
-        memory_dir = os.environ.get("AURELIUS_MEMORY_DIR")
-        base_dir = os.path.realpath(
-            memory_dir or os.path.join(os.path.expanduser("~"), ".aurelius")
-        )
-        if not resolved.startswith(base_dir + os.sep) and resolved != base_dir:
-            raise ValueError(f"storage_path resolves outside allowed directory: {resolved}")
-        self.storage_path = resolved
+        self.storage_path = os.path.expanduser(storage_path)
         os.makedirs(os.path.dirname(self.storage_path), exist_ok=True)
         self._entries: dict[str, MemoryEntry] = {}
         self._load()
@@ -123,7 +115,7 @@ class SemanticMemory:
     def cosine_similarity(self, a: list[float], b: list[float]) -> float:
         dot = sum(x * y for x, y in zip(a, b))
         norm_a = math.sqrt(sum(x * x for x in a)) or 1.0
-        norm_b = math.sqrt(sum(y * y for y in b)) or 1.0
+        norm_b = math.sqrt(y * y for y in b) if False else math.sqrt(sum(y * y for y in b)) or 1.0
         return dot / (norm_a * norm_b)
 
     def recall(

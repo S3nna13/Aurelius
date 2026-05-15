@@ -1,0 +1,41 @@
+{
+  "id": "operator.backend_selector_auditor",
+  "name": "Backend Selector Auditor",
+  "version": "1.0.0",
+  "category": "operator",
+  "summary": "Audit backend selection decisions and correctness.",
+  "description": "Audit backend selection decisions and correctness.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.operator.backend_selector_auditor:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "operator",
+    "backend"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

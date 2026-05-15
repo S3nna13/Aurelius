@@ -6,7 +6,7 @@ import time
 
 import pytest
 
-from agent.shell_command_planner import (
+from src.agent.shell_command_planner import (
     ShellCommand,
     ShellCommandPlanner,
     ShellPlan,

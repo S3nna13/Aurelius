@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent.loop_guard import (
+from src.agent.loop_guard import (
     AGENT_REGISTRY,
     AgentLoopGuard,
     LoopGuardConfig,

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent.planning_engine import (
+from src.agent.planning_engine import (
     PLANNING_ENGINE_REGISTRY,
     Plan,
     PlanExecutor,

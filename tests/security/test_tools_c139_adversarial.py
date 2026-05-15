@@ -10,7 +10,7 @@ import re
 from src.tools.edit_tool import EditTool
 from src.tools.grep_tool import GrepTool
 from src.tools.web_tool import WebTool
-from tools.edit_tool import _MAX_CONTENT_LEN as EDIT_MAX
+from src.tools.edit_tool import _MAX_CONTENT_LEN as EDIT_MAX
 
 # ── edit_tool adversarial ─────────────────────────────────────────────────────
 

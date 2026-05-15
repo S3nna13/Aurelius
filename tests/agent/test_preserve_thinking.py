@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from agent.preserve_thinking import (
+from src.agent.preserve_thinking import (
     PreserveThinkingBuffer,
     PreserveThinkingConfig,
 )

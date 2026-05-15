@@ -108,7 +108,7 @@ class VisionProjector(nn.Module):
 # Registry wiring
 # ---------------------------------------------------------------------------
 
-from src.model import MODEL_COMPONENT_REGISTRY  # noqa: E402
+from . import MODEL_COMPONENT_REGISTRY  # noqa: E402
 
 MODEL_COMPONENT_REGISTRY["vision_projector"] = VisionProjector
 

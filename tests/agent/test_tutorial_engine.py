@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent.tutorial_engine import (
+from src.agent.tutorial_engine import (
     DEFAULT_TUTORIAL_ENGINE,
     TUTORIAL_ENGINE_REGISTRY,
     Tutorial,

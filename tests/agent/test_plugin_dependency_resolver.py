@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent.plugin_dependency_resolver import (
+from src.agent.plugin_dependency_resolver import (
     DEFAULT_DEPENDENCY_RESOLVER,
     DEPENDENCY_RESOLVER_REGISTRY,
     DependencyCycleError,

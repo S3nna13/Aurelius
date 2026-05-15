@@ -7,7 +7,7 @@ import sys
 
 import pytest
 
-from agent.code_execution_sandbox import (
+from src.agent.code_execution_sandbox import (
     TRUNCATION_MARKER,
     CodeExecutionSandbox,
     ExecutionResult,

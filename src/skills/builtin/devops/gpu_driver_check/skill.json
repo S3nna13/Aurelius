@@ -1,0 +1,41 @@
+{
+  "id": "devops.gpu_driver_check",
+  "name": "GPU Driver Check",
+  "version": "1.0.0",
+  "category": "devops",
+  "summary": "Check GPU driver installation and compatibility.",
+  "description": "Check GPU driver installation and compatibility.",
+  "permissions": [
+    {
+      "name": "terminal",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.devops.gpu_driver_check:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "gpu",
+    "nvidia"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

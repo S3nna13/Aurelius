@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent.tool_error_recovery import (
+from src.agent.tool_error_recovery import (
     ErrorClassifier,
     RecoveringDispatcher,
     RecoveryDecision,
@@ -12,7 +12,7 @@ from agent.tool_error_recovery import (
     RecoveryStrategy,
     decide,
 )
-from agent.tool_registry_dispatcher import ToolInvocationResult
+from src.agent.tool_registry_dispatcher import ToolInvocationResult
 
 
 def _fail(name: str, error: str) -> ToolInvocationResult:

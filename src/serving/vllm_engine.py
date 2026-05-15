@@ -163,6 +163,32 @@ class VLLMEngine:
                 break
             yield event.text
 
+    def generate_batch(
+        self,
+        input_ids_list: list[list[int]],
+        max_new_tokens: int = 128,
+        temperature: float = 1.0,
+        stop: list[str] | None = None,
+    ) -> list[str]:
+        """Run synchronous batched generation on multiple tokenized prompts.
+
+        Args:
+            input_ids_list: List of token ID lists, one per prompt.
+            max_new_tokens: Maximum new tokens per sequence.
+            temperature: Sampling temperature.
+            stop: Optional stop strings.
+
+        Returns:
+            List of generated text strings, one per input prompt.
+        """
+        llm = self._get_llm()
+        sampling_params = {"max_tokens": max_new_tokens, "temperature": temperature}
+        if stop:
+            sampling_params["stop"] = stop
+        # vLLM accepts list of prompt_token_ids for batch
+        outputs = llm.generate(prompt_token_ids=input_ids_list, sampling_params=sampling_params)
+        return [o.outputs[0].text for o in outputs]
+
     def is_available(self) -> bool:
         """Return True if vllm is importable, False otherwise."""
         try:

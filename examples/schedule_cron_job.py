@@ -13,7 +13,7 @@ Then press Ctrl+C to stop the scheduler.
 
 import time
 
-from agent.task_scheduler import TaskScheduler
+from src.agent.task_scheduler import TaskScheduler
 
 
 def backup_job():

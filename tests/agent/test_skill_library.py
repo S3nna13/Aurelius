@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from agent.skill_library import Skill, VoyagerSkillLibrary
+from src.agent.skill_library import Skill, VoyagerSkillLibrary
 
 
 def _make_library(tmp_path) -> VoyagerSkillLibrary:

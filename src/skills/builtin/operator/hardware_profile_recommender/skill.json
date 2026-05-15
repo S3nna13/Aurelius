@@ -1,0 +1,45 @@
+{
+  "id": "operator.hardware_profile_recommender",
+  "name": "Hardware Profile Recommender",
+  "version": "1.0.0",
+  "category": "operator",
+  "summary": "Recommend optimal hardware profile for current machine.",
+  "description": "Recommend optimal hardware profile for current machine.",
+  "permissions": [
+    {
+      "name": "terminal",
+      "scope": "limited"
+    },
+    {
+      "name": "file_read",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.operator.hardware_profile_recommender:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "operator",
+    "hardware"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

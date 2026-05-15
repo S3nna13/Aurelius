@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent.goal_hierarchy import (
+from src.agent.goal_hierarchy import (
     GOAL_HIERARCHY_REGISTRY,
     Goal,
     GoalHierarchy,

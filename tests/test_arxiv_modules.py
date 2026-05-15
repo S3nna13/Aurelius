@@ -276,31 +276,31 @@ class TestNSI:
     """Tests for NSI (Neuro-Symbolic Skill Induction) — src/agent/neuro_symbolic_skill.py"""
 
     def test_skill_graph_init(self):
-        from agent.neuro_symbolic_skill import SkillGraph
+        from src.agent.neuro_symbolic_skill import SkillGraph
 
         graph = SkillGraph(graph_id="test_graph")
         assert len(graph) == 0
 
     def test_skill_node_base_init(self):
-        from agent.neuro_symbolic_skill import NodeOpType, SkillNode
+        from src.agent.neuro_symbolic_skill import NodeOpType, SkillNode
 
         node = SkillNode(node_id="n1", op_type=NodeOpType.PRIMITIVE_OP)
         assert node.op_type == NodeOpType.PRIMITIVE_OP
 
     def test_dataop_node(self):
-        from agent.neuro_symbolic_skill import DataOpNode, NodeOpType
+        from src.agent.neuro_symbolic_skill import DataOpNode, NodeOpType
 
         node = DataOpNode(node_id="d1", op_type=NodeOpType.DATA_OP)
         assert node.op_type == NodeOpType.DATA_OP
 
     def test_checkop_node(self):
-        from agent.neuro_symbolic_skill import CheckOpNode, NodeOpType
+        from src.agent.neuro_symbolic_skill import CheckOpNode, NodeOpType
 
         node = CheckOpNode(node_id="c1", condition="x > 0", op_type=NodeOpType.CHECK_OP)
         assert node.condition == "x > 0"
 
     def test_skill_graph_add_node(self):
-        from agent.neuro_symbolic_skill import NodeOpType, SkillGraph, SkillNode
+        from src.agent.neuro_symbolic_skill import NodeOpType, SkillGraph, SkillNode
 
         graph = SkillGraph(graph_id="test")
         node = SkillNode(node_id="n1", op_type=NodeOpType.PRIMITIVE_OP)
@@ -308,19 +308,19 @@ class TestNSI:
         assert len(graph) == 1
 
     def test_trace_to_logic_inducer_init(self):
-        from agent.neuro_symbolic_skill import TraceToLogicInducer
+        from src.agent.neuro_symbolic_skill import TraceToLogicInducer
 
         inducer = TraceToLogicInducer()
         assert inducer is not None
 
     def test_nsi_agent_init(self):
-        from agent.neuro_symbolic_skill import NSIAgent
+        from src.agent.neuro_symbolic_skill import NSIAgent
 
         agent = NSIAgent(agent_id="test_agent")
         assert agent is not None
 
     def test_skill_graph_execute(self):
-        from agent.neuro_symbolic_skill import NodeOpType, PrimitiveOpNode, SkillGraph
+        from src.agent.neuro_symbolic_skill import NodeOpType, PrimitiveOpNode, SkillGraph
 
         graph = SkillGraph(graph_id="test")
         node = PrimitiveOpNode(node_id="p1", action_name="move", op_type=NodeOpType.PRIMITIVE_OP)

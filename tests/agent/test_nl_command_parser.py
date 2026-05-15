@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent.nl_command_parser import (
+from src.agent.nl_command_parser import (
     DEFAULT_NL_PARSER,
     NL_PARSER_REGISTRY,
     NLCommandParseError,

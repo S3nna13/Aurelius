@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from tools.edit_tool import _MAX_CONTENT_LEN, EditOperation, EditTool
+from src.tools.edit_tool import _MAX_CONTENT_LEN, EditOperation, EditTool
 
 
 @pytest.fixture

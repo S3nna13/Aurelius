@@ -28,7 +28,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-from agent.task_scheduler import TaskScheduler, _make_runner
+from src.agent.task_scheduler import TaskScheduler, _make_runner
 
 
 def _parse_delay(delay: str | int | float) -> float:

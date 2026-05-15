@@ -1,0 +1,41 @@
+{
+  "id": "data.hybrid_retrieval_tester",
+  "name": "Hybrid Retrieval Tester",
+  "version": "1.0.0",
+  "category": "data",
+  "summary": "Test hybrid BM25 + vector retrieval quality.",
+  "description": "Test hybrid BM25 + vector retrieval quality.",
+  "permissions": [
+    {
+      "name": "terminal",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.data.hybrid_retrieval_tester:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "retrieval",
+    "testing"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

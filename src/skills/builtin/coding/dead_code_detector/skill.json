@@ -1,0 +1,41 @@
+{
+  "id": "coding.dead_code_detector",
+  "name": "Dead Code Detector",
+  "version": "1.0.0",
+  "category": "coding",
+  "summary": "Find and report unused functions, classes, and imports.",
+  "description": "Find and report unused functions, classes, and imports.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.coding.dead_code_detector:run",
+  "inputs_schema": "schemas/dead_code_detector.input.json",
+  "outputs_schema": "schemas/dead_code_detector.output.json",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "cleanup",
+    "analysis"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

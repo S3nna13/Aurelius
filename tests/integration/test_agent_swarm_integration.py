@@ -13,7 +13,7 @@ from __future__ import annotations
 
 
 from agent import AGENT_LOOP_REGISTRY
-from agent.agent_swarm import SubAgentResult
+from src.agent.agent_swarm import SubAgentResult
 
 
 

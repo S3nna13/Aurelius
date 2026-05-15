@@ -78,9 +78,9 @@ def _compile_expr(expr: str) -> Callable[[object], object]:
     """
     code = expr.strip()
     if code.startswith("lambda "):
-        return eval(code, {}, {})  # noqa: S307 - safe context
+        return eval(code, {}, {})  # nosec B307 – user-provided expression in CLI pipeline tool
     lambda_code = f"lambda x: {code}"
-    return eval(lambda_code, {}, {})  # noqa: S307 - safe context
+    return eval(lambda_code, {}, {})  # nosec B307 – user-provided lambda in CLI pipeline tool
 
 
 def handle_pipeline(args: argparse.Namespace) -> int:

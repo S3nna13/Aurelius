@@ -10,7 +10,7 @@ import math
 
 import pytest
 
-from agent.budget_ledger import (
+from src.agent.budget_ledger import (
     BUDGET_LEDGER_REGISTRY,
     BudgetExhaustedError,
     BudgetLedger,

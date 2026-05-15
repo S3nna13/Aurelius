@@ -1,0 +1,41 @@
+{
+  "id": "repo.kubernetes_manifest_audit",
+  "name": "Kubernetes Manifest Audit",
+  "version": "1.0.0",
+  "category": "repo",
+  "summary": "Audit K8s manifests for security and correctness.",
+  "description": "Audit K8s manifests for security and correctness.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "medium",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.repo.kubernetes_manifest_audit:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "kubernetes",
+    "security"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

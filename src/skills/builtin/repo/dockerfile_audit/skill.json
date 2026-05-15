@@ -1,0 +1,42 @@
+{
+  "id": "repo.dockerfile_audit",
+  "name": "Dockerfile Audit",
+  "version": "1.0.0",
+  "category": "repo",
+  "summary": "Audit Dockerfiles for security, size, and best practices.",
+  "description": "Audit Dockerfiles for security, size, and best practices.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.repo.dockerfile_audit:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "docker",
+    "security",
+    "optimization"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

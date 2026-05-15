@@ -13,7 +13,7 @@ from __future__ import annotations
 
 
 from agent import AGENT_LOOP_REGISTRY
-from agent.preserve_thinking import (
+from src.agent.preserve_thinking import (
 
     PreserveThinkingBuffer,
     PreserveThinkingConfig,

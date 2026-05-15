@@ -42,7 +42,7 @@ def test_agent_loop_registry_exists_and_is_empty_by_default() -> None:
 
 def test_round_trip_xml() -> None:
     from agent import TOOL_CALL_PARSER_REGISTRY, format_xml
-    from agent.tool_call_parser import ParsedToolCall
+    from src.agent.tool_call_parser import ParsedToolCall
 
     original = ParsedToolCall(
         name="search",
@@ -60,7 +60,7 @@ def test_round_trip_xml() -> None:
 
 def test_round_trip_json() -> None:
     from agent import TOOL_CALL_PARSER_REGISTRY, format_json
-    from agent.tool_call_parser import ParsedToolCall
+    from src.agent.tool_call_parser import ParsedToolCall
 
     original = ParsedToolCall(
         name="fetch",

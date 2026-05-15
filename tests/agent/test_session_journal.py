@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from agent.session_journal import SessionJournal
+from src.agent.session_journal import SessionJournal
 
 
 def test_session_journal_branch_and_compaction_round_trip_is_json_safe():

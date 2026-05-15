@@ -1,0 +1,50 @@
+{
+  "id": "coding.python_lint_cleanup",
+  "name": "Python Lint Cleanup",
+  "version": "1.0.0",
+  "category": "coding",
+  "summary": "Bulk-fix ruff/flake8 lint errors in Python files.",
+  "description": "Bulk-fix ruff/flake8 lint errors in Python files.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    },
+    {
+      "name": "file_write",
+      "scope": "limited"
+    },
+    {
+      "name": "terminal",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "medium",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.coding.python_lint_cleanup:run",
+  "inputs_schema": "schemas/python_lint_cleanup.input.json",
+  "outputs_schema": "schemas/python_lint_cleanup.output.json",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "python",
+    "lint",
+    "ruff"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

@@ -1,0 +1,46 @@
+{
+  "id": "coding.react_component_repair",
+  "name": "React Component Repair",
+  "version": "1.0.0",
+  "category": "coding",
+  "summary": "Fix React rendering, hooks, and state management issues.",
+  "description": "Fix React rendering, hooks, and state management issues.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    },
+    {
+      "name": "file_write",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "medium",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.coding.react_component_repair:run",
+  "inputs_schema": "schemas/react_component_repair.input.json",
+  "outputs_schema": "schemas/react_component_repair.output.json",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "react",
+    "frontend",
+    "javascript"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

@@ -11,7 +11,7 @@ pytestmark = pytest.mark.integration
 def test_background_executor_registered():
     """BackgroundExecutor must appear in AGENT_LOOP_REGISTRY."""
     import agent as agent
-    from agent.background_executor import BackgroundExecutor
+    from src.agent.background_executor import BackgroundExecutor
 
 
 
@@ -31,7 +31,7 @@ def test_prior_registries_still_intact():
 
 def test_full_lifecycle_priority_order():
     """Submit 3 tasks with different priorities, run all, verify completion order."""
-    from agent.background_executor import BackgroundExecutor, TaskStatus
+    from src.agent.background_executor import BackgroundExecutor, TaskStatus
 
     execution_order: list[str] = []
 

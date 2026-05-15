@@ -4,7 +4,7 @@ import json
 import re
 from dataclasses import dataclass
 
-from .tool_executor import ToolExecutor
+from src.serving.tool_executor import ToolExecutor
 
 _TOOL_CALL_RE = re.compile(r"<tool_call>(.*?)</tool_call>", re.DOTALL)
 

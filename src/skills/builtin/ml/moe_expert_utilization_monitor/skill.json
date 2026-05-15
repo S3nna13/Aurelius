@@ -1,0 +1,41 @@
+{
+  "id": "ml.moe_expert_utilization_monitor",
+  "name": "MoE Expert Utilization Monitor",
+  "version": "1.0.0",
+  "category": "ml",
+  "summary": "Monitor MoE expert load balancing and utilization.",
+  "description": "Monitor MoE expert load balancing and utilization.",
+  "permissions": [
+    {
+      "name": "terminal",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.ml.moe_expert_utilization_monitor:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "ml",
+    "moe"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 600
+}

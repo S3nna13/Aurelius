@@ -1,0 +1,42 @@
+{
+  "id": "security.prompt_injection_audit",
+  "name": "Prompt Injection Audit",
+  "version": "1.0.0",
+  "category": "security",
+  "summary": "Audit for direct and indirect prompt injection vectors.",
+  "description": "Audit for direct and indirect prompt injection vectors.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "medium",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.security.prompt_injection_audit:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run",
+    "skill_safety_gate"
+  ],
+  "tags": [
+    "security",
+    "prompt-injection"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 600
+}

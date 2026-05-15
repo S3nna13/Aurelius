@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent.ast_fim import (
+from src.agent.ast_fim import (
     AST_FIM_REGISTRY,
     ASTAnalyzer,
     FIMFormat,

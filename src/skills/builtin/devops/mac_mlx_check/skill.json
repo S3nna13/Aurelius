@@ -1,0 +1,41 @@
+{
+  "id": "devops.mac_mlx_check",
+  "name": "Mac MLX Checker",
+  "version": "1.0.0",
+  "category": "devops",
+  "summary": "Verify Apple MLX availability and version.",
+  "description": "Verify Apple MLX availability and version.",
+  "permissions": [
+    {
+      "name": "terminal",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.devops.mac_mlx_check:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "mlx",
+    "apple-silicon"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

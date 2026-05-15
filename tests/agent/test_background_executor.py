@@ -6,7 +6,7 @@ import time
 
 import pytest
 
-from agent.background_executor import (
+from src.agent.background_executor import (
     BackgroundExecutor,
     BackgroundExecutorConfig,
     BackgroundTask,

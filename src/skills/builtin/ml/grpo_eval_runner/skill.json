@@ -1,0 +1,49 @@
+{
+  "id": "ml.grpo_eval_runner",
+  "name": "GRPO Eval Runner",
+  "version": "1.0.0",
+  "category": "ml",
+  "summary": "Run GRPO evaluation and training pipelines.",
+  "description": "Run GRPO evaluation and training pipelines.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    },
+    {
+      "name": "terminal",
+      "scope": "limited"
+    },
+    {
+      "name": "network",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "medium",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.ml.grpo_eval_runner:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "ml",
+    "grpo"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 600
+}

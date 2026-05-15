@@ -6,13 +6,13 @@ import re
 
 import pytest
 
-from agent.skill_composer import (
+from src.agent.skill_composer import (
     SKILL_COMPOSER_REGISTRY,
     CompositionStep,
     SkillComposer,
     SkillCompositionError,
 )
-from agent.skill_executor import (
+from src.agent.skill_executor import (
     ExecutionResult,
     SkillContext,
     SkillExecutionError,

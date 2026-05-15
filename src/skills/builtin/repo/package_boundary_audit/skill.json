@@ -1,0 +1,41 @@
+{
+  "id": "repo.package_boundary_audit",
+  "name": "Package Boundary Audit",
+  "version": "1.0.0",
+  "category": "repo",
+  "summary": "Audit package boundaries and imports between packages.",
+  "description": "Audit package boundaries and imports between packages.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.repo.package_boundary_audit:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "architecture",
+    "packages"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

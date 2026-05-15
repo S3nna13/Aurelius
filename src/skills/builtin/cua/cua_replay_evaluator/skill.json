@@ -1,0 +1,46 @@
+{
+  "id": "cua.cua_replay_evaluator",
+  "name": "CUA Replay Evaluator",
+  "version": "1.0.0",
+  "category": "cua",
+  "summary": "Evaluate and validate recorded CUA trajectories.",
+  "description": "Evaluate and validate recorded CUA trajectories.",
+  "permissions": [
+    {
+      "name": "cua",
+      "scope": "limited"
+    },
+    {
+      "name": "file_read",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "medium",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.cua.cua_replay_evaluator:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run",
+    "skill_safety_gate"
+  ],
+  "tags": [
+    "cua",
+    "evaluation"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

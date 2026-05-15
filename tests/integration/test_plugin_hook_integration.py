@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from agent import AGENT_LOOP_REGISTRY
-from agent.plugin_hook import HOOK_REGISTRY, PluginHookRegistry
+from src.agent.plugin_hook import HOOK_REGISTRY, PluginHookRegistry
 
 
 # ---------------------------------------------------------------------------

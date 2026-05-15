@@ -12,7 +12,7 @@ from __future__ import annotations
 
 
 import agent as agent_surface
-from agent.toolformer_data_gen import (
+from src.agent.toolformer_data_gen import (
     Tool,
     ToolCallAnnotation,
     ToolformerConfig,

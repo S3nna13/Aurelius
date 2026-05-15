@@ -1,0 +1,50 @@
+{
+  "id": "coding.typescript_test_repair",
+  "name": "TypeScript Test Repair",
+  "version": "1.0.0",
+  "category": "coding",
+  "summary": "Fix failing TypeScript/Vitest test suites.",
+  "description": "Fix failing TypeScript/Vitest test suites.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    },
+    {
+      "name": "file_write",
+      "scope": "limited"
+    },
+    {
+      "name": "terminal",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "medium",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.coding.typescript_test_repair:run",
+  "inputs_schema": "schemas/typescript_test_repair.input.json",
+  "outputs_schema": "schemas/typescript_test_repair.output.json",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "typescript",
+    "testing",
+    "vitest"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

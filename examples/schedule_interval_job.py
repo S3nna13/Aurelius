@@ -9,7 +9,7 @@ Usage:
 
 import time
 
-from agent.task_scheduler import TaskScheduler
+from src.agent.task_scheduler import TaskScheduler
 
 
 def heartbeat():

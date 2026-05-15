@@ -1,0 +1,41 @@
+{
+  "id": "data.dataset_shard_validator",
+  "name": "Dataset Shard Validator",
+  "version": "1.0.0",
+  "category": "data",
+  "summary": "Validate dataset shard integrity and format.",
+  "description": "Validate dataset shard integrity and format.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.data.dataset_shard_validator:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "data",
+    "dataset"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

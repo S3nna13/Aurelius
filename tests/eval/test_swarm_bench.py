@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent.agent_swarm import AgentSwarm, CriticalPathAnalyzer, SubAgentResult
+from src.agent.agent_swarm import AgentSwarm, CriticalPathAnalyzer, SubAgentResult
 from src.eval.swarm_bench import SwarmBench, SwarmBenchResult, SwarmTask
 
 # ---------------------------------------------------------------------------

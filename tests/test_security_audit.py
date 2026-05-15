@@ -6,7 +6,7 @@ prompt injection, tool misuse, privilege escalation, bypass attempts.
 
 from __future__ import annotations
 
-from agent.permission_system import (
+from src.agent.permission_system import (
     PermissionMode,
     PermissionRequest,
     PermissionRule,

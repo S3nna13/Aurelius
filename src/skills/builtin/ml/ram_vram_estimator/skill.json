@@ -1,0 +1,41 @@
+{
+  "id": "ml.ram_vram_estimator",
+  "name": "RAM/VRAM Estimator",
+  "version": "1.0.0",
+  "category": "ml",
+  "summary": "Estimate RAM/VRAM requirements for model inference.",
+  "description": "Estimate RAM/VRAM requirements for model inference.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.ml.ram_vram_estimator:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "ml",
+    "memory"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 600
+}

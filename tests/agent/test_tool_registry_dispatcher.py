@@ -6,7 +6,7 @@ import time
 
 import pytest
 
-from agent.tool_registry_dispatcher import (
+from src.agent.tool_registry_dispatcher import (
     SessionBudget,
     ToolInvocationResult,
     ToolRegistryDispatcher,

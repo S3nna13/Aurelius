@@ -1,0 +1,49 @@
+{
+  "id": "coding.dependency_audit_repair",
+  "name": "Dependency Audit Repair",
+  "version": "1.0.0",
+  "category": "coding",
+  "summary": "Audit and fix outdated/vulnerable package dependencies.",
+  "description": "Audit and fix outdated/vulnerable package dependencies.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    },
+    {
+      "name": "file_write",
+      "scope": "limited"
+    },
+    {
+      "name": "terminal",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "medium",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.coding.dependency_audit_repair:run",
+  "inputs_schema": "schemas/dependency_audit_repair.input.json",
+  "outputs_schema": "schemas/dependency_audit_repair.output.json",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "dependencies",
+    "security"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

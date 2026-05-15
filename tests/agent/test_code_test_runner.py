@@ -13,7 +13,7 @@ import textwrap
 
 import pytest
 
-from agent.code_test_runner import (
+from src.agent.code_test_runner import (
     CodeTestRunner,
     TestResult,
     _parse_counts,

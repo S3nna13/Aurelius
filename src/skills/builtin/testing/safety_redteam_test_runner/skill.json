@@ -1,0 +1,45 @@
+{
+  "id": "testing.safety_redteam_test_runner",
+  "name": "Safety Red-Team Test Runner",
+  "version": "1.0.0",
+  "category": "testing",
+  "summary": "Run adversarial prompt and safety test suites.",
+  "description": "Run adversarial prompt and safety test suites.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    },
+    {
+      "name": "terminal",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "medium",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.testing.safety_redteam_test_runner:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "safety",
+    "red-team"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

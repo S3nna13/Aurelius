@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent.plan_observe_reflect import (
+from src.agent.plan_observe_reflect import (
     PLAN_OBSERVE_REFLECT_REGISTRY,
     LoopResult,
     LoopStep,

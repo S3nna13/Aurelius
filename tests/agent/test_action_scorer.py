@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent.action_scorer import AGENT_REGISTRY, ActionScore, ActionScorer, ScoreLambdas
+from src.agent.action_scorer import AGENT_REGISTRY, ActionScore, ActionScorer, ScoreLambdas
 
 # ---------------------------------------------------------------------------
 # Fixtures

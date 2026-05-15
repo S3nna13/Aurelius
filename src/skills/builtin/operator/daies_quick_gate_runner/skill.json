@@ -1,0 +1,45 @@
+{
+  "id": "operator.daies_quick_gate_runner",
+  "name": "DAIES Quick Gate Runner",
+  "version": "1.0.0",
+  "category": "operator",
+  "summary": "Run quick DAIES gate check on current state.",
+  "description": "Run quick DAIES gate check on current state.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    },
+    {
+      "name": "terminal",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.operator.daies_quick_gate_runner:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "operator",
+    "daies"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

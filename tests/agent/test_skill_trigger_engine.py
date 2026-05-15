@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import pytest
 
-from agent.skill_executor import (
+from src.agent.skill_executor import (
     ExecutionResult,
     SkillContext,
     SkillExecutionError,
     SkillExecutor,
 )
-from agent.skill_trigger_engine import (
+from src.agent.skill_trigger_engine import (
     TRIGGER_ENGINE_REGISTRY,
     MatchedSkill,
     SkillTriggerEngine,

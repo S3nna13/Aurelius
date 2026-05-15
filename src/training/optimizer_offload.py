@@ -56,7 +56,7 @@ class OptimizerOffloader:
             if not path.exists():
                 continue
 
-            loaded = torch.load(path, weights_only=False)
+            loaded = torch.load(path, weights_only=True)  # Offloaded optimizer state stores only tensors
             self.optimizer.state[param].clear()
             self.optimizer.state[param].update(loaded)
             path.unlink(missing_ok=True)

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from agent.agent_runtime import AgentRuntime, AgentSpec
-from agent.multi_agent import SupervisorCoordinator, SwarmCoordinator
+from src.agent.agent_runtime import AgentRuntime, AgentSpec
+from src.agent.multi_agent import SupervisorCoordinator, SwarmCoordinator
 
 
 def _agent(name: str) -> AgentSpec:

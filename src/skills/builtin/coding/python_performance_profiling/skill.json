@@ -1,0 +1,50 @@
+{
+  "id": "coding.python_performance_profiling",
+  "name": "Python Performance Profiling",
+  "version": "1.0.0",
+  "category": "coding",
+  "summary": "Profile Python code and identify bottlenecks.",
+  "description": "Profile Python code and identify bottlenecks.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    },
+    {
+      "name": "file_write",
+      "scope": "limited"
+    },
+    {
+      "name": "terminal",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.coding.python_performance_profiling:run",
+  "inputs_schema": "schemas/python_performance_profiling.input.json",
+  "outputs_schema": "schemas/python_performance_profiling.output.json",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "python",
+    "profiling",
+    "performance"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

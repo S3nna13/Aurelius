@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent.reflection_engine import (
+from src.agent.reflection_engine import (
     REFLECTION_ENGINE_REGISTRY,
     Reflection,
     ReflectionEngine,

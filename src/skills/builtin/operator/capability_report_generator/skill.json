@@ -1,0 +1,41 @@
+{
+  "id": "operator.capability_report_generator",
+  "name": "Capability Report Generator",
+  "version": "1.0.0",
+  "category": "operator",
+  "summary": "Generate full capability report for current profile.",
+  "description": "Generate full capability report for current profile.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.operator.capability_report_generator:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "operator",
+    "capabilities"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

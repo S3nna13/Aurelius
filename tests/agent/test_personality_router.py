@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent.personality_router import (
+from src.agent.personality_router import (
     PERSONALITY_KEYWORDS,
     PERSONALITY_ROUTER_REGISTRY,
     PersonalityRouter,

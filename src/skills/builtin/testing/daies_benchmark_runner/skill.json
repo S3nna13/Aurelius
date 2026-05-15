@@ -1,0 +1,45 @@
+{
+  "id": "testing.daies_benchmark_runner",
+  "name": "DAIES Benchmark Runner",
+  "version": "1.0.0",
+  "category": "testing",
+  "summary": "Run DAIES validation gates on a model/profile.",
+  "description": "Run DAIES validation gates on a model/profile.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    },
+    {
+      "name": "terminal",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.testing.daies_benchmark_runner:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "daies",
+    "validation"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

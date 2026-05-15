@@ -406,3 +406,10 @@ def __getattr__(name: str):
     value = getattr(module, attr_name)
     globals()[name] = value
     return value
+
+# Backwards-compatibility aliases for the unified namespace
+import sys as _sys
+_this = _sys.modules[__name__]
+_sys.modules['model'] = _this
+_sys.modules['src.model'] = _this
+_sys.modules['aurelius.model'] = _this

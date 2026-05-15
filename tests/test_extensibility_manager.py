@@ -1,6 +1,6 @@
 """Tests for extensibility manager."""
 
-from agent.extensibility_manager import (
+from src.agent.extensibility_manager import (
     ExtensibilityManager,
     Hook,
     HookEvent,

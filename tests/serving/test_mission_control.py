@@ -9,8 +9,8 @@ from http.client import HTTPConnection
 
 import pytest
 
-from agent.command_dispatcher import CommandDispatcher
-from agent.nl_command_parser import NLCommandParser
+from src.agent.command_dispatcher import CommandDispatcher
+from src.agent.nl_command_parser import NLCommandParser
 from src.serving.mission_control import (
     ActivityEntry,
     ActivityLog,

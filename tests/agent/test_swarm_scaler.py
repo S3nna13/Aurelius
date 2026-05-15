@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from agent.swarm_scaler import (
+from src.agent.swarm_scaler import (
     SwarmScaler,
     SwarmScalerConfig,
     WorkItem,

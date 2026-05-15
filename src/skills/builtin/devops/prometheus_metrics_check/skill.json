@@ -1,0 +1,45 @@
+{
+  "id": "devops.prometheus_metrics_check",
+  "name": "Prometheus Metrics Checker",
+  "version": "1.0.0",
+  "category": "devops",
+  "summary": "Validate Prometheus metric endpoints.",
+  "description": "Validate Prometheus metric endpoints.",
+  "permissions": [
+    {
+      "name": "network",
+      "scope": "limited"
+    },
+    {
+      "name": "terminal",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.devops.prometheus_metrics_check:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "prometheus",
+    "metrics"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

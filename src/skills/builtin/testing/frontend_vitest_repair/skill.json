@@ -1,0 +1,45 @@
+{
+  "id": "testing.frontend_vitest_repair",
+  "name": "Frontend Vitest Repair",
+  "version": "1.0.0",
+  "category": "testing",
+  "summary": "Fix failing frontend Vitest test suites.",
+  "description": "Fix failing frontend Vitest test suites.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    },
+    {
+      "name": "file_write",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "medium",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.testing.frontend_vitest_repair:run",
+  "inputs_schema": "",
+  "outputs_schema": "",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "frontend",
+    "vitest"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

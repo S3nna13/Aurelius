@@ -1,0 +1,41 @@
+{
+  "id": "coding.refactor_planner",
+  "name": "Refactor Planner",
+  "version": "1.0.0",
+  "category": "coding",
+  "summary": "Generate safe refactoring plans with dependency analysis.",
+  "description": "Generate safe refactoring plans with dependency analysis.",
+  "permissions": [
+    {
+      "name": "file_read",
+      "scope": "limited"
+    }
+  ],
+  "risk_level": "low",
+  "required_tools": [
+    "file.search",
+    "file.read",
+    "file.patch",
+    "terminal.run"
+  ],
+  "entrypoint": "skills.builtin.coding.refactor_planner:run",
+  "inputs_schema": "schemas/refactor_planner.input.json",
+  "outputs_schema": "schemas/refactor_planner.output.json",
+  "daies_tests": [
+    "skill_manifest_valid",
+    "permission_boundary",
+    "dry_run"
+  ],
+  "tags": [
+    "refactoring",
+    "planning"
+  ],
+  "status": "stable",
+  "supported_modes": [
+    "dry_run",
+    "plan",
+    "execute",
+    "verify"
+  ],
+  "max_runtime_seconds": 300
+}

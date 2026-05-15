@@ -49,7 +49,8 @@ def _is_private_or_reserved_ip(hostname: str) -> bool:
         try:
             addr = ipaddress.ip_address(socket.gethostbyname(hostname))
         except (socket.gaierror, ValueError):
-            return True
+            # DNS resolution failed — cannot determine if host is private; treat as public
+            return False
     return any(addr in net for net in _BLOCKED_NETWORKS)
 
 

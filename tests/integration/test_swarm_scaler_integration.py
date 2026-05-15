@@ -16,7 +16,7 @@ import random
 import pytest
 
 from agent import AGENT_LOOP_REGISTRY
-from agent.swarm_scaler import SwarmScaler, SwarmScalerConfig, WorkerStats
+from src.agent.swarm_scaler import SwarmScaler, SwarmScalerConfig, WorkerStats
 
 
 

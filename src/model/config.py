@@ -101,6 +101,10 @@ class AureliusConfig:
     rope_scaling_factor: float = 1.0
     rope_original_max_seq_len: int = 8192
 
+    # ALiBi positional bias (replaces RoPE when enabled)
+    use_alibi: bool = False
+    alibi_bias_max: float = 8.0  # MPT-style slope scaling
+
     # Normalization
     rms_norm_eps: float = 1e-6
 

@@ -21,7 +21,7 @@ from agent import (
     MCPToolCallResult,
     MCPToolSpec,
 )
-from agent.mcp_client import MCP_PROTOCOL_VERSION
+from src.agent.mcp_client import MCP_PROTOCOL_VERSION
 
 
 
