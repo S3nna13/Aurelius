@@ -271,7 +271,6 @@ def execute_python(code: str, config: ExecutionConfig) -> ExecutionResult:
         """Worker that runs in child process and puts ExecutionResult dict on queue."""
         stdout_buf = io.StringIO()
         stderr_buf = io.StringIO()
-        exc_info: dict[str, Any] = {}
         restricted_globals = _make_restricted_globals()
         try:
             compiled = compile(code, "<sandbox>", "exec")

@@ -122,9 +122,22 @@ LIVECODEBENCH = BenchmarkSpec(
     description="Contamination-free coding problems from competitive programming sites",
 )
 
+AMC_MEMORY = BenchmarkSpec(
+    name="AMC-Memory",
+    task="amc_memory",
+    metric="exact_match",
+    num_fewshot=0,
+    expected_low=0.70,
+    expected_high=1.00,
+    description=(
+        "Aurelius-specific memory benchmark: cross-session recall, surprise "
+        "gate selectivity, consolidation preference, and contradiction quarantine"
+    ),
+)
 
-# Ordered list used by the evaluation harness.
-ALL_BENCHMARKS: list[BenchmarkSpec] = [
+
+# Ordered list used by the lm-evaluation-harness checkpoint runner.
+LM_EVAL_BENCHMARKS: list[BenchmarkSpec] = [
     MMLU,
     HELLASWAG,
     ARC_CHALLENGE,
@@ -134,6 +147,16 @@ ALL_BENCHMARKS: list[BenchmarkSpec] = [
     MATH500,
     GPQA_DIAMOND,
     LIVECODEBENCH,
+]
+
+# Internal Aurelius benchmarks require project-native runners rather than
+# lm-evaluation-harness task names.
+INTERNAL_BENCHMARKS: list[BenchmarkSpec] = [AMC_MEMORY]
+
+# Full registry list; do not use this as the default lm-eval task list.
+ALL_BENCHMARKS: list[BenchmarkSpec] = [
+    *LM_EVAL_BENCHMARKS,
+    *INTERNAL_BENCHMARKS,
 ]
 
 BENCHMARK_BY_NAME: dict[str, BenchmarkSpec] = {b.name: b for b in ALL_BENCHMARKS}

@@ -1,0 +1,98 @@
+# AMC-first benchmark gate configuration.
+# This config is intentionally declarative; runners can map these names to
+# lm-evaluation-harness, src.eval.RULERBenchmark, and src.eval.AMCMemoryBenchmark.
+
+suite: amc_first
+version: 1
+
+model_variants:
+  baseline_no_amc:
+    description: Standard transformer path with AMC disabled.
+    amc:
+      working: false
+      episodic: false
+      long_term: false
+  tier2_episodic:
+    description: AMC Tier 1 + Tier 2 session memory enabled.
+    amc:
+      working: true
+      episodic: true
+      long_term: false
+  full_amc:
+    description: AMC Tier 1 + Tier 2 + Tier 3 consolidation enabled.
+    amc:
+      working: true
+      episodic: true
+      long_term: true
+
+general_capability:
+  - name: MMLU
+    task: mmlu
+    metric: acc
+    fewshot: 5
+  - name: HellaSwag
+    task: hellaswag
+    metric: acc_norm
+    fewshot: 10
+  - name: ARC-Challenge
+    task: arc_challenge
+    metric: acc_norm
+    fewshot: 25
+  - name: TruthfulQA
+    task: truthfulqa_mc2
+    metric: acc
+    fewshot: 0
+  - name: GSM8K
+    task: gsm8k
+    metric: exact_match
+    fewshot: 5
+  - name: HumanEval
+    task: humaneval
+    metric: pass@1
+    fewshot: 0
+
+long_context:
+  - name: Needle-in-a-Haystack
+    task: niah
+    metric: pass_rate
+    context_lengths: [2048, 8192, 16384, 32768]
+  - name: RULER
+    task: ruler
+    metric: pass_rate
+    context_lengths: [2048, 8192, 16384, 32768]
+
+amc_memory:
+  name: AMC-Memory
+  task: amc_memory
+  metric: exact_match
+  context_tokens: 1024
+  samples_per_task: 5
+  tasks:
+    - cross_session_recall
+    - surprise_gate_selectivity
+    - consolidation_preference
+    - contradiction_quarantine
+
+release_gates:
+  targeted_tests:
+    - tests/test_package_namespace.py
+    - tests/test_package_consolidation.py
+    - tests/security/test_ssrf_guard.py
+    - tests/eval/test_amc_memory_benchmark.py
+    - tests/eval/test_benchmark_config.py
+  lint:
+    command: .venv/bin/python -m ruff check src/ --ignore=I001
+  minimum_scores:
+    amc_memory_overall: 0.80
+    ruler_average: 0.60
+  ablation_requirement:
+    description: Tier2 and full AMC must beat baseline_no_amc on AMC-Memory.
+    tier2_delta_over_baseline: 0.10
+    full_amc_delta_over_baseline: 0.15
+
+reporting:
+  required_artifacts:
+    - benchmark JSON output
+    - per-task pass-rate table
+    - AMC retrieval/write telemetry sample
+    - model card update

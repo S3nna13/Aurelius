@@ -41,6 +41,12 @@ def test_deprecation_warnings():
 
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
+        import agent  # noqa: F401
+        import aurelius  # noqa: F401
+        import cron  # noqa: F401
+        import gateway  # noqa: F401
+        import plugins  # noqa: F401
+        import tools  # noqa: F401
 
         # Check for DeprecationWarning
         dep_warnings = [x for x in w if issubclass(x.category, DeprecationWarning)]

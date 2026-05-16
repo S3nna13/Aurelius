@@ -57,9 +57,10 @@ class TokenSuperpositionTrainer:
         Example: seq=1024, bag_size=8 → num_bags=128
         """
         bs, seq_len = input_ids.shape
-        assert seq_len % self.bag_size == 0, (
-            f"seq_len ({seq_len}) must be divisible by bag_size ({self.bag_size})"
-        )
+        if seq_len % self.bag_size != 0:
+            raise ValueError(
+                f"seq_len ({seq_len}) must be divisible by bag_size ({self.bag_size})"
+            )
         bags = input_ids.view(bs, seq_len // self.bag_size, self.bag_size)
         return bags  # shape: [batch, num_bags, bag_size]
 
@@ -195,34 +196,6 @@ def create_superposition_dataloader(
     return DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
 
-# Example training loop with two-phase scheduler
-if __name__ == "__main__":
-    # Setup
-    model = ...  # Your transformer model with superposition mode support
-    optimizer = torch.optim.AdamW(model.parameters(), lr=3e-4)
-    total_steps = 125_000
-    bag_size = 12
-    phase_ratio = 0.30
-
-    trainer = TokenSuperpositionTrainer(
-        model=model,
-        optimizer=optimizer,
-        bag_size=bag_size,
-        phase_ratio=phase_ratio,
-        use_power_law=(bag_size >= 8),
-    )
-
-    dataloader = create_superposition_dataloader(dataset, bag_size=bag_size)
-
-    for step, batch in enumerate(dataloader):
-        loss = trainer.train_step(batch, step, total_steps)
-
-        if step % 1000 == 0:
-            phase = "TST-P1" if trainer.is_phase1(step, total_steps) else "NTP"
-            print(f"Step {step}/{total_steps} [{phase}] loss={loss:.4f}")
-
-        if step >= total_steps:
-            break
-
-    print("Training complete. Final model ready for inference.")
-    print("Note: Must resume from Phase 1 checkpoint — never re-init Phase 2!")
+# This module intentionally has no executable demo block.  Use
+# `TokenSuperpositionTrainer` and `create_superposition_dataloader` from a
+# project-specific training script that supplies a real model and dataset.

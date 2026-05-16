@@ -94,3 +94,11 @@ RESILIENCE_REGISTRY: dict[str, type] = {
     "circuit_breaker": CircuitBreaker,
 }
 
+
+# Backwards-compatible namespace aliases.  The project historically allowed
+# `serving`, `src.serving`, and `aurelius.serving`; make every spelling resolve
+# to this same module object, including deep submodule imports.
+from src.namespace_aliases import register_namespace_aliases as _register_aliases  # noqa: E402
+
+_register_aliases("src.serving", ("serving", "aurelius.serving"))
+

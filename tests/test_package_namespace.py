@@ -116,3 +116,33 @@ def test_aurelius_transformer_matches_src_transformer():
     src_transformer = import_module("src.model.transformer")
 
     assert aurelius_transformer.__file__ == src_transformer.__file__
+
+
+def test_deep_model_alias_identity():
+    """Deep model imports should resolve to canonical src modules, not duplicates."""
+    src_config = import_module("src.model.config")
+    aurelius_config = import_module("aurelius.model.config")
+    model_config = import_module("model.config")
+
+    assert aurelius_config is src_config
+    assert model_config is src_config
+
+
+def test_deep_alignment_alias_identity():
+    """Deep alignment imports should resolve to canonical src modules, not duplicates."""
+    src_mod = import_module("src.alignment.kto_trainer")
+    aurelius_mod = import_module("aurelius.alignment.kto_trainer")
+    alignment_mod = import_module("alignment.kto_trainer")
+
+    assert aurelius_mod is src_mod
+    assert alignment_mod is src_mod
+
+
+def test_deep_serving_alias_identity():
+    """Deep serving imports should resolve to canonical src modules, not duplicates."""
+    src_mod = import_module("src.serving.session_router")
+    aurelius_mod = import_module("aurelius.serving.session_router")
+    serving_mod = import_module("serving.session_router")
+
+    assert aurelius_mod is src_mod
+    assert serving_mod is src_mod

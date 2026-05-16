@@ -15,8 +15,8 @@ from pathlib import Path
 from typing import Any
 
 from src.eval.benchmark_config import (
-    ALL_BENCHMARKS,
     BENCHMARK_BY_NAME,
+    LM_EVAL_BENCHMARKS,
     BenchmarkSpec,
 )
 
@@ -66,7 +66,9 @@ class EvalHarness:
     results_dir:
         Base directory for JSON result files.
     benchmarks:
-        Which benchmarks to run.  Defaults to :data:`ALL_BENCHMARKS`.
+        Which lm-evaluation-harness benchmarks to run.  Defaults to
+        :data:`LM_EVAL_BENCHMARKS`; internal Aurelius benchmarks such as
+        AMC-Memory use project-native runners and are not sent to lm-eval.
     device:
         Device string passed to the harness (e.g. ``"cuda:0"``).
     batch_size:
@@ -83,7 +85,7 @@ class EvalHarness:
     ) -> None:
         self.results_dir = Path(results_dir)
         self.results_dir.mkdir(parents=True, exist_ok=True)
-        self.benchmarks = benchmarks or list(ALL_BENCHMARKS)
+        self.benchmarks = list(LM_EVAL_BENCHMARKS) if benchmarks is None else benchmarks
         self.device = device
         self.batch_size = str(batch_size)
 

@@ -298,3 +298,11 @@ from .praxis import PrecisionFusion as PrecisionFusion
 from .praxis import SteeringRewardCorrespondence as SteeringRewardCorrespondence
 
 ALIGNMENT_REGISTRY["praxis"] = PRAXISTrainer
+
+
+# Backwards-compatible namespace aliases.  The project historically allowed
+# `alignment`, `src.alignment`, and `aurelius.alignment`; make every spelling
+# resolve to this same module object, including deep submodule imports.
+from src.namespace_aliases import register_namespace_aliases as _register_aliases  # noqa: E402
+
+_register_aliases("src.alignment", ("alignment", "aurelius.alignment"))

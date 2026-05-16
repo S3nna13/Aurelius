@@ -406,3 +406,11 @@ def __getattr__(name: str):
     value = getattr(module, attr_name)
     globals()[name] = value
     return value
+
+
+# Backwards-compatible namespace aliases.  The project historically allowed
+# `model`, `src.model`, and `aurelius.model`; make every import spelling return
+# the same module object, including deep submodule imports.
+from src.namespace_aliases import register_namespace_aliases as _register_aliases  # noqa: E402
+
+_register_aliases("src.model", ("model", "aurelius.model"))

@@ -2,11 +2,15 @@
 
 from src.eval.benchmark_config import (
     ALL_BENCHMARKS,
+    AMC_MEMORY,
     BENCHMARK_BY_NAME,
     GPQA_DIAMOND,
+    INTERNAL_BENCHMARKS,
     LIVECODEBENCH,
+    LM_EVAL_BENCHMARKS,
     MATH500,
 )
+from src.eval.harness import EvalHarness as CheckpointEvalHarness
 
 
 def test_math500_benchmark_registered():
@@ -42,6 +46,29 @@ def test_livecodebench_registered():
     assert spec.metric == "pass@1"
     assert spec.num_fewshot == 0
     assert spec is LIVECODEBENCH
+
+
+def test_amc_memory_registered():
+    """AMC-Memory is the Option C memory-specific benchmark gate."""
+    assert "AMC-Memory" in BENCHMARK_BY_NAME
+    spec = BENCHMARK_BY_NAME["AMC-Memory"]
+    assert spec.name == "AMC-Memory"
+    assert spec.task == "amc_memory"
+    assert spec.metric == "exact_match"
+    assert spec.num_fewshot == 0
+    assert "cross-session recall" in spec.description
+    assert "contradiction quarantine" in spec.description
+    assert spec is AMC_MEMORY
+
+
+def test_lm_eval_benchmarks_exclude_internal_amc_memory():
+    """Checkpoint harness defaults must not send internal AMC tasks to lm-eval."""
+    assert AMC_MEMORY in INTERNAL_BENCHMARKS
+    assert AMC_MEMORY not in LM_EVAL_BENCHMARKS
+    assert AMC_MEMORY in ALL_BENCHMARKS
+
+    harness = CheckpointEvalHarness(results_dir="/tmp/aurelius-eval-test")
+    assert all(spec.task != "amc_memory" for spec in harness.benchmarks)
 
 
 def test_no_duplicate_names():

@@ -2,12 +2,15 @@ import sys
 
 from .benchmark_config import (
     ALL_BENCHMARKS,
+    AMC_MEMORY,
     ARC_CHALLENGE,
     BENCHMARK_BY_NAME,
     GPQA_DIAMOND,
     GSM8K,
     HELLASWAG,
     HUMANEVAL,
+    INTERNAL_BENCHMARKS,
+    LM_EVAL_BENCHMARKS,
     LIVECODEBENCH,
     MATH500,
     MMLU,
@@ -18,6 +21,8 @@ from .benchmark_config import (
 __all__ = [
     "BenchmarkSpec",
     "ALL_BENCHMARKS",
+    "LM_EVAL_BENCHMARKS",
+    "INTERNAL_BENCHMARKS",
     "BENCHMARK_BY_NAME",
     "MMLU",
     "HELLASWAG",
@@ -28,6 +33,7 @@ __all__ = [
     "MATH500",
     "GPQA_DIAMOND",
     "LIVECODEBENCH",
+    "AMC_MEMORY",
 ]
 
 # --- Additive registration for Needle-in-a-Haystack (NIAH) -------------------
@@ -1379,6 +1385,29 @@ __all__ = list(__all__) + [
     "FairnessScorer",
     "DEFAULT_FAIRNESS_SCORER",
     "FAIRNESS_SCORER_REGISTRY",
+]
+
+# --- Additive registration for AMC memory benchmark --------------------------
+# Additive only; keeps existing general/long-context benchmark registrations
+# intact while exposing the memory-specific Option C gate.
+from .amc_memory_benchmark import (  # noqa: E402
+    AMCMemoryBenchmark as _AMCMemoryBenchmark,
+)
+from .amc_memory_benchmark import (  # noqa: E402
+    AMCMemoryExample as _AMCMemoryExample,
+)
+
+AMCMemoryBenchmark = _AMCMemoryBenchmark
+AMCMemoryExample = _AMCMemoryExample
+
+METRIC_REGISTRY = globals().setdefault("METRIC_REGISTRY", {})
+BENCHMARK_REGISTRY = globals().setdefault("BENCHMARK_REGISTRY", {})
+METRIC_REGISTRY.setdefault("amc_memory", _AMCMemoryBenchmark)
+BENCHMARK_REGISTRY.setdefault("amc_memory", _AMCMemoryBenchmark)
+
+__all__ = list(__all__) + [
+    "AMCMemoryBenchmark",
+    "AMCMemoryExample",
 ]
 
 _module = sys.modules[__name__]

@@ -107,6 +107,35 @@ def test_web_ui_validator_rejects_gopher():
         _validate_upstream_url("gopher://example.com/")
 
 
+def test_web_ui_validator_rejects_cgnat_shared_address_space():
+    from src.serving.web_ui import _validate_upstream_url
+
+    with pytest.raises(ValueError):
+        _validate_upstream_url("http://100.64.0.1/v1/chat/completions")
+
+
+def test_web_ui_validator_rejects_ipv4_mapped_loopback():
+    from src.serving.web_ui import _validate_upstream_url
+
+    with pytest.raises(ValueError):
+        _validate_upstream_url("http://[::ffff:127.0.0.1]/v1/chat/completions")
+
+
+def test_web_ui_redirect_handler_blocks_redirects():
+    from src.serving.web_ui import _NoRedirectHandler
+
+    handler = _NoRedirectHandler()
+    redirected = handler.redirect_request(
+        req=None,  # type: ignore[arg-type]
+        fp=None,
+        code=302,
+        msg="Found",
+        headers={},
+        newurl="http://127.0.0.1/admin",
+    )
+    assert redirected is None
+
+
 def test_web_ui_validator_accepts_https():
     from src.serving.web_ui import _validate_upstream_url
 

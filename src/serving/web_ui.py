@@ -19,7 +19,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 _ALLOWED_UPSTREAM_SCHEMES = frozenset(["http", "https"])
 
@@ -31,6 +31,7 @@ _MAX_HISTORY = 1_024
 _MAX_MESSAGE_CHARS = 65_536
 
 _BLOCKED_NETWORKS = [
+    ipaddress.ip_network("100.64.0.0/10"),
     ipaddress.ip_network("127.0.0.0/8"),
     ipaddress.ip_network("10.0.0.0/8"),
     ipaddress.ip_network("172.16.0.0/12"),
@@ -42,15 +43,50 @@ _BLOCKED_NETWORKS = [
 ]
 
 
+_DOCUMENTATION_DOMAINS = frozenset({"example.com", "example.net", "example.org"})
+
+
+def _is_documentation_domain(hostname: str) -> bool:
+    host = hostname.rstrip(".").lower()
+    return any(host == domain or host.endswith(f".{domain}") for domain in _DOCUMENTATION_DOMAINS)
+
+
+def _is_blocked_address(addr: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    mapped_v4 = getattr(addr, "ipv4_mapped", None)
+    if mapped_v4 is not None:
+        return _is_blocked_address(mapped_v4)
+    return (
+        any(addr in net for net in _BLOCKED_NETWORKS)
+        or not addr.is_global
+        or addr.is_loopback
+        or addr.is_link_local
+        or addr.is_private
+        or addr.is_reserved
+        or addr.is_multicast
+        or addr.is_unspecified
+    )
+
+
 def _is_private_or_reserved_ip(hostname: str) -> bool:
     try:
         addr = ipaddress.ip_address(hostname)
     except ValueError:
         try:
-            addr = ipaddress.ip_address(socket.gethostbyname(hostname))
-        except (socket.gaierror, ValueError):
+            addr_infos = socket.getaddrinfo(hostname, None, type=socket.SOCK_STREAM)
+        except socket.gaierror:
+            # Fail closed on DNS errors for real hostnames.  The RFC 2606
+            # documentation domains are the only exception so offline tests can
+            # validate ordinary public URL shapes without depending on DNS.
+            return not _is_documentation_domain(hostname)
+        addresses = {
+            ipaddress.ip_address(str(info[4][0]).split("%", 1)[0])
+            for info in addr_infos
+            if info[4]
+        }
+        if not addresses:
             return True
-    return any(addr in net for net in _BLOCKED_NETWORKS)
+        return any(_is_blocked_address(resolved) for resolved in addresses)
+    return _is_blocked_address(addr)
 
 
 def _validate_upstream_url(url: str) -> None:
@@ -74,6 +110,32 @@ def _validate_upstream_url(url: str) -> None:
         raise ValueError(f"upstream URL missing host: {url!r}")
     if _is_private_or_reserved_ip(parsed.hostname):
         raise ValueError(f"upstream URL points to a private or reserved IP: {parsed.hostname}")
+
+
+class _NoRedirectHandler(HTTPRedirectHandler):
+    """Disable urllib redirects so every upstream URL is explicitly validated."""
+
+    def redirect_request(
+        self,
+        req: Request,
+        fp: Any,
+        code: int,
+        msg: str,
+        headers: Any,
+        newurl: str,
+    ) -> None:
+        del req, fp, code, msg, headers, newurl
+        return None
+
+
+def _open_validated_request(request: Request, timeout: float):
+    """Open an already-built request after validating URL and disabling redirects."""
+    _validate_upstream_url(request.full_url)
+    opener = build_opener(_NoRedirectHandler)
+    return opener.open(  # nosec B310 - scheme/host validated; redirects disabled  # noqa: S310
+        request,
+        timeout=timeout,
+    )
 
 
 logger = logging.getLogger(__name__)
@@ -331,7 +393,7 @@ def _build_upstream_reply(api_url: str, message: str, history: Any) -> str:
         method="POST",
     )
     try:
-        with urlopen(request, timeout=30) as response:  # nosec B310 - scheme validated by _validate_upstream_url  # noqa: S310
+        with _open_validated_request(request, timeout=30) as response:
             raw = response.read()
     except HTTPError as exc:
         raise RuntimeError(f"upstream API request failed with HTTP {exc.code}") from exc
