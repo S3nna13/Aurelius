@@ -13,7 +13,9 @@ filesystem and shell as well.
 
 import re
 import shlex
+import shutil
 import subprocess
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -323,8 +325,10 @@ class SandboxedShell:
         "isort",
     ]
 
-    def __init__(self, timeout_seconds: int = 30, sandbox_cwd: str = "/tmp/aurelius_sandbox"  # noqa: S108):  # noqa: S108
+    def __init__(self, timeout_seconds: int = 30, sandbox_cwd: str | None = None) -> None:
         self.timeout = timeout_seconds
+        if sandbox_cwd is None:
+            sandbox_cwd = str(Path(tempfile.gettempdir()) / "aurelius_sandbox")
         self.cwd = Path(sandbox_cwd)
         self.cwd.mkdir(parents=True, exist_ok=True)
 
@@ -387,8 +391,9 @@ class NativeBrowserTool:
     """
 
     def __init__(self):
-        self._apple_script = lambda script: subprocess.run(  # noqa: S603  # noqa: S603  # noqa: S603  # noqa: S603
-            ["osascript", "-e", script], capture_output=True, text=True
+        osascript = shutil.which("osascript") or "/usr/bin/osascript"
+        self._apple_script = lambda script: subprocess.run(  # noqa: S603
+            [osascript, "-e", script], capture_output=True, text=True
         )
 
     def open_url(self, url: str, browser: str = "safari") -> ToolResult:
@@ -408,11 +413,12 @@ class NativeBrowserTool:
 
     def click_text(self, text: str) -> ToolResult:
         """Click first link/button matching text."""
-        script = f'''
-        tell application "System Events"
-            click UI element "{text}" of UI element 1 of group 1 of window 1 of application process "Safari"
-        end tell
-        '''
+        script = (
+            'tell application "System Events"\n'
+            f'    click UI element "{text}" of UI element 1 of group 1 of window 1 '
+            'of application process "Safari"\n'
+            "end tell\n"
+        )
         result = self._apple_script(script)
         return ToolResult(
             success=(result.returncode == 0), output=result.stdout, error=result.stderr
