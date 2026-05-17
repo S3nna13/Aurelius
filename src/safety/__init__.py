@@ -164,6 +164,13 @@ from src.safety.clawdrain_detector import (
     ExhaustionResult,
     ExhaustionSignal,
 )
+from src.safety.prism_security_layer import (
+    Decision,
+    HookResult,
+    LifecycleHook,
+    PRISMSecurityLayer,
+    RiskRecord,
+)
 
 SAFETY_FILTER_REGISTRY: dict = {}
 HARM_CLASSIFIER_REGISTRY: dict = {}
@@ -186,6 +193,7 @@ SAFETY_FILTER_REGISTRY["jailbreak_v2"] = JailbreakClassifierV2
 SAFETY_FILTER_REGISTRY["output_sanitizer"] = OutputSanitizer
 SAFETY_FILTER_REGISTRY["policy_audit"] = PolicyAuditLog
 SAFETY_FILTER_REGISTRY["clawdrain_detector"] = ClawdrainDetector
+SAFETY_FILTER_REGISTRY["prism_security_layer"] = PRISMSecurityLayer
 
 HARM_CLASSIFIER_REGISTRY["harm_taxonomy"] = HarmTaxonomyClassifier
 HARM_CLASSIFIER_REGISTRY["refusal"] = RefusalClassifier
