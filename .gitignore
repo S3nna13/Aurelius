@@ -116,3 +116,8 @@ var/
 
 # Agent loop artifacts
 .serena/
+
+# Root cleanup artifacts
+pyproject.toml.consolidated
+pyproject.toml.pre_consolidation
+tmp_job_test.sh

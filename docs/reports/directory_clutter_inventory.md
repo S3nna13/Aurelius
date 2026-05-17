@@ -1,115 +1,134 @@
-# Aurelius Directory Clutter Inventory
+# Aurelius current structural/clutter audit
 
-Status: AMC-first stabilization inventory
-Scope: main branch after AMC-first realignment
-Generated from repository file counts and import-reference scan
+Generated: 2026-05-17T06:41:48Z
 
-## Executive summary
+Scope: tracked repository files on `main`, after excluding local-only `.git`, `.venv`, cache, node_modules, and ignored runtime artifacts. This audit is aligned with the AMC-first core boundary in `docs/CORE_SURFACE.md`.
 
-The repository is still too broad for the current AMC-first objective. The codebase is not broken merely because it is large, but there are several feature families that should not be treated as core until AMC benchmark evidence exists.
+## Summary
 
-Recommended rule for the next phase:
+- Tracked files after this cleanup: 5471
+- Top-level tracked entries: 57
+- Root files after this cleanup: 23
+- Tracked generated/cache artifacts after cleanup: 0
+- Root temporary-looking files after cleanup: 0
+- Root backup-snapshot files after cleanup: 0
 
-1. Keep code needed for model, training, eval, runtime, memory, serving, safety, and the minimal agent loop.
-2. Quarantine broad research families behind registries/docs instead of deleting them immediately.
-3. Do not remove directories that still have dedicated tests and external imports until a separate deletion PR proves no consumers.
-4. Prioritize small, testable reductions over mass refactors.
+## Top-level file distribution
 
-## Size snapshot
+- `tests`: 2384
+- `src`: 2147
+- `frontend`: 176
+- `agent`: 100
+- `gateway`: 80
+- `crates`: 70
+- `docs`: 62
+- `middle`: 58
+- `archive`: 55
+- `aurelius_cli`: 33
+- `scripts`: 33
+- `server`: 32
+- `tools`: 32
+- `aurelius`: 28
+- `acp_adapter`: 25
+- `plugins`: 21
+- `configs`: 19
+- `cron`: 18
+- `deployment`: 18
+- `training_data`: 15
+- `.github`: 11
+- `examples`: 8
+- `alembic`: 5
+- `rust_memory`: 4
+- `.hermes`: 2
+- `benchmarks`: 2
+- `data`: 2
+- `k8s`: 2
+- `.cargo`: 1
+- `.dockerignore`: 1
 
-Top-level Python footprint:
+## Root files that remain
 
-| Path | Python files | Approx. lines | Classification |
-| --- | ---: | ---: | --- |
-| `src/` | 2139 | 482584 | Core source tree, but internally cluttered |
-| `tests/` | 2381 | 491971 | Large but valuable; do not mass-delete |
-| `agent/` | 98 | 25710 | Keep minimal loop; avoid expanding |
-| `gateway/` | 76 | 15400 | Keep serving/API surface |
-| `aurelius_cli/` | 33 | 7785 | Keep CLI surface |
-| `tools/` | 27 | 2364 | Keep only if used by agent/runtime |
-| `plugins/` | 21 | 2513 | Keep memory plugins relevant to AMC |
-| `cron/` | 18 | 1710 | Quarantine unless wired to core agent runtime |
-| `acp_adapter/` | 25 | 3413 | Quarantine unless needed for active agent protocol |
-| `training_data/` | 14 | 9693 | Keep if used by training scripts; otherwise document ownership |
-| `archive/` | 55 | 13547 | Keep excluded; never lint as active code |
+These are active configuration, package, and project-facing entrypoints. No temporary root scripts or pyproject backup snapshots remain tracked.
 
-Largest `src/` directories:
+- `.dockerignore`
+- `.env.example`
+- `.gitattributes`
+- `.gitignore`
+- `.pre-commit-config.yaml`
+- `AUTONOMOUS_IMPROVEMENT_SUMMARY.md`
+- `CHANGELOG.md`
+- `CONTRIBUTING.md`
+- `Cargo.lock`
+- `Cargo.toml`
+- `Dockerfile`
+- `LICENSE`
+- `Makefile`
+- `README.md`
+- `SECURITY.md`
+- `alembic.ini`
+- `bandit-baseline.json`
+- `docker-compose.yml`
+- `package-lock.json`
+- `package.json`
+- `pyproject.toml`
+- `rust-toolchain.toml`
+- `uv.lock`
 
-| Path | Python files | Approx. lines | Classification |
-| --- | ---: | ---: | --- |
-| `src/training/` | 329 | 92194 | Keep, but needs submodule ownership |
-| `src/model/` | 271 | 71283 | Keep, core model surface |
-| `src/inference/` | 245 | 63842 | Quarantine variants not tied to benchmark gates |
-| `src/eval/` | 174 | 48479 | Keep; central to AMC-first proof |
-| `src/alignment/` | 179 | 46829 | Reduce to SFT/DPO/GRPO/RLVR/constitutional-memory path |
-| `src/data/` | 106 | 26476 | Keep if used by training/data pipeline |
-| `src/serving/` | 66 | 14958 | Keep minimal OpenAI-compatible path |
-| `src/security/` | 69 | 12231 | Keep; required for stable release |
-| `src/safety/` | 42 | 12967 | Keep selectively; avoid duplicate policy engines |
-| `src/ui/` | 27 | 7521 | Quarantine unless tied to active product surface |
+## Cleanup performed in this pass
 
-## Keep as AMC-first core
+Removed tracked files that were generated output, unreferenced temporary root clutter, or obsolete root backup snapshots:
 
-These should remain first-class while stabilizing Aurelius:
+- `frontend/dist/favicon.svg`
+- `frontend/dist/icons.svg`
+- `frontend/dist/index.html`
+- `tmp_job_test.sh`
+- `pyproject.toml.consolidated`
+- `pyproject.toml.pre_consolidation`
 
-- `src/model/` — model architecture and AMC hooks.
-- `src/memory/` and `plugins/memory/` — memory primitives; consolidate toward AMC contracts.
-- `src/eval/` — benchmark harnesses, AMC-Memory, RULER/long-context gates.
-- `src/training/` — training loops and optimization primitives.
-- `src/runtime/` — feature flags, capability contracts, runtime glue.
-- `src/serving/` and `gateway/` — minimal serving/API path.
-- `src/security/` and selected `src/safety/` — release hardening and memory quarantine safety.
-- `aurelius_cli/` — user-facing commands.
-- `agent/` — keep the minimal loop that can read/write AMC.
+Rationale:
 
-## Quarantine behind registries or docs
+- `frontend/dist/` is produced by `npm run build -w frontend` and already ignored by `.gitignore`.
+- Docker deploy builds copy the freshly generated Vite output from the builder stage, not from committed `frontend/dist` files.
+- `tmp_job_test.sh` only wrote a tick into `/tmp/aurelius_job_log.txt`, had no tracked references, and was not part of the AMC-first runtime or release gates.
+- The pyproject backup snapshots had no tracked references and are superseded by the active root `pyproject.toml` plus git history.
+- `.gitignore` now explicitly blocks the removed root temp/backup filenames from being re-added accidentally.
 
-These are not deletion targets yet, but should stop expanding until AMC benchmark evidence exists:
+## Remaining structural observations
 
-| Area | Why quarantine |
-| --- | --- |
-| `src/inference/` variants | 245 files; likely multiple speculative/attention/KV experiments. Keep benchmarked paths only as core. |
-| `src/alignment/` variants | 179 files; current canonical scope is only SFT, DPO, GRPO/RLVR, constitutional memory, quarantine. |
-| `src/profiling/` | Useful for experiments but not product-critical; 14 external references found, mostly tests. |
-| `src/federation/` | Broad feature family with dedicated tests, but not part of AMC-first proof. |
-| `src/simulation/` | Broad testing/research surface; keep separate from core model/runtime. |
-| `src/persona/` | Has real consumers (`agent/`, `aurelius_cli/`, `src/chat/`), so do not delete; narrow to explicit product need. |
-| `cron/` and `acp_adapter/` | Useful platform features, but should not block AMC stabilization. |
-| `src/ui/` | Quarantine unless tied to active dashboard requirements. |
+1. `tests/` is the largest tracked tree by file count. That is expected after stabilizing release gates; do not prune tests without a separate coverage-aware pass.
+2. `archive/` is intentionally retained as historical context. It is not imported by active CI gates and should remain read-only unless a future archive policy is adopted.
+3. `bandit-baseline.json` is now a large root-level file. It is intentionally root-level because CI reads it directly and treats it as the explicit low-severity Bandit baseline.
+4. `docs/executive/Aurelius_Executive_Overview.pdf` is the largest tracked artifact. It is product/documentation collateral, not build output; removal would require a docs/product decision.
+5. `training_data/` is still tracked despite `.gitignore` containing `training_data/`; these are existing tracked generator sources and should not be removed in a cleanup-only pass because they may be part of dataset generation workflows.
 
-## Delete-candidate areas, not delete-now areas
+## Largest tracked files
 
-These are candidates for later removal only after import rewrites and test decisions:
+- `docs/executive/Aurelius_Executive_Overview.pdf`: 2,008,989 bytes
+- `bandit-baseline.json`: 1,274,519 bytes
+- `uv.lock`: 692,267 bytes
+- `package-lock.json`: 314,206 bytes
+- `training_data/sft_generator.py`: 152,783 bytes
+- `middle/package-lock.json`: 139,393 bytes
+- `server/package-lock.json`: 127,861 bytes
+- `training_data/pretrain_generator.py`: 109,182 bytes
+- `Cargo.lock`: 78,068 bytes
+- `src/ui/aurelius_shell.py`: 77,900 bytes
+- `scripts/generate_dissertation.py`: 74,122 bytes
+- `docs/plans/2026-04-20-harvest-implementation.md`: 63,061 bytes
+- `src/agent/session_manager.py`: 63,036 bytes
+- `agent/session_manager.py`: 63,036 bytes
+- `src/model/interface_framework.py`: 60,946 bytes
+- `docs/plans/2026-05-09-mosaic-v2-implementation.md`: 59,442 bytes
+- `docs/executive/overview.html`: 58,796 bytes
+- `data/pretrain/glm5/train_shard_000.npy`: 58,372 bytes
+- `training_data/_build_math_gen.py`: 52,950 bytes
+- `docs/BRAIN_ARCHITECTURE.md`: 50,941 bytes
 
-| Area | External refs found | Recommendation |
-| --- | ---: | --- |
-| `src/trading/` | 9 | Delete-candidate. Appears isolated to trading tests; not AMC core. |
-| `src/simulation/` | 17 | Delete-candidate or move to `archive/experiments` after test triage. |
-| `src/federation/` | 17 | Delete-candidate for product core; preserve only if distributed training is an explicit roadmap item. |
-| `src/profiling/` | 14 | Defer/delete-candidate; keep only minimal runtime metrics needed by benchmark reports. |
-| `src/persona/` | 11 | Not safe to delete now because agent/CLI/chat import it. Narrow instead. |
+## Current recommendation
 
-## Immediate refactor guidance
+The repository is no longer blocked by obvious tracked build-output, temp-script, or root pyproject-backup clutter. The next structural cleanup should be planned, not opportunistic:
 
-Do not start with a large directory move. The safe sequence is:
-
-1. Add labels/docs first, not deletions.
-2. Keep tests passing for the current core path.
-3. For each delete-candidate package:
-   - run its tests once,
-   - identify non-test importers,
-   - either rewrite importers or mark the package experimental,
-   - delete only in a focused PR/commit.
-4. For `src/inference/` and `src/alignment/`, introduce a small registry/allow-list if needed instead of moving hundreds of files.
-5. Tie every retained subsystem to one of these gates:
-   - general capability,
-   - long-context capability,
-   - AMC-Memory,
-   - runtime safety,
-   - serving/CLI usability.
-
-## Next smallest useful cleanup
-
-Completed in this pass: tracked `.bak` backup artifacts were removed after an import-reference scan found no runtime consumers. The old rollback documentation now points to git history instead of in-tree backup files.
-
-The next lowest-risk cleanup is not another deletion. It is to keep `docs/CORE_SURFACE.md` current as the release-critical AMC-first boundary and then remove future clutter only with the same import-reference/test-validation sequence.
+- Decide whether `archive/` should stay in-repo, move to a branch/tag, or remain as a read-only historical tree.
+- Decide whether generated documentation artifacts such as PDFs belong in git or should be release artifacts.
+- Decide whether tracked training-data generator sources should stay at root-level `training_data/` or move under `src/data/`/`scripts/` in a dedicated migration.
+- Keep future cleanups constrained to one category per PR/commit so CI regressions are easy to attribute.
