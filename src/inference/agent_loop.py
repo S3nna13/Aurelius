@@ -20,6 +20,7 @@ class AgentConfig:
 
     max_steps: int = 10
     max_tokens_per_step: int = 64
+    max_observation_tokens: int = 1024  # Limit tool output size
     temperature: float = 0.7
     stop_token: str = "<|end|>"  # noqa: S105
     reflection_enabled: bool = True
@@ -140,6 +141,16 @@ def format_react_prompt(
         parts.append(history)
     parts.append("Thought:")
     return "\n".join(parts)
+
+
+def _truncate_observation(obs: str, max_tokens: int) -> str:
+    """Approximate truncation assuming ~4 chars per token."""
+    if max_tokens <= 0:
+        return obs
+    max_chars = max_tokens * 4
+    if len(obs) > max_chars:
+        return obs[:max_chars] + f"\n[Truncated: original {len(obs)} chars, showing first {max_chars}]"
+    return obs
 
 
 # ---------------------------------------------------------------------------
@@ -273,6 +284,7 @@ class ReActAgent:
                     final_answer = thought
             else:
                 observation = self.tool_executor.execute(action)
+                observation = _truncate_observation(observation, self.config.max_observation_tokens)
 
             agent_step = AgentStep(
                 step_num=step_idx,

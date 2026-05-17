@@ -247,7 +247,14 @@ class VoyagerSkillLibrary:
     def load(self) -> None:
         p = self.path / "skills.json"
         if p.exists():
-            self.update_from_dict(json.loads(p.read_text()))
+            data = json.loads(p.read_text())
+            # Validate skills before loading (defense against bootstrapper injection)
+            for name, raw_skill in data.get("skills", {}).items():
+                code = raw_skill.get("code", "")
+                if self._is_suspicious_code(code):
+                    _LOGGER.warning("Skipping suspicious skill %s: patterns detected", name)
+                    continue
+            self.update_from_dict(data)
 
     # ------------------------------------------------------------------
     # Trajectory-based skill acquisition (dissertation §Skills, tau=0.99)
@@ -328,6 +335,37 @@ class VoyagerSkillLibrary:
         if na == 0.0 or nb == 0.0:
             return 0.0
         return dot / (na * nb)
+
+    @staticmethod
+    def _is_suspicious_code(code: str) -> bool:
+        """Detect potential bootstrapper or malicious patterns in skill code."""
+        suspicious = [
+            r"import\s+os\b",
+            r"import\s+subprocess\b",
+            r"from\s+os\b",
+            r"from\s+subprocess\b",
+            r"__import__\s*\(",
+            r"eval\s*\(",
+            r"exec\s*\(",
+            r"compile\s*\(",
+            r"open\s*\(",
+            r"os\.system\b",
+            r"os\.remove\b",
+            r"os\.rmdir\b",
+            r"shutil\.rmtree\b",
+            r"Path\s*\(.*\)\s*\.unlink\b",
+            r"requests\.(post|put|delete)\b",
+            r"urllib\.request\b",
+            r"socket\b",
+            r"pickle\.load\b",
+            r"yaml\.load\b",
+            r"docker\b",
+            r"subprocess\.(run|call|Popen)\b",
+        ]
+        for pattern in suspicious:
+            if re.search(pattern, code, re.IGNORECASE):
+                return True
+        return False
 
     def retrieve_skills(
         self,

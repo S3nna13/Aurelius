@@ -38,6 +38,10 @@ class BiGRUSlotEncoder(nn.Module):
 
 
 class LTSMemory(nn.Module):
+    # Memory update hyperparameters
+    MEM_UPDATE_MOMENTUM = 0.99
+    MEM_NEW_DATA_RATE = 0.01
+    
     def __init__(self, d_mem: int, capacity: int):
         super().__init__()
         self.d_mem = d_mem
@@ -48,19 +52,18 @@ class LTSMemory(nn.Module):
 
     def write(self, keys: torch.Tensor, values: torch.Tensor, importance: torch.Tensor):
         b, k_orig, d = keys.shape
-        scores = keys @ self.mem.transpose(-2, -1)
-        usage = scores.softmax(dim=-1).sum(dim=1)
-        combined = importance.mean(dim=[1, 2])
-        write_priority = combined + 0.1 * usage
+        scores = keys @ self.mem.transpose(-2, -1)  # [b, k_orig, capacity]
+        usage = scores.softmax(dim=-1).sum(dim=1)    # [b, capacity]
+        combined = importance.mean(dim=[1, 2])       # [b]
+        write_priority = combined.unsqueeze(-1) + 0.1 * usage  # [b, capacity]
         k = min(k_orig, self.capacity)
-        indices = write_priority.topk(k, dim=-1).indices
-        values_write = values[:, :k] if k < k_orig else values
+        indices = write_priority.topk(k, dim=-1).indices  # [b, k]
+        values_write = values[:, :k] if k < k_orig else values  # [b, k, d]
         scatter = torch.zeros(b, self.capacity, d, device=keys.device, dtype=keys.dtype)
         scatter.scatter_(1, indices.unsqueeze(-1).expand(-1, -1, d), values_write)
-        MEM_UPDATE_MOMENTUM = 0.99
-        MEM_NEW_DATA_RATE = 0.01
         with torch.no_grad():
-            self.mem.data = self.mem.data * MEM_UPDATE_MOMENTUM + scatter.mean(dim=0, keepdim=True) * MEM_NEW_DATA_RATE
+            self.mem.data *= self.MEM_UPDATE_MOMENTUM
+            self.mem.data += scatter.mean(dim=0, keepdim=True) * self.MEM_NEW_DATA_RATE
 
     def read(self, query: torch.Tensor) -> torch.Tensor:
         attn = query @ self.mem.transpose(-2, -1)
@@ -130,6 +133,12 @@ class AurelianMemoryCore(nn.Module):
 
         if self.training and self.step_counter.item() % self.consolidation_freq == 0:
             self.lts.write(k, v, surprise_scores)
+            
+            # Consolidate episodic slots via graph if we have space
+            if t <= self.episodic_slots_max:
+                encoded_slots = self.episodic_encoder(v.view(b, t, -1))
+                graph_feats = self.graph(encoded_slots)
+                # Optionally could write graph_feats to LTS or use for other purposes
 
         mem_state = {
             'surprise': surprise_scores,
