@@ -1,3 +1,11 @@
+from .capability_contract import (
+    AgentCapability,
+    CapabilityContract,
+    InferenceCapability,
+    ModelCapability,
+    RuntimeCapability,
+    SafetyCapability,
+)
 from .compile_manager import COMPILE_REGISTRY, CompileConfig, CompileManager
 from .inference_engine import (
     INFERENCE_ENGINE_REGISTRY,
@@ -44,9 +52,14 @@ from .surface_flags import (
 from .torch_profiler_wrapper import RUNTIME_REGISTRY, AureliusProfiler, ProfilerConfig
 
 __all__ = [
+    "AgentCapability",
+    "CapabilityContract",
     "CompileConfig",
     "CompileManager",
     "COMPILE_REGISTRY",
+    "ModelCapability",
+    "RuntimeCapability",
+    "SafetyCapability",
     "MemorySnapshot",
     "MemoryProfiler",
     "MEMORY_PROFILER_REGISTRY",
@@ -55,6 +68,7 @@ __all__ = [
     "RUNTIME_REGISTRY",
     "JITCacheConfig",
     "JITCache",
+    "InferenceCapability",
     "InferenceBackend",
     "InferenceConfig",
     "InferenceRequest",

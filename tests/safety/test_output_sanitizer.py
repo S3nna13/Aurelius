@@ -192,6 +192,36 @@ def test_sanitize_api_key_rule_applied():
     assert "api_key" in result.rules_applied
 
 
+def test_sanitize_well_known_secret_prefixes():
+    s = OutputSanitizer()
+    aws_key = "AKIA" + "A" * 16
+    github_token = "ghp_" + "B" * 36
+    slack_token = "xoxb-" + "C" * 20
+    result = s.sanitize(f"{aws_key} {github_token} {slack_token}")
+
+    assert aws_key not in result.sanitized_text
+    assert github_token not in result.sanitized_text
+    assert slack_token not in result.sanitized_text
+    assert "aws_access_key" in result.rules_applied
+    assert "github_token" in result.rules_applied
+    assert "slack_token" in result.rules_applied
+
+
+def test_sanitize_bearer_jwt_and_private_key_block():
+    s = OutputSanitizer()
+    jwt = "eyJ" + "A" * 12 + "." + "B" * 12 + "." + "C" * 12
+    private_key = "-----BEGIN PRIVATE KEY-----\nabc123\n-----END PRIVATE KEY-----"
+    bearer = "Bearer " + "D" * 20
+    result = s.sanitize(f"{bearer}\n{jwt}\n{private_key}")
+
+    assert jwt not in result.sanitized_text
+    assert private_key not in result.sanitized_text
+    assert "Bearer [API_KEY]" in result.sanitized_text
+    assert "jwt" in result.rules_applied
+    assert "bearer_token" in result.rules_applied
+    assert "private_key_block" in result.rules_applied
+
+
 # ---------------------------------------------------------------------------
 # sanitize() — IPv4
 # ---------------------------------------------------------------------------

@@ -50,6 +50,7 @@ from dataclasses import dataclass
 
 from src.safety.jailbreak_detector import JailbreakDetector
 from src.safety.output_safety_filter import OutputSafetyFilter
+from src.safety.pii_detector import PIIDetector
 from src.safety.prompt_injection_scanner import PromptInjectionScanner
 
 __all__ = [
@@ -142,9 +143,14 @@ class GuardrailMiddleware:
         if self._custom_pre is None and self._enable_default_pre:
             self._default_jailbreak = JailbreakDetector()
             self._default_injection = PromptInjectionScanner()
+            self._default_pii = PIIDetector(
+                redaction_mode="placeholder",
+                confidence_threshold=0.8,
+            )
         else:
             self._default_jailbreak = None
             self._default_injection = None
+            self._default_pii = None
 
         if self._custom_post is None and self._enable_default_post:
             self._default_output_filter = OutputSafetyFilter()
@@ -216,6 +222,16 @@ class GuardrailMiddleware:
                 reason=(
                     f"prompt injection scanner fired (score={inj.score:.3f}, signals={inj.signals})"
                 ),
+            )
+
+        pii = self._default_pii.redact(request)  # type: ignore[union-attr]
+        if pii.matches:
+            pii_types = sorted({match.type for match in pii.matches})
+            _LOGGER.info("pre_check redacted input PII: %s", pii_types)
+            return MiddlewareDecision(
+                allowed=True,
+                reason=f"input PII redacted: {pii_types}",
+                modified_input=pii.redacted_text,
             )
 
         return MiddlewareDecision(allowed=True, reason="pre checks passed")

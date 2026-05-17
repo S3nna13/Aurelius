@@ -27,7 +27,7 @@ _SUSPICIOUS_PATTERNS = [
     re.compile(r"(?i)\binject\b"),
     re.compile(r"(?i)\boverride\b"),
     re.compile(r"(?i)\bsystem.?bypass\b"),
-    re.compile(r"(?i)\bigmore\s+(above|below|all|previous|following)\b"),
+    re.compile(r"(?i)\bignore\s+(above|below|all|previous|following)\b"),
     re.compile(r"(?i)\bdisregard\b"),
     re.compile(r"(?i)\bprint.*flag\b"),
 ]

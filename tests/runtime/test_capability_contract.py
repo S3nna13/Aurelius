@@ -12,6 +12,7 @@ from src.runtime.capability_contract import (
     InferenceCapability,
     ModelCapability,
     RuntimeCapability,
+    SafetyCapability,
 )
 
 
@@ -60,6 +61,21 @@ class TestRuntimeCapability:
         assert len(cap.surfaces) > 0
 
 
+class TestSafetyCapability:
+    def test_defaults(self):
+        cap = SafetyCapability()
+        assert cap.prompt_injection_scanner is True
+        assert cap.secret_redaction is True
+        assert cap.clawdrain_detection is True
+        assert cap.admission_controller is True
+        assert cap.prism_lifecycle_hooks > 0
+
+    def test_frozen(self):
+        cap = SafetyCapability()
+        with pytest.raises(dataclasses.FrozenInstanceError):
+            cap.secret_redaction = False
+
+
 class TestCapabilityContract:
     def test_defaults(self):
         contract = CapabilityContract()
@@ -67,6 +83,7 @@ class TestCapabilityContract:
         assert isinstance(contract.model, ModelCapability)
         assert isinstance(contract.inference, InferenceCapability)
         assert isinstance(contract.agent, AgentCapability)
+        assert isinstance(contract.safety, SafetyCapability)
         assert isinstance(contract.runtime, RuntimeCapability)
 
     def test_to_dict(self):
@@ -77,6 +94,7 @@ class TestCapabilityContract:
         assert "model" in d
         assert d["model"]["family"] == "aurelius"
         assert d["inference"]["streaming"] is True
+        assert d["safety"]["admission_controller"] is True
 
     def test_to_dict_is_json_serialisable(self):
         import json
@@ -89,6 +107,7 @@ class TestCapabilityContract:
         contract = CapabilityContract.from_runtime()
         assert isinstance(contract, CapabilityContract)
         assert contract.runtime.python_version
+        assert contract.safety.admission_controller is True
 
     def test_frozen(self):
         contract = CapabilityContract()

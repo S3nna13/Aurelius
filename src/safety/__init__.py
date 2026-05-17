@@ -23,9 +23,35 @@ _cached_hall_of_shame_probe = sys.modules.get("src.safety.hall_of_shame_probe")
 if _cached_hall_of_shame_probe is not None:
     sys.modules["safety.hall_of_shame_probe"] = _cached_hall_of_shame_probe
 
+from src.safety.admission_controller import (
+    AdmissionAction,
+    AdmissionDecision,
+    AdmissionPolicy,
+    AdmissionSignal,
+    SafetyAdmissionController,
+    estimate_tokens,
+)
 from src.safety.canary_token_guard import (
     CanaryDetection,
     CanaryTokenGuard,
+)
+from src.safety.claw_keeper import (
+    Capability,
+    ClawKeeper,
+    EnforcementAction,
+    PluginRuntimeEnforcer,
+    SkillPolicy,
+    SkillPolicyEngine,
+    ThreatLevel,
+    ThreatRecord,
+    WatcherMiddleware,
+    WatchState,
+)
+from src.safety.clawdrain_detector import (
+    AmplificationVector,
+    ClawdrainDetector,
+    ExhaustionResult,
+    ExhaustionSignal,
 )
 from src.safety.constitutional_principles_scorer import (
     DEFAULT_PRINCIPLES,
@@ -115,6 +141,13 @@ from src.safety.policy_engine import (
     PolicyEngine,
     PolicyRule,
 )
+from src.safety.prism_security_layer import (
+    Decision,
+    HookResult,
+    LifecycleHook,
+    PRISMSecurityLayer,
+    RiskRecord,
+)
 from src.safety.prompt_injection_scanner import (
     InjectionScore,
     PromptInjectionScanner,
@@ -122,6 +155,12 @@ from src.safety.prompt_injection_scanner import (
 from src.safety.prompt_integrity_checker import (
     IntegrityReport,
     PromptIntegrityChecker,
+)
+from src.safety.quantclaw_gate import (
+    GateDecision,
+    GatingContext,
+    QuantClawGate,
+    QuantLevel,
 )
 from src.safety.refusal_classifier import (
     REFUSAL_PHRASES,
@@ -158,37 +197,6 @@ from src.safety.skill_scanner import (
     SkillScanner,
     SkillScanReport,
 )
-from src.safety.clawdrain_detector import (
-    AmplificationVector,
-    ClawdrainDetector,
-    ExhaustionResult,
-    ExhaustionSignal,
-)
-from src.safety.prism_security_layer import (
-    Decision,
-    HookResult,
-    LifecycleHook,
-    PRISMSecurityLayer,
-    RiskRecord,
-)
-from src.safety.claw_keeper import (
-    Capability,
-    ClawKeeper,
-    EnforcementAction,
-    PluginRuntimeEnforcer,
-    SkillPolicy,
-    SkillPolicyEngine,
-    ThreatLevel,
-    ThreatRecord,
-    WatchState,
-    WatcherMiddleware,
-)
-from src.safety.quantclaw_gate import (
-    GatingContext,
-    GateDecision,
-    QuantClawGate,
-    QuantLevel,
-)
 
 SAFETY_FILTER_REGISTRY: dict = {}
 HARM_CLASSIFIER_REGISTRY: dict = {}
@@ -214,6 +222,7 @@ SAFETY_FILTER_REGISTRY["clawdrain_detector"] = ClawdrainDetector
 SAFETY_FILTER_REGISTRY["prism_security_layer"] = PRISMSecurityLayer
 SAFETY_FILTER_REGISTRY["claw_keeper"] = ClawKeeper
 SAFETY_FILTER_REGISTRY["quantclaw_gate"] = QuantClawGate
+SAFETY_FILTER_REGISTRY["admission_controller"] = SafetyAdmissionController
 
 HARM_CLASSIFIER_REGISTRY["harm_taxonomy"] = HarmTaxonomyClassifier
 HARM_CLASSIFIER_REGISTRY["refusal"] = RefusalClassifier
@@ -222,6 +231,12 @@ HARM_CLASSIFIER_REGISTRY["constitutional"] = ConstitutionalPrinciplesScorer
 __all__ = [
     "SAFETY_FILTER_REGISTRY",
     "HARM_CLASSIFIER_REGISTRY",
+    "AdmissionAction",
+    "AdmissionDecision",
+    "AdmissionPolicy",
+    "AdmissionSignal",
+    "SafetyAdmissionController",
+    "estimate_tokens",
     "JailbreakDetector",
     "JailbreakScore",
     "PromptInjectionScanner",
@@ -303,6 +318,15 @@ __all__ = [
     "AuditEntry",
     "PolicyAuditLog",
     "POLICY_AUDIT_LOG",
+    "ClawdrainDetector",
+    "AmplificationVector",
+    "ExhaustionResult",
+    "ExhaustionSignal",
+    "PRISMSecurityLayer",
+    "Decision",
+    "HookResult",
+    "LifecycleHook",
+    "RiskRecord",
     "Capability",
     "ClawKeeper",
     "EnforcementAction",

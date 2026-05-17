@@ -66,6 +66,21 @@ class AgentCapability:
 
 
 @dataclass(frozen=True)
+class SafetyCapability:
+    """What safety and security controls are available."""
+
+    prompt_injection_scanner: bool = True
+    pii_detection: bool = True
+    secret_redaction: bool = True
+    output_sanitization: bool = True
+    clawdrain_detection: bool = True
+    quantclaw_gating: bool = True
+    prism_lifecycle_hooks: int = 10
+    admission_controller: bool = True
+    fail_closed_defaults: bool = True
+
+
+@dataclass(frozen=True)
 class RuntimeCapability:
     """What the runtime environment provides."""
 
@@ -88,6 +103,7 @@ class CapabilityContract:
     model: ModelCapability = field(default_factory=ModelCapability)
     inference: InferenceCapability = field(default_factory=InferenceCapability)
     agent: AgentCapability = field(default_factory=AgentCapability)
+    safety: SafetyCapability = field(default_factory=SafetyCapability)
     runtime: RuntimeCapability = field(default_factory=RuntimeCapability)
 
     # -- serialisation helpers ------------------------------------------------
@@ -119,6 +135,18 @@ class CapabilityContract:
         except Exception:
             pass
 
+        # Probe safety controls. Missing optional modules disable only their
+        # corresponding capability bit; the contract remains serialisable.
+        safety = SafetyCapability(
+            prompt_injection_scanner=_module_available("src.safety.prompt_injection_scanner"),
+            pii_detection=_module_available("src.safety.pii_detector"),
+            secret_redaction=_module_available("src.safety.output_sanitizer"),
+            output_sanitization=_module_available("src.safety.output_sanitizer"),
+            clawdrain_detection=_module_available("src.safety.clawdrain_detector"),
+            quantclaw_gating=_module_available("src.safety.quantclaw_gate"),
+            admission_controller=_module_available("src.safety.admission_controller"),
+        )
+
         # Probe runtime
         has_rust = os.path.isdir("crates") if os.path.isdir(".") else False
         has_node = os.path.isdir("node_modules") if os.path.isdir(".") else False
@@ -137,5 +165,14 @@ class CapabilityContract:
             model=model,
             inference=inference,
             agent=agent,
+            safety=safety,
             runtime=runtime,
         )
+
+
+def _module_available(module_name: str) -> bool:
+    try:
+        importlib.import_module(module_name)
+    except Exception:
+        return False
+    return True

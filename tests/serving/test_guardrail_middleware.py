@@ -72,6 +72,25 @@ def test_pii_in_output_is_redacted_by_post():
     assert decisions[1].modified_output is not None
 
 
+def test_pii_in_input_is_redacted_before_generate():
+    seen_requests = []
+
+    def generate_fn(req: str) -> str:
+        seen_requests.append(req)
+        return "ok"
+
+    mw = GuardrailMiddleware()
+    wrapped = mw.wrap_generate(generate_fn)
+    response, decisions = wrapped("Email me at jane.doe@example.com")
+
+    assert response == "ok"
+    assert "jane.doe@example.com" not in seen_requests[0]
+    assert "<EMAIL>" in seen_requests[0]
+    assert decisions[0].allowed is True
+    assert decisions[0].modified_input is not None
+    assert "input PII redacted" in decisions[0].reason
+
+
 def test_harmful_output_is_blocked_by_post():
     mw = GuardrailMiddleware()
     wrapped = mw.wrap_generate(lambda req: HARMFUL_RESPONSE)

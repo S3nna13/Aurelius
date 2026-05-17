@@ -42,8 +42,38 @@ class OutputSanitizer:
         ),
         SanitizationRule(
             name="api_key",
-            pattern=r"\b(sk|pk|api|key)[-_][A-Za-z0-9]{20,}\b",
+            pattern=r"\b(?:sk|pk|api|key|token)[-_][A-Za-z0-9._=-]{8,}\b",
             replacement="[API_KEY]",
+        ),
+        SanitizationRule(
+            name="aws_access_key",
+            pattern=r"\bAKIA[0-9A-Z]{16}\b",
+            replacement="[API_KEY]",
+        ),
+        SanitizationRule(
+            name="github_token",
+            pattern=r"\bgh[pousr]_[A-Za-z0-9]{20,255}\b",
+            replacement="[API_KEY]",
+        ),
+        SanitizationRule(
+            name="slack_token",
+            pattern=r"\bxox[baprs]-[A-Za-z0-9-]{10,}\b",
+            replacement="[API_KEY]",
+        ),
+        SanitizationRule(
+            name="jwt",
+            pattern=r"\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b",
+            replacement="[API_KEY]",
+        ),
+        SanitizationRule(
+            name="bearer_token",
+            pattern=r"(?i)\bbearer\s+[A-Za-z0-9._~+/=-]{16,}",
+            replacement="Bearer [API_KEY]",
+        ),
+        SanitizationRule(
+            name="private_key_block",
+            pattern=r"(?s)-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----",
+            replacement="[PRIVATE_KEY]",
         ),
         SanitizationRule(
             name="ipv4",
