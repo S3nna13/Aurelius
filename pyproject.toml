@@ -58,7 +58,7 @@ serve = [
     "openai>=1.50.0",
     "httpx>=0.28.1",
     "psutil>=6.0.0",
-    "xgrammar>=0.1.0",
+    "xgrammar>=0.2.0",
 ]
 db = [
     "alembic>=1.14.0",
