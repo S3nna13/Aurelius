@@ -110,4 +110,6 @@ Do not start with a large directory move. The safe sequence is:
 
 ## Next smallest useful cleanup
 
-The lowest-risk next cleanup is not deletion. It is to add a short `docs/CORE_SURFACE.md` defining which directories are considered release-critical for AMC-first. That gives future commits a stable target without breaking imports.
+Completed in this pass: tracked `.bak` backup artifacts were removed after an import-reference scan found no runtime consumers. The old rollback documentation now points to git history instead of in-tree backup files.
+
+The next lowest-risk cleanup is not another deletion. It is to keep `docs/CORE_SURFACE.md` current as the release-critical AMC-first boundary and then remove future clutter only with the same import-reference/test-validation sequence.

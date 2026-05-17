@@ -107,16 +107,19 @@ Prefer `speculative_decoding_v4.py` or `eagle3_decoding.py` for new work.
 
 ## Rollback
 
-All originals backed up with `.bak` extension. To revert:
+The old in-tree `.bak` backup artifacts were removed during AMC-first cleanup to reduce tracked clutter. Git history is the rollback source of truth now. To inspect or restore a removed backup file:
 ```bash
-# Restore backed-up __init__.py files
-for d in agent gateway aurelius cron tools plugins; do
-    [ -f ${{d}}/__init__.py.bak ] && mv ${{d}}/__init__.py.bak ${{d}}/__init__.py
-done
+# Find the last commit that still contained a removed backup file
+git log --all -- agent/__init__.py.bak
 
-# Restore pyproject.toml
-cp pyproject.toml.pre_consolidation pyproject.toml
+# Inspect a version from that commit
+git show <commit>:agent/__init__.py.bak
+
+# Restore a previous tracked file if truly needed
+git restore --source=<commit> -- agent/__init__.py.bak
 ```
+
+Prefer reverting the focused cleanup commit over reintroducing backup files piecemeal.
 
 ## Future Work (Post-Consolidation)
 

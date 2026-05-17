@@ -22,11 +22,12 @@ __all__ = [
     "RetrievalResult",
     "MemoryRetriever",
     "MEMORY_RETRIEVER",
+    "AMCTier2AblationResult",
     "AMCTier2Config",
     "AMCTier2Hook",
 ]
 from .episodic_memory import EpisodicMemory, MemoryEntry
-from .amc_tier2 import AMCTier2Config, AMCTier2Hook
+from .amc_tier2 import AMCTier2AblationResult, AMCTier2Config, AMCTier2Hook
 from .memory_consolidation import (
     ConsolidationPolicy,
     ConsolidationResult,

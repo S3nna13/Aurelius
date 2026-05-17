@@ -96,6 +96,9 @@ training_data/
 *.jsonl
 *.parquet
 
+# Benchmark artifacts
+benchmark-results/
+
 # Rust crates (usage-store)
 crates/usage-store/Cargo.lock
 
