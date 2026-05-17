@@ -16,3 +16,18 @@ __all__ = [
     "load_quantized",
     "estimate_memory",
 ]
+# ---------------------------------------------------------------------------
+# Stable quantization backends (public API)
+# ---------------------------------------------------------------------------
+
+from .awq_quantizer import AWQQuantizer
+from .gptq_quantizer import GPTQQuantizer
+
+__all__ = [
+    "QuantMode",
+    "quantize",
+    "load_quantized",
+    "estimate_memory",
+    "AWQQuantizer",
+    "GPTQQuantizer",
+]
