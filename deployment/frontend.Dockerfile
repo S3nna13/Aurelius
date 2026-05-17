@@ -10,7 +10,7 @@ COPY crates/data-engine/package.json crates/data-engine/package.json
 RUN for d in crates/json-validator crates/prompt-templates crates/redis-client crates/search-index crates/session-manager crates/text-processor crates/token-counter crates/uuid-gen crates/vector-similarity; do mkdir -p "$d" && echo '{"private":true}' > "$d/package.json"; done
 RUN npm ci && npm run build -w frontend
 
-FROM nginx:stable-alpine@sha256:f07bea4d6e97d399c7984460011460d98e58972420128ba1cceb3f091fbda25f
+FROM nginx:stable-alpine@sha256:6525b050aa05151ca19ec7090851bc8c12006cffdae5187f3d28023402f44cfa
 COPY --from=builder /app/frontend/dist /usr/share/nginx/html
 COPY deployment/nginx.conf /etc/nginx/conf.d/default.conf
 RUN chown -R nginx:nginx /usr/share/nginx/html
