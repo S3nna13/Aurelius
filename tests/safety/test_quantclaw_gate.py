@@ -1,11 +1,10 @@
 """Tests for QuantClaw precision security gating."""
+
 from __future__ import annotations
 
-import pytest
 
 from src.safety.quantclaw_gate import (
     GatingContext,
-    GateDecision,
     QuantClawGate,
     QuantLevel,
 )
@@ -45,7 +44,9 @@ def test_large_input_triggers_thorough() -> None:
 
 
 def test_tool_calls_bump_level() -> None:
-    gate = create_gate(token_threshold_fast=2000, token_threshold_medium=8000, tool_call_penalty=True)
+    gate = create_gate(
+        token_threshold_fast=2000, token_threshold_medium=8000, tool_call_penalty=True
+    )
 
     # Small input + tool calls → medium
     ctx = GatingContext(input_tokens=1500, has_tool_calls=True)
@@ -106,11 +107,13 @@ def test_filter_sets() -> None:
 
 
 def test_estimated_latency_ms_set_by_level() -> None:
-    gate = create_gate(latency_budgets_ms={
-        QuantLevel.FAST: 0.05,
-        QuantLevel.MEDIUM: 1.5,
-        QuantLevel.THOROUGH: 15.0,
-    })
+    gate = create_gate(
+        latency_budgets_ms={
+            QuantLevel.FAST: 0.05,
+            QuantLevel.MEDIUM: 1.5,
+            QuantLevel.THOROUGH: 15.0,
+        }
+    )
 
     f = gate.evaluate(GatingContext(input_tokens=500, has_tool_calls=False))
     assert 0.01 <= f.estimated_latency_ms <= 0.2
@@ -128,16 +131,22 @@ def test_should_run_full_safety_boolean() -> None:
     assert not gate.should_run_full_safety(GatingContext(input_tokens=1000, has_tool_calls=False))
     assert not gate.should_run_full_safety(GatingContext(input_tokens=4000, has_tool_calls=False))
     assert gate.should_run_full_safety(GatingContext(input_tokens=6000, has_tool_calls=False))
-    assert gate.should_run_full_safety(GatingContext(input_tokens=500, has_tool_calls=True, historical_risk=0.5))
+    assert gate.should_run_full_safety(
+        GatingContext(input_tokens=500, has_tool_calls=True, historical_risk=0.5)
+    )
 
 
 def test_get_recommended_filters() -> None:
     gate = create_gate()
 
-    fast_filters = gate.get_recommended_filters(GatingContext(input_tokens=500, has_tool_calls=False))
+    fast_filters = gate.get_recommended_filters(
+        GatingContext(input_tokens=500, has_tool_calls=False)
+    )
     assert "lexical_entropy_quick" in fast_filters or "keyword_blocklist" in fast_filters
 
-    thorough_filters = gate.get_recommended_filters(GatingContext(input_tokens=10_000, has_tool_calls=False))
+    thorough_filters = gate.get_recommended_filters(
+        GatingContext(input_tokens=10_000, has_tool_calls=False)
+    )
     assert "clawdrain_full" in thorough_filters
     assert "prism_all_hooks" in thorough_filters
 
@@ -173,11 +182,13 @@ def test_reset_stats() -> None:
 
 
 def test_custom_latency_budgets() -> None:
-    gate = create_gate(latency_budgets_ms={
-        QuantLevel.FAST: 0.2,
-        QuantLevel.MEDIUM: 5.0,
-        QuantLevel.THOROUGH: 50.0,
-    })
+    gate = create_gate(
+        latency_budgets_ms={
+            QuantLevel.FAST: 0.2,
+            QuantLevel.MEDIUM: 5.0,
+            QuantLevel.THOROUGH: 50.0,
+        }
+    )
 
     f = gate.evaluate(GatingContext(input_tokens=500, has_tool_calls=False))
     assert 0.05 <= f.estimated_latency_ms <= 0.5  # 20ms budget, allow some slack
@@ -187,7 +198,9 @@ def test_custom_latency_budgets() -> None:
 
 
 def test_combined_triggers() -> None:
-    gate = create_gate(token_threshold_fast=2000, token_threshold_medium=8000, risk_threshold_fast=0.1)
+    gate = create_gate(
+        token_threshold_fast=2000, token_threshold_medium=8000, risk_threshold_fast=0.1
+    )
 
     # Medium tokens + high risk → thorough (risks bumps medium -> thorough)
     ctx = GatingContext(input_tokens=5000, has_tool_calls=False, historical_risk=0.5)

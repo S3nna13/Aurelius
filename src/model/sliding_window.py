@@ -3,6 +3,7 @@
 Restricts each token to attend only to the W most recent tokens,
 producing additive masks compatible with scaled dot-product attention.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

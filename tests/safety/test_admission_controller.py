@@ -1,4 +1,5 @@
 """Tests for the safety admission controller."""
+
 from __future__ import annotations
 
 import pytest

@@ -11,6 +11,7 @@ Per v8 mandate: "AureliusConfig is the backbone runtime config for one variant,
 not a dumping ground. Prefer family manifests, variant configs, adapters, or
 downstream surface configs over adding booleans to the backbone config."
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -488,12 +489,12 @@ class AureliusConfig:
         return FEATURE_FLAG_REGISTRY.is_enabled("model.merging")
 
     @classmethod
-    def aurelius_1_3b(cls) -> "AureliusConfig":
+    def aurelius_1_3b(cls) -> AureliusConfig:
         """Default 1.3B dense config."""
         return cls()
 
     @classmethod
-    def aurelius_3b_moe(cls) -> "AureliusConfig":
+    def aurelius_3b_moe(cls) -> AureliusConfig:
         """3B MoE: 32 layers, 8 experts, top-2, every 2 layers."""
         return cls(
             d_model=2048,
@@ -515,7 +516,7 @@ class AureliusConfig:
         )
 
     @classmethod
-    def aurelius_7b(cls) -> "AureliusConfig":
+    def aurelius_7b(cls) -> AureliusConfig:
         """7B dense: 36 layers, d_model=3584, GQA 28:4."""
         return cls(
             d_model=3584,
@@ -533,7 +534,7 @@ class AureliusConfig:
         )
 
     @classmethod
-    def aurelius_7b_moe(cls) -> "AureliusConfig":
+    def aurelius_7b_moe(cls) -> AureliusConfig:
         """7B MoE: 32 layers, 16 experts, top-4."""
         return cls(
             d_model=2560,
@@ -555,7 +556,7 @@ class AureliusConfig:
         )
 
     @classmethod
-    def aurelius_3b_original(cls) -> "AureliusConfig":
+    def aurelius_3b_original(cls) -> AureliusConfig:
         """3.0B dense: 28 layers, d_model=3072, GQA 24:6 (original)."""
         return cls(
             d_model=3072,
@@ -573,7 +574,7 @@ class AureliusConfig:
         )
 
     @classmethod
-    def aurelius_moe_5b(cls) -> "AureliusConfig":
+    def aurelius_moe_5b(cls) -> AureliusConfig:
         """5-6B MoE: 24 layers, d_model=2048, 8 experts, top-2."""
         return cls(
             d_model=2048,
@@ -596,7 +597,7 @@ class AureliusConfig:
         )
 
     @classmethod
-    def aurelius_flash_284b(cls) -> "AureliusConfig":
+    def aurelius_flash_284b(cls) -> AureliusConfig:
         """284B Flash config: 43 layers, d_model=4096, CSA/HCA hybrid, 256 MoE experts."""
         return cls(
             d_model=4096,
@@ -634,7 +635,7 @@ class AureliusConfig:
         )
 
     @classmethod
-    def aurelius_pro_1_6t(cls) -> "AureliusConfig":
+    def aurelius_pro_1_6t(cls) -> AureliusConfig:
         """1.6T Pro config: 61 layers, d_model=7168, CSA/HCA hybrid, 384 MoE experts."""
         return cls(
             d_model=7168,
@@ -674,7 +675,7 @@ class AureliusConfig:
     # ── Variant factory classmethods ─────────────────────────────────
 
     @classmethod
-    def aurelius_2_7b(cls) -> "AureliusConfig":
+    def aurelius_2_7b(cls) -> AureliusConfig:
         """2.7B dense variant — fits in 26GB M1 Pro with bs=1, grad_ckpt, Muon+AdamW.
 
         Memory: ~17.3GB (optimizer: Muon 6.9GB + AdamW 1.9GB, model: 8.5GB).
@@ -697,7 +698,7 @@ class AureliusConfig:
         )
 
     @classmethod
-    def aurelius_3b(cls) -> "AureliusConfig":
+    def aurelius_3b(cls) -> AureliusConfig:
         """3B dense variant — tight fit in 26GB M1 Pro; requires 8-bit optim, bs=1.
 
         Memory: ~20.5GB (optimizer: 8bit Muon 4.7GB + AdamW 1.7GB, model: 11.1GB).

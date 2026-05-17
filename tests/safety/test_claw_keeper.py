@@ -1,4 +1,5 @@
 """Tests for the ClawKeeper 3-layer capability-gated permission system."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -261,7 +262,11 @@ def test_clawkeeper_plugin_layer_blocks() -> None:
     # No skill policy — allows through
     policy = SkillPolicy(
         skill_id="any_skill",
-        allowed_capabilities={Capability.FILE_READ, Capability.NETWORK_HTTP, Capability.PROCESS_EXEC},
+        allowed_capabilities={
+            Capability.FILE_READ,
+            Capability.NETWORK_HTTP,
+            Capability.PROCESS_EXEC,
+        },
     )
     keeper.register_skill_policy(policy)
 
@@ -437,7 +442,11 @@ def test_clawkeeper_custom_watcher_check() -> None:
     # Register permissive skill policy
     policy = SkillPolicy(
         skill_id="any",
-        allowed_capabilities={Capability.FILE_READ, Capability.PROCESS_EXEC, Capability.NETWORK_HTTP},
+        allowed_capabilities={
+            Capability.FILE_READ,
+            Capability.PROCESS_EXEC,
+            Capability.NETWORK_HTTP,
+        },
     )
     keeper.register_skill_policy(policy)
 

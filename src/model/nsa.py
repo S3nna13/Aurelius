@@ -16,6 +16,7 @@ Variable naming mirrors the paper wherever possible:
   s_b            — block-level importance score
   alpha, beta, gamma — gating weights (sum to 1 via softmax)
 """
+
 from __future__ import annotations
 
 import math

@@ -6,6 +6,7 @@ Implements:
   - generate_watermarked: autoregressive generation with watermarking
   - detect_watermark: z-score based detection on a generated sequence
 """
+
 from __future__ import annotations
 
 import math

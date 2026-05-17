@@ -5,6 +5,7 @@ Implements a logit processor that biases generation toward a deterministic
 "green list" of tokens, plus a detector that checks whether text was generated
 with this bias by computing a z-score on the green token fraction.
 """
+
 from __future__ import annotations
 
 import hashlib

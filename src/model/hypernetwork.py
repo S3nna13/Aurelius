@@ -2,6 +2,7 @@
 HyperNetworks: small networks that generate weights for larger target networks,
 enabling dynamic weight generation conditioned on task/context embeddings.
 """
+
 from __future__ import annotations
 
 import math

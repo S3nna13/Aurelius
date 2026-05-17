@@ -84,6 +84,6 @@ class CanaryPipeline:
 
 
 # Module-level registry and default instance
-CANARY_PIPELINE_REGISTRY: dict[str, "CanaryPipeline"] = {}
+CANARY_PIPELINE_REGISTRY: dict[str, CanaryPipeline] = {}
 DEFAULT_CANARY_PIPELINE = CanaryPipeline()
 CANARY_PIPELINE_REGISTRY["default"] = DEFAULT_CANARY_PIPELINE

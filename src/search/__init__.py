@@ -1,6 +1,7 @@
 """Aurelius search surface: web search, semantic (TF-IDF), BM25, hybrid (RRF), ranker."""
 
 from __future__ import annotations
+
 __all__ = [
     "SearchResult",
     "SearchQuery",

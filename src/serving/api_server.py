@@ -12,6 +12,7 @@ Endpoints:
   GET  /openapi.json          — OpenAPI 3.1 specification
   GET  /docs                  — Swagger UI documentation
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -493,7 +494,7 @@ class AureliusServer(HTTPServer):
         self,
         host: str,
         port: int,
-        generate_fn: Callable[["ChatRequest"], str],
+        generate_fn: Callable[[ChatRequest], str],
         *,
         model_id: str = "aurelius",
         auth_middleware: AuthMiddleware | None = None,
@@ -516,7 +517,7 @@ class AureliusServer(HTTPServer):
 def create_server(
     host: str,
     port: int,
-    generate_fn: Callable[["ChatRequest"], str],
+    generate_fn: Callable[[ChatRequest], str],
     *,
     model_id: str = "aurelius",
     auth_middleware: AuthMiddleware | None = None,
@@ -543,7 +544,7 @@ def create_server(
     )
 
 
-def make_mock_generate_fn() -> Callable[["ChatRequest"], str]:
+def make_mock_generate_fn() -> Callable[[ChatRequest], str]:
     def _generate(request: ChatRequest) -> str:
         last_user_message = ""
         for msg in reversed(request.messages):

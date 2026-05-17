@@ -5,6 +5,7 @@ Embeds detectable signals into generated text by biasing token selection
 toward a deterministically-chosen "green list" based on the previous token.
 Detection works by computing a z-score on the fraction of green tokens.
 """
+
 from __future__ import annotations
 
 import hashlib

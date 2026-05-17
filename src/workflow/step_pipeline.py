@@ -37,17 +37,17 @@ class StepPipeline:
         fn: Callable,
         retry_count: int = 0,
         timeout_ms: float | None = None,
-    ) -> "StepPipeline":
+    ) -> StepPipeline:
         self._steps.append(
             PipelineStep(name=name, fn=fn, retry_count=retry_count, timeout_ms=timeout_ms)
         )
         return self
 
-    def on_step_complete(self, hook: PipelineHook) -> "StepPipeline":
+    def on_step_complete(self, hook: PipelineHook) -> StepPipeline:
         self._on_complete.append(hook)
         return self
 
-    def on_failure(self, hook: PipelineHook) -> "StepPipeline":
+    def on_failure(self, hook: PipelineHook) -> StepPipeline:
         self._on_failure.append(hook)
         return self
 

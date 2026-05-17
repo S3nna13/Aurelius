@@ -16,6 +16,7 @@ Recurrent state update:
 where G_t = sigmoid(gate_proj(x_t)) is in (0, 1)^{head_dim × head_dim},
 broadcast over the outer-product state.
 """
+
 from __future__ import annotations
 
 import torch

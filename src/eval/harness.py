@@ -10,7 +10,7 @@ import json
 import logging
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Any
 
@@ -264,7 +264,7 @@ class EvalHarness:
         checkpoint_step: int | None,
     ) -> Path:
         """Write a per-checkpoint JSON results file."""
-        ts = datetime.now(tz=timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        ts = datetime.now(tz=UTC).strftime("%Y%m%dT%H%M%SZ")
         step_tag = f"_step{checkpoint_step}" if checkpoint_step is not None else ""
         filename = f"eval_{checkpoint_path.name}{step_tag}_{ts}.json"
         out_path = self.results_dir / filename

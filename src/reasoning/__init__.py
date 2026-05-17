@@ -1,6 +1,7 @@
 """Aurelius reasoning surface: chain-of-thought, tree-of-thought, scratchpad, MCTS, ToolGT."""
 
 from __future__ import annotations
+
 __all__ = [
     "ChainOfThought",
     "COT_REGISTRY",

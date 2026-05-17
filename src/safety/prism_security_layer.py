@@ -30,15 +30,17 @@ Key design decisions
 The hook system is intentionally generic — callers may register additional
 hooks beyond the default set for domain-specific checks.
 """
+
 from __future__ import annotations
 
 import hashlib
 import logging
 import time
 from collections import deque
-from dataclasses import dataclass, field
-from enum import Enum, auto
-from typing import Any, Callable
+from dataclasses import dataclass
+from enum import auto
+from typing import Any
+from collections.abc import Callable
 
 from src._compat import StrEnum
 
@@ -52,6 +54,7 @@ _LOGGER = logging.getLogger("aurelius.safety.prism")
 
 class LifecycleHook(StrEnum):
     """The 10 PRISM lifecycle hooks."""
+
     MESSAGE_INGRESS = auto()
     PROMPT_CONSTRUCTION = auto()
     TOOL_EXECUTION = auto()
@@ -79,6 +82,7 @@ class Decision(StrEnum):
 @dataclass(frozen=True)
 class HookResult:
     """Result of a single hook evaluation."""
+
     decision: Decision
     hook: LifecycleHook
     reason: str
@@ -89,6 +93,7 @@ class HookResult:
 @dataclass
 class RiskRecord:
     """A risk record with TTL decay."""
+
     score: float
     hook: LifecycleHook
     timestamp: float
@@ -215,12 +220,14 @@ class PRISMSecurityLayer:
             except Exception as exc:
                 # Fail-closed on unhandled hook errors
                 _LOGGER.error("Hook error at %s: %s", hook.value, exc, exc_info=True)
-                results.append(HookResult(
-                    decision=Decision.BLOCK,
-                    hook=hook,
-                    reason=f"Hook evaluation error: {exc}",
-                    risk_score=1.0,
-                ))
+                results.append(
+                    HookResult(
+                        decision=Decision.BLOCK,
+                        hook=hook,
+                        reason=f"Hook evaluation error: {exc}",
+                        risk_score=1.0,
+                    )
+                )
 
         aggregate = self._aggregate_results(results, hook)
         self._log_decision(hook, aggregate, ctx)
@@ -252,7 +259,6 @@ class PRISMSecurityLayer:
 
     def risk_summary(self) -> dict[str, Any]:
         """Return current risk state summary."""
-        now = time.time()
         active = sum(1 for r in self._risk_records if not r.is_expired)
         total_score = sum(r.effective_score for r in self._risk_records)
         return {
@@ -312,12 +318,14 @@ class PRISMSecurityLayer:
         )
 
     def _add_risk_record(self, score: float, hook: LifecycleHook) -> None:
-        self._risk_records.append(RiskRecord(
-            score=score,
-            hook=hook,
-            timestamp=time.time(),
-            ttl_seconds=self._risk_ttl,
-        ))
+        self._risk_records.append(
+            RiskRecord(
+                score=score,
+                hook=hook,
+                timestamp=time.time(),
+                ttl_seconds=self._risk_ttl,
+            )
+        )
 
     def _cumulative_risk(self) -> float:
         return sum(r.effective_score for r in self._risk_records)
@@ -334,9 +342,7 @@ class PRISMSecurityLayer:
             "reason": result.reason,
             "risk_score": result.risk_score,
             "timestamp": time.time(),
-            "context_hash": hashlib.sha256(
-                str(sorted(context.items())).encode()
-            ).hexdigest()[:16],
+            "context_hash": hashlib.sha256(str(sorted(context.items())).encode()).hexdigest()[:16],
         }
         self._audit_log.append(entry)
         if result.decision == Decision.BLOCK:
@@ -414,7 +420,11 @@ class PRISMSecurityLayer:
         def _tool_result(ctx: dict[str, Any]) -> HookResult:
             result = ctx.get("result", "")
             if not result:
-                return HookResult(Decision.ALLOW, LifecycleHook.TOOL_RESULT_PERSISTENCE, "Empty result")
+                return HookResult(
+                    Decision.ALLOW,
+                    LifecycleHook.TOOL_RESULT_PERSISTENCE,
+                    "Empty result",
+                )
 
             # Check for instruction injection in tool output
             injection_patterns = [
@@ -465,7 +475,6 @@ class PRISMSecurityLayer:
 
         # Hook 6: Sub-agent Spawning
         def _sub_agent(ctx: dict[str, Any]) -> HookResult:
-            agent_name = ctx.get("agent_name", "")
             agent_scope = ctx.get("agent_scope", "user")
 
             # Block system-wide spawning from user context
@@ -570,7 +579,11 @@ class PRISMSecurityLayer:
             user_input = ctx.get("user_input", "")
 
             if not system_prompt or not user_input:
-                return HookResult(Decision.ALLOW, LifecycleHook.PROMPT_CONSTRUCTION, "No prompt data")
+                return HookResult(
+                    Decision.ALLOW,
+                    LifecycleHook.PROMPT_CONSTRUCTION,
+                    "No prompt data",
+                )
 
             # Check if user input tries to override system boundaries
             boundary_patterns = [
@@ -590,10 +603,16 @@ class PRISMSecurityLayer:
                         risk_score=0.5,
                     )
 
-            return HookResult(Decision.ALLOW, LifecycleHook.PROMPT_CONSTRUCTION, "Prompt integrity intact")
+            return HookResult(
+                Decision.ALLOW,
+                LifecycleHook.PROMPT_CONSTRUCTION,
+                "Prompt integrity intact",
+            )
 
         self._hooks[LifecycleHook.PROMPT_CONSTRUCTION].append(_prompt_construction)
 
-        _LOGGER.info("PRISM default hooks registered: %d hooks across %d lifecycle phases",
-                     sum(len(h) for h in self._hooks.values()),
-                     sum(1 for h in self._hooks.values() if h))
+        _LOGGER.info(
+            "PRISM default hooks registered: %d hooks across %d lifecycle phases",
+            sum(len(h) for h in self._hooks.values()),
+            sum(1 for h in self._hooks.values() if h),
+        )

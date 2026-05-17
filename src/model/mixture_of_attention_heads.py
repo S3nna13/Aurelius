@@ -6,6 +6,7 @@ Routes tokens to different attention pattern experts:
   - GlobalAttentionHead  : full causal attention
   - RelativePositionHead : causal attention with relative position bias
 """
+
 from __future__ import annotations
 
 import math

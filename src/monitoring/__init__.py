@@ -1,6 +1,7 @@
 """Aurelius monitoring surface: metrics, alerting, health checks."""
 
 from __future__ import annotations
+
 __all__ = [
     "MetricType",
     "MetricSample",

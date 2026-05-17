@@ -104,7 +104,7 @@ class ThroughputProfiler:
         self._results.append(result)
         return result
 
-    def profile(self, n_tokens: int) -> "_ProfileContext":
+    def profile(self, n_tokens: int) -> _ProfileContext:
         """Context manager for profiling."""
         return _ProfileContext(self, n_tokens)
 

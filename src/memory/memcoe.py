@@ -19,7 +19,7 @@ from __future__ import annotations
 import logging
 from collections import OrderedDict
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import Any
 
 import torch
@@ -46,14 +46,14 @@ class MemorySchema:
 
     guideline: str = field(default_factory=lambda: DEFAULT_GUIDELINE)
     version: int = 0
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     source_model: str = "unknown"
     n_induction_steps: int = 0
 
     def bump_version(self) -> None:
         self.version += 1
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
 
     def update_guideline(self, new_guideline: str) -> None:
         self.guideline = new_guideline
@@ -75,7 +75,7 @@ class MemoryTrace:
     action: str
     preferred: bool = False
     preference_score: float = 0.0
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     context: str = ""
     task: str = ""
 
@@ -115,7 +115,7 @@ class MemoryUpdateResult:
     content_after: str
     process_rewards: list[ProcessReward]
     guideline_version: int
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     error: str = ""
 
 
@@ -616,7 +616,7 @@ class MemCoE:
             "n_induction_steps": self.schema.n_induction_steps,
             "source_model": self.schema.source_model,
             "target_model": target_model_name,
-            "transfer_timestamp": datetime.now(timezone.utc).isoformat(),
+            "transfer_timestamp": datetime.now(UTC).isoformat(),
         }
 
     def _encode_content(self, text: str) -> torch.Tensor:

@@ -4,6 +4,7 @@ Extends standard RoPE with multi-scale position encoding that captures
 both local and global structure by averaging RoPE rotations across
 multiple frequency scales.
 """
+
 from __future__ import annotations
 
 import math

@@ -6,6 +6,7 @@ vocabularies, and subword hash embeddings.
 
 No external dependencies beyond stdlib and PyTorch.
 """
+
 from __future__ import annotations
 
 import math

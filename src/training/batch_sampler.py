@@ -25,7 +25,7 @@ class RandomOffsetBatchSampler:
 
     def from_array(
         self, data: np.ndarray, config: BatchSamplerConfig | None = None
-    ) -> "RandomOffsetBatchSampler":
+    ) -> RandomOffsetBatchSampler:
         return RandomOffsetBatchSampler(data=data, config=config or self.config)
 
     def get_batch(self, data: np.ndarray | None = None) -> tuple[torch.Tensor, torch.Tensor]:

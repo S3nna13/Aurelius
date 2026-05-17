@@ -7,6 +7,7 @@ and noise contrastive estimation (NCE).
 
 Convention: lower energy  →  more likely sequence.
 """
+
 from __future__ import annotations
 
 import math

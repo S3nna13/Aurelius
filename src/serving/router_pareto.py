@@ -11,6 +11,7 @@ Key idea:
   Build empirical frontier from historical request data and select knee-point
   or constraint-based (budget/latency) point.
 """
+
 from __future__ import annotations
 
 import logging

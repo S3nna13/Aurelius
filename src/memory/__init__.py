@@ -1,6 +1,7 @@
 """Aurelius memory surface: episodic, working, and semantic memory."""
 
 from __future__ import annotations
+
 __all__ = [
     "MemoryEntry",
     "EpisodicMemory",

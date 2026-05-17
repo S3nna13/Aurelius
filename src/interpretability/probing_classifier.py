@@ -124,7 +124,7 @@ class ProbingClassifier:
             results.append(self.probe_layer(task, idx, acts, labels))
         return results
 
-    def best_layer(self, results: list[ProbeResult]) -> "ProbeResult | None":
+    def best_layer(self, results: list[ProbeResult]) -> ProbeResult | None:
         if not results:
             return None
         return max(results, key=lambda r: r.accuracy)

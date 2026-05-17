@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Mapping
 from dataclasses import asdict, replace
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Any
 
@@ -411,7 +411,7 @@ class AureliusInterfaceRuntime:
             recipient=recipient,
             kind=kind,
             payload=dict(payload or {}),
-            created_at=created_at or datetime.now(timezone.utc).isoformat(),
+            created_at=created_at or datetime.now(UTC).isoformat(),
             session_id=session.session_id,
             workstream_id=workstream_id or (thread.workstream_id if thread is not None else None),
             workspace=_coerce_workspace(workspace)

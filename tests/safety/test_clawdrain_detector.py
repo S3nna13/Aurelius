@@ -1,7 +1,7 @@
 """Tests for the Clawdrain token-exhaustion attack detector."""
+
 from __future__ import annotations
 
-import pytest
 
 from src.safety.clawdrain_detector import (
     AmplificationVector,
@@ -102,8 +102,7 @@ def test_oversized_output_flagged() -> None:
 def test_normal_output_not_flagged() -> None:
     result = DETECTOR.detect(tool_outputs=["Short normal result."])
     pollution_signals = [
-        s for s in result.signals
-        if s.vector == AmplificationVector.OUTPUT_POLLUTION
+        s for s in result.signals if s.vector == AmplificationVector.OUTPUT_POLLUTION
     ]
     assert len(pollution_signals) == 0
 
@@ -144,10 +143,7 @@ def test_many_calls_with_progress_not_flagged() -> None:
         tool_call_history=history,
         turns_without_progress=0,
     )
-    freq_signals = [
-        s for s in result.signals
-        if s.vector == AmplificationVector.FREQUENCY_SPIKE
-    ]
+    freq_signals = [s for s in result.signals if s.vector == AmplificationVector.FREQUENCY_SPIKE]
     # Without non-progressing turns, frequency alone shouldn't trigger high severity
     assert all(s.severity != "high" for s in freq_signals) or len(freq_signals) == 0
 

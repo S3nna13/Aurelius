@@ -1,6 +1,7 @@
 """Aurelius protocol surface: agent messaging and conversation protocols."""
 
 from __future__ import annotations
+
 __all__ = [
     "MessageEnvelope",
     "AgentMessage",

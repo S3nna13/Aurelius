@@ -23,6 +23,7 @@ The gate automatically selects the appropriate level based on:
 - Recent threat signals
 - Agent's historical risk score
 """
+
 from __future__ import annotations
 
 import logging
@@ -36,14 +37,15 @@ _LOGGER = logging.getLogger("aurelius.safety.quantclaw")
 
 
 class QuantLevel(StrEnum):
-    FAST = "fast"       # Q0: lexical only, <100μs
-    MEDIUM = "medium"   # Q1: + statistical, ~1ms
+    FAST = "fast"  # Q0: lexical only, <100μs
+    MEDIUM = "medium"  # Q1: + statistical, ~1ms
     THOROUGH = "thorough"  # Q2: full suite, ~10ms+
 
 
 @dataclass
 class GatingContext:
     """Context used for gating decisions."""
+
     input_tokens: int
     has_tool_calls: bool
     agent_id: str | None = None
@@ -54,6 +56,7 @@ class GatingContext:
 @dataclass
 class GateDecision:
     """Result of a QuantClaw gating evaluation."""
+
     quant_level: QuantLevel
     reasoning: str
     estimated_latency_ms: float
@@ -86,12 +89,12 @@ class QuantClawGate:
     def __init__(
         self,
         *,
-        token_threshold_fast: int = 2_000,     # <2K tokens → FAST
-        token_threshold_medium: int = 8_000,   # 2-8K → MEDIUM
+        token_threshold_fast: int = 2_000,  # <2K tokens → FAST
+        token_threshold_medium: int = 8_000,  # 2-8K → MEDIUM
         # >8K → THOROUGH (unless other factors push it up)
-        risk_threshold_fast: float = 0.1,      # risk >0.1 → at least MEDIUM
-        risk_threshold_medium: float = 0.4,    # risk >0.4 → THOROUGH
-        tool_call_penalty: bool = True,        # tool calls bump level
+        risk_threshold_fast: float = 0.1,  # risk >0.1 → at least MEDIUM
+        risk_threshold_medium: float = 0.4,  # risk >0.4 → THOROUGH
+        tool_call_penalty: bool = True,  # tool calls bump level
         historical_risk_weight: float = 0.5,
         latency_budgets_ms: dict[QuantLevel, float] | None = None,
     ) -> None:
@@ -102,8 +105,8 @@ class QuantClawGate:
         self._tool_penalty = tool_call_penalty
         self._risk_weight = historical_risk_weight
         self._budgets = latency_budgets_ms or {
-            QuantLevel.FAST: 0.1,      # 100μs
-            QuantLevel.MEDIUM: 1.0,   # 1ms
+            QuantLevel.FAST: 0.1,  # 100μs
+            QuantLevel.MEDIUM: 1.0,  # 1ms
             QuantLevel.THOROUGH: 10.0,  # 10ms
         }
 
@@ -167,7 +170,10 @@ class QuantClawGate:
         if context.historical_risk > self._risk_fast and level == QuantLevel.FAST:
             level = QuantLevel.MEDIUM
             reason += f"; historical risk {context.historical_risk:.2f} bumps level"
-        if context.historical_risk > self._risk_med and level in (QuantLevel.FAST, QuantLevel.MEDIUM):
+        if context.historical_risk > self._risk_med and level in (
+            QuantLevel.FAST,
+            QuantLevel.MEDIUM,
+        ):
             level = QuantLevel.THOROUGH
             reason += f"; high historical risk {context.historical_risk:.2f} → thorough"
 
@@ -210,7 +216,10 @@ class QuantClawGate:
 
         _LOGGER.debug(
             "QuantClaw decision: %s (%.2fms) applied=%d skipped=%d",
-            level.value, elapsed_ms, len(applied), len(skipped)
+            level.value,
+            elapsed_ms,
+            len(applied),
+            len(skipped),
         )
 
         return decision
@@ -218,7 +227,11 @@ class QuantClawGate:
     def get_stats(self) -> dict[str, Any]:
         """Return gating statistics (calls per level, avg latency)."""
         total = sum(self._gate_hits.values())
-        avg_latency = sum(self._latency_history) / len(self._latency_history) if self._latency_history else 0.0
+        avg_latency = (
+            sum(self._latency_history) / len(self._latency_history)
+            if self._latency_history
+            else 0.0
+        )
         return {
             "total_decisions": total,
             "fast": self._gate_hits[QuantLevel.FAST],

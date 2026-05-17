@@ -13,7 +13,7 @@ import uuid
 from collections import Counter
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field, replace
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from typing import Any
 
 from src.longcontext.context_compaction import ContextCompactor, Turn
@@ -32,7 +32,7 @@ _VALID_COMPACTION_POLICIES = frozenset({"oldest_first", "middle_biased", "tool_o
 
 
 def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _require_non_empty(value: str, field_name: str) -> str:

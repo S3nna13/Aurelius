@@ -13,7 +13,7 @@ import json
 import uuid
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field, replace
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Any
 
@@ -1323,7 +1323,7 @@ def _json_safe_dataclass(value: Any) -> dict[str, Any]:
 
 
 def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _require_thread(thread: TaskThread) -> None:

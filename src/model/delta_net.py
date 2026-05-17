@@ -16,6 +16,7 @@ Output at each step: o_t = W_t q_t.
 
 This formulation is recurrent (O(1) state size) and causal by construction.
 """
+
 from __future__ import annotations
 
 import torch

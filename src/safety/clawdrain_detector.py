@@ -13,6 +13,7 @@ Attack vectors detected:
   5. Behavioral instruction injection (tool returns that instruct the agent
      to keep calling more tools)
 """
+
 from __future__ import annotations
 
 import re
@@ -29,6 +30,7 @@ from src._compat import StrEnum
 
 class AmplificationVector(StrEnum):
     """Categories of token-exhaustion attack patterns."""
+
     RECURSIVE_TOOL_LOOP = "recursive_tool_loop"
     SKILL_BLOAT = "skill_bloat"
     OUTPUT_POLLUTION = "output_pollution"
@@ -40,6 +42,7 @@ class AmplificationVector(StrEnum):
 @dataclass(frozen=True)
 class ExhaustionSignal:
     """A single detection signal."""
+
     vector: AmplificationVector
     severity: str  # "low", "medium", "high", "critical"
     description: str
@@ -49,6 +52,7 @@ class ExhaustionSignal:
 @dataclass
 class ExhaustionResult:
     """Aggregate result of a detection run."""
+
     is_exhaustion_attack: bool
     signals: list[ExhaustionSignal] = field(default_factory=list)
     total_amplification: float = 0.0
@@ -72,22 +76,38 @@ class ExhaustionResult:
 # Behavioral instructions hidden in tool outputs that tell the agent to
 # keep calling tools (a common Clawdrain technique).
 _BEHAVIORAL_PATTERNS = [
-    re.compile(r"(?:continue|again|repeat|next|keep|more)\s+(?:calling|invoking|using)\s+(?:tools?|functions?)", re.IGNORECASE),
+    re.compile(
+        r"(?:continue|again|repeat|next|keep|more)\s+"
+        r"(?:calling|invoking|using)\s+(?:tools?|functions?)",
+        re.IGNORECASE,
+    ),
     re.compile(r"(?:don't|do not)\s+(?:stop|halt|quit|end|terminate)", re.IGNORECASE),
-    re.compile(r"(?:call|invoke)\s+(?:tool|function|api)\s+(?:again|repeatedly|in a loop)", re.IGNORECASE),
+    re.compile(
+        r"(?:call|invoke)\s+(?:tool|function|api)\s+"
+        r"(?:again|repeatedly|in a loop)",
+        re.IGNORECASE,
+    ),
     re.compile(r"(?:repeat|loop)\s+this\s+(?:process|procedure|action)", re.IGNORECASE),
     re.compile(r"for\s+each\s+(?:result|item|entry)\s*,\s*(?:call|invoke)", re.IGNORECASE),
 ]
 
 # SKILL.md loading patterns that bloat context.
 _SKILL_BLOPATTERNS = [
-    re.compile(r"(?:load|import)\s+(?:skill|plugin|module).{0,100}(?:skill|plugin|module)", re.IGNORECASE | re.DOTALL),
+    re.compile(
+        r"(?:load|import)\s+(?:skill|plugin|module).{0,100}"
+        r"(?:skill|plugin|module)",
+        re.IGNORECASE | re.DOTALL,
+    ),
     re.compile(r"SKILL\.md.*SKILL\.md", re.IGNORECASE | re.DOTALL),
 ]
 
 # Instruction injection in tool outputs.
 _INJECTION_PATTERNS = [
-    re.compile(r"(?:ignore|disregard|forget)\s+(?:previous|above|prior|all)\s+(?:instructions|commands|rules|constraints)", re.IGNORECASE),
+    re.compile(
+        r"(?:ignore|disregard|forget)\s+(?:previous|above|prior|all)\s+"
+        r"(?:instructions|commands|rules|constraints)",
+        re.IGNORECASE,
+    ),
     re.compile(r"(?:new|updated|revised)\s+instructions?\s*:\s*", re.IGNORECASE),
     re.compile(r"SYSTEM:\s*.*(?:continue|proceed)", re.IGNORECASE),
 ]
@@ -161,19 +181,22 @@ class ClawdrainDetector:
 
         # Check 4: Frequency amplification
         if tool_call_history and turns_without_progress > 0:
-            freq_signals = self._detect_frequency_spike(
-                tool_call_history, turns_without_progress
-            )
+            freq_signals = self._detect_frequency_spike(tool_call_history, turns_without_progress)
             signals.extend(freq_signals)
 
         # Check 6: Context growth
         if context_growth_ratio is not None and context_growth_ratio > self._max_amplification:
-            signals.append(ExhaustionSignal(
-                vector=AmplificationVector.OUTPUT_POLLUTION,
-                severity="critical" if context_growth_ratio >= 8.0 else "high",
-                description=f"Context grew {context_growth_ratio:.1f}x beyond baseline (threshold {self._max_amplification}x)",
-                amplification_ratio=context_growth_ratio,
-            ))
+            signals.append(
+                ExhaustionSignal(
+                    vector=AmplificationVector.OUTPUT_POLLUTION,
+                    severity="critical" if context_growth_ratio >= 8.0 else "high",
+                    description=(
+                        f"Context grew {context_growth_ratio:.1f}x beyond baseline "
+                        f"(threshold {self._max_amplification}x)"
+                    ),
+                    amplification_ratio=context_growth_ratio,
+                )
+            )
 
         # Aggregate risk score
         risk = self._compute_risk(signals)
@@ -201,23 +224,29 @@ class ClawdrainDetector:
         # Pattern: same tool called N times in a row
         for i in range(len(tool_names) - 2):
             if tool_names[i] == tool_names[i + 1] == tool_names[i + 2]:
-                signals.append(ExhaustionSignal(
-                    vector=AmplificationVector.RECURSIVE_TOOL_LOOP,
-                    severity="high",
-                    description=f"Tool '{tool_names[i]}' called {len(tool_names)} times consecutively",
-                    amplification_ratio=float(len(tool_names)),
-                ))
+                signals.append(
+                    ExhaustionSignal(
+                        vector=AmplificationVector.RECURSIVE_TOOL_LOOP,
+                        severity="high",
+                        description=(
+                            f"Tool '{tool_names[i]}' called {len(tool_names)} times consecutively"
+                        ),
+                        amplification_ratio=float(len(tool_names)),
+                    )
+                )
                 break
 
         # Pattern: tool calls itself within its own output
         for i, name in enumerate(tool_names[:-1]):
             if name in str(history[i].get("args", "")):
-                signals.append(ExhaustionSignal(
-                    vector=AmplificationVector.RECURSIVE_TOOL_LOOP,
-                    severity="medium",
-                    description=f"Tool '{name}' references itself in arguments",
-                    amplification_ratio=2.0,
-                ))
+                signals.append(
+                    ExhaustionSignal(
+                        vector=AmplificationVector.RECURSIVE_TOOL_LOOP,
+                        severity="medium",
+                        description=f"Tool '{name}' references itself in arguments",
+                        amplification_ratio=2.0,
+                    )
+                )
 
         return signals
 
@@ -229,12 +258,14 @@ class ClawdrainDetector:
             for pattern in _SKILL_BLOPATTERNS:
                 if pattern.search(output):
                     ratio = len(output) / max(min(len(o) for o in outputs if o), 1)
-                    signals.append(ExhaustionSignal(
-                        vector=AmplificationVector.SKILL_BLOAT,
-                        severity="medium" if ratio < 5.0 else "high",
-                        description="SKILL.md / plugin loading pattern detected in tool output",
-                        amplification_ratio=ratio,
-                    ))
+                    signals.append(
+                        ExhaustionSignal(
+                            vector=AmplificationVector.SKILL_BLOAT,
+                            severity="medium" if ratio < 5.0 else "high",
+                            description="SKILL.md / plugin loading pattern detected in tool output",
+                            amplification_ratio=ratio,
+                        )
+                    )
                     break
         return signals
 
@@ -244,12 +275,17 @@ class ClawdrainDetector:
         for i, output in enumerate(outputs):
             token_estimate = len(output) // 4  # rough estimate
             if token_estimate > self._max_obs_tokens:
-                signals.append(ExhaustionSignal(
-                    vector=AmplificationVector.OUTPUT_POLLUTION,
-                    severity="high",
-                    description=f"Tool output {i} estimated at {token_estimate} tokens (limit {self._max_obs_tokens})",
-                    amplification_ratio=token_estimate / max(self._max_obs_tokens, 1),
-                ))
+                signals.append(
+                    ExhaustionSignal(
+                        vector=AmplificationVector.OUTPUT_POLLUTION,
+                        severity="high",
+                        description=(
+                            f"Tool output {i} estimated at {token_estimate} tokens "
+                            f"(limit {self._max_obs_tokens})"
+                        ),
+                        amplification_ratio=token_estimate / max(self._max_obs_tokens, 1),
+                    )
+                )
         return signals
 
     def _detect_behavioral_injection(self, outputs: list[str]) -> list[ExhaustionSignal]:
@@ -258,19 +294,27 @@ class ClawdrainDetector:
         all_text = " ".join(outputs)
 
         for patterns, vector, description in [
-            (_BEHAVIORAL_PATTERNS, AmplificationVector.BEHAVIORAL_INJECTION,
-             "Behavioral instruction to continue tool calls detected in output"),
-            (_INJECTION_PATTERNS, AmplificationVector.BEHAVIORAL_INJECTION,
-             "System instruction override pattern detected in output"),
+            (
+                _BEHAVIORAL_PATTERNS,
+                AmplificationVector.BEHAVIORAL_INJECTION,
+                "Behavioral instruction to continue tool calls detected in output",
+            ),
+            (
+                _INJECTION_PATTERNS,
+                AmplificationVector.BEHAVIORAL_INJECTION,
+                "System instruction override pattern detected in output",
+            ),
         ]:
             for pattern in patterns:
                 if pattern.search(all_text):
-                    signals.append(ExhaustionSignal(
-                        vector=vector,
-                        severity="high",
-                        description=description,
-                        amplification_ratio=3.0,
-                    ))
+                    signals.append(
+                        ExhaustionSignal(
+                            vector=vector,
+                            severity="high",
+                            description=description,
+                            amplification_ratio=3.0,
+                        )
+                    )
                     break
         return signals
 
@@ -280,12 +324,17 @@ class ClawdrainDetector:
         """Detect rapid-fire tool calls without task progress."""
         signals: list[ExhaustionSignal] = []
         if len(history) > self._max_tool_calls:
-            signals.append(ExhaustionSignal(
-                vector=AmplificationVector.FREQUENCY_SPIKE,
-                severity="high" if turns_without_progress > 3 else "medium",
-                description=f"{len(history)} tool calls in {turns_without_progress} non-progressing turns",
-                amplification_ratio=float(len(history)) / max(self._max_tool_calls, 1),
-            ))
+            signals.append(
+                ExhaustionSignal(
+                    vector=AmplificationVector.FREQUENCY_SPIKE,
+                    severity="high" if turns_without_progress > 3 else "medium",
+                    description=(
+                        f"{len(history)} tool calls in "
+                        f"{turns_without_progress} non-progressing turns"
+                    ),
+                    amplification_ratio=float(len(history)) / max(self._max_tool_calls, 1),
+                )
+            )
         return signals
 
     @staticmethod
@@ -298,17 +347,18 @@ class ClawdrainDetector:
         vector_diversity = len({s.vector for s in signals}) / len(AmplificationVector)
 
         # Weight by severity and diversity
-        max_severity = max(
-            severity_weights.get(s.severity, 0.1) for s in signals
-        )
-        avg_severity = sum(
-            severity_weights.get(s.severity, 0.1) for s in signals
-        ) / len(signals)
+        max_severity = max(severity_weights.get(s.severity, 0.1) for s in signals)
+        avg_severity = sum(severity_weights.get(s.severity, 0.1) for s in signals) / len(signals)
 
         # Composite: max_severity alone can trigger (0.8 -> 0.64, 0.5 -> 0.4).
         # Add amplification bonus: signals with amplification > 3x get a boost.
         max_amp = max((s.amplification_ratio for s in signals), default=0.0)
         amp_bonus = min((max_amp - 2.0) / 8.0, 0.3) if max_amp > 2.0 else 0.0
 
-        risk = 0.5 * max_severity + 0.3 * (min(vector_diversity, 1.0) * avg_severity) + 0.2 * avg_severity + amp_bonus
+        risk = (
+            0.5 * max_severity
+            + 0.3 * (min(vector_diversity, 1.0) * avg_severity)
+            + 0.2 * avg_severity
+            + amp_bonus
+        )
         return min(max(risk, 0.0), 1.0)

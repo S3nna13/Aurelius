@@ -18,7 +18,7 @@ from typing import Any
 
 _SAFE_SKILL_ID_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
 
-from datetime import timezone  # noqa: E402
+from datetime import UTC  # noqa: E402
 
 from src.model.interface_framework import InterfaceFrameworkError, SkillBundle  # noqa: E402
 from src.safety.skill_scanner import SkillScanner, _parse_yaml_frontmatter  # noqa: E402
@@ -37,7 +37,7 @@ _BOOTSTRAP_FILENAME = "BOOTSTRAP.md"
 def _utc_now() -> str:
     from datetime import datetime
 
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _require_non_empty(value: str, field_name: str) -> str:

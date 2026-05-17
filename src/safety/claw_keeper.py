@@ -23,15 +23,15 @@ Design principles
 * Audit trail: all decisions logged with integrity hashes
 * Hot-reloadable: policies can be updated without agent restart
 """
+
 from __future__ import annotations
 
 import hashlib
 import logging
 import time
-from dataclasses import dataclass, field, replace
-from enum import Enum, auto
-from pathlib import Path
-from typing import Any, Callable
+from dataclasses import dataclass, field
+from typing import Any
+from collections.abc import Callable
 
 from src._compat import StrEnum
 
@@ -45,6 +45,7 @@ _LOGGER = logging.getLogger("aurelius.safety.clawkeeper")
 
 class Capability(StrEnum):
     """Atomic capabilities that can be granted or revoked."""
+
     FILE_READ = "file_read"
     FILE_WRITE = "file_write"
     FILE_DELETE = "file_delete"
@@ -71,6 +72,7 @@ class Capability(StrEnum):
 
 class ThreatLevel(StrEnum):
     """Severity of detected threats."""
+
     INFO = "info"
     LOW = "low"
     MEDIUM = "medium"
@@ -80,6 +82,7 @@ class ThreatLevel(StrEnum):
 
 class EnforcementAction(StrEnum):
     """What the enforcer does on a policy violation."""
+
     ALLOW = "allow"
     DENY = "deny"
     SANDBOX = "sandbox"
@@ -91,6 +94,7 @@ class EnforcementAction(StrEnum):
 @dataclass(frozen=True)
 class PermissionGrant:
     """A single permission with scope and constraints."""
+
     capability: Capability
     scope: str  # e.g. path prefix, URL pattern, tool name
     expires_at: float | None = None
@@ -107,6 +111,7 @@ class PermissionGrant:
 @dataclass
 class PermissionState:
     """Current permission state for a skill/plugin."""
+
     skill_id: str
     grants: list[PermissionGrant] = field(default_factory=list)
     usage_count: dict[str, int] = field(default_factory=dict)
@@ -117,6 +122,7 @@ class PermissionState:
 @dataclass(frozen=True)
 class AuditEntry:
     """Immutable audit log entry."""
+
     timestamp: float
     layer: str  # "skill", "plugin", "watcher"
     action: EnforcementAction
@@ -135,6 +141,7 @@ class AuditEntry:
 @dataclass
 class SkillPolicy:
     """Security policy for a single skill."""
+
     skill_id: str
     allowed_capabilities: set[Capability]
     denied_capabilities: set[Capability] = field(default_factory=set)
@@ -160,8 +167,11 @@ class SkillPolicyEngine:
     def register_policy(self, policy: SkillPolicy) -> None:
         """Register a security policy for a skill."""
         self._policies[policy.skill_id] = policy
-        _LOGGER.debug("Registered skill policy: %s (%d capabilities)",
-                     policy.skill_id, len(policy.allowed_capabilities))
+        _LOGGER.debug(
+            "Registered skill policy: %s (%d capabilities)",
+            policy.skill_id,
+            len(policy.allowed_capabilities),
+        )
 
     def evaluate(
         self,
@@ -179,25 +189,33 @@ class SkillPolicyEngine:
 
         # Check explicit denials first (deny overrides allow)
         if capability in policy.denied_capabilities:
-            return (EnforcementAction.DENY,
-                    f"Capability '{capability.value}' explicitly denied for skill '{skill_id}'")
+            return (
+                EnforcementAction.DENY,
+                f"Capability '{capability.value}' explicitly denied for skill '{skill_id}'",
+            )
 
         # Check if capability is in allowed set
         if capability not in policy.allowed_capabilities:
-            return (EnforcementAction.DENY,
-                    f"Capability '{capability.value}' not in allowed set for skill '{skill_id}'")
+            return (
+                EnforcementAction.DENY,
+                f"Capability '{capability.value}' not in allowed set for skill '{skill_id}'",
+            )
 
         # Check scope constraints
         if capability in policy.scope_constraints:
             allowed_scopes = policy.scope_constraints[capability]
             if scope and not any(scope.startswith(s) for s in allowed_scopes):
-                return (EnforcementAction.DENY,
-                        f"Scope '{scope}' not permitted for capability '{capability.value}'")
+                return (
+                    EnforcementAction.DENY,
+                    f"Scope '{scope}' not permitted for capability '{capability.value}'",
+                )
 
         # Check if approval required
         if capability in policy.require_approval_for:
-            return (EnforcementAction.ALERT,
-                    f"Capability '{capability.value}' requires approval for skill '{skill_id}'")
+            return (
+                EnforcementAction.ALERT,
+                f"Capability '{capability.value}' requires approval for skill '{skill_id}'",
+            )
 
         return (EnforcementAction.ALLOW, "Capability permitted by skill policy")
 
@@ -210,6 +228,7 @@ class SkillPolicyEngine:
 @dataclass
 class ThreatRecord:
     """A detected threat with context."""
+
     threat_level: ThreatLevel
     description: str
     agent_id: str
@@ -287,23 +306,24 @@ class PluginRuntimeEnforcer:
         violation_count = self._agent_violations.get(agent_id, 0)
 
         if max_threat == ThreatLevel.CRITICAL:
-            return (EnforcementAction.TERMINATE,
-                    f"Critical threat: {threats[0].description}")
+            return (EnforcementAction.TERMINATE, f"Critical threat: {threats[0].description}")
 
         if violation_count >= self._auto_terminate:
-            return (EnforcementAction.TERMINATE,
-                    f"Auto-terminate after {violation_count} violations")
+            return (
+                EnforcementAction.TERMINATE,
+                f"Auto-terminate after {violation_count} violations",
+            )
 
         if max_threat == ThreatLevel.HIGH:
-            return (EnforcementAction.DENY,
-                    f"High threat: {threats[0].description}")
+            return (EnforcementAction.DENY, f"High threat: {threats[0].description}")
 
         if max_threat == ThreatLevel.MEDIUM:
-            return (EnforcementAction.SANDBOX,
-                    f"Medium threat — sandboxing: {threats[0].description}")
+            return (
+                EnforcementAction.SANDBOX,
+                f"Medium threat — sandboxing: {threats[0].description}",
+            )
 
-        return (EnforcementAction.ALERT,
-                f"{len(threats)} low-level threat(s) detected")
+        return (EnforcementAction.ALERT, f"{len(threats)} low-level threat(s) detected")
 
     def get_agent_risk(self, agent_id: str) -> dict[str, Any]:
         """Get risk summary for an agent."""
@@ -314,8 +334,7 @@ class PluginRuntimeEnforcer:
             "threat_count": len(agent_threats),
             "max_threat": max((t.threat_level for t in agent_threats), default="none"),
             "recent_threats": [
-                {"level": t.threat_level.value, "desc": t.description}
-                for t in agent_threats[-5:]
+                {"level": t.threat_level.value, "desc": t.description} for t in agent_threats[-5:]
             ],
         }
 
@@ -401,6 +420,7 @@ class PluginRuntimeEnforcer:
 @dataclass
 class WatchState:
     """Current system state snapshot for watcher evaluation."""
+
     agent_id: str
     active_tools: set[str]
     resource_usage: dict[str, float]  # cpu, memory, network, disk
@@ -459,8 +479,10 @@ class WatcherMiddleware:
         # If any check fails, the watcher intervenes
         failures = [(r, ok) for r, ok in results if not ok]
         if failures:
-            return (EnforcementAction.TERMINATE,
-                    f"Watcher intervention: {'; '.join(r for r, _ in failures)}")
+            return (
+                EnforcementAction.TERMINATE,
+                f"Watcher intervention: {'; '.join(r for r, _ in failures)}",
+            )
 
         return (EnforcementAction.ALLOW, "All watcher checks passed")
 
@@ -471,16 +493,21 @@ class WatcherMiddleware:
 
         def _context_size(state: WatchState) -> tuple[bool, str]:
             if state.context_size_tokens > self._max_context:
-                return (False,
-                        f"Context size {state.context_size_tokens} exceeds limit {self._max_context}")
+                return (
+                    False,
+                    f"Context size {state.context_size_tokens} exceeds limit {self._max_context}",
+                )
             return (True, "Context within limits")
 
         self._checks.append(_context_size)
 
         def _session_duration(state: WatchState) -> tuple[bool, str]:
             if state.session_duration > self._max_duration:
-                return (False,
-                        f"Session duration {state.session_duration:.0f}s exceeds limit {self._max_duration:.0f}s")
+                return (
+                    False,
+                    f"Session duration {state.session_duration:.0f}s exceeds limit "
+                    f"{self._max_duration:.0f}s",
+                )
             return (True, "Session within duration limit")
 
         self._checks.append(_session_duration)
@@ -490,12 +517,10 @@ class WatcherMiddleware:
             cpu = state.resource_usage.get("cpu_pct", 0)
 
             if mem > self._max_memory:
-                return (False,
-                        f"Memory usage {mem:.0f}MB exceeds limit {self._max_memory:.0f}MB")
+                return (False, f"Memory usage {mem:.0f}MB exceeds limit {self._max_memory:.0f}MB")
 
             if cpu > self._max_cpu:
-                return (False,
-                        f"CPU usage {cpu:.0f}% exceeds limit {self._max_cpu:.0f}%")
+                return (False, f"CPU usage {cpu:.0f}% exceeds limit {self._max_cpu:.0f}%")
 
             return (True, "Resources within limits")
 
@@ -507,8 +532,10 @@ class WatcherMiddleware:
             if len(recent) >= 5:
                 last_5 = recent[-5:]
                 if len(set(last_5)) == 1:
-                    return (False,
-                            f"Potential runaway tool chain: same action repeated 5 times ({last_5[0]})")
+                    return (
+                        False,
+                        f"Potential runaway tool chain: same action repeated 5 times ({last_5[0]})",
+                    )
             return (True, "No runaway pattern detected")
 
         self._checks.append(_runaway_tool_chain)
@@ -595,18 +622,14 @@ class ClawKeeper:
         ctx = context or {}
 
         # Layer 1: Skill Policy
-        skill_action, skill_reason = self.skill_engine.evaluate(
-            skill_id, capability, scope
-        )
+        skill_action, skill_reason = self.skill_engine.evaluate(skill_id, capability, scope)
         if skill_action in (EnforcementAction.DENY, EnforcementAction.TERMINATE):
             self._audit(agent_id, "skill", skill_action, capability, scope, skill_reason)
             return (skill_action, skill_reason)
 
         # Layer 2: Plugin Runtime Enforcer
         action_str = f"{capability.value}:{scope}"
-        plugin_action, plugin_reason = self.plugin_enforcer.evaluate(
-            agent_id, action_str, ctx
-        )
+        plugin_action, plugin_reason = self.plugin_enforcer.evaluate(agent_id, action_str, ctx)
         if plugin_action in (EnforcementAction.DENY, EnforcementAction.TERMINATE):
             self._audit(agent_id, "plugin", plugin_action, capability, scope, plugin_reason)
             return (plugin_action, plugin_reason)
@@ -617,8 +640,9 @@ class ClawKeeper:
             if isinstance(watch_state, WatchState):
                 watcher_action, watcher_reason = self.watcher.evaluate(watch_state)
                 if watcher_action in (EnforcementAction.DENY, EnforcementAction.TERMINATE):
-                    self._audit(agent_id, "watcher", watcher_action, capability, scope,
-                               watcher_reason)
+                    self._audit(
+                        agent_id, "watcher", watcher_action, capability, scope, watcher_reason
+                    )
                     return (watcher_action, watcher_reason)
 
         # All layers passed — return the most restrictive non-blocking action

@@ -149,7 +149,9 @@ def _truncate_observation(obs: str, max_tokens: int) -> str:
         return obs
     max_chars = max_tokens * 4
     if len(obs) > max_chars:
-        return obs[:max_chars] + f"\n[Truncated: original {len(obs)} chars, showing first {max_chars}]"
+        return (
+            obs[:max_chars] + f"\n[Truncated: original {len(obs)} chars, showing first {max_chars}]"
+        )
     return obs
 
 

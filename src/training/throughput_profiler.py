@@ -3,6 +3,7 @@ Training Throughput Profiler
 Measures and analyzes training efficiency: tokens/sec, flops/sec, memory usage,
 step time breakdown, and bottleneck identification.
 """
+
 from __future__ import annotations
 
 import time
@@ -48,7 +49,7 @@ class Timer:
         self._start: float = 0.0
         self._end: float = 0.0
 
-    def __enter__(self) -> "Timer":
+    def __enter__(self) -> Timer:
         if self.sync_cuda and torch.cuda.is_available():
             torch.cuda.synchronize()
         self._start = time.perf_counter()

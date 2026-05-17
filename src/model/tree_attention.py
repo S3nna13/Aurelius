@@ -13,6 +13,7 @@ Variable notation follows the paper:
   s_i      — row-wise softmax denominator for chunk i
   o_i      — partial attention output for chunk i
 """
+
 from __future__ import annotations
 
 import math

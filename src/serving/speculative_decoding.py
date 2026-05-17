@@ -33,12 +33,12 @@ Performance
 Throughput gain = 1 / (1 - acceptance_rate * (draft_length / compute_ratio))
 Typical: 70-90% acceptance with 4-8 draft tokens → 2-3x speedup.
 """
+
 from __future__ import annotations
 
 import logging
-import time
 from dataclasses import dataclass, field
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Protocol
 
 import torch
 from torch import Tensor
@@ -55,6 +55,7 @@ _LOGGER = logging.getLogger("aurelius.serving.speculative")
 
 class DraftStrategy(StrEnum):
     """How the draft model is selected."""
+
     FIXED_MODEL = "fixed_model"  # always use the same draft model
     DYNAMIC_ROUTING = "dynamic_routing"  # choose based on request tags
     MULTI_DRAFT = "multi_draft"  # run multiple draft models in parallel
@@ -63,6 +64,7 @@ class DraftStrategy(StrEnum):
 @dataclass
 class SpeculativeConfig:
     """Configuration for speculative decoding."""
+
     draft_length: int = 4  # number of speculative tokens per step (k)
     temperature: float = 1.0  # sampling temperature (1.0 = greedy-like)
     top_k: int | None = None  # top-k filtering for draft model
@@ -77,7 +79,12 @@ class SpeculativeConfig:
 class ModelAdapter(Protocol):
     """Common interface for draft and verifier models."""
 
-    def __call__(self, input_ids: Tensor, attention_mask: Tensor | None = None, **kwargs: Any) -> Tensor:
+    def __call__(
+        self,
+        input_ids: Tensor,
+        attention_mask: Tensor | None = None,
+        **kwargs: Any,
+    ) -> Tensor:
         """Return logits for next token prediction."""
         ...
 
@@ -93,6 +100,7 @@ class ModelAdapter(Protocol):
 @dataclass
 class SpeculativeStats:
     """Runtime statistics for speculative decoding."""
+
     total_draft_tokens: int = 0
     accepted_tokens: int = 0
     rejected_tokens: int = 0
@@ -153,7 +161,6 @@ class DraftModelAdapter:
         if top_k is None:
             top_k = self.config.top_k
 
-        B = context.shape[0]
         draft_tokens = []
         current = context
 
@@ -168,7 +175,7 @@ class DraftModelAdapter:
             # Optional top-k
             if top_k is not None:
                 top_k_logits, top_k_indices = torch.topk(next_logits, top_k, dim=-1)
-                next_logits = torch.full_like(next_logits, float('-inf'))
+                next_logits = torch.full_like(next_logits, float("-inf"))
                 next_logits.scatter_(-1, top_k_indices, top_k_logits)
 
             # Sample next token (no repetition penalty for simplicity)
@@ -215,7 +222,6 @@ class VerifierModelAdapter:
         draft_logits: (B, draft_length, vocab) — logits for each draft position
         verifier_logits: (batch, total_len, vocab) — full sequence logits
         """
-        B = context.shape[0]
         draft_len = draft_ids.shape[1]
 
         # Build verification inputs: prompt followed by drafts
@@ -226,7 +232,6 @@ class VerifierModelAdapter:
             full_logits = self.model(verifier_input)  # (B, total_len, vocab)
 
         # Extract logits for the draft positions (just before the last token)
-        total_len = full_logits.shape[1]
         # Draft positions are at indices: prompt_len .. prompt_len + draft_len - 1
         start = context.shape[1]
         end = start + draft_len
@@ -301,10 +306,21 @@ class SpeculativeScheduler:
             if state.finished:
                 continue
             # Current context = prompt + accepted + generated so far
-            all_tokens = torch.cat([
-                state.prompt_ids,
-                torch.tensor(state.generated_ids, dtype=torch.long, device=self.draft.device).unsqueeze(0)
-            ], dim=1) if state.generated_ids else state.prompt_ids
+            all_tokens = (
+                torch.cat(
+                    [
+                        state.prompt_ids,
+                        torch.tensor(
+                            state.generated_ids,
+                            dtype=torch.long,
+                            device=self.draft.device,
+                        ).unsqueeze(0),
+                    ],
+                    dim=1,
+                )
+                if state.generated_ids
+                else state.prompt_ids
+            )
             batches.append((rid, all_tokens))
 
         if not batches:
@@ -435,6 +451,7 @@ class SpeculativeScheduler:
 @dataclass
 class RequestState:
     """Per-request generation state for speculative decoding."""
+
     request_id: str
     prompt_ids: Tensor  # (1, prompt_len)
     generated_ids: list[int] = field(default_factory=list)

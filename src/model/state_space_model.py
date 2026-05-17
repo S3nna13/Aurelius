@@ -4,6 +4,7 @@ State Space Model with Selective Scan (Mamba/S6-style).
 Implements input-dependent (selective) state transitions following the S6 / Mamba
 architecture.  Pure native PyTorch only.
 """
+
 from __future__ import annotations
 
 import math

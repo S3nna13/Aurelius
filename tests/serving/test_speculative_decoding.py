@@ -1,4 +1,5 @@
 """Tests for speculative decoding engine."""
+
 from __future__ import annotations
 
 import pytest
@@ -44,7 +45,7 @@ class MockModel:
         tokens = []
         logits_list = []
         for i in range(context_batch.shape[0]):
-            ctx = context_batch[i:i+1]
+            ctx = context_batch[i : i + 1]
             token, logits = self.generate_token(ctx)
             tokens.append(token)
             logits_list.append(logits)
@@ -158,7 +159,7 @@ def test_scheduler_reset_stats(scheduler: SpeculativeScheduler):
 def test_scheduler_finishes_when_max_reached(scheduler: SpeculativeScheduler):
     prompt = torch.tensor([[1, 2, 3]])
     scheduler.register_request("req1", prompt, max_new_tokens=1)
-    results = scheduler.step_batch(["req1"])
+    scheduler.step_batch(["req1"])
     state = scheduler._states["req1"]
     # After one step we should have generated enough to hit max?
     # Not guaranteed with speculative; it might generate more than 1 token
@@ -193,7 +194,6 @@ def test_stats_throughput_multiplier():
 def test_draft_model_adapter_protocol():
     # Ensure MockModel conforms to ModelAdapter via duck typing
     model = MockModel(vocab_size=10)
-    from src.serving.speculative_decoding import ModelAdapter
-    assert hasattr(model, '__call__')
-    assert hasattr(model, 'generate_token')
-    assert hasattr(model, 'batch_generate')
+    assert hasattr(model, "__call__")
+    assert hasattr(model, "generate_token")
+    assert hasattr(model, "batch_generate")

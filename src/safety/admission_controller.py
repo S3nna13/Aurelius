@@ -5,6 +5,7 @@ entrypoint for request/tool-result admission. It is intentionally deterministic
 and stdlib-only aside from sibling ``src.safety`` modules, so it can run before
 model invocation or before persisting tool output.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

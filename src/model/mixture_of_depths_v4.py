@@ -3,6 +3,7 @@ Mixture of Depths (MoD) — Raposo et al. 2024
 Dynamic per-token compute allocation via learned routing.
 Pure PyTorch, no external dependencies.
 """
+
 from __future__ import annotations
 
 import sys

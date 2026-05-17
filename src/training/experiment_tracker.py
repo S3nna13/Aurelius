@@ -13,7 +13,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Any
 
@@ -79,7 +79,7 @@ class JSONBackend(TrackingBackend):
                 run_name=run_name,
                 experiment_name=experiment_name,
                 params=dict(params),
-                start_time=datetime.now(timezone.utc).isoformat(),
+                start_time=datetime.now(UTC).isoformat(),
             )
             self._active_runs[run_id] = record
             (run_dir / "params.json").write_text(json.dumps(params, indent=2))
@@ -123,7 +123,7 @@ class JSONBackend(TrackingBackend):
                 logger.error("Run '%s' not found", run_id)
                 return
             record.status = status
-            record.end_time = datetime.now(timezone.utc).isoformat()
+            record.end_time = datetime.now(UTC).isoformat()
             self._save_record(record)
 
     def get_runs(self, experiment_name: str) -> list[dict[str, Any]]:
