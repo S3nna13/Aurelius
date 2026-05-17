@@ -9,7 +9,8 @@ import json
 import os
 import time
 import uuid
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
@@ -24,8 +25,20 @@ from gateway.engine_loader import build_engine, make_mock_generate_fn
 from gateway.metrics_middleware import METRICS
 from gateway.rate_limit import get_rate_limiter
 
+
+@asynccontextmanager
+async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    """Run API startup tasks using FastAPI's lifespan hook."""
+    await _load_engine()
+    await _init_rate_limiter()
+    yield
+
+
 app = FastAPI(
-    title="Aurelius API", version="1.0.0", description="Backend API for the Aurelius Agent Cockpit"
+    title="Aurelius API",
+    version="1.0.0",
+    description="Backend API for the Aurelius Agent Cockpit",
+    lifespan=_lifespan,
 )
 
 
@@ -409,7 +422,6 @@ def _resolve_tokenizer_revision(model_path: str) -> str | None:
     )
 
 
-@app.on_event("startup")
 async def _load_engine() -> None:
     global _engine, _model_id, _engine_obj, _tokenizer
     model_path = os.environ.get("AURELIUS_MODEL_PATH", "checkpoints/aurelius_1.3b")
@@ -472,7 +484,6 @@ async def _load_engine() -> None:
         _tokenizer = None
 
 
-@app.on_event("startup")
 async def _init_rate_limiter() -> None:
     global _rate_limiter
     try:
