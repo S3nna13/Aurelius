@@ -11,7 +11,6 @@ Verifies end-to-end flow:
 from __future__ import annotations
 
 
-
 import torch
 import torch.nn as nn
 
@@ -24,10 +23,10 @@ from src.training.pcgrad_v2 import PCGradV2, PCGradV2Config
 # ---------------------------------------------------------------------------
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def make_conflicting_grads(n_params: int = 8, seed: int = 0) -> tuple[torch.Tensor, torch.Tensor]:
     """Return two gradient tensors that are guaranteed to conflict (cos < 0)."""
@@ -112,7 +111,6 @@ def test_pcgrad_v2_optimizer_step_reduces_n_conflicts():
 def test_pcgrad_v2_gradient_bank_multi_batch():
     """GradientBank correctly accumulates and averages gradients."""
     from src.training.pcgrad_v2 import GradientBank
-
 
     bank = GradientBank(n_tasks=2, bank_size=3)
     grads_0 = [torch.ones(4)]

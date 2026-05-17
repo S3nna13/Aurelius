@@ -10,10 +10,8 @@ Verifies that:
 from __future__ import annotations
 
 
-
 from src.chat import CHAT_TEMPLATE_REGISTRY
 from src.chat.harmony_template import HarmonyTemplate
-
 
 
 # ---------------------------------------------------------------------------
@@ -21,10 +19,10 @@ from src.chat.harmony_template import HarmonyTemplate
 # ---------------------------------------------------------------------------
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_harmony_key_in_registry() -> None:
     assert "harmony" in CHAT_TEMPLATE_REGISTRY, (

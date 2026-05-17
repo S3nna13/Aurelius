@@ -6,7 +6,6 @@ import src.retrieval as retrieval
 from src.retrieval import BM25Retriever, CodeAwareTokenizer
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
@@ -105,6 +104,3 @@ def test_end_to_end_registry_bm25_still_works():
     r.add_documents(CODE_CORPUS)
     hits = r.query("parseXMLDoc", k=3)
     assert hits and hits[0][0] == 2
-
-
-

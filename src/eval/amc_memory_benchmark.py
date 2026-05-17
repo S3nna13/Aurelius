@@ -70,8 +70,7 @@ class AMCMemoryBenchmark:
     def __init__(self, approx_chars_per_token: int = APPROX_CHARS_PER_TOKEN) -> None:
         if not isinstance(approx_chars_per_token, int) or approx_chars_per_token <= 0:
             raise ValueError(
-                "approx_chars_per_token must be a positive int, "
-                f"got {approx_chars_per_token!r}"
+                f"approx_chars_per_token must be a positive int, got {approx_chars_per_token!r}"
             )
         self.approx_chars_per_token = approx_chars_per_token
 
@@ -294,8 +293,7 @@ class AMCMemoryBenchmark:
             rate = info.get("pass_rate", 0.0)
             if not isinstance(rate, int | float):
                 raise TypeError(
-                    f"pass_rate for {task!r} must be numeric, "
-                    f"got {type(rate).__name__}"
+                    f"pass_rate for {task!r} must be numeric, got {type(rate).__name__}"
                 )
             if rate < 0.0 or rate > 1.0:
                 raise ValueError(f"pass_rate for {task!r} out of range: {rate!r}")

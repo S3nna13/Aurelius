@@ -6,17 +6,16 @@ import torch
 
 import src.inference as inference
 from src.inference import (
-
     JSONDecoderState,
     JSONMaskBuilder,
     is_valid_json_prefix,
 )
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_exports_exposed_on_package() -> None:
     assert hasattr(inference, "JSONMaskBuilder")
@@ -64,6 +63,3 @@ def test_prefix_validity_helper() -> None:
     assert is_valid_json_prefix('{"k":1') is True
     assert is_valid_json_prefix("[1, 2, 3]") is True
     assert is_valid_json_prefix("][") is False
-
-
-

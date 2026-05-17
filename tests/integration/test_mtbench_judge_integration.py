@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import src.eval as eval_pkg
 from src.eval.mtbench_judge import (
-
     MTBenchJudge,
     MTBenchQuestion,
     PairwiseResult,
@@ -12,10 +11,10 @@ from src.eval.mtbench_judge import (
 )
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_metric_registry_contains_mtbench():
     assert "mtbench" in eval_pkg.METRIC_REGISTRY
@@ -89,6 +88,3 @@ def test_end_to_end_pairwise():
     agg = MTBenchJudge.aggregate_pairwise(results)
     assert agg["n_valid"] == 4
     assert abs(agg["win_rate_a"] + agg["win_rate_b"] + agg["tie_rate"] - 1.0) < 1e-9
-
-
-

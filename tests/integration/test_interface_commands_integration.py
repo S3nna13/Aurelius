@@ -9,11 +9,10 @@ import src.cli.main as cli_main
 from agent.interface_runtime import AureliusInterfaceRuntime
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
@@ -284,6 +283,3 @@ def test_main_interface_skill_catalog_management_commands_run_end_to_end(tmp_pat
     assert any("Repo instructions." in layer for layer in layers_payload["layers"])
     assert any("Workspace tools." in layer for layer in layers_payload["layers"])
     assert any("mode instructions: review" == layer for layer in layers_payload["layers"])
-
-
-

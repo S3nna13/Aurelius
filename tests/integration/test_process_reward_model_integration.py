@@ -12,7 +12,6 @@ Verifies:
 from __future__ import annotations
 
 
-
 import torch
 
 import src.alignment as alignment_pkg
@@ -146,7 +145,6 @@ def test_prm_forward_pass_integration():
 
 def test_prm_inference_end_to_end():
     from src.training.process_reward_model import PRMInference
-
 
     cfg = tiny_prm_config()
     prm = ProcessRewardModel(cfg)

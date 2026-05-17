@@ -10,17 +10,15 @@ from src.training import TRAINING_REGISTRY
 from src.training.tito_gateway import TITOConfig
 
 
-
-
 # ---------------------------------------------------------------------------
 # 1. Registry key existence
 # ---------------------------------------------------------------------------
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_tito_key_in_training_registry():
     """'tito' must be registered in TRAINING_REGISTRY."""
@@ -69,7 +67,6 @@ def test_existing_registry_key_still_present():
     """Adding 'tito' must not remove pre-existing registry entries."""
     # The tool_call_supervision key was wired before TITO; it must still exist.
     from src.training import AUXILIARY_LOSS_REGISTRY
-
 
     assert "tool_call_supervision" in AUXILIARY_LOSS_REGISTRY, (
         "AUXILIARY_LOSS_REGISTRY lost its 'tool_call_supervision' entry — "

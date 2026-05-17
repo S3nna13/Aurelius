@@ -7,7 +7,6 @@ reduced model can be instantiated and run a forward pass.
 from __future__ import annotations
 
 
-
 import torch
 
 from src.model.config import AureliusConfig
@@ -15,16 +14,15 @@ from src.model.transformer import AureliusTransformer
 from src.training.trainer import TrainConfig
 
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def _make_tiny_aurelius_config(train_cfg: TrainConfig) -> AureliusConfig:
     """Return a tiny AureliusConfig derived from a loaded TrainConfig.

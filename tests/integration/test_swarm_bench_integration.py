@@ -12,10 +12,10 @@ from src.eval.swarm_bench import SwarmBenchResult, SwarmTask
 # ---------------------------------------------------------------------------
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def _make_tasks(n: int) -> list[SwarmTask]:
     return [SwarmTask(task_id=i, description=f"integration task {i}") for i in range(n)]
@@ -32,8 +32,6 @@ def _mock_subagent_fn(task: SwarmTask, max_steps: int) -> SubAgentResult:
 
 def test_swarm_bench_in_benchmark_registry():
     """'swarm_bench' key must be present in BENCHMARK_REGISTRY."""
-
-
 
     assert "swarm_bench" in BENCHMARK_REGISTRY
 

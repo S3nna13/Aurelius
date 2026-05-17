@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import src.data as data_pkg
 from src.data.tokenizer_contract import (
-
     TOKENIZER_IDENTITY_REGISTRY,
     TokenizerContractValidator,
     TokenizerIdentity,
@@ -12,10 +11,10 @@ from src.data.tokenizer_contract import (
 )
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_identity_registry_exposed_from_package():
     assert hasattr(data_pkg, "TOKENIZER_IDENTITY_REGISTRY")
@@ -41,6 +40,3 @@ def test_end_to_end_validate_round_trip():
     verdict = TokenizerContractValidator().validate(identity, expected)
     assert verdict.matches is True
     assert verdict.actual_hash == expected
-
-
-

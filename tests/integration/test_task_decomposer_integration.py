@@ -7,9 +7,8 @@ import json
 import pytest
 
 
-
-
 pytestmark = pytest.mark.integration
+
 
 def test_task_decomposer_exposed_on_agent_surface():
     import agent as agent
@@ -81,7 +80,6 @@ def test_end_to_end_decompose():
 def test_end_to_end_cycle_rejected():
     from agent import TaskDecomposer, TaskDecompositionError
 
-
     payload = [
         {"id": "a", "description": "a", "depends_on": ["b"]},
         {"id": "b", "description": "b", "depends_on": ["a"]},
@@ -89,6 +87,3 @@ def test_end_to_end_cycle_rejected():
     dec = TaskDecomposer(lambda _t: json.dumps(payload))
     with pytest.raises(TaskDecompositionError):
         dec.decompose("x")
-
-
-

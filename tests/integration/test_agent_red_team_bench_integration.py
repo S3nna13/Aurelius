@@ -17,11 +17,10 @@ from src.eval import (
 from src.model.config import AureliusConfig
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_agent_red_team_bench_registered():
     assert "agent_red_team_bench" in METRIC_REGISTRY
@@ -59,6 +58,3 @@ def test_end_to_end_art_run_against_stubs():
     assert result.wins == 2
     assert result.asr_at_k[1] == 0.5
     assert result.asr_at_k[10] > result.asr_at_k[1]
-
-
-

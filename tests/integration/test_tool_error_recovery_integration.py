@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 
-
 from agent import (
     RecoveringDispatcher,
     RecoveryPolicy,
@@ -15,16 +14,14 @@ from agent import (
 )
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
 
+
 def test_public_exports_present():
     # Symbols flow through the agent surface's __init__.
     import agent as agent
-
 
     for name in (
         "RecoveringDispatcher",

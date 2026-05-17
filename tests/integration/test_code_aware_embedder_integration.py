@@ -7,10 +7,10 @@ import math
 import sys
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_embedding_registry_exposes_code_aware():
     for mod in [m for m in list(sys.modules) if m.startswith("src.retrieval")]:
@@ -34,7 +34,6 @@ def test_end_to_end_embed_via_registry():
 def test_config_flag_defaults_off():
     from src.model.config import AureliusConfig
 
-
     cfg = AureliusConfig()
     assert hasattr(cfg, "retrieval_code_aware_embedder_enabled")
     assert cfg.retrieval_code_aware_embedder_enabled is False
@@ -48,6 +47,3 @@ def test_sibling_registries_preserved():
     assert "dense" in retrieval.EMBEDDING_REGISTRY
     assert "cross_encoder" in retrieval.RERANKER_REGISTRY
     assert "basic" in retrieval.CITATION_REGISTRY
-
-
-

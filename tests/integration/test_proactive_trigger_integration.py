@@ -8,10 +8,8 @@ properly wired into AGENT_LOOP_REGISTRY["proactive_trigger"].
 from __future__ import annotations
 
 
-
 from agent import AGENT_LOOP_REGISTRY
 from agent.proactive_trigger import (
-
     ProactiveTriggerRegistry,
     condition_trigger,
     interval_trigger,
@@ -23,10 +21,10 @@ from agent.proactive_trigger import (
 # ---------------------------------------------------------------------------
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_proactive_trigger_in_agent_loop_registry():
     assert "proactive_trigger" in AGENT_LOOP_REGISTRY, (

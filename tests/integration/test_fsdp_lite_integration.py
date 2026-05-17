@@ -9,11 +9,10 @@ import src.training as training_pkg
 from src.training import FSDPLite, ShardSpec
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_exposed_via_src_training():
     assert hasattr(training_pkg, "FSDPLite")
@@ -44,6 +43,3 @@ def test_train_step_on_tiny_mlp():
     updated = next(iter(wrapped.parameters()))
     assert not torch.equal(first_weight_shard, updated)
     assert torch.isfinite(loss).item()
-
-
-

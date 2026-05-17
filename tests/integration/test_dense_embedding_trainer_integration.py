@@ -10,11 +10,10 @@ import torch
 from src import retrieval
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_embedding_registry_has_dense() -> None:
     assert "dense" in retrieval.EMBEDDING_REGISTRY
@@ -95,6 +94,3 @@ def test_hermetic_import_does_not_pull_src_model() -> None:
         f"hermetic import failed:\nSTDOUT:{result.stdout}\nSTDERR:{result.stderr}"
     )
     assert "OK" in result.stdout
-
-
-

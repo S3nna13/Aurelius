@@ -8,7 +8,6 @@ from src import longcontext as lc
 from src.longcontext.paged_kv_cache import PagedKVCache
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
@@ -55,6 +54,3 @@ def test_end_to_end_allocate_write_read():
         assert torch.allclose(out_v[i], tokens[i][1])
     cache.deallocate("req")
     assert cache.num_free_pages() == 8
-
-
-

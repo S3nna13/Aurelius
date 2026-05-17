@@ -7,17 +7,14 @@ any sibling surface, and verifies the absence of import-time side effects.
 from __future__ import annotations
 
 
-
 import importlib
 import sys
 
 import pytest
 
 
-
-
-
 pytestmark = pytest.mark.integration
+
 
 def test_registry_contains_jailbreak_entry() -> None:
     import src.safety as safety
@@ -70,7 +67,6 @@ def test_import_has_no_side_effects(tmp_path, monkeypatch) -> None:
 
 def test_detector_custom_keywords_via_registry() -> None:
     import src.safety as safety
-
 
     Detector = safety.SAFETY_FILTER_REGISTRY["jailbreak"]
     det = Detector(threshold=0.3, custom_keywords=["aurelius-override"])

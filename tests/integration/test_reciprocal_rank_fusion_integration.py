@@ -14,9 +14,7 @@ Covers three things:
 from __future__ import annotations
 
 
-
 from src.retrieval import (
-
     FUSION_REGISTRY,
     RETRIEVER_REGISTRY,
     BM25Retriever,
@@ -29,11 +27,10 @@ from src.retrieval import (
 )
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def _embed(text: str) -> list[float]:
     t = text.lower()

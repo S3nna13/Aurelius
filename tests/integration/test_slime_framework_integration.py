@@ -13,9 +13,8 @@ from src.training.slime_framework import SlimeTaskRouter, make_default_router
 # ---------------------------------------------------------------------------
 
 
-
-
 pytestmark = pytest.mark.integration
+
 
 def test_slime_in_training_registry() -> None:
     assert "slime" in TRAINING_REGISTRY, (
@@ -98,6 +97,3 @@ def test_search_task_partial_overlap_via_registry() -> None:
     search = router.route("search")
     score = search.reward("alpha beta", "alpha beta gamma")
     assert 0.0 < score < 1.0
-
-
-

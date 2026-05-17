@@ -8,7 +8,6 @@ model without producing NaN values.
 from __future__ import annotations
 
 
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -31,8 +30,8 @@ from src.alignment.spin_trainer import (
 # ---------------------------------------------------------------------------
 
 
-
 import pytest
+
 pytestmark = pytest.mark.integration
 
 VOCAB = 256
@@ -231,6 +230,5 @@ def test_kto_trainer_all_undesirable_no_nan():
 
     assert math.isfinite(result["loss"])
     import pytest
-
 
     assert result["kto_desirable"] == pytest.approx(0.0)

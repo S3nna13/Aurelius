@@ -14,12 +14,10 @@ verifies that:
 from __future__ import annotations
 
 
-
 import pytest
 
 from src.inference import DECODER_REGISTRY
 from src.inference.chunk_prefill_scheduler import (
-
     ChunkPrefillConfig,
     ChunkPrefillScheduler,
     Request,
@@ -31,9 +29,8 @@ from src.inference.chunk_prefill_scheduler import (
 # ---------------------------------------------------------------------------
 
 
-
-
 pytestmark = pytest.mark.integration
+
 
 def test_decoder_registry_wired():
     assert "chunk_prefill" in DECODER_REGISTRY

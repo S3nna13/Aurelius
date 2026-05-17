@@ -10,7 +10,6 @@ anything.
 from __future__ import annotations
 
 
-
 import os
 
 import pytest
@@ -20,11 +19,8 @@ from src.retrieval import BM25Retriever
 from src.retrieval.corpus_indexer import Chunk, CorpusIndexer
 
 
-
-
-
-
 pytestmark = pytest.mark.integration
+
 
 def _write(root, rel, text):
     p = os.path.join(str(root), rel)

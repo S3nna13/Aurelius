@@ -7,16 +7,13 @@ does not break importability of sibling serving modules.
 from __future__ import annotations
 
 
-
 import importlib
 
 import pytest
 
 
-
-
-
 pytestmark = pytest.mark.integration
+
 
 def test_prompt_cache_exposed_via_src_serving():
     mod = importlib.import_module("src.serving")
@@ -26,7 +23,6 @@ def test_prompt_cache_exposed_via_src_serving():
 
 def test_put_get_round_trip_on_ten_prompts():
     from src.serving import PromptCache
-
 
     cache = PromptCache(max_entries=64)
     prompts = [f"prompt-{i}" for i in range(10)]

@@ -148,7 +148,11 @@ class _DaemonThreadPoolExecutor(concurrent.futures.ThreadPoolExecutor):
         )
         # Python 3.13+ removed _create_worker_context from ThreadPoolExecutor internals.
         if hasattr(self, "_create_worker_context"):
-            worker_args = (weakref.ref(self, weakref_cb), self._create_worker_context(), self._work_queue)
+            worker_args = (
+                weakref.ref(self, weakref_cb),
+                self._create_worker_context(),
+                self._work_queue,
+            )
         else:
             worker_args = (
                 weakref.ref(self, weakref_cb),

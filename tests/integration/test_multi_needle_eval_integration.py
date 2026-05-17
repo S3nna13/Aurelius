@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import src.eval as eval_pkg
 from src.eval import (
-
     BENCHMARK_REGISTRY,
     MULTI_NEEDLE_REGISTRY,
     MultiNeedleConfig,
@@ -13,10 +12,10 @@ from src.eval import (
 )
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_package_level_imports_work():
     # Also confirm a few collateral symbols re-exported correctly.
@@ -73,6 +72,3 @@ def test_three_seeds_produce_pairwise_distinct_prompts():
     assert prompts[0] != prompts[1]
     assert prompts[1] != prompts[2]
     assert prompts[0] != prompts[2]
-
-
-

@@ -10,7 +10,6 @@ Verifies:
 from __future__ import annotations
 
 
-
 import torch
 
 
@@ -19,10 +18,10 @@ import torch
 # ---------------------------------------------------------------------------
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_mtp_shared_in_registry():
     from src.model import MODEL_COMPONENT_REGISTRY
@@ -85,7 +84,6 @@ def test_registry_shared_weight():
 
 def test_existing_public_symbols_intact():
     import src.model as m
-
 
     must_have = {
         "AureliusConfig",

@@ -10,7 +10,6 @@ Run with: .venv/bin/python3.14 -m pytest tests/integration/test_soft_thinking_in
 from __future__ import annotations
 
 
-
 import torch
 
 from src.inference.soft_thinking import SoftThinkingConfig, SoftThinkingMixer
@@ -78,7 +77,6 @@ def test_soft_thinking_integration_full():
 
     # --- Registry wired ---
     from src.inference import DECODER_REGISTRY
-
 
     assert "soft_thinking" in DECODER_REGISTRY, "DECODER_REGISTRY must contain 'soft_thinking'"
     assert DECODER_REGISTRY["soft_thinking"] is SoftThinkingMixer, (

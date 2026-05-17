@@ -9,11 +9,9 @@ Verifies that:
 from __future__ import annotations
 
 
-
 import src.serving  # noqa: F401  — triggers registry population
 from src.serving import API_SHAPE_REGISTRY
 from src.serving.responses_api import (
-
     RESPONSE_COMPLETED,
     RESPONSE_CREATED,
     RESPONSES_API_REGISTRY,
@@ -29,10 +27,10 @@ from src.serving.responses_api import (
 # ---------------------------------------------------------------------------
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 class TestRegistryIntegration:
     def test_responses_key_in_api_shape_registry(self):

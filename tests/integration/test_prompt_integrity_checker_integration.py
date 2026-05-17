@@ -7,7 +7,6 @@ from src.safety import SAFETY_FILTER_REGISTRY
 from src.safety.prompt_integrity_checker import PromptIntegrityChecker
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
@@ -51,6 +50,3 @@ def test_end_to_end_round_trip_via_registry() -> None:
     report = checker.check_round_trip(BASELINE, msgs)
     assert report.valid is True
     assert "round_trip_mismatch" not in report.signals
-
-
-

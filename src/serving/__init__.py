@@ -101,4 +101,3 @@ RESILIENCE_REGISTRY: dict[str, type] = {
 from src.namespace_aliases import register_namespace_aliases as _register_aliases  # noqa: E402
 
 _register_aliases("src.serving", ("serving", "aurelius.serving"))
-

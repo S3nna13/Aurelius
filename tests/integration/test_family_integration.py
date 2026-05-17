@@ -5,7 +5,6 @@ from __future__ import annotations
 import src.model as model_pkg
 from src.model import AureliusConfig
 from src.model.family import (
-
     AURELIUS_FAMILY,
     MODEL_FAMILY_REGISTRY,
     MODEL_VARIANT_REGISTRY,
@@ -14,10 +13,10 @@ from src.model.family import (
 )
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_family_registry_exported_from_package():
     assert hasattr(model_pkg, "MODEL_FAMILY_REGISTRY")
@@ -61,6 +60,3 @@ def test_aurelius_config_default_unchanged():
         assert forbidden not in field_names, (
             f"AureliusConfig unexpectedly grew a {forbidden!r} field"
         )
-
-
-

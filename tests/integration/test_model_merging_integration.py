@@ -18,11 +18,10 @@ from src.model import (
 from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_merging_registry_contains_all_strategies() -> None:
     assert set(MERGING_REGISTRY.keys()) >= {"linear", "slerp", "ties", "dare"}
@@ -60,6 +59,3 @@ def test_end_to_end_linear_via_modelmerger() -> None:
     assert torch.allclose(result.state_dict["blocks.0.attn.q.weight"], torch.full((4, 4), 2.0))
     assert torch.allclose(result.state_dict["ln.weight"], torch.full((4,), 3.0))
     assert set(result.state_dict.keys()) == set(a.keys())
-
-
-

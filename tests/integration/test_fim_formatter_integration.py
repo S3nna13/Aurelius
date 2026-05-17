@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import src.chat as chat
 from src.chat import (
-
     CHAT_TEMPLATE_REGISTRY,
     FIM_MIDDLE,
     FIM_PAD,
@@ -16,10 +15,10 @@ from src.chat import (
 )
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_constants_exposed() -> None:
     assert FIM_PREFIX == "<fim_prefix>"
@@ -65,6 +64,3 @@ def test_inference_format_via_surface() -> None:
     out = f.format_for_inference("pre", "suf")
     assert out.endswith(FIM_MIDDLE)
     assert "pre" in out and "suf" in out
-
-
-

@@ -9,7 +9,6 @@ import textwrap
 import pytest
 
 
-
 pytestmark = pytest.mark.integration
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -18,7 +17,6 @@ if ROOT not in sys.path:
 
 import src.eval as eval_pkg  # noqa: E402
 from src.eval.humaneval_plus_scorer import (  # noqa: E402
-
     HumanEvalPlusProblem,
     score_problems,
 )

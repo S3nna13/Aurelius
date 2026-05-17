@@ -7,10 +7,10 @@ import torch
 import src.training as training
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_auxiliary_loss_registry():
     assert hasattr(training, "AUXILIARY_LOSS_REGISTRY")
@@ -23,7 +23,6 @@ def test_auxiliary_loss_registry():
 def test_config_default_off():
     from src.model.config import AureliusConfig
 
-
     assert AureliusConfig().training_tool_call_supervision_enabled is False
 
 
@@ -35,6 +34,3 @@ def test_smoke_forward():
     loss = crit(logits, labels, mask)
     loss.backward()
     assert torch.isfinite(loss)
-
-
-

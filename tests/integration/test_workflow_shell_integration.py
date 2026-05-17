@@ -9,11 +9,10 @@ from agent import AureliusInterfaceRuntime, SessionManager, SkillCatalog, Workfl
 from src.model import AureliusInterfaceFramework
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
@@ -126,6 +125,3 @@ def test_workflow_shell_completes_and_blocks_with_json_safe_round_trips(tmp_path
     assert blocked.halted_reason == "approval denied"
     assert len(blocked.transcript) == 2
     assert blocked.transcript[1]["result"]["status"] == "denied"
-
-
-

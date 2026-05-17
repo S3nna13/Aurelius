@@ -8,11 +8,10 @@ import src.cli.main as cli_main
 from src.model.manifest import AURELIUS_REFERENCE_MANIFEST
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_main_parser_includes_backend_group():
     parser = cli_main._build_parser()
@@ -70,6 +69,3 @@ def test_main_backend_engine_commands_run_end_to_end(capsys):
 
     assert rc == 0
     assert payload["engine"]["backend_name"] == "gguf"
-
-
-

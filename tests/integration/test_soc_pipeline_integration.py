@@ -8,11 +8,10 @@ from src.security import DEFENSIVE_PIPELINE_REGISTRY
 from src.security.soc_pipeline import DEFAULT_SOC_PIPELINE, SOCPipeline
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_soc_pipeline_registered_in_defensive_registry():
     assert "default" in DEFENSIVE_PIPELINE_REGISTRY
@@ -53,6 +52,3 @@ def test_feature_flag_off_preserves_default_construction():
     assert cfg.security_soc_pipeline_enabled is False
     # Confirm no side-effects of disabled flag: registry still usable.
     assert "default" in DEFENSIVE_PIPELINE_REGISTRY
-
-
-

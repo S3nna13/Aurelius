@@ -11,12 +11,10 @@ Checks:
 from __future__ import annotations
 
 
-
 import hashlib
 import pathlib
 
 import torch
-
 
 
 import pytest
@@ -76,7 +74,6 @@ def test_frozen_files_unchanged():
 
 def test_end_to_end_forward_and_backward():
     from src.model import ParallelAttentionBlock
-
 
     torch.manual_seed(1234)
     block = ParallelAttentionBlock(

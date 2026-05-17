@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from src.safety import (
-
     HARM_CLASSIFIER_REGISTRY,
     SAFETY_FILTER_REGISTRY,
     FilterDecision,
@@ -16,10 +15,10 @@ from src.safety import (
 )
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_registry_contains_output_filter() -> None:
     assert "output_filter" in SAFETY_FILTER_REGISTRY
@@ -72,6 +71,3 @@ def test_end_to_end_chunked_stream() -> None:
         assert last_decision.action == "allow"
     assert last_decision is not None
     assert "greeting" in buffer
-
-
-

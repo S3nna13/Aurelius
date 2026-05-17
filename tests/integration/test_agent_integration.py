@@ -108,7 +108,6 @@ def test_patch_synthesis_roundtrip():
 from agent.code_execution_tool import CodeExecutionTool, ExecutionRequest  # noqa: E402
 
 
-
 def test_code_execution_safe() -> None:
     """Execute simple safe Python and verify stdout is captured."""
     tool = CodeExecutionTool()

@@ -4,11 +4,9 @@ constructable from AureliusConfig behind a feature flag that defaults OFF."""
 from __future__ import annotations
 
 
-
 from src.model.config import AureliusConfig
 from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 from src.safety import (
-
     HARM_CLASSIFIER_REGISTRY,
     SAFETY_FILTER_REGISTRY,
     HallucinationClaim,
@@ -18,11 +16,10 @@ from src.safety import (
 )
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_registry_contains_hallucination_guard_entry() -> None:
     assert "hallucination_guard" in SAFETY_FILTER_REGISTRY

@@ -8,11 +8,10 @@ import src
 import src.model as model_pkg
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_matryoshka_embedding_exported_from_model_package() -> None:
     assert hasattr(model_pkg, "MatryoshkaConfig")
@@ -32,6 +31,3 @@ def test_src_namespace_exposes_public_subpackages() -> None:
     assert src.eval is importlib.import_module("src.eval")
     assert "model" in src.__all__
     assert "chat" in src.__all__
-
-
-

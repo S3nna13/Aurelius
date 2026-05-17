@@ -5,7 +5,6 @@ from __future__ import annotations
 import torch
 
 from src.retrieval import (
-
     RERANKER_REGISTRY,
     BM25Retriever,
     JaccardDiversityReranker,
@@ -13,10 +12,10 @@ from src.retrieval import (
 )
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_registry_has_mmr_and_cross_encoder():
     assert "mmr" in RERANKER_REGISTRY
@@ -77,6 +76,3 @@ def test_registry_instantiation_via_name():
     }
     out = inst.rerank([("a", 0.9), ("b", 0.4)], emb, k=2)
     assert [d for d, _ in out] == ["a", "b"]
-
-
-

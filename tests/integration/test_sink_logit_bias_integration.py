@@ -7,10 +7,10 @@ import torch
 import src.inference as inf
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_logit_bias_registry():
     assert hasattr(inf, "LOGIT_BIAS_REGISTRY")
@@ -19,7 +19,6 @@ def test_logit_bias_registry():
 
 def test_config_defaults():
     from src.model.config import AureliusConfig
-
 
     c = AureliusConfig()
     assert c.inference_sink_logit_bias_enabled is False
@@ -40,6 +39,3 @@ def test_smoke_apply():
         bonus=1.5,
     )
     assert out[0, -1, 2] == 1.5 and out[0, -1, 3] == 1.5
-
-
-

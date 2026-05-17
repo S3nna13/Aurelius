@@ -10,7 +10,6 @@ Verifies:
 from __future__ import annotations
 
 
-
 import torch
 
 
@@ -19,10 +18,10 @@ import torch
 # ---------------------------------------------------------------------------
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_moonvit_patch_packer_in_registry():
     from src.model import MODEL_COMPONENT_REGISTRY
@@ -112,7 +111,6 @@ def test_registry_output_dtypes():
 
 def test_existing_registry_keys_intact():
     from src.model import MODEL_COMPONENT_REGISTRY
-
 
     expected_keys = {"dsa_attention", "mtp_shared", "dp_aware_moe_routing", "mla_256"}
     for key in expected_keys:

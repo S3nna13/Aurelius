@@ -10,7 +10,6 @@ Verifies that:
 from __future__ import annotations
 
 
-
 import torch
 
 import src.serving as serving
@@ -27,10 +26,10 @@ from src.serving.structured_output_decoder import (
 # ---------------------------------------------------------------------------
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def _make_decoder_from_config(
     decoder_type: str = "json_schema",
@@ -278,7 +277,6 @@ def test_no_heavy_ml_imports():
     """
     import ast
     import pathlib
-
 
     src_path = (
         pathlib.Path(__file__).parent.parent.parent

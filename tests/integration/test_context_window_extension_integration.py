@@ -12,7 +12,6 @@ Verifies:
 from __future__ import annotations
 
 
-
 from pathlib import Path
 
 import torch
@@ -21,16 +20,15 @@ import src.longcontext as lc
 from src.model.config import AureliusConfig
 
 
-
 # ---------------------------------------------------------------------------
 # Registry surface tests
 # ---------------------------------------------------------------------------
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_context_extension_registry_exposed() -> None:
     """CONTEXT_EXTENSION_REGISTRY must be importable from src.longcontext."""

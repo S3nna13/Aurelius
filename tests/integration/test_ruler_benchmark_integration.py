@@ -6,11 +6,10 @@ import src.eval as eval_pkg
 from src.eval.ruler_benchmark import RULERBenchmark
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_metric_registry_has_both_niah_and_ruler():
     assert "niah" in eval_pkg.METRIC_REGISTRY
@@ -68,6 +67,3 @@ def test_end_to_end_tiny_run_via_registry():
     per = bench.score_per_task(results)
     assert all(v == 1.0 for v in per.values())
     assert bench.overall_score(results) == 1.0
-
-
-

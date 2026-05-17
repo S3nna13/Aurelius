@@ -6,11 +6,10 @@ import importlib
 import sys
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_registry_entry_is_class_and_usable():
     # Clean re-import to verify no side effects on import.
@@ -53,6 +52,3 @@ def test_import_has_no_side_effects(tmp_path, monkeypatch):
     assert dict(m2.RETRIEVER_REGISTRY) == snap_r
     assert dict(m2.EMBEDDING_REGISTRY) == snap_e
     assert dict(m2.RERANKER_REGISTRY) == snap_rr
-
-
-

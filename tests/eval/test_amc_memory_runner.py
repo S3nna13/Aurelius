@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import json
 
-from src.eval.amc_memory_runner import append_jsonl_result, build_engine_generate_fn, main, run_benchmark
+from src.eval.amc_memory_runner import (
+    append_jsonl_result,
+    build_engine_generate_fn,
+    main,
+    run_benchmark,
+)
 
 
 def test_run_benchmark_oracle_outputs_summary_and_cells():

@@ -6,17 +6,14 @@ GLM-5 §6.2 — verifies LONGCONTEXT_STRATEGY_REGISTRY wiring.
 from __future__ import annotations
 
 
-
 from src.longcontext import LONGCONTEXT_STRATEGY_REGISTRY, HierarchicalContextManager
 from src.longcontext.hierarchical_context_mgr import Turn
-
-
-
 
 
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def make_turns(n: int, tokens_each: int = 100) -> list[Turn]:
     return [{"role": "user", "content": f"turn {i}", "tokens": tokens_each} for i in range(n)]

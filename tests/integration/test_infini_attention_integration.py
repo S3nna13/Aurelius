@@ -11,10 +11,10 @@ import src.longcontext as lc
 from src.longcontext.infini_attention import InfiniAttention
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_registry_has_infini_entry():
     assert "infini" in lc.LONGCONTEXT_STRATEGY_REGISTRY
@@ -27,7 +27,6 @@ def test_registry_retains_prior_entries():
     from src.longcontext.kv_cache_quantization import KIVIQuantizer
     from src.longcontext.kv_compression import KVInt8Compressor
     from src.longcontext.ring_attention import RingAttention
-
 
     reg = lc.LONGCONTEXT_STRATEGY_REGISTRY
     assert reg["kv_int8"] is KVInt8Compressor
@@ -69,6 +68,3 @@ def test_importing_longcontext_does_not_import_model():
     assert result.returncode == 0, (
         f"subprocess failed: stdout={result.stdout!r} stderr={result.stderr!r}"
     )
-
-
-

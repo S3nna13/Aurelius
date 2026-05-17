@@ -17,11 +17,10 @@ from src.eval.many_shot_jailbreak_probe import (
 from src.model.config import AureliusConfig
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_many_shot_jailbreak_probe_registered():
     assert "many_shot_jailbreak_probe" in METRIC_REGISTRY
@@ -46,6 +45,3 @@ def test_end_to_end_sweep_against_stubs():
     assert isinstance(result, MSJSweepResult)
     assert result.first_success_shot == 16
     assert len(result.per_shot_results) == 4
-
-
-

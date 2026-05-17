@@ -9,11 +9,10 @@ import src.optimizers as optimizers
 from src.optimizers import Mars
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_mars_exposed_via_package():
     assert hasattr(optimizers, "Mars")
@@ -50,6 +49,3 @@ def test_train_tiny_mlp_loss_decreases():
 
     final_loss = loss_fn(model(x), y).item()
     assert final_loss < initial_loss
-
-
-

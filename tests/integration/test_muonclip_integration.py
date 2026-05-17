@@ -10,12 +10,10 @@ Verifies:
 from __future__ import annotations
 
 
-
 import torch
 import torch.nn as nn
 
 from src.optimizers import OPTIMIZER_REGISTRY, MuonClip
-
 
 
 # ---------------------------------------------------------------------------
@@ -23,10 +21,10 @@ from src.optimizers import OPTIMIZER_REGISTRY, MuonClip
 # ---------------------------------------------------------------------------
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_muonclip_in_registry():
     assert "muonclip" in OPTIMIZER_REGISTRY, "'muonclip' key missing from OPTIMIZER_REGISTRY"

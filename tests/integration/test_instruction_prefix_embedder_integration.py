@@ -7,7 +7,6 @@ import torch
 
 import src.retrieval as retrieval
 from src.retrieval import (
-
     EMBEDDING_REGISTRY,
     INSTRUCTION_PREFIXES,
     DenseEmbedder,
@@ -16,9 +15,8 @@ from src.retrieval import (
 )
 
 
-
-
 pytestmark = pytest.mark.integration
+
 
 def _tokenize(text: str) -> list[int]:
     # word-level hash tokenizer in [1, 31]; keeps sequences short so
@@ -95,6 +93,3 @@ def test_all_six_tasks_encodable() -> None:
         out = wrapper.encode("text", task=task)
         assert out.shape == (16,)
         assert torch.isfinite(out).all()
-
-
-

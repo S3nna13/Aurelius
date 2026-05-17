@@ -11,20 +11,17 @@ Scenario:
 from __future__ import annotations
 
 
-
 from agent import AGENT_LOOP_REGISTRY
 from agent.preserve_thinking import (
-
     PreserveThinkingBuffer,
     PreserveThinkingConfig,
 )
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_preserve_thinking_full_integration():
     cfg = PreserveThinkingConfig(

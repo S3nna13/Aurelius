@@ -5,12 +5,10 @@ budget accounting, limit enforcement, and registry wiring.
 from __future__ import annotations
 
 
-
 import pytest
 
 from src.inference import DECODER_REGISTRY
 from src.inference.multimodal_thinking_chain import (
-
     MultimodalThinkingChain,
     MultimodalThinkingConfig,
     StepType,
@@ -23,9 +21,8 @@ from src.inference.multimodal_thinking_chain import (
 # ---------------------------------------------------------------------------
 
 
-
-
 pytestmark = pytest.mark.integration
+
 
 def test_multimodal_thinking_chain_integration():
     """Build a constrained chain, verify accounting, limits, and registry."""

@@ -6,11 +6,10 @@ from src import eval as eval_pkg
 from src.eval.gpqa_scorer import GPQAProblem, GPQAScorer
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_prior_registry_entries_intact():
     reg = eval_pkg.METRIC_REGISTRY
@@ -94,6 +93,3 @@ def test_end_to_end_two_problem_scoring():
     assert results[0].correct is True
     assert results[1].correct is False
     assert results[1].predicted_letter == "A"
-
-
-

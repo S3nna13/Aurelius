@@ -5,9 +5,7 @@ surface's public registry.
 from __future__ import annotations
 
 
-
 from src.safety import (
-
     HARM_CATEGORIES,
     HARM_CLASSIFIER_REGISTRY,
     SAFETY_FILTER_REGISTRY,
@@ -15,11 +13,10 @@ from src.safety import (
 )
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_registry_contains_harm_taxonomy() -> None:
     assert "harm_taxonomy" in HARM_CLASSIFIER_REGISTRY

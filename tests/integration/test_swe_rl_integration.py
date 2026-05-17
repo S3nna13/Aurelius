@@ -12,7 +12,6 @@ Verifies end-to-end flow:
 from __future__ import annotations
 
 
-
 import math
 
 import pytest
@@ -20,7 +19,6 @@ import torch
 
 from src.training import TRAINING_REGISTRY
 from src.training.swe_rl import (
-
     SWEPatch,
     SWERLConfig,
     SWERLTrainer,
@@ -33,9 +31,8 @@ from src.training.swe_rl import (
 # ---------------------------------------------------------------------------
 
 
-
-
 pytestmark = pytest.mark.integration
+
 
 @pytest.fixture
 def trainer() -> SWERLTrainer:

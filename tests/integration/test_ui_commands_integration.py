@@ -6,7 +6,6 @@ Verifies cross-module contracts from the integration_requirements spec.
 from __future__ import annotations
 
 
-
 import pytest
 from rich.console import Console
 
@@ -25,9 +24,8 @@ from src.ui.status_hierarchy import (
 # ---------------------------------------------------------------------------
 
 
-
-
 pytestmark = pytest.mark.integration
+
 
 def test_command_palette_registry_accessible_via_src_ui() -> None:
     """COMMAND_PALETTE_REGISTRY must be importable from src.ui."""
@@ -370,7 +368,6 @@ def test_model_info_panel_update() -> None:
 def test_session_manager_lifecycle() -> None:
     """Create 2 sessions, switch_to one, verify other paused, save/load round-trip."""
     from src.ui.session_manager import SessionManager, SessionState
-
 
     manager = SessionManager()
     s1 = manager.create("Tab Alpha")

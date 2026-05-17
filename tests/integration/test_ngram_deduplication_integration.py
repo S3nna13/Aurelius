@@ -7,11 +7,10 @@ from src.model.config import AureliusConfig
 from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_dedup_registry():
     assert data.DEDUP_REGISTRY["ngram_jaccard"] is data.NgramDeduplicationToolkit
@@ -31,6 +30,3 @@ def test_smoke_cluster():
     assert cfg.data_ngram_deduplication_enabled is True
     g = data.NgramDeduplicationToolkit.cluster_duplicates(["aa", "aa", "bb"], n=1, threshold=1.0)
     assert len(g) == 2
-
-
-

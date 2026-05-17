@@ -6,10 +6,10 @@ import json
 from pathlib import Path
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
@@ -81,7 +81,6 @@ def test_shell_backend_commands_are_reachable_from_execute_command():
 def test_shell_capability_and_journal_commands_are_reachable_from_execute_command():
     from src.ui import AureliusShell
 
-
     shell = AureliusShell.from_repo_root(root_dir=_repo_root())
     capability = json.loads(shell.execute_command("capability summary"))
     schema = json.loads(shell.execute_command("capability schema"))
@@ -95,6 +94,3 @@ def test_shell_capability_and_journal_commands_are_reachable_from_execute_comman
     assert journal_branch["journal"]["branch_id"] == "main"
     assert surface["surface"]["engine_adapters"]["count"] >= 3
     assert surface_schema["schema"]["schema_name"] == "aurelius.interface.surface-catalog"
-
-
-

@@ -20,7 +20,6 @@ Pure stdlib.
 from __future__ import annotations
 
 
-
 import dataclasses
 import json
 
@@ -28,7 +27,6 @@ import pytest
 
 import src.model as model_pkg
 from src.model import (
-
     AURELIUS_REFERENCE_MANIFEST,
     MANIFEST_SCHEMA_VERSION,
     MODEL_MANIFEST_REGISTRY,
@@ -47,10 +45,8 @@ from src.model import (
 )
 
 
-
-
-
 pytestmark = pytest.mark.integration
+
 
 def _v1_payload(**overrides):
     data = {

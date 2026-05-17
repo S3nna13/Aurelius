@@ -8,10 +8,10 @@ import torch.nn as nn
 import src.interpretability as interp
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_exposed_via_package():
     for name in (
@@ -41,10 +41,6 @@ def test_build_graph_on_tiny_model():
 def test_existing_interp_entries_intact():
     # A couple of known existing modules should still be importable.
     from src.interpretability import (
-
         logit_lens,  # noqa: F401
         token_attribution,  # noqa: F401
     )
-
-
-

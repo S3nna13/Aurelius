@@ -6,11 +6,10 @@ import agent as agent_pkg
 from agent import AGENT_LOOP_REGISTRY, TOOL_CALL_PARSER_REGISTRY
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_react_registered():
     assert "react" in AGENT_LOOP_REGISTRY
@@ -29,9 +28,6 @@ def test_tool_call_parser_registry_unchanged():
 
 def test_end_to_end_with_echo_tool():
     """Drive a live loop through the registry with a trivial echo tool."""
-
-
-
 
     ReActLoop = AGENT_LOOP_REGISTRY["react"]
 

@@ -10,11 +10,9 @@ Verifies end-to-end mix_batch behaviour on 3 samples:
 from __future__ import annotations
 
 
-
 import pytest
 
 from src.data.vision_token_mixer import VisionTokenMixer, VisionTokenMixerConfig
-
 
 
 # ---------------------------------------------------------------------------
@@ -22,9 +20,8 @@ from src.data.vision_token_mixer import VisionTokenMixer, VisionTokenMixerConfig
 # ---------------------------------------------------------------------------
 
 
-
-
 pytestmark = pytest.mark.integration
+
 
 @pytest.fixture
 def mixer() -> VisionTokenMixer:

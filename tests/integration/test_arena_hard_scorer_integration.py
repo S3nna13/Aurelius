@@ -4,17 +4,16 @@ from __future__ import annotations
 
 from src import eval as eval_pkg
 from src.eval.arena_hard_scorer import (
-
     ArenaComparison,
     ArenaHardScorer,
     ArenaProblem,
 )
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_metric_registry_has_arena_hard():
     assert "arena_hard" in eval_pkg.METRIC_REGISTRY
@@ -41,9 +40,6 @@ def test_prior_registry_entries_intact():
 
 def test_end_to_end_three_model_round_robin():
     """3 models x 2 problems; judge prefers answers containing 'STRONG'."""
-
-
-
 
     def judge(prompt: str) -> str:
         a_start = prompt.index("[The Start of Assistant A's Answer]")

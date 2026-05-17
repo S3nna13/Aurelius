@@ -11,7 +11,6 @@ from src.alignment.adversarial_code_battle import (
 from src.model.config import AureliusConfig
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
@@ -76,6 +75,3 @@ def test_two_round_battle_generates_preference_pairs() -> None:
         assert p["chosen"] != p["rejected"]
     # Final code should no longer contain the hardcoded API key literal.
     assert '"abcd1234xyz"' not in transcript.final_code
-
-
-

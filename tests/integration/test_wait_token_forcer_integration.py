@@ -9,11 +9,8 @@ Verifies:
 from __future__ import annotations
 
 
-
 import src.inference as inference_pkg
 from src.inference.wait_token_forcer import WaitTokenForcer, WaitTokenForcerConfig
-
-
 
 
 import pytest

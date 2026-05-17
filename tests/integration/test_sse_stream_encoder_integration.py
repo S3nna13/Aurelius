@@ -5,10 +5,10 @@ from __future__ import annotations
 import src.serving as serving
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_stream_handler_registry():
     assert hasattr(serving, "STREAM_HANDLER_REGISTRY")
@@ -17,7 +17,6 @@ def test_stream_handler_registry():
 
 def test_config_flag_off():
     from src.model.config import AureliusConfig
-
 
     assert AureliusConfig().serving_sse_stream_encoder_enabled is False
 
@@ -29,6 +28,3 @@ def test_api_shape_registry_unchanged_keys():
 def test_smoke_encode():
     enc = serving.SSEStreamEncoder()
     assert b"data:" in enc.encode_event(data="token")
-
-
-

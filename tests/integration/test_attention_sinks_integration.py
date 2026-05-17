@@ -10,7 +10,6 @@ Verify:
 from __future__ import annotations
 
 
-
 import sys
 
 import pytest
@@ -20,10 +19,8 @@ import src.longcontext as lc
 from src.longcontext.attention_sinks import AttentionSinkCache
 
 
-
-
-
 pytestmark = pytest.mark.integration
+
 
 def test_registry_has_both_strategies():
     assert "kv_int8" in lc.LONGCONTEXT_STRATEGY_REGISTRY
@@ -99,7 +96,6 @@ def test_importing_longcontext_does_not_import_model():
 def test_kv_int8_entry_unchanged():
     # kv_int8 entry must still point to the existing compressor.
     from src.longcontext.kv_compression import KVInt8Compressor
-
 
     assert lc.LONGCONTEXT_STRATEGY_REGISTRY["kv_int8"] is KVInt8Compressor
 

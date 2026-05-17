@@ -58,9 +58,7 @@ class TokenSuperpositionTrainer:
         """
         bs, seq_len = input_ids.shape
         if seq_len % self.bag_size != 0:
-            raise ValueError(
-                f"seq_len ({seq_len}) must be divisible by bag_size ({self.bag_size})"
-            )
+            raise ValueError(f"seq_len ({seq_len}) must be divisible by bag_size ({self.bag_size})")
         bags = input_ids.view(bs, seq_len // self.bag_size, self.bag_size)
         return bags  # shape: [batch, num_bags, bag_size]
 

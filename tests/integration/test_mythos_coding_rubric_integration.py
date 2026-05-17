@@ -4,17 +4,16 @@ from __future__ import annotations
 
 import src.eval as eval_pkg
 from src.eval.mythos_coding_rubric import (
-
     MYTHOS_GUIDANCE_SYSTEM_PROMPT,
     MythosCodingRubric,
     heuristic_judge,
 )
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_metric_registry_contains_mythos():
     assert "mythos_coding_rubric" in eval_pkg.METRIC_REGISTRY
@@ -94,6 +93,3 @@ def test_end_to_end_scoring_bad_trajectory_fails():
     ]
     result = MythosCodingRubric().score(bad, heuristic_judge)
     assert result.passed is False
-
-
-

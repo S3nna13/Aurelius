@@ -9,21 +9,18 @@ Checks that:
 from __future__ import annotations
 
 
-
 from src.model.config import AureliusConfig
 from src.safety import (
-
     RULE_ENGINE_SEED_RULES,
     SAFETY_FILTER_REGISTRY,
     RuleEngine,
 )
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_rule_engine_registered_in_safety_filter_registry():
     assert "rule_engine" in SAFETY_FILTER_REGISTRY

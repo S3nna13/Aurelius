@@ -8,12 +8,10 @@ end-to-end forward pass runs without error.
 from __future__ import annotations
 
 
-
 import hashlib
 import pathlib
 
 import torch
-
 
 
 import pytest
@@ -49,7 +47,6 @@ def test_frozen_attention_file_unchanged():
 
 def test_end_to_end_forward():
     from src.model import ChunkedLocalAttention
-
 
     torch.manual_seed(1234)
     mod = ChunkedLocalAttention(

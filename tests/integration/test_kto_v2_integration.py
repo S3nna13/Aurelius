@@ -5,10 +5,10 @@ from __future__ import annotations
 import torch
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_exposed_via_src_alignment():
     import src.alignment as A
@@ -27,10 +27,6 @@ def test_existing_kto_still_importable():
 def test_end_to_end_tiny_batch_training_step():
     """Run a handful of optimizer steps over a synthetic mixed batch."""
     from src.alignment import KTOv2Loss
-
-
-
-
 
     torch.manual_seed(0)
     # Tiny "policy": a single learnable bias applied to fixed reference logprobs.

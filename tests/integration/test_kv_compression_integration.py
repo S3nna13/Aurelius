@@ -7,10 +7,10 @@ import sys
 import torch
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_registry_entry_importable_and_usable():
     from src.longcontext import LONGCONTEXT_STRATEGY_REGISTRY
@@ -74,7 +74,6 @@ def test_import_has_no_side_effects_on_existing_modules():
 def test_streaming_append_roundtrip():
     from src.longcontext import KVInt8Compressor
 
-
     comp = KVInt8Compressor(head_dim=8, n_heads=2)
     torch.manual_seed(42)
     k_full = torch.randn(1, 2, 10, 8, dtype=torch.float32)
@@ -88,6 +87,3 @@ def test_streaming_append_roundtrip():
     kd, vd = comp.decompress(packed)
     assert torch.allclose(kd, k_full, atol=0.08)
     assert torch.allclose(vd, v_full, atol=0.08)
-
-
-

@@ -9,11 +9,10 @@ import src.training as training
 from src.training import LRRangeTest, LRRangeTestResult
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_exposed_via_src_training() -> None:
     assert hasattr(training, "LRRangeTest")
@@ -69,6 +68,3 @@ def test_tiny_nn_linear_train_step_fn() -> None:
     # Losses should be finite (or the sweep stopped on divergence).
     for loss in result.losses[:-1]:
         assert loss == loss  # not NaN
-
-
-

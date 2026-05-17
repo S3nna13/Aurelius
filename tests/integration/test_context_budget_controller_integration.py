@@ -10,10 +10,8 @@ Verifies that:
 from __future__ import annotations
 
 
-
 from src.longcontext import LONGCONTEXT_STRATEGY_REGISTRY
 from src.longcontext.context_budget_controller import (
-
     ContextBudgetConfig,
     ContextBudgetController,
     ContextSegment,
@@ -26,10 +24,10 @@ from src.longcontext.context_budget_controller import (
 # ---------------------------------------------------------------------------
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_context_budget_in_registry():
     """'context_budget' key must exist in LONGCONTEXT_STRATEGY_REGISTRY."""

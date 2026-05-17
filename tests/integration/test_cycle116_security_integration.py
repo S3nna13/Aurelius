@@ -9,11 +9,7 @@ style of analysis prompt.
 import pytest
 
 
-
 import src.security as sec
-
-
-
 
 
 pytestmark = pytest.mark.integration

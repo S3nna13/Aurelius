@@ -15,12 +15,10 @@ Checks:
 from __future__ import annotations
 
 
-
 import torch
 
 from src.inference import DECODER_REGISTRY
 from src.inference.hydra_speculative import HydraConfig, HydraSpeculative
-
 
 
 # ---------------------------------------------------------------------------

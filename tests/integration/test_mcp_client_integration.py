@@ -9,7 +9,6 @@ surface entries remain intact.
 from __future__ import annotations
 
 
-
 import pytest
 
 import agent as agent_surface
@@ -24,8 +23,6 @@ from agent import (
 from agent.mcp_client import MCP_PROTOCOL_VERSION
 
 
-
-
 # ---------------------------------------------------------------------------
 # stub server: a toy MCP server exposing a calculator tool, a readme
 # resource, and a greet prompt. JSON-RPC over Python call.
@@ -33,6 +30,7 @@ from agent.mcp_client import MCP_PROTOCOL_VERSION
 
 
 pytestmark = pytest.mark.integration
+
 
 class StubMCPServer:
     def __init__(self) -> None:

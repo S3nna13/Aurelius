@@ -7,11 +7,10 @@ from src.chat.chatml_template import ChatMLTemplate
 from src.chat.llama3_template import Llama3Template
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_registry_has_both_templates() -> None:
     assert "chatml" in CHAT_TEMPLATE_REGISTRY
@@ -52,6 +51,3 @@ def test_templates_produce_distinct_wire_formats() -> None:
     assert chatml_out != llama3_out
     assert "<|im_start|>" in chatml_out
     assert "<|start_header_id|>" in llama3_out
-
-
-

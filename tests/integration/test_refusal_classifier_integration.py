@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_registry_contains_refusal_entry() -> None:
     import src.safety as safety
@@ -70,7 +70,6 @@ def test_three_sample_classification() -> None:
 def test_refusal_score_has_expected_fields() -> None:
     import src.safety as safety
 
-
     Clf = safety.HARM_CLASSIFIER_REGISTRY["refusal"]
     res = Clf().classify("I must decline.")
     assert hasattr(res, "is_refusal")
@@ -79,6 +78,3 @@ def test_refusal_score_has_expected_fields() -> None:
     assert isinstance(res.is_refusal, bool)
     assert isinstance(res.score, float)
     assert isinstance(res.signals, list)
-
-
-

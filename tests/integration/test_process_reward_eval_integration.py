@@ -8,10 +8,8 @@ ranges, and the registry is correctly wired.
 import pytest
 
 
-
 from src.eval import BENCHMARK_REGISTRY
 from src.eval.process_reward_eval import (
-
     PRMEvalConfig,
     ProcessRewardEval,
     SolutionEval,
@@ -24,9 +22,8 @@ from src.eval.process_reward_eval import (
 # ---------------------------------------------------------------------------
 
 
-
-
 pytestmark = pytest.mark.integration
+
 
 def _build_solutions() -> list[SolutionEval]:
     threshold = 0.5

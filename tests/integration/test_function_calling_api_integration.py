@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_function_calling_api_registered_in_api_shape_registry():
     from src.serving import API_SHAPE_REGISTRY, FunctionCallValidator
@@ -45,7 +45,6 @@ def test_config_flag_defaults_off():
 
 def test_end_to_end_happy_path_via_registry():
     from src.serving import (
-
         API_SHAPE_REGISTRY,
         FunctionSchema,
         ToolChoice,
@@ -75,6 +74,3 @@ def test_end_to_end_happy_path_via_registry():
         ]
     )
     assert parsed[0].function_name == "lookup"
-
-
-

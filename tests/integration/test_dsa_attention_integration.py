@@ -8,9 +8,7 @@ work end-to-end.
 from __future__ import annotations
 
 
-
 import torch
-
 
 
 # ---------------------------------------------------------------------------
@@ -20,6 +18,7 @@ import torch
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_dsa_attention_in_registry():
     from src.model import MODEL_COMPONENT_REGISTRY
@@ -75,7 +74,6 @@ def test_registry_freeze_indexer_path():
 def test_existing_registry_key_regression():
     """Ensure adding dsa_attention did not remove any pre-existing registry keys."""
     from src.model import MODEL_COMPONENT_REGISTRY
-
 
     # The registry was introduced alongside dsa_attention; at minimum it must
     # contain "dsa_attention" (tested above). Any future keys added by sibling

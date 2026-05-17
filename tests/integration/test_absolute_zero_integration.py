@@ -9,13 +9,11 @@ number of tasks.
 from __future__ import annotations
 
 
-
 import pytest
 import torch
 
 from src.alignment import ALIGNMENT_REGISTRY
 from src.alignment.absolute_zero import (
-
     AbsoluteZeroConfig,
     AbsoluteZeroTrainer,
 )
@@ -26,9 +24,8 @@ from src.alignment.absolute_zero import (
 # ---------------------------------------------------------------------------
 
 
-
-
 pytestmark = pytest.mark.integration
+
 
 def _build_propose_fn():
     """Returns a propose_fn that emits non-leaking token sequences.

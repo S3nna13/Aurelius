@@ -8,11 +8,10 @@ import agent as agent_pkg
 from agent import CodeRefactorTool, RefactorResult
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_exposed_via_src_agent() -> None:
     # Additive export present.
@@ -68,6 +67,3 @@ def test_rename_and_remove_unused_roundtrip(tmp_path: pathlib.Path) -> None:
     assert "greet" not in final
     assert "import os" not in final
     assert "import sys" in final
-
-
-

@@ -14,11 +14,10 @@ from src.model.config import AureliusConfig
 from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_threat_intel_persona_registered_in_chat_template_registry() -> None:
     assert "threat_intel_persona" in CHAT_TEMPLATE_REGISTRY
@@ -55,6 +54,3 @@ def test_other_registered_templates_unchanged() -> None:
     # Additive registration: existing keys still present.
     for key in ("chatml", "llama3", "harmony"):
         assert key in CHAT_TEMPLATE_REGISTRY
-
-
-

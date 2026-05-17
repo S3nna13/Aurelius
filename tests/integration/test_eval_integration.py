@@ -7,7 +7,6 @@ clean-room implementation.
 from __future__ import annotations
 
 
-
 from src.eval.webarena_scorer import (
     WEBARENA_TASK_REGISTRY,
     WebArenaResult,
@@ -20,10 +19,10 @@ from src.eval.webarena_scorer import (
 # ---------------------------------------------------------------------------
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_webarena_scorer() -> None:
     """Score 3 results against WEBARENA_TASK_REGISTRY tasks and verify metrics structure."""
@@ -77,7 +76,6 @@ def test_webarena_scorer() -> None:
 # ---------------------------------------------------------------------------
 
 from src.eval.osworld_scorer import (  # noqa: E402
-
     OSWORLD_TASK_REGISTRY,
     OSWorldResult,
     OSWorldScorer,

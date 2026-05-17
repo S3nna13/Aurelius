@@ -8,12 +8,10 @@ and (d) an end-to-end forward/backward pass runs without error.
 from __future__ import annotations
 
 
-
 import hashlib
 import pathlib
 
 import torch
-
 
 
 import pytest
@@ -69,7 +67,6 @@ def test_existing_registry_intact():
 
 def test_end_to_end_forward_backward():
     from src.model import LambdaAttention
-
 
     torch.manual_seed(7)
     mod = LambdaAttention(

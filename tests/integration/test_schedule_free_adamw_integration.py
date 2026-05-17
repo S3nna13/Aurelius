@@ -9,7 +9,6 @@ Verifies:
 from __future__ import annotations
 
 
-
 import torch
 import torch.nn as nn
 
@@ -17,12 +16,10 @@ import src.optimizers as optim_pkg
 from src.optimizers import ScheduleFreeAdamW
 
 
-
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_exposed_via_package():
     assert hasattr(optim_pkg, "ScheduleFreeAdamW")

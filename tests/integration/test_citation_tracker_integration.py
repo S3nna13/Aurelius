@@ -6,10 +6,10 @@ import importlib
 import sys
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_citation_registry_exposes_tracker():
     for mod in [m for m in list(sys.modules) if m.startswith("src.retrieval")]:
@@ -38,7 +38,6 @@ def test_citation_registry_exposes_tracker():
 def test_config_flag_defaults_off():
     from src.model.config import AureliusConfig
 
-
     cfg = AureliusConfig()
     assert hasattr(cfg, "retrieval_citation_tracker_enabled")
     assert cfg.retrieval_citation_tracker_enabled is False
@@ -52,6 +51,3 @@ def test_sibling_registries_preserved():
     assert "bm25" in retrieval.RETRIEVER_REGISTRY
     assert isinstance(retrieval.EMBEDDING_REGISTRY, dict)
     assert isinstance(retrieval.RERANKER_REGISTRY, dict)
-
-
-

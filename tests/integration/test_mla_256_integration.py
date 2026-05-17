@@ -75,6 +75,3 @@ def test_existing_registry_keys_unaffected():
     assert "mtp_shared" in MODEL_COMPONENT_REGISTRY, (
         "Pre-existing registry key 'mtp_shared' must not be removed"
     )
-
-
-

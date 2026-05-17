@@ -17,11 +17,10 @@ from src.eval import (
 from src.model.config import AureliusConfig
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_shade_arena_registered():
     assert "shade_arena" in METRIC_REGISTRY
@@ -54,6 +53,3 @@ def test_default_catalog_shape_exposed_via_package():
     for m, s in DEFAULT_SHADE_SCENARIOS:
         assert isinstance(m, MainTaskSpec)
         assert isinstance(s, SideTaskSpec)
-
-
-

@@ -7,11 +7,10 @@ from src.model.config import AureliusConfig
 from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_registry():
     assert safety.SAFETY_FILTER_REGISTRY["knn_known_bad_guard"] is safety.KnnKnownBadGuard
@@ -45,6 +44,3 @@ def test_smoke_check():
     g.bulk_load(list(safety.SEED_KNOWN_BAD))
     v = g.check("hi")
     assert isinstance(v, safety.KnnVerdict)
-
-
-

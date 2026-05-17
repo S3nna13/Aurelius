@@ -10,7 +10,6 @@ Apache-2.0, clean-room reimplementation.
 from __future__ import annotations
 
 
-
 import pytest
 
 from src.computer_use.action_verifier import ActionVerifier, verify_trajectory
@@ -40,7 +39,6 @@ from src.computer_use.trajectory_replay import (
 # ---------------------------------------------------------------------------
 # Shared fixture
 # ---------------------------------------------------------------------------
-
 
 
 pytestmark = pytest.mark.integration
@@ -296,7 +294,6 @@ class TestWebArenaHarnessIntegration:
     def test_webarena_harness_run(self):
         """Register a task, run with a stub agent, verify TaskResult structure."""
         from src.computer_use.webarena_eval import (
-
             TaskResult,
             WebArenaHarness,
             WebTask,

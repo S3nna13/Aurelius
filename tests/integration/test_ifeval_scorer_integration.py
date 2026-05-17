@@ -5,11 +5,10 @@ from __future__ import annotations
 from src import eval as ev
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_metric_registry_has_ifeval() -> None:
     assert "ifeval" in ev.METRIC_REGISTRY
@@ -45,6 +44,3 @@ def test_end_to_end_single_problem_two_constraints() -> None:
     assert agg["strict_accuracy"] == 1.0
     assert agg["loose_accuracy"] == 1.0
     assert set(agg["per_type_accuracy"]) == {"contains_keyword", "length_words"}
-
-
-

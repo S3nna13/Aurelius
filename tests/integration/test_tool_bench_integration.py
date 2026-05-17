@@ -10,12 +10,10 @@ Verifies:
 from __future__ import annotations
 
 
-
 import pytest
 
 from src.eval import BENCHMARK_REGISTRY
 from src.eval.tool_bench import (
-
     ToolBench,
     ToolBenchConfig,
     ToolBenchSample,
@@ -28,9 +26,8 @@ from src.eval.tool_bench import (
 # ---------------------------------------------------------------------------
 
 
-
-
 pytestmark = pytest.mark.integration
+
 
 def _tc(name: str, **params) -> ToolCall:
     return ToolCall(tool_name=name, parameters=dict(params))

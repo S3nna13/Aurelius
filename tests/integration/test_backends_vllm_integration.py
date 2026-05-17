@@ -8,7 +8,6 @@ VLLMAdapter instance.
 from __future__ import annotations
 
 
-
 import pytest
 
 from src.backends.registry import BACKEND_REGISTRY, ENGINE_ADAPTER_REGISTRY
@@ -19,9 +18,8 @@ from src.backends.registry import BACKEND_REGISTRY, ENGINE_ADAPTER_REGISTRY
 # ---------------------------------------------------------------------------
 
 
-
-
 pytestmark = pytest.mark.integration
+
 
 @pytest.fixture(autouse=True)
 def _isolate_registries():
@@ -157,7 +155,6 @@ def test_select_backend_for_manifest_sglang_returns_sglang_adapter() -> None:
     from src.backends.registry import select_backend_for_manifest
     from src.backends.sglang_adapter import SGLangAdapter
     from src.model.manifest import AURELIUS_REFERENCE_MANIFEST
-
 
     _register_sglang()
 

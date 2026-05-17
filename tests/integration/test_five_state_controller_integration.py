@@ -8,11 +8,10 @@ from src.model.config import AureliusConfig
 from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_controller_registered_in_lifecycle_registry():
     assert "five_state" in AGENT_LIFECYCLE_REGISTRY
@@ -44,6 +43,3 @@ def test_feature_flag_off_preserves_default_behavior():
     assert cfg.agent_five_state_controller_enabled is False
     # Registry remains inspectable regardless of flag value.
     assert "five_state" in AGENT_LIFECYCLE_REGISTRY
-
-
-

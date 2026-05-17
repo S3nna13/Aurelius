@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import agent as agent_surface
 from agent import (
-
     AGENT_LOOP_REGISTRY,
     SessionBudget,
     ToolInvocationResult,
@@ -13,10 +12,10 @@ from agent import (
 )
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_symbols_exposed_on_surface() -> None:
     for name in (
@@ -100,6 +99,3 @@ def test_end_to_end_echo_and_add() -> None:
     log = d.audit_log()
     assert len(log) == 2
     assert all(entry["ok"] for entry in log)
-
-
-

@@ -10,7 +10,6 @@ Validates:
 from __future__ import annotations
 
 
-
 import agent as agent_surface
 from agent.toolformer_data_gen import (
     Tool,
@@ -22,16 +21,15 @@ from src.model.config import AureliusConfig
 from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 
 
-
 # ---------------------------------------------------------------------------
 # Registry / export tests
 # ---------------------------------------------------------------------------
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_toolformer_symbols_exposed_on_agent_surface():
     """ToolformerDataGenerator and ToolCallAnnotation must be importable from surface."""

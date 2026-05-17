@@ -7,17 +7,15 @@ via src/model/__init__.py, and that the routing API works end-to-end.
 from __future__ import annotations
 
 
-
-
 # ---------------------------------------------------------------------------
 # 1. "dp_aware_moe_routing" present in MODEL_COMPONENT_REGISTRY
 # ---------------------------------------------------------------------------
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_dp_aware_moe_routing_in_registry():
     from src.model import MODEL_COMPONENT_REGISTRY
@@ -74,7 +72,6 @@ def test_registry_route_batch_three_sessions():
 def test_existing_registry_keys_regression():
     """Ensure adding dp_aware_moe_routing did not remove pre-existing keys."""
     from src.model import MODEL_COMPONENT_REGISTRY
-
 
     assert isinstance(MODEL_COMPONENT_REGISTRY, dict)
     # Keys introduced by earlier cycles must remain

@@ -11,10 +11,10 @@ import src.longcontext as lc
 from src.longcontext.compressive_transformer import CompressiveMemory
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_registry_has_compressive_memory_entry():
     assert "compressive_memory" in lc.LONGCONTEXT_STRATEGY_REGISTRY
@@ -31,7 +31,6 @@ def test_registry_retains_prior_entries():
     from src.longcontext.paged_kv_cache import PagedKVCache
     from src.longcontext.prefix_cache import PrefixCache
     from src.longcontext.ring_attention import RingAttention
-
 
     reg = lc.LONGCONTEXT_STRATEGY_REGISTRY
     assert reg["kv_int8"] is KVInt8Compressor
@@ -86,6 +85,3 @@ def test_importing_longcontext_does_not_import_model():
     assert result.returncode == 0, (
         f"subprocess failed: stdout={result.stdout!r} stderr={result.stderr!r}"
     )
-
-
-

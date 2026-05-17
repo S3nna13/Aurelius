@@ -11,11 +11,10 @@ from src.model.config import AureliusConfig
 from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_compaction_trigger_registered():
     assert "compaction_trigger" in LONGCONTEXT_STRATEGY_REGISTRY
@@ -45,6 +44,3 @@ def test_feature_flag_off_preserves_default_behavior():
     cfg = AureliusConfig()
     assert cfg.longcontext_compaction_trigger_enabled is False
     assert "compaction_trigger" in LONGCONTEXT_STRATEGY_REGISTRY
-
-
-

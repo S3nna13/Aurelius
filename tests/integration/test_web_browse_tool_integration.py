@@ -7,10 +7,10 @@ from agent.web_browse_tool import DEFAULT_TOOL_DESCRIPTOR, WebBrowseTool
 from src.model.config import AureliusConfig
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_tool_registered_in_agent_package():
     assert hasattr(agent_pkg, "TOOL_REGISTRY")
@@ -45,7 +45,6 @@ def test_end_to_end_build_validate_summarize():
 
     from agent.web_browse_tool import WebFetchResult
 
-
     fake = WebFetchResult(
         status=200,
         url=spec.url,
@@ -56,6 +55,3 @@ def test_end_to_end_build_validate_summarize():
     summary = tool.summarize_result(fake)
     assert "HTTP 200" in summary
     assert "hello world" in summary
-
-
-

@@ -5,10 +5,10 @@ from __future__ import annotations
 import importlib
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_validator_exposed_via_src_serving_package():
     import src.serving as serving
@@ -93,13 +93,9 @@ def test_existing_serving_modules_still_importable():
 def test_registry_classes_are_instantiable_and_validate():
     from src.serving import API_SHAPE_REGISTRY
 
-
     req_cls = API_SHAPE_REGISTRY["openai.chat.request"]
     resp_cls = API_SHAPE_REGISTRY["openai.chat.response"]
     assert req_cls().validate({"model": "m", "messages": [{"role": "user", "content": "hi"}]}) == []
     # A clearly invalid response should produce errors.
     errs = resp_cls().validate({})
     assert len(errs) > 0
-
-
-

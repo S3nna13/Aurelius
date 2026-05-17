@@ -79,9 +79,7 @@ def _is_private_or_reserved_ip(hostname: str) -> bool:
             # validate ordinary public URL shapes without depending on DNS.
             return not _is_documentation_domain(hostname)
         addresses = {
-            ipaddress.ip_address(str(info[4][0]).split("%", 1)[0])
-            for info in addr_infos
-            if info[4]
+            ipaddress.ip_address(str(info[4][0]).split("%", 1)[0]) for info in addr_infos if info[4]
         }
         if not addresses:
             return True

@@ -18,9 +18,8 @@ from src.backends.registry import (
 )
 
 
-
-
 pytestmark = pytest.mark.integration
+
 
 class _RoundTripEngine(EngineAdapter):
     def __init__(self, name: str) -> None:
@@ -108,9 +107,5 @@ def test_build_with_backend_returns_adapter_bundle() -> None:
 def test_build_with_backend_rejects_non_manifest() -> None:
     from src.backends.base import BackendAdapterError
 
-
     with pytest.raises(BackendAdapterError, match="FamilyManifest"):
         build_with_backend({"not": "a manifest"})
-
-
-

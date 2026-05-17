@@ -8,7 +8,6 @@ Covers:
 from __future__ import annotations
 
 
-
 import pytest
 
 from src.mcp.mcp_client import LocalMCPClient, MCPClientConfig
@@ -27,9 +26,8 @@ from src.mcp.tool_schema_registry import (
 # ---------------------------------------------------------------------------
 
 
-
-
 pytestmark = pytest.mark.integration
+
 
 @pytest.fixture()
 def clean_registry():
@@ -240,7 +238,6 @@ def test_extension_manifest_validate():
 def test_plugin_host_lifecycle():
     """Register plugin, enable, list, disable, unregister — full lifecycle."""
     from src.mcp.plugin_host import PluginHost, PluginHostError, PluginManifest
-
 
     host = PluginHost()
 

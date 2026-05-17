@@ -6,7 +6,6 @@ from pathlib import Path
 
 import src.model as model_pkg
 from src.model import (
-
     InterfaceContractBundle,
     InterfaceContractPaths,
     load_interface_contract_bundle,
@@ -14,10 +13,10 @@ from src.model import (
 )
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
@@ -65,6 +64,3 @@ def test_validate_interface_contract_accepts_real_contract_artifacts():
         markdown_text=bundle.markdown_text,
         prompt_yaml_text=bundle.prompt_yaml_text,
     )
-
-
-

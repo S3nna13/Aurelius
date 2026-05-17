@@ -10,10 +10,10 @@ from src.data import (
 )
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_surface_exposed() -> None:
     assert hasattr(data_pkg, "BPEConfig")
@@ -24,7 +24,6 @@ def test_surface_exposed() -> None:
 def test_prior_entries_intact() -> None:
     # prior exports from dataset_config and fim_transform remain importable
     from src.data import (
-
         AURELIUS_MIX,
         FIM_MIDDLE,
         FIM_PREFIX,
@@ -76,6 +75,3 @@ def test_save_load_via_trainer(tmp_path) -> None:
     loaded = trainer.load(str(path))
     assert loaded["vocab"] == tok["vocab"]
     assert loaded["merges"] == tok["merges"]
-
-
-

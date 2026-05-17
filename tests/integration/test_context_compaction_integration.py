@@ -7,11 +7,10 @@ from src.longcontext import LONGCONTEXT_STRATEGY_REGISTRY, ContextCompactor
 from src.longcontext.context_compaction import Turn
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_registry_contains_context_compaction():
     assert "context_compaction" in LONGCONTEXT_STRATEGY_REGISTRY
@@ -67,6 +66,3 @@ def test_end_to_end_compaction():
 def test_public_exports():
     assert hasattr(longcontext, "ContextCompactor")
     assert hasattr(longcontext, "CompactionTurn")
-
-
-

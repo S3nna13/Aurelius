@@ -7,11 +7,10 @@ from src.chat import ConversationMemory, Fact, InMemoryStore, JSONFileStore
 from src.retrieval.bm25_retriever import BM25Retriever
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_public_symbols_exposed():
     for name in ("ConversationMemory", "Fact", "InMemoryStore", "JSONFileStore"):
@@ -86,6 +85,3 @@ def test_fact_and_inmemory_store_via_surface():
     )
     mem = ConversationMemory(store)
     assert mem.get("manual-1").content == "hand-built fact"
-
-
-

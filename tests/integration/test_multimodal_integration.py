@@ -8,10 +8,10 @@ import src.multimodal as multimodal_pkg
 from src.multimodal import ModalityContract, load_modality_contract
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_multimodal_package_exports_registry_surface():
     for name in (
@@ -59,8 +59,6 @@ def test_multimodal_registry_round_trip_and_json_summary():
 
 def test_all_four_encoder_registries_are_non_none():
     """All 4 required registries must be importable and non-None from src.multimodal."""
-
-
 
     assert multimodal_pkg.VISION_ENCODER_REGISTRY is not None
     assert multimodal_pkg.AUDIO_ENCODER_REGISTRY is not None
@@ -225,7 +223,6 @@ def test_document_embedder_shapes():
     import torch
 
     from src.multimodal.document_understanding import (
-
         DocumentRegionType,
     )
 

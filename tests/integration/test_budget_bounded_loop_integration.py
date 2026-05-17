@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_budget_bounded_registered():
     import agent as agent
@@ -33,7 +33,6 @@ def test_config_flags_default_off():
 def test_smoke_run_with_flag_agnostic():
     from agent import BudgetBoundedLoop
 
-
     loop = BudgetBoundedLoop(
         lambda m: "<final_answer>ok</final_answer>",
         {},
@@ -41,6 +40,3 @@ def test_smoke_run_with_flag_agnostic():
         max_tool_invocations=1,
     )
     assert loop.run("hi").final_answer == "ok"
-
-
-

@@ -6,7 +6,6 @@ from src import longcontext as lc
 from src.longcontext.prefix_cache import PrefixCache, PrefixEntry
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
@@ -52,6 +51,3 @@ def test_end_to_end_insert_and_find():
     stats = cache.stats()
     assert stats["entries"] >= 1
     assert stats["hits"] == 1
-
-
-

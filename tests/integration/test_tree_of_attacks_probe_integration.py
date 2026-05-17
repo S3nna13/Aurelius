@@ -16,10 +16,10 @@ from src.eval.tree_of_attacks_probe import (
 )
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_tap_registered_under_eval_registries():
     assert "tree_of_attacks_probe" in METRIC_REGISTRY
@@ -34,7 +34,6 @@ def test_tap_config_flag_defaults_off():
 
 def test_tap_config_flag_exists_on_aurelius_config():
     from src.model.config import AureliusConfig
-
 
     cfg = AureliusConfig()
     assert cfg.eval_tree_of_attacks_probe_enabled is False
@@ -54,6 +53,3 @@ def test_small_probe_against_stubs_returns_tapresult():
     assert result.best_id in result.nodes
     assert isinstance(result.succeeded, bool)
     assert 0.0 <= result.best_score <= 1.0
-
-
-

@@ -10,17 +10,15 @@ Checks:
 from __future__ import annotations
 
 
-
 from pathlib import Path
 
 import torch
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_existing_data_exports_intact() -> None:
     # Existing symbols must still work after our additive module exists.
@@ -46,7 +44,6 @@ def test_loader_importable_from_src_data() -> None:
 
 def test_end_to_end_small_repo(tmp_path: Path) -> None:
     from src.data.code_corpus_loader import CodeCorpusLoader
-
 
     # Build a small polyglot repo.
     (tmp_path / "pkg").mkdir()

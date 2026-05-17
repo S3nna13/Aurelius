@@ -9,16 +9,14 @@ import pytest
 from src.backends.base import BackendAdapterError
 from src.backends.gguf_engine_adapter import GGUFEngineAdapter, register
 from src.backends.registry import (
-
     ENGINE_ADAPTER_REGISTRY,
     get_engine_adapter,
     list_engine_adapters,
 )
 
 
-
-
 pytestmark = pytest.mark.integration
+
 
 @pytest.fixture(autouse=True)
 def _snapshot_registry() -> None:
@@ -46,6 +44,3 @@ def test_json_safe_describe_and_runtime_info() -> None:
 def test_lookup_missing_engine_adapter_rejects_unknown_name() -> None:
     with pytest.raises(BackendAdapterError, match="not registered"):
         get_engine_adapter("gguf")
-
-
-

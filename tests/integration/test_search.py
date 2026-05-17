@@ -5,11 +5,10 @@ from __future__ import annotations
 from typing import Any
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 class TestSearch:
     URL = "/api/search"
@@ -43,6 +42,3 @@ class TestSearch:
         assert resp.status_code == 200
         data = resp.json()
         assert "results" in data
-
-
-

@@ -8,12 +8,10 @@ trace length, backward pass, and registry wiring.
 from __future__ import annotations
 
 
-
 import torch
 
 from src.inference import DECODER_REGISTRY
 from src.inference.coconut import CoCoNut, CoCoNutConfig
-
 
 
 # ---------------------------------------------------------------------------
@@ -21,10 +19,10 @@ from src.inference.coconut import CoCoNut, CoCoNutConfig
 # ---------------------------------------------------------------------------
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_coconut_integration():
     # -----------------------------------------------------------------------

@@ -13,7 +13,6 @@ Run with:
 import pytest
 
 
-
 from src.eval.math_eval import MathEval
 
 
@@ -22,9 +21,8 @@ from src.eval.math_eval import MathEval
 # ---------------------------------------------------------------------------
 
 
-
-
 pytestmark = pytest.mark.integration
+
 
 @pytest.fixture
 def evaluator() -> MathEval:
@@ -136,7 +134,6 @@ def test_registry_wired():
     """BENCHMARK_REGISTRY['math_eval'] should be the MathEval class."""
     # Import through the package to trigger the registry wiring.
     from src.eval import BENCHMARK_REGISTRY  # type: ignore
-
 
     assert "math_eval" in BENCHMARK_REGISTRY
     assert BENCHMARK_REGISTRY["math_eval"] is MathEval

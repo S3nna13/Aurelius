@@ -7,15 +7,14 @@ from itertools import count
 from src.data.rejection_sampling_data import PreferencePair, RejectionSampler
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
 
+
 def test_exposed_via_src_data_submodule():
     # The module is reachable via the src.data package path.
     import src.data.rejection_sampling_data as mod
-
 
     assert mod.RejectionSampler is RejectionSampler
     assert mod.PreferencePair is PreferencePair
@@ -87,6 +86,3 @@ def test_end_to_end_all_pairs_for_one_prompt():
     for p in pairs:
         assert p.chosen_reward > p.rejected_reward
         assert p.prompt == "refactor this function"
-
-
-

@@ -12,10 +12,8 @@ Verifies:
 import pytest
 
 
-
 from src.training import TRAINING_REGISTRY
 from src.training.curriculum_rl import CurriculumRLConfig, CurriculumRLSampler
-
 
 
 # ---------------------------------------------------------------------------
@@ -23,9 +21,8 @@ from src.training.curriculum_rl import CurriculumRLConfig, CurriculumRLSampler
 # ---------------------------------------------------------------------------
 
 
-
-
 pytestmark = pytest.mark.integration
+
 
 @pytest.fixture
 def wired_sampler():

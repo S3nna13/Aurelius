@@ -9,10 +9,10 @@ import json
 from src.cli import family_commands as fc
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_build_family_parser_attaches_subparsers():
     parser = argparse.ArgumentParser(prog="aurelius")
@@ -79,10 +79,6 @@ def test_family_compare_integration_reports_manifest_compatibility():
 def test_main_cli_still_starts_with_help():
     """Verify existing CLI startup path still parses (additive rule)."""
     from src.cli import main as cli_main
-
-
-
-
 
     parser = cli_main._build_parser()
     # Should still have the pre-existing commands at minimum.

@@ -12,11 +12,10 @@ from src.eval import (
 from src.eval.crescendo_probe import stub_judge_fn
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def _synthetic_target(history):
     turn = sum(1 for m in history if m.get("role") == "user")
@@ -54,6 +53,3 @@ def test_3_turn_probe_against_synthetic_target_and_judge():
         assert isinstance(t.attacker_message, str) and t.attacker_message
         assert isinstance(t.target_response, str) and t.target_response
         assert {"success", "score", "rationale"} == set(t.judge_verdict)
-
-
-

@@ -9,11 +9,10 @@ from src.cli import benchmark_runner as BR
 from src.eval.ifeval_scorer import IFEvalConstraint, IFEvalProblem
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 class BenchmarkRunnerIntegrationTests(unittest.TestCase):
     def test_exposed_via_src_cli(self):
@@ -73,6 +72,3 @@ class BenchmarkRunnerIntegrationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-
-

@@ -11,11 +11,10 @@ from agent.session_manager import SessionManager
 from src.model import AureliusInterfaceFramework
 
 
-
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
@@ -212,6 +211,3 @@ def test_main_session_journal_commands_run_end_to_end(tmp_path, capsys):
     assert rc == 0
     assert session_payload["journal"]["entries"] >= 1
     assert session_payload["journal"]["branches"] >= 1
-
-
-

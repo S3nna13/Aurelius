@@ -5,17 +5,16 @@ from __future__ import annotations
 from src.model.config import AureliusConfig
 from src.runtime.feature_flags import FEATURE_FLAG_REGISTRY, FeatureFlag
 from src.safety import (
-
     SAFETY_FILTER_REGISTRY,
     CanaryDetection,
     CanaryTokenGuard,
 )
 
 
-
 import pytest
 
 pytestmark = pytest.mark.integration
+
 
 def test_registry_contains_canary_token_guard_entry() -> None:
     assert "canary_token_guard" in SAFETY_FILTER_REGISTRY
@@ -94,6 +93,3 @@ def test_tool_output_wrap_then_scan_echo_detected() -> None:
     detection = guard.scan(wrapped, {token})
     assert detection.leaked is True
     assert detection.leaked_tokens == [token]
-
-
-

@@ -5,7 +5,7 @@ import pytest
 
 from src.multimodal.voice_engine import VoiceConfig, VoiceEngine, VoiceEngineState
 
-pytestmark = pytest.mark.skipif(sys.platform != 'darwin', reason='requires macOS')
+pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="requires macOS")
 
 
 class TestVoiceEngine:
