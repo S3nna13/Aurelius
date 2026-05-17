@@ -5,7 +5,7 @@ import os
 import re
 import threading
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 
 class HistoryError(ValueError):

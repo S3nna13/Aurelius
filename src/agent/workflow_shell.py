@@ -6,7 +6,7 @@ import json
 import uuid
 from collections.abc import Iterable, Mapping
 from dataclasses import asdict, dataclass, field, replace
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from src.model.interface_framework import (
@@ -37,7 +37,7 @@ _ALLOW_DECISIONS = {"allow", "allow_once", "allow_for_thread", "allow_for_scope"
 
 
 def _utc_now() -> str:
-    return datetime.now(UTC).isoformat()
+    return datetime.now(timezone.utc).isoformat()
 
 
 def _require_non_empty(value: str, field_name: str) -> str:

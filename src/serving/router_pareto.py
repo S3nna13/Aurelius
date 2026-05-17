@@ -1,4 +1,5 @@
 """
+from __future__ import annotations
 Pareto Frontier Router — v4 Enhancement
 Dynamic multi-backend selection optimizing Quality/Cost/Latency tradeoff.
 
@@ -10,6 +11,7 @@ Key idea:
   Build empirical frontier from historical request data and select knee-point
   or constraint-based (budget/latency) point.
 """
+from __future__ import annotations
 
 import logging
 import time

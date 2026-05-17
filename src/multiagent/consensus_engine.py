@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass
-from enum import StrEnum
+from src._compat import StrEnum
 
 
 class ConsensusMethod(StrEnum):

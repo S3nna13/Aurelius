@@ -5,7 +5,7 @@ import math
 import os
 import uuid
 from dataclasses import asdict, dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 try:
     from torch import Tensor

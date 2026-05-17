@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 
 @dataclass
@@ -50,7 +50,7 @@ class ReportGenerator:
         lines.append(f"# {self.config.title}")
         lines.append("")
         lines.append(f"**Author:** {self.config.author}")
-        lines.append(f"**Date:** {datetime.now(UTC).strftime('%Y-%m-%d %H:%M UTC')}")
+        lines.append(f"**Date:** {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M timezone.utc')}")
         if self.config.company:
             lines.append(f"**Company:** {self.config.company}")
         lines.append("")
@@ -93,7 +93,7 @@ class ReportGenerator:
             "report": {
                 "title": self.config.title,
                 "author": self.config.author,
-                "date": datetime.now(UTC).isoformat(),
+                "date": datetime.now(timezone.utc).isoformat(),
                 "company": self.config.company,
             },
             "summary": self.summary_stats(),

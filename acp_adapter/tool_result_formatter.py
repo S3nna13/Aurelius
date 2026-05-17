@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import traceback
-from enum import StrEnum
+from src._compat import StrEnum
 from typing import Any
 
 _TRUNCATION_LIMIT = 10_000  # characters

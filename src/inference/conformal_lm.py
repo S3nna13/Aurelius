@@ -10,6 +10,7 @@ References:
     Angelopoulos et al. 2020 (RAPS) — https://arxiv.org/abs/2009.14193
     Kumar et al. 2023 (LLM conformal) — various works
 """
+from __future__ import annotations
 
 import math
 

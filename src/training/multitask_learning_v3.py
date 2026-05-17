@@ -2,6 +2,7 @@
 Auxiliary Task / Multi-Task Learning
 Shared backbone with task-specific heads, gradient surgery, and dynamic task weighting.
 """
+from __future__ import annotations
 
 from dataclasses import dataclass
 

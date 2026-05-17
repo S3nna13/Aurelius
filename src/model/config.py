@@ -1,5 +1,6 @@
 """Aurelius 1.3B model configuration.
 
+from __future__ import annotations
 Backbone runtime config for one variant — model architecture fields only.
 Feature flags have been migrated to per-surface registries in
 src/runtime/surface_flags.py and are looked up via FeatureFlagRegistry.
@@ -10,6 +11,7 @@ Per v8 mandate: "AureliusConfig is the backbone runtime config for one variant,
 not a dumping ground. Prefer family manifests, variant configs, adapters, or
 downstream surface configs over adding booleans to the backbone config."
 """
+from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any

@@ -6,6 +6,7 @@ Run: python -m src.serving.web_ui --port 7860
 Opens a browser chat interface at http://localhost:7860
 Chat messages are proxied to the configured API server.
 """
+from __future__ import annotations
 
 import argparse
 import ipaddress

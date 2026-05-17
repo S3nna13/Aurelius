@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import re
 from dataclasses import dataclass
-from enum import StrEnum
+from src._compat import StrEnum
 from pathlib import Path
 
 _SAFE_KEY_RE = re.compile(r"^[A-Za-z0-9_-]+$")

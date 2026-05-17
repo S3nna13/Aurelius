@@ -1,4 +1,5 @@
 """
+from __future__ import annotations
 Infini-Attention — arXiv:2404.07143
 "Leave No Context Behind: Efficient Infinite Context Transformers with Infini-attention"
 Google, 2024.
@@ -15,6 +16,7 @@ Variable names mirror the paper's notation (Section 2):
   β                — learned gate scalar per head (in (0, 1) after sigmoid)
   ε                — numerical stability epsilon
 """  # noqa: E501
+from __future__ import annotations
 
 import math
 

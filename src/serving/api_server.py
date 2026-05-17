@@ -12,6 +12,7 @@ Endpoints:
   GET  /openapi.json          — OpenAPI 3.1 specification
   GET  /docs                  — Swagger UI documentation
 """
+from __future__ import annotations
 
 import hashlib
 import json

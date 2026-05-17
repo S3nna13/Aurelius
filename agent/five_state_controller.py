@@ -22,7 +22,7 @@ import threading
 import time
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
-from enum import StrEnum
+from src._compat import StrEnum
 
 
 class AgentState(StrEnum):

@@ -3,6 +3,7 @@
 Implements GAE-Lambda (Schulman et al., 2016) for computing advantages
 and value targets used in Proximal Policy Optimization training.
 """
+from __future__ import annotations
 
 from dataclasses import dataclass
 

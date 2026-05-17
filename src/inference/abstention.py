@@ -4,6 +4,7 @@ When the model is uncertain about a response, it can choose to abstain rather th
 produce an unreliable answer. Uncertainty is measured via token entropy, Monte Carlo
 dropout, and semantic clustering of sampled responses.
 """
+from __future__ import annotations
 
 import math
 

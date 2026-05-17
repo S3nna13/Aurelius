@@ -9,18 +9,18 @@ from dataclasses import dataclass, field
 from typing import Any
 
 
-@dataclass(slots=True)
+@dataclass
 class _HistogramState:
     values: deque[float] = field(default_factory=lambda: deque(maxlen=10_000))
 
 
-@dataclass(slots=True)
+@dataclass
 class _GaugeState:
     value: float = 0.0
     last_update: float = field(default_factory=time.time)
 
 
-@dataclass(slots=True)
+@dataclass
 class _CounterState:
     value: float = 0.0
 

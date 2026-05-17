@@ -19,7 +19,7 @@ import json
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field, fields
-from enum import StrEnum
+from src._compat import StrEnum
 from typing import Any
 
 __all__ = [

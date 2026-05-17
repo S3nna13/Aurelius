@@ -6,7 +6,7 @@ import math
 import time
 from collections import deque
 from dataclasses import dataclass, field
-from enum import StrEnum
+from src._compat import StrEnum
 
 
 class MetricType(StrEnum):

@@ -172,7 +172,7 @@ def mock_kaggle_sentiment_data(n: int = 4) -> list[dict]:
             {
                 "target": target,
                 "id": str(1000 + i),
-                "date": f"Mon Apr {i + 1:02d} 12:00:00 UTC 2024",
+                "date": f"Mon Apr {i + 1:02d} 12:00:00 timezone.utc 2024",
                 "flag": "NO_QUERY",
                 "user": f"user_{i}",
                 "text": texts[i % len(texts)],

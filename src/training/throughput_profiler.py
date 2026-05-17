@@ -3,6 +3,7 @@ Training Throughput Profiler
 Measures and analyzes training efficiency: tokens/sec, flops/sec, memory usage,
 step time breakdown, and bottleneck identification.
 """
+from __future__ import annotations
 
 import time
 from dataclasses import dataclass

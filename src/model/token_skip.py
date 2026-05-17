@@ -7,6 +7,7 @@ decides at each layer whether each token should continue processing.
 Inspired by: Schuster et al. 2022 (Confident Adaptive Language Modeling)
              Elbayad et al. 2020 (Depth-Adaptive Transformer)
 """
+from __future__ import annotations
 
 from typing import Any
 

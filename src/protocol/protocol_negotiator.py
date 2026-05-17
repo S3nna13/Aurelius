@@ -11,7 +11,7 @@ Pure stdlib only.  No external dependencies.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import StrEnum
+from src._compat import StrEnum
 
 # ---------------------------------------------------------------------------
 # ProtocolVersion

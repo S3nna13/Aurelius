@@ -36,7 +36,7 @@ import re
 import sys
 from collections.abc import Mapping
 from dataclasses import dataclass
-from enum import StrEnum
+from src._compat import StrEnum
 
 # --------------------------------------------------------------------------- #
 # Exceptions

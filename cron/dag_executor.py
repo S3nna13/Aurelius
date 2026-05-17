@@ -2,7 +2,7 @@ import time
 from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import StrEnum
+from src._compat import StrEnum
 from typing import Any
 
 

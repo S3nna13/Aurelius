@@ -1,5 +1,6 @@
 """Safe archive extraction (zip-slip and tar-slip prevention). AUR-SEC-2026-0014. STRIDE: Tampering, EoP. CWE-22."""  # noqa: E501
 
+from __future__ import annotations
 import logging
 import tarfile
 import zipfile

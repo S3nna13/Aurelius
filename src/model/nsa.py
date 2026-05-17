@@ -1,4 +1,5 @@
 """
+from __future__ import annotations
 Native Sparse Attention (NSA) — arXiv:2502.11089
 "Native Sparse Attention: Hardware-Aligned and Natively Trainable Sparse Attention"
 
@@ -15,6 +16,7 @@ Variable naming mirrors the paper wherever possible:
   s_b            — block-level importance score
   alpha, beta, gamma — gating weights (sum to 1 via softmax)
 """
+from __future__ import annotations
 
 import math
 

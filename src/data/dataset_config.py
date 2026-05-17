@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class DatasetSource:
     """A single data source in the training mix."""
 
@@ -24,7 +24,7 @@ class DatasetSource:
     description: str = ""
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class DataMixConfig:
     """Complete data mix specification for a training run."""
 

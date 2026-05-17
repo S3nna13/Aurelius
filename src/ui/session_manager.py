@@ -347,5 +347,5 @@ def _format_timestamp(ts: float) -> str:
     """Format a Unix timestamp as a human-readable local time string."""
     import datetime
 
-    dt = datetime.datetime.fromtimestamp(ts, tz=datetime.UTC)
+    dt = datetime.datetime.fromtimestamp(ts, tz=datetime.now().astimezone().tzname())
     return dt.strftime("%Y-%m-%d %H:%M:%S")

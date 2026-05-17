@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 from dataclasses import dataclass
-from enum import StrEnum
+from src._compat import StrEnum
 
 __all__ = [
     "ProviderResponse",

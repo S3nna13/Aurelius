@@ -14,7 +14,7 @@ secondary. Collaboration is required when two or more secondaries trigger.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import StrEnum
+from src._compat import StrEnum
 
 
 class PersonalityType(StrEnum):

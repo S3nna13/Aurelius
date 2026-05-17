@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import collections
 from dataclasses import dataclass
-from enum import StrEnum
+from src._compat import StrEnum
 from pathlib import Path
 
 

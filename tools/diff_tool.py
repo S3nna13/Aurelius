@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import difflib
 from dataclasses import dataclass
-from enum import StrEnum
+from src._compat import StrEnum
 from pathlib import Path
 
 

@@ -14,7 +14,7 @@ from dataclasses import dataclass
 import torch
 
 
-@dataclass(slots=True)
+@dataclass
 class Block:
     block_id: int
     num_tokens: int

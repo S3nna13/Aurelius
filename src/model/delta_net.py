@@ -1,5 +1,6 @@
 """DeltaNet — Delta Rule Linear Transformer (Yang et al., arXiv:2406.06484).
 
+from __future__ import annotations
 Reference: "Parallelizing Linear Transformers with the Delta Rule over
            Sequence Length", Yang et al., 2024.
 
@@ -15,6 +16,7 @@ Output at each step: o_t = W_t q_t.
 
 This formulation is recurrent (O(1) state size) and causal by construction.
 """
+from __future__ import annotations
 
 import torch
 import torch.nn as nn

@@ -4,6 +4,7 @@ RoPE encodes position by rotating query/key vectors in 2D subspaces using
 complex-valued frequencies, enabling relative position awareness without
 explicit position encodings.
 """
+from __future__ import annotations
 
 import math
 from dataclasses import dataclass

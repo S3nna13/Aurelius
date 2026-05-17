@@ -7,8 +7,8 @@ import hashlib
 import json
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, datetime
-from enum import StrEnum
+from datetime import datetime, timezone
+from src._compat import StrEnum
 
 
 class PolicyDecision(StrEnum):
@@ -36,7 +36,7 @@ class AuditEntry:
         input_text: str = "",
     ) -> AuditEntry:
         entry_id = uuid.uuid4().hex[:8]
-        timestamp = datetime.now(UTC).isoformat()
+        timestamp = datetime.now(timezone.utc).isoformat()
         input_hash = ""
         if input_text:
             input_hash = hashlib.sha256(input_text.encode()).hexdigest()[:16]

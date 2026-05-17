@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import struct
-from enum import StrEnum
+from src._compat import StrEnum
 from typing import Any
 
 import torch

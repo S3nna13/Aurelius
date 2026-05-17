@@ -1,3 +1,4 @@
+from __future__ import annotations
 """Tests for a standalone TokenAttributor utility.
 
 Since src/interpretability/token_attribution.py already contains a
@@ -6,10 +7,9 @@ from a lightweight helper module. We test the module-level constructs
 described in the cycle-148 spec via a thin adapter defined here.
 """
 
-from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import StrEnum
+from src._compat import StrEnum
 
 # ---------------------------------------------------------------------------
 # Inline implementation for spec-compliant TokenAttributor

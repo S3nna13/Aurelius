@@ -1,5 +1,6 @@
 """Curated system prompt library for Aurelius personas."""
 
+from __future__ import annotations
 SYSTEM_PROMPTS: dict[str, str] = {
     "default": (
         "You are Aurelius, a helpful, harmless, and honest AI assistant. "

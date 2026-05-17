@@ -56,7 +56,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class PipelineConfig:
     """All tunables for the Aurelius data pipeline."""
 

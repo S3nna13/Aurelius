@@ -28,14 +28,14 @@ except ImportError:  # pragma: no cover - optional dependency fallback
 from src.cli.agent_router import AgentMode, AgentRouter
 
 
-@dataclass(slots=True)
+@dataclass
 class WorkspaceRecord:
     id: str
     path: str
     created_at: float
 
 
-@dataclass(slots=True)
+@dataclass
 class AgentPreview:
     agent_id: str
     mode: str

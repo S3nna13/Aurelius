@@ -3,6 +3,7 @@
 Provides exponential jitter backoff for 429/5xx retry logic and thread-safe
 token bucket primitives for both global and per-user rate limits.
 """
+from __future__ import annotations
 
 import random
 import threading

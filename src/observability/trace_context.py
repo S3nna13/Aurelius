@@ -14,7 +14,7 @@ _trace_ctx_var: ContextVar[TraceContext | None] = ContextVar("trace_context", de
 _trace_local = threading.local()
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class TraceContext:
     """Immutable distributed tracing context.
 

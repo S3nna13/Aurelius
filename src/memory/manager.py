@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import asdict, dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from .episodic_memory import EpisodicMemory
@@ -30,7 +30,7 @@ def _parse_dt(val: str | None) -> datetime:
         return val
     if val:
         return datetime.fromisoformat(val)
-    return datetime.now(UTC)
+    return datetime.now(timezone.utc)
 
 
 class MemoryManager:

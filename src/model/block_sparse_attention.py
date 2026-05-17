@@ -1,5 +1,6 @@
 """Block-sparse attention patterns: efficient attention over long sequences using BigBird/block-sparse structure."""  # noqa: E501
 
+from __future__ import annotations
 import math
 from dataclasses import dataclass
 

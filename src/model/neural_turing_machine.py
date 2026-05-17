@@ -1,8 +1,10 @@
 """
+from __future__ import annotations
 Neural Turing Machine (NTM)
 A differentiable memory-augmented network.
 Reference: Graves et al., "Neural Turing Machines" (2014), arXiv:1410.5401
 """
+from __future__ import annotations
 
 from dataclasses import dataclass
 

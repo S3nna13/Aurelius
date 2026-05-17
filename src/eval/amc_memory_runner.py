@@ -12,12 +12,12 @@ import json
 import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 
 from src.eval.amc_memory_benchmark import AMCMemoryBenchmark
 
 GeneratorName = Literal["oracle", "null", "engine"]
-EngineBuilder = Callable[..., tuple[Callable[[Any], str], str, object | None]]
+EngineBuilder = Callable[..., tuple[Callable[[Any], str], str, Optional[object]]]
 
 
 def _parse_tasks(raw: str | None) -> list[str] | None:

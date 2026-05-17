@@ -1,4 +1,5 @@
 """
+from __future__ import annotations
 Ring Attention with Blockwise Transformers for Near-Infinite Context.
 
 Reference: arXiv:2310.01889
@@ -20,6 +21,7 @@ Variable notation follows the paper where possible:
   - lse_i      : running log-sum-exp accumulator for block i
   - O_i        : running output accumulator for block i
 """
+from __future__ import annotations
 
 import math
 

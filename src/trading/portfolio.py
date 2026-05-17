@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 import statistics
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 PORTFOLIO_REGISTRY: dict[str, Portfolio] = {}
@@ -36,7 +36,7 @@ class Trade:
     side: OrderSide
     quantity: float
     price: float
-    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     trade_id: str = ""
     commission: float = 0.0
     pnl: float = 0.0
@@ -90,7 +90,7 @@ class Portfolio:
         self.positions: dict[str, Position] = {}
         self.trades: list[Trade] = []
         self._equity_curve: list[float] = [initial_cash]
-        self._timestamps: list[datetime] = [datetime.now(UTC)]
+        self._timestamps: list[datetime] = [datetime.now(timezone.utc)]
 
     def buy(self, symbol: str, quantity: float, price: float) -> Trade:
         cost = quantity * price
@@ -206,7 +206,7 @@ class Portfolio:
 
     def _update_equity(self) -> None:
         self._equity_curve.append(self.total_equity())
-        self._timestamps.append(datetime.now(UTC))
+        self._timestamps.append(datetime.now(timezone.utc))
 
     def _compute_sharpe(self, risk_free: float = 0.0) -> float:
         if len(self._equity_curve) < 2:

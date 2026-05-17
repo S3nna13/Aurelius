@@ -3,6 +3,7 @@
 Implements Swayamdipta et al. 2020: characterizing examples as easy-to-learn,
 ambiguous, or hard-to-learn based on per-epoch confidence and correctness.
 """
+from __future__ import annotations
 
 import math
 from dataclasses import dataclass

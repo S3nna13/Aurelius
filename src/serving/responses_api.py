@@ -11,7 +11,7 @@ import time
 import uuid
 from collections.abc import Generator
 from dataclasses import dataclass, field
-from enum import StrEnum
+from src._compat import StrEnum
 from typing import ClassVar, Literal
 
 __all__ = [

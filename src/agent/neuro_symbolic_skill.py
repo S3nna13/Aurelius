@@ -33,7 +33,7 @@ import logging
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import StrEnum, auto
+from src._compat import StrEnum, auto
 from typing import Any
 
 __all__ = [

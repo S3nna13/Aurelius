@@ -23,7 +23,7 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -65,7 +65,7 @@ ATTACK_CATEGORIES: dict[str, list[str]] = {
 SUCCESS_RATE_THRESHOLD: float = 5.0  # percent
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class RedTeamConfig:
     """Configuration for red-team evaluation."""
 
@@ -355,7 +355,7 @@ def run_red_team(config: RedTeamConfig | None = None) -> RedTeamReport:
 
     config.results_dir.mkdir(parents=True, exist_ok=True)
 
-    timestamp = datetime.now(tz=UTC).isoformat()
+    timestamp = datetime.now(tz=timezone.utc).isoformat()
     start = time.monotonic()
 
     logger.info("Starting red-team evaluation for model: %s", config.model_name)
@@ -398,7 +398,7 @@ def _save_report(report: RedTeamReport, results_dir: Path) -> None:
     results_dir.mkdir(parents=True, exist_ok=True)
 
     # Timestamped filename
-    ts = datetime.now(tz=UTC).strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S")
 
     json_path = results_dir / f"red_team_{ts}.json"
     json_path.write_text(

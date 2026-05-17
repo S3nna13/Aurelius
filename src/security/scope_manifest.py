@@ -9,7 +9,7 @@ import ipaddress
 import os
 import re
 from dataclasses import dataclass, field
-from enum import StrEnum
+from src._compat import StrEnum
 
 try:
     from src.security import SECURITY_REGISTRY

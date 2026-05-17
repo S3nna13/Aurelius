@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from collections import deque
 from dataclasses import dataclass, field
-from enum import StrEnum
+from src._compat import StrEnum
 
 
 class RelationType(StrEnum):

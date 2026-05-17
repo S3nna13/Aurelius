@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import threading
 import time
-from enum import StrEnum
+from src._compat import StrEnum
 
 
 class ShedPolicy(StrEnum):

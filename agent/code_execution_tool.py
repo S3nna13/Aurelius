@@ -13,7 +13,7 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass, field
-from enum import StrEnum
+from src._compat import StrEnum
 
 __all__ = [
     "ExecutionLanguage",

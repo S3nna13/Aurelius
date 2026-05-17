@@ -1,5 +1,6 @@
 """Composable pipeline of logit transformations applied before sampling."""
 
+from __future__ import annotations
 from abc import ABC, abstractmethod
 
 import torch

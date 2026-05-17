@@ -26,7 +26,7 @@ from typing import Any
 APPROX_CHARS_PER_TOKEN = 4
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class AMCMemoryExample:
     """Single AMC benchmark example."""
 

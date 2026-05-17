@@ -16,7 +16,7 @@ import threading
 import time
 from collections import OrderedDict
 from dataclasses import dataclass
-from enum import StrEnum
+from src._compat import StrEnum
 
 
 class CachePolicy(StrEnum):

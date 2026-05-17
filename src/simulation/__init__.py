@@ -1,5 +1,6 @@
 """Aurelius simulation surface: agent environment simulation and episode recording."""
 
+from __future__ import annotations
 __all__ = [
     "EnvState",
     "EnvAction",

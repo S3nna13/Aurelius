@@ -9,6 +9,7 @@ References:
   - QK-Norm: Henry et al. / used in many modern LLMs
   - ScaleNorm: Nguyen & Salazar, 2019
 """
+from __future__ import annotations
 
 import math
 

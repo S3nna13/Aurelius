@@ -13,7 +13,7 @@ import re
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from enum import StrEnum
+from src._compat import StrEnum
 
 # ── Data model ────────────────────────────────────────────────────────────────
 

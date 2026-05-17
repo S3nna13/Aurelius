@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from collections import Counter
 from dataclasses import dataclass
-from enum import StrEnum
+from src._compat import StrEnum
 
 _STOPWORDS = {
     "a",

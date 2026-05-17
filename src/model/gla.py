@@ -1,5 +1,6 @@
 """GLA — Gated Linear Attention (Yang et al. 2024).
 
+from __future__ import annotations
 Reference: "Gated Linear Attention Transformers with Hardware-Efficient Training"
            Yang et al., 2024.
 
@@ -15,6 +16,7 @@ Recurrent state update:
 where G_t = sigmoid(gate_proj(x_t)) is in (0, 1)^{head_dim × head_dim},
 broadcast over the outer-product state.
 """
+from __future__ import annotations
 
 import torch
 import torch.nn as nn

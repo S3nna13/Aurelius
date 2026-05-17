@@ -3,6 +3,7 @@
 Supports micro-batching, gradient synchronization, and loss scaling for
 memory-constrained hardware.
 """
+from __future__ import annotations
 
 import math
 from typing import Any

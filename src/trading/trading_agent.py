@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 import time
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 from src.trading.portfolio import OrderSide, OrderStatus, Portfolio
@@ -46,7 +46,7 @@ class Order:
     order_id: str = ""
     filled_quantity: float = 0.0
     avg_fill_price: float = 0.0
-    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     filled_at: datetime | None = None
 
     @property
@@ -154,7 +154,7 @@ class TradingAgent:
         order.status = OrderStatus.FILLED
         order.filled_quantity = qty
         order.avg_fill_price = price
-        order.filled_at = datetime.now(UTC)
+        order.filled_at = datetime.now(timezone.utc)
         return order
 
     def _in_cooldown(self, symbol: str) -> bool:

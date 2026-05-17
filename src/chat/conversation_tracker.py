@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 
@@ -16,7 +16,7 @@ class Turn:
 
     def __post_init__(self) -> None:
         if not self.timestamp:
-            self.timestamp = datetime.now(UTC).isoformat()
+            self.timestamp = datetime.now(timezone.utc).isoformat()
 
 
 @dataclass

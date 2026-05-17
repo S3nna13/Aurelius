@@ -1,5 +1,6 @@
 # Canonical serving package. Backward-compat shim lives in gateway/__init__.py
 
+from __future__ import annotations
 from .agent_cockpit import *  # noqa: F401, F403
 from .agentic_runtime import *  # noqa: F401, F403
 from .api_server import *  # noqa: F401, F403

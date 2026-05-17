@@ -4,6 +4,7 @@ Provides ScalarValue (single float with autograd), ScalarNeuron, ScalarLayer,
 and ScalarMLP — a minimal neural network stack backed entirely by scalar ops.
 Useful for verifying gradient correctness and tracing computation graphs.
 """
+from __future__ import annotations
 
 import math
 from collections.abc import Callable

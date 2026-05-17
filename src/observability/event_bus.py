@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class Event:
     """Immutable agent event."""
 

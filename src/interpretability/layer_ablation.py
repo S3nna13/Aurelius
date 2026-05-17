@@ -15,7 +15,7 @@ from __future__ import annotations
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from enum import StrEnum
+from src._compat import StrEnum
 
 import torch
 import torch.nn as nn

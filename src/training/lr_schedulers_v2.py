@@ -4,6 +4,7 @@ Comprehensive learning rate schedulers for Aurelius LLM training.
 Pure PyTorch / stdlib only — no transformers, einops, trl, xformers, flash_attn,
 bitsandbytes, peft, diffusers, datasets, accelerate, or deepspeed.
 """
+from __future__ import annotations
 
 import math
 from typing import Any

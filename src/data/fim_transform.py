@@ -37,7 +37,7 @@ class FIMMode(Enum):
     SPM = auto()  # Suffix-Prefix-Middle
 
 
-@dataclass(slots=True)
+@dataclass
 class FIMConfig:
     """Knobs for the FIM transformation."""
 
@@ -60,7 +60,7 @@ class FIMConfig:
 # ---------------------------------------------------------------------------
 
 
-@dataclass(slots=True)
+@dataclass
 class FIMResult:
     """Result of a single FIM transformation."""
 

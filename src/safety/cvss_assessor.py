@@ -7,7 +7,7 @@ the `cvss` library; uses a static severity -> score table and vector parsing.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import StrEnum
+from src._compat import StrEnum
 
 
 class CVSSVersion(StrEnum):

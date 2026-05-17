@@ -1,11 +1,12 @@
 """Persistent cross-session semantic memory for the Aurelius platform."""
 
+from __future__ import annotations
 import json
 import math
 import os
 import uuid
 from dataclasses import asdict, dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 try:
     from torch import Tensor
@@ -68,7 +69,7 @@ class MemoryStore:
             id=entry_id,
             content=content,
             embedding=embedding,
-            created_at=datetime.now(UTC).isoformat(),
+            created_at=datetime.now(timezone.utc).isoformat(),
             tags=tags if tags is not None else [],
             importance=importance,
         )

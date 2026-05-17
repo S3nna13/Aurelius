@@ -1,7 +1,7 @@
 """Streaming tool-call accumulation: partial JSON, delta events, finalization."""
 
 import json
-from enum import StrEnum
+from src._compat import StrEnum
 
 
 class ToolCallState(StrEnum):

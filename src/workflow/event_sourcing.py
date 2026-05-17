@@ -4,7 +4,7 @@ import json
 import time
 import uuid
 from dataclasses import dataclass
-from enum import StrEnum
+from src._compat import StrEnum
 
 
 class EventType(StrEnum):

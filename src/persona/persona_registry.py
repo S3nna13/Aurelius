@@ -28,7 +28,7 @@ class PersonaAlreadyRegisteredError(KeyError):
     pass
 
 
-@dataclass(slots=True)
+@dataclass
 class Persona:
     """Compatibility persona record used by older callers.
 

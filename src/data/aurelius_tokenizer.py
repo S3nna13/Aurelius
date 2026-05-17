@@ -26,7 +26,7 @@ __all__ = [
 ]
 
 
-@dataclass(slots=True)
+@dataclass
 class TokenizerConfig:
     """Minimal configuration for the compatibility tokenizer."""
 

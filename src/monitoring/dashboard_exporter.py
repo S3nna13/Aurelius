@@ -6,7 +6,7 @@ import csv
 import io
 import json
 from dataclasses import dataclass
-from enum import StrEnum
+from src._compat import StrEnum
 
 
 class ExportFormat(StrEnum):

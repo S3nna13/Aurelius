@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC
+from datetime import timezone
 
 
 @dataclass
@@ -28,7 +28,7 @@ class HoneytokenManager:
         token = Honeytoken(
             token=token_str,
             location=location,
-            created=datetime.now(UTC).isoformat(),
+            created=datetime.now(timezone.utc).isoformat(),
         )
         self._tokens[token_str] = token
         return token
@@ -40,7 +40,7 @@ class HoneytokenManager:
         from datetime import datetime
 
         token.accessed = True
-        token.access_time = datetime.now(UTC).isoformat()
+        token.access_time = datetime.now(timezone.utc).isoformat()
         token.access_source = source
         return token
 

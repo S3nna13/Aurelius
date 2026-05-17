@@ -6,7 +6,7 @@ import time
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass, field
-from enum import StrEnum
+from src._compat import StrEnum
 
 # Import the monitoring registry lazily to avoid circular imports.
 # The registry is populated at module level below.

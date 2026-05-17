@@ -1,5 +1,6 @@
 """Aurelius multi-agent surface: orchestration, routing, and agent pool."""
 
+from __future__ import annotations
 __all__ = [
     "AgentSpec",
     "Orchestrator",

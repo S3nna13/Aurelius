@@ -1,7 +1,8 @@
 """Gradient checkpointing manager: segment selection, memory estimation, recompute policy."""
 
+from __future__ import annotations
 from dataclasses import dataclass
-from enum import StrEnum
+from src._compat import StrEnum
 
 
 class CheckpointPolicy(StrEnum):

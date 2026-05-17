@@ -42,7 +42,7 @@ import re
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from enum import StrEnum
+from src._compat import StrEnum
 
 # ---------------------------------------------------------------------------
 # Exceptions

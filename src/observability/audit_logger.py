@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class AuditLogEntry:
     """Immutable structured audit log entry."""
 

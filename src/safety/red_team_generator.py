@@ -6,7 +6,7 @@ import json
 import random
 import uuid
 from dataclasses import dataclass, field
-from enum import StrEnum
+from src._compat import StrEnum
 
 
 class AttackCategory(StrEnum):

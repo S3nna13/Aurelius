@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import os
 import tempfile
-from datetime import UTC
+from datetime import timezone
 
 import pytest
 

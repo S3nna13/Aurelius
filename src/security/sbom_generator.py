@@ -29,7 +29,7 @@ import sys
 import tomllib
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -60,9 +60,9 @@ class SBOMResult:
 
 
 def _iso_utc_now() -> str:
-    """Return an ISO-8601 timestamp terminated with ``Z`` (UTC)."""
+    """Return an ISO-8601 timestamp terminated with ``Z`` (timezone.utc)."""
     # datetime.isoformat uses +00:00; swap to Z for CycloneDX style.
-    now = datetime.now(UTC).replace(microsecond=0)
+    now = datetime.now(timezone.utc).replace(microsecond=0)
     return now.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 

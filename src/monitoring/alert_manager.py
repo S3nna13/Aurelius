@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
-from enum import StrEnum
+from datetime import datetime, timezone
+from src._compat import StrEnum
 
 
 class AlertSeverity(StrEnum):
@@ -82,7 +82,7 @@ class AlertManager:
                     severity=rule.severity,
                     metric_value=value,
                     message=msg,
-                    fired_at=datetime.now(UTC).isoformat(),
+                    fired_at=datetime.now(timezone.utc).isoformat(),
                 )
                 self._history.append(alert)
                 self._firing.add(rule.name)

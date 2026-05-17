@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass, field
-from enum import StrEnum
+from src._compat import StrEnum
 from typing import Any
 
 # Re-use existing constrained-decoding types when available.

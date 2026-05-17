@@ -5,7 +5,7 @@ from __future__ import annotations
 import dataclasses
 import uuid
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 
 
 @dataclass
@@ -37,7 +37,7 @@ class EpisodeRecorder:
             env_name=env_name,
             policy_name=policy_name,
             trajectory_data=dataclasses.asdict(trajectory),
-            timestamp=datetime.now(tz=UTC).isoformat(),
+            timestamp=datetime.now(tz=timezone.utc).isoformat(),
             metadata=metadata or {},
         )
         # Evict oldest if over capacity

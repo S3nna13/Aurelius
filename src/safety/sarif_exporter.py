@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from enum import StrEnum
+from src._compat import StrEnum
 
 from .vulnerability_schema import VulnCollection, VulnFinding, VulnSeverity
 

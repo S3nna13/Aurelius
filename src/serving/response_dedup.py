@@ -1,8 +1,9 @@
+from __future__ import annotations
 import hashlib
 import re
 import time
 from dataclasses import dataclass, field
-from enum import StrEnum
+from src._compat import StrEnum
 
 
 class DedupStrategy(StrEnum):

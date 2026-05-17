@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
-from enum import StrEnum
+from datetime import datetime, timezone
+from src._compat import StrEnum
 
 
 class AgentRole(StrEnum):
@@ -31,7 +31,7 @@ class ConversationMessage:
     content: str
     thread_id: str = "main"
     id: str = field(default_factory=lambda: uuid.uuid4().hex[:8])
-    timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 
 class MultiAgentConversation:
