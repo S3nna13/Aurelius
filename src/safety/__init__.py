@@ -171,6 +171,18 @@ from src.safety.prism_security_layer import (
     PRISMSecurityLayer,
     RiskRecord,
 )
+from src.safety.claw_keeper import (
+    Capability,
+    ClawKeeper,
+    EnforcementAction,
+    PluginRuntimeEnforcer,
+    SkillPolicy,
+    SkillPolicyEngine,
+    ThreatLevel,
+    ThreatRecord,
+    WatchState,
+    WatcherMiddleware,
+)
 
 SAFETY_FILTER_REGISTRY: dict = {}
 HARM_CLASSIFIER_REGISTRY: dict = {}
@@ -194,6 +206,7 @@ SAFETY_FILTER_REGISTRY["output_sanitizer"] = OutputSanitizer
 SAFETY_FILTER_REGISTRY["policy_audit"] = PolicyAuditLog
 SAFETY_FILTER_REGISTRY["clawdrain_detector"] = ClawdrainDetector
 SAFETY_FILTER_REGISTRY["prism_security_layer"] = PRISMSecurityLayer
+SAFETY_FILTER_REGISTRY["claw_keeper"] = ClawKeeper
 
 HARM_CLASSIFIER_REGISTRY["harm_taxonomy"] = HarmTaxonomyClassifier
 HARM_CLASSIFIER_REGISTRY["refusal"] = RefusalClassifier
@@ -283,4 +296,14 @@ __all__ = [
     "AuditEntry",
     "PolicyAuditLog",
     "POLICY_AUDIT_LOG",
+    "Capability",
+    "ClawKeeper",
+    "EnforcementAction",
+    "PluginRuntimeEnforcer",
+    "SkillPolicy",
+    "SkillPolicyEngine",
+    "ThreatLevel",
+    "ThreatRecord",
+    "WatchState",
+    "WatcherMiddleware",
 ]
