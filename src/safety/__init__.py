@@ -183,6 +183,12 @@ from src.safety.claw_keeper import (
     WatchState,
     WatcherMiddleware,
 )
+from src.safety.quantclaw_gate import (
+    GatingContext,
+    GateDecision,
+    QuantClawGate,
+    QuantLevel,
+)
 
 SAFETY_FILTER_REGISTRY: dict = {}
 HARM_CLASSIFIER_REGISTRY: dict = {}
@@ -207,6 +213,7 @@ SAFETY_FILTER_REGISTRY["policy_audit"] = PolicyAuditLog
 SAFETY_FILTER_REGISTRY["clawdrain_detector"] = ClawdrainDetector
 SAFETY_FILTER_REGISTRY["prism_security_layer"] = PRISMSecurityLayer
 SAFETY_FILTER_REGISTRY["claw_keeper"] = ClawKeeper
+SAFETY_FILTER_REGISTRY["quantclaw_gate"] = QuantClawGate
 
 HARM_CLASSIFIER_REGISTRY["harm_taxonomy"] = HarmTaxonomyClassifier
 HARM_CLASSIFIER_REGISTRY["refusal"] = RefusalClassifier
@@ -306,4 +313,8 @@ __all__ = [
     "ThreatRecord",
     "WatchState",
     "WatcherMiddleware",
+    "QuantClawGate",
+    "GatingContext",
+    "GateDecision",
+    "QuantLevel",
 ]
