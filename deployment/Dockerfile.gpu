@@ -33,7 +33,7 @@ RUN cargo build --release --workspace --bins && \
     cargo build --release --workspace --lib
 
 # ---- Stage 2: vLLM + Python serving stack ----------------------------------
-FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04@sha256:517da2300c184c9999ec203c2665244bdebd3578d12fcc7065e83667932643d9 AS final
+FROM nvidia/cuda:13.2.1-runtime-ubuntu22.04@sha256:f48aa5c157006835b67f43e77bea3dfe32a7d9a46eeb2de3f8af1b5a464d0334 AS final
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONDONTWRITEBYTECODE=1 \
