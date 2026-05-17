@@ -13,7 +13,7 @@ import uuid
 from collections import Counter
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field, replace
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from src.longcontext.context_compaction import ContextCompactor, Turn

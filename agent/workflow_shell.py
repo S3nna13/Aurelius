@@ -6,7 +6,7 @@ import json
 import uuid
 from collections.abc import Iterable, Mapping
 from dataclasses import asdict, dataclass, field, replace
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from src.model.interface_framework import (

@@ -1,7 +1,8 @@
 """CLI debug commands: log level control, trace toggling, memory snapshot."""
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 from src._compat import StrEnum
 
 

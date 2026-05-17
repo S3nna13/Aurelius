@@ -122,7 +122,7 @@ class TutorialEngine:
                 f"User '{user_id}' has already started tutorial '{tutorial_id}'."
             )
 
-        now = datetime.datetime.now(datetime.now(timezone.utc))
+        now = datetime.datetime.now(datetime.UTC)
         progress = TutorialProgress(
             tutorial_id=tutorial_id,
             user_id=user_id,
@@ -188,7 +188,7 @@ class TutorialEngine:
             progress.current_step_id = next_step_id
             next_step = tutorial.steps[step_index + 1]
         else:
-            progress.completed_at = datetime.datetime.now(datetime.now(timezone.utc))
+            progress.completed_at = datetime.datetime.now(datetime.UTC)
 
         return {
             "success": True,

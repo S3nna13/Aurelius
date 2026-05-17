@@ -24,14 +24,14 @@ Example:
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator
-from typing import Any, TypeVar
+from typing import Any, Generic, TypeVar
 
 T = TypeVar("T")
 K = TypeVar("K")
 U = TypeVar("U")
 
 
-class Pipeline[T]:
+class Pipeline(Generic[T]):  # noqa: UP046 - keep parseable on Python <3.12
     """Represents a pipeline of transformations on a sequence of items.
 
     Pipeline supports chaining operations like filter, map, sort, head,
@@ -219,7 +219,7 @@ class Pipeline[T]:
         return f"Pipeline({self._source!r})"
 
 
-def pipeline[T](source: list[T]) -> Pipeline[T]:
+def pipeline(source: list[T]) -> Pipeline[T]:  # noqa: UP047 - keep parseable on Python <3.12
     """Create a new pipeline from a source list.
 
     This is a convenience function that creates a Pipeline instance.
