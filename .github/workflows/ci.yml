@@ -121,10 +121,15 @@ jobs:
 
       - name: Run Bandit
         run: |
-          # Report-only until the known, nosec-documented Bandit backlog is converted to a baseline file.
-          bandit -r src/ agent/ aurelius_cli/ gateway/ acp_adapter/ cron/ plugins/ tools/ scripts/ -f json -o bandit-report.json || true
-          # Human-readable summary: only show issues (not suppressed tests) at low+ severity
-          bandit -r src/ agent/ aurelius_cli/ gateway/ acp_adapter/ cron/ plugins/ tools/ scripts/ -l low || true
+          # Existing low-severity findings are tracked in bandit-baseline.json.
+          # Any new Bandit finding, or any reintroduced medium/high finding, fails CI.
+          bandit -r src/ agent/ aurelius_cli/ gateway/ acp_adapter/ cron/ plugins/ tools/ scripts/ \
+            --baseline bandit-baseline.json \
+            -f json \
+            -o bandit-report.json
+          bandit -r src/ agent/ aurelius_cli/ gateway/ acp_adapter/ cron/ plugins/ tools/ scripts/ \
+            --baseline bandit-baseline.json \
+            --severity-level low
 
       - name: Run pip-audit
         run: |

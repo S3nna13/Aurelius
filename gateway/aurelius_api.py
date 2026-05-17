@@ -386,6 +386,29 @@ _model_id: str = "aurelius-1.3b"
 _rate_limiter: Callable[[str], bool] | None = None
 
 
+def _resolve_tokenizer_revision(model_path: str) -> str | None:
+    """Return a pinned tokenizer revision for remote HuggingFace model IDs.
+
+    Local checkpoint paths do not need a HuggingFace revision. Remote model IDs
+    must set AURELIUS_TOKENIZER_REVISION or AURELIUS_MODEL_REVISION to a commit
+    SHA/tag before tokenizer loading proceeds.
+    """
+    revision = os.environ.get("AURELIUS_TOKENIZER_REVISION") or os.environ.get(
+        "AURELIUS_MODEL_REVISION"
+    )
+    if revision:
+        return revision
+
+    expanded = Path(model_path).expanduser()
+    if expanded.exists() or model_path.startswith((".", "/", "~", "checkpoints/")):
+        return None
+
+    raise RuntimeError(
+        "Remote HuggingFace model IDs require AURELIUS_TOKENIZER_REVISION "
+        "or AURELIUS_MODEL_REVISION pinned to a commit SHA/tag."
+    )
+
+
 @app.on_event("startup")
 async def _load_engine() -> None:
     global _engine, _model_id, _engine_obj, _tokenizer
@@ -431,9 +454,11 @@ async def _load_engine() -> None:
         try:
             from transformers import AutoTokenizer
 
+            tokenizer_revision = _resolve_tokenizer_revision(model_path)
             _tokenizer = AutoTokenizer.from_pretrained(
                 model_path,
                 trust_remote_code=True,
+                revision=tokenizer_revision,
             )
             print("[startup] Tokenizer loaded for batch endpoint")
         except Exception as e:
@@ -582,7 +607,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Aurelius FastAPI inference server")
-    parser.add_argument("--host", default="0.0.0.0", help="Bind host (default: 0.0.0.0)")  # noqa: S104
+    parser.add_argument("--host", default="127.0.0.1", help="Bind host (default: 127.0.0.1)")
     parser.add_argument("--port", type=int, default=8080, help="Bind port (default: 8080)")
     args = parser.parse_args()
     start(host=args.host, port=args.port)

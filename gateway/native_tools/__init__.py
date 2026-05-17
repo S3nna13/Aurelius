@@ -237,8 +237,13 @@ class SandboxedFilesystem:
     Prevents escape to system paths.
     """
 
-    def __init__(self, sandbox_root: str = "/tmp/aurelius_sandbox") -> None:  # noqa: S108  # noqa: S108:  # noqa: S108
-        self.root = Path(sandbox_root).resolve()
+    def __init__(self, sandbox_root: str | Path | None = None) -> None:
+        root = (
+            Path(sandbox_root)
+            if sandbox_root is not None
+            else Path(tempfile.gettempdir()) / "aurelius_sandbox"
+        )
+        self.root = root.resolve()
         self.root.mkdir(parents=True, exist_ok=True)
 
     def _safe_path(self, user_path: str) -> Path:

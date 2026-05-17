@@ -56,7 +56,11 @@ class OptimizerOffloader:
             if not path.exists():
                 continue
 
-            loaded = torch.load(path, weights_only=False)
+            loaded = torch.load(path, weights_only=True)
+            if not isinstance(loaded, dict):
+                raise TypeError(
+                    f"Offloaded optimizer state must be a dict, got {type(loaded).__name__}"
+                )
             self.optimizer.state[param].clear()
             self.optimizer.state[param].update(loaded)
             path.unlink(missing_ok=True)
