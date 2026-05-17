@@ -58,6 +58,7 @@ def test_config_defaults():
     assert cfg.max_prefix_len == 512
     assert cfg.min_prefix_len == 8
     assert cfg.eviction_policy == "lru"
+    assert cfg.max_cache_bytes is None
 
 
 # ---------------------------------------------------------------------------
@@ -315,6 +316,46 @@ def test_prefix_cache_token_and_byte_metrics():
     assert s["tokens_stored"] == 6
     assert s["avg_prefix_len"] == 6
     assert s["bytes_stored"] == estimate_kv_cache_bytes(kv)
+
+
+def test_prefix_cache_byte_budget_evicts_old_entries():
+    kv_a = _make_kv(n_layers=1, n_heads=1, seq_len=4, head_dim=1)
+    kv_b = _make_kv(n_layers=1, n_heads=1, seq_len=4, head_dim=1)
+    entry_bytes = estimate_kv_cache_bytes(kv_a)
+    cfg = PrefixCacheConfig(
+        max_entries=10,
+        min_prefix_len=1,
+        eviction_policy="lru",
+        max_cache_bytes=entry_bytes + 1,
+    )
+    cache = PrefixCache(cfg)
+
+    ids_a = [1, 2, 3, 4]
+    ids_b = [5, 6, 7, 8]
+    cache.put(ids_a, kv_a)
+    cache.put(ids_b, kv_b)
+
+    assert len(cache) == 1
+    assert cfg.max_cache_bytes is not None
+    assert cache.stats()["bytes_stored"] <= cfg.max_cache_bytes
+    kv_a_out, match_a = cache.get(ids_a)
+    kv_b_out, match_b = cache.get(ids_b)
+    assert kv_a_out is None and match_a == 0
+    assert kv_b_out is not None and match_b == len(ids_b)
+
+
+def test_prefix_cache_byte_budget_skips_oversized_entry():
+    kv = _make_kv(n_layers=1, n_heads=1, seq_len=4, head_dim=1)
+    cfg = PrefixCacheConfig(
+        min_prefix_len=1,
+        max_cache_bytes=estimate_kv_cache_bytes(kv) - 1,
+    )
+    cache = PrefixCache(cfg)
+
+    cache.put([1, 2, 3, 4], kv)
+
+    assert len(cache) == 0
+    assert cache.stats()["bytes_stored"] == 0
 
 
 # ---------------------------------------------------------------------------

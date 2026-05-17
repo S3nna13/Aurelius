@@ -25,6 +25,7 @@ class PrefixCacheConfig:
     max_prefix_len: int = 512
     min_prefix_len: int = 8
     eviction_policy: str = "lru"  # "lru" | "lfu"
+    max_cache_bytes: int | None = None
 
 
 @dataclass
@@ -142,6 +143,11 @@ class PrefixCache:
             token_ids = token_ids[: self.cfg.max_prefix_len]
             kv_cache = truncate_kv_cache(kv_cache, self.cfg.max_prefix_len)
 
+        if self.cfg.max_cache_bytes is not None:
+            entry_bytes = estimate_kv_cache_bytes(kv_cache)
+            if entry_bytes > self.cfg.max_cache_bytes:
+                return
+
         key = compute_prefix_hash(token_ids)
 
         if key in self._cache:
@@ -149,6 +155,7 @@ class PrefixCache:
             entry = self._cache[key]
             entry.kv_cache = kv_cache
             entry.last_accessed = time.time()
+            self._evict_to_byte_budget(protected_key=key)
             return
 
         # Evict if at capacity
@@ -163,8 +170,9 @@ class PrefixCache:
             last_accessed=now,
             created_at=now,
         )
+        self._evict_to_byte_budget(protected_key=key)
 
-    def _evict(self) -> None:
+    def _evict(self, protected_key: str | None = None) -> None:
         """Evict one entry per eviction_policy.
 
         LRU: remove entry with smallest last_accessed
@@ -173,18 +181,37 @@ class PrefixCache:
         if not self._cache:
             return
 
+        candidates = [key for key in self._cache if key != protected_key]
+        if not candidates:
+            return
+
         if self.cfg.eviction_policy == "lfu":
             victim_key = min(
-                self._cache,
+                candidates,
                 key=lambda k: (self._cache[k].hit_count, self._cache[k].created_at),
             )
         else:  # default: lru
             victim_key = min(
-                self._cache,
+                candidates,
                 key=lambda k: self._cache[k].last_accessed,
             )
 
         del self._cache[victim_key]
+
+    def _bytes_stored(self) -> int:
+        """Return tensor payload bytes currently stored in the cache."""
+        return sum(estimate_kv_cache_bytes(entry.kv_cache) for entry in self._cache.values())
+
+    def _evict_to_byte_budget(self, protected_key: str | None = None) -> None:
+        """Evict entries until stored KV bytes are within the configured budget."""
+        if self.cfg.max_cache_bytes is None:
+            return
+
+        while self._cache and self._bytes_stored() > self.cfg.max_cache_bytes:
+            size_before = len(self._cache)
+            self._evict(protected_key=protected_key)
+            if len(self._cache) == size_before:
+                break
 
     def clear(self) -> None:
         """Empty the cache."""
@@ -203,7 +230,7 @@ class PrefixCache:
         )
         tokens_stored = sum(len(entry.prefix_ids) for entry in self._cache.values())
         avg_prefix_len = tokens_stored / len(self._cache) if self._cache else 0.0
-        bytes_stored = sum(estimate_kv_cache_bytes(entry.kv_cache) for entry in self._cache.values())
+        bytes_stored = self._bytes_stored()
         return {
             "size": len(self._cache),
             "hits": self._hits,
