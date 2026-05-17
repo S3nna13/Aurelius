@@ -158,6 +158,12 @@ from src.safety.skill_scanner import (
     SkillScanner,
     SkillScanReport,
 )
+from src.safety.clawdrain_detector import (
+    AmplificationVector,
+    ClawdrainDetector,
+    ExhaustionResult,
+    ExhaustionSignal,
+)
 
 SAFETY_FILTER_REGISTRY: dict = {}
 HARM_CLASSIFIER_REGISTRY: dict = {}
@@ -179,6 +185,7 @@ SAFETY_FILTER_REGISTRY["knn_known_bad_guard"] = KnnKnownBadGuard
 SAFETY_FILTER_REGISTRY["jailbreak_v2"] = JailbreakClassifierV2
 SAFETY_FILTER_REGISTRY["output_sanitizer"] = OutputSanitizer
 SAFETY_FILTER_REGISTRY["policy_audit"] = PolicyAuditLog
+SAFETY_FILTER_REGISTRY["clawdrain_detector"] = ClawdrainDetector
 
 HARM_CLASSIFIER_REGISTRY["harm_taxonomy"] = HarmTaxonomyClassifier
 HARM_CLASSIFIER_REGISTRY["refusal"] = RefusalClassifier
