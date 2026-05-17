@@ -85,9 +85,10 @@ logger.addHandler(_log_buffer)
 #: Maximum request body size (1 MiB).
 _MAX_CONTENT_LENGTH = 1_048_576
 
-#: Path to built frontend assets — resolved relative to this file.
-#: Goes up 2 levels: gateway/ → Aurelius root (parent.parent)
-_FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+#: Path to built frontend assets. Prefer the Vite ``dist`` directory when it
+#: exists; otherwise fall back to the checked-in frontend shell used by tests.
+_FRONTEND_ROOT = Path(__file__).resolve().parents[2] / "frontend"
+_FRONTEND_DIST = _FRONTEND_ROOT / "dist" if (_FRONTEND_ROOT / "dist").exists() else _FRONTEND_ROOT
 
 
 class _JSONMixin:

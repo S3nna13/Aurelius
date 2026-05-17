@@ -234,13 +234,13 @@ def test_post_api_chat_proxies_to_configured_upstream(monkeypatch):
                 }
             ).encode("utf-8")
 
-    def fake_urlopen(request, timeout=30):
+    def fake_open_validated_request(request, timeout=30):
         captured["url"] = request.full_url
         captured["body"] = json.loads(request.data.decode("utf-8"))
         captured["timeout"] = timeout
         return _FakeResponse()
 
-    monkeypatch.setattr("src.serving.web_ui.urlopen", fake_urlopen)
+    monkeypatch.setattr("src.serving.web_ui._open_validated_request", fake_open_validated_request)
 
     def unexpected_generate_fn(*args, **kwargs):  # pragma: no cover - defensive
         raise AssertionError("local generate_fn should not be used when api_url is set")

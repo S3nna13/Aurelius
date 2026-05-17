@@ -137,8 +137,10 @@ class PluginSandbox:
     def _check_callable_globals(self, callable_fn: Callable[..., Any]) -> str | None:
         """Return a violation string if *callable_fn*'s globals contain a denied import."""
         globs = getattr(callable_fn, "__globals__", {})
+        code = getattr(callable_fn, "__code__", None)
+        used_names: set[str] = set(code.co_names) if code is not None else set()
         for name in self.config.denied_imports:
-            if name in globs:
+            if name in globs and name in used_names:
                 return f"denied import: {name}"
         return None
 

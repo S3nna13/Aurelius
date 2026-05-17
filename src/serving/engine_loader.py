@@ -1,7 +1,8 @@
 """Engine loader — selects and instantiates the inference backend.
 
 Provides :func:`build_engine`, which returns a ``generate_fn`` with the
-signature ``Callable[[ChatRequest], str]`` and a backend label string.
+signature ``Callable[[ChatRequest], str]``, a backend label string, and the
+underlying engine object when one exists.
 """
 
 from __future__ import annotations
@@ -45,8 +46,8 @@ def build_engine(
     speculative_decoding: bool = False,
     n_spec_tokens: int = 5,
     model_revision: str | None = None,
-) -> tuple[Callable[[ChatRequest], str], str]:
-    """Construct and return a generate function and backend label.
+) -> tuple[Callable[[ChatRequest], str], str, object | None]:
+    """Construct and return a generate function, backend label, and engine object.
 
     Args:
         backend: One of ``"vllm"``, ``"agentic"``, ``"mock"``, or ``""`` (auto-select).
@@ -60,7 +61,9 @@ def build_engine(
         n_spec_tokens: Number of speculative tokens.
 
     Returns:
-        A tuple of ``(generate_fn, backend_label)``.
+        A tuple of ``(generate_fn, backend_label, engine_obj)`` where
+        ``engine_obj`` is the underlying engine instance, or ``None`` for
+        mock/agentic backends.
     """
     if backend == "vllm":
         engine = VLLMEngine(
@@ -118,7 +121,7 @@ def build_engine(
             )
             return text
 
-        return generate_from_engine, "vllm"
+        return generate_from_engine, "vllm", engine
 
     if backend == "onnx":
         raise NotImplementedError("ONNX backend not yet implemented")
@@ -127,9 +130,9 @@ def build_engine(
         if not model_path:
             raise ValueError("agentic backend requires a model_path")
         model, tokenizer = load_model_for_chat(model_path)
-        return build_agentic_request_generate_fn(model, tokenizer), "agentic"
+        return build_agentic_request_generate_fn(model, tokenizer), "agentic", None
 
     if backend == "mock" or (backend == "" and model_path == ""):
-        return make_mock_generate_fn(), "mock"
+        return make_mock_generate_fn(), "mock", None
 
-    return make_mock_generate_fn(), "mock"
+    return make_mock_generate_fn(), "mock", None

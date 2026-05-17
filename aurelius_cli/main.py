@@ -744,7 +744,7 @@ def _run_serve(
             from src.serving.api_server import ChatRequest, create_server
             from src.serving.engine_loader import build_engine
 
-            api_generate_fn, backend_label = build_engine(
+            api_generate_fn, backend_label, _engine_obj = build_engine(
                 backend=engine,
                 model_path=model_path,
             )

@@ -22,8 +22,11 @@ __all__ = [
     "RetrievalResult",
     "MemoryRetriever",
     "MEMORY_RETRIEVER",
+    "AMCTier2Config",
+    "AMCTier2Hook",
 ]
 from .episodic_memory import EpisodicMemory, MemoryEntry
+from .amc_tier2 import AMCTier2Config, AMCTier2Hook
 from .memory_consolidation import (
     ConsolidationPolicy,
     ConsolidationResult,
@@ -39,6 +42,7 @@ MEMORY_REGISTRY: dict[str, object] = {
     "index": MEMORY_INDEX,
     "semantic": SemanticMemory(),
     "consolidator": MemoryConsolidator(),
+    "amc_tier2": AMCTier2Hook(),
 }
 
 # --- Cycle-146 long-term memory deepening (Park et al. 2303.17580) -----------

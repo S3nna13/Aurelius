@@ -659,7 +659,7 @@ if __name__ == "__main__":
             )
             sys.exit(1)
 
-    generate_fn, backend_label = build_engine(
+    generate_fn, backend_label, _engine_obj = build_engine(
         backend=args.engine,
         model_path=args.model_path,
         tensor_parallel_size=args.tensor_parallel_size,
