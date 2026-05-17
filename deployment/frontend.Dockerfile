@@ -16,7 +16,9 @@ COPY crates/text-processor/package.json crates/text-processor/package.json
 COPY crates/token-counter/package.json crates/token-counter/package.json
 COPY crates/uuid-gen/package.json crates/uuid-gen/package.json
 COPY crates/vector-similarity/package.json crates/vector-similarity/package.json
-RUN npm ci && npm run build -w frontend
+RUN npm ci
+COPY frontend/ frontend/
+RUN npm run build -w frontend
 
 FROM nginx:stable-alpine@sha256:6525b050aa05151ca19ec7090851bc8c12006cffdae5187f3d28023402f44cfa
 COPY --from=builder /app/frontend/dist /usr/share/nginx/html
