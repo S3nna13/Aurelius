@@ -2,11 +2,15 @@
 FROM node:22-alpine@sha256:8ea2348b068a9544dae7317b4f3aafcdc032df1647bb7d768a05a5cad1a7683f AS builder
 WORKDIR /app
 
+RUN apk add --no-cache build-base cargo rust
+
 COPY package.json package-lock.json ./
 COPY middle/package.json middle/package.json
 COPY frontend/package.json frontend/package.json
 COPY server/package.json server/package.json
 COPY crates/data-engine/package.json crates/data-engine/package.json
+COPY crates/data-engine/index.js crates/data-engine/index.js
+COPY crates/data-engine/index.d.ts crates/data-engine/index.d.ts
 COPY crates/json-validator/package.json crates/json-validator/package.json
 COPY crates/prompt-templates/package.json crates/prompt-templates/package.json
 COPY crates/redis-client/package.json crates/redis-client/package.json
@@ -18,8 +22,12 @@ COPY crates/uuid-gen/package.json crates/uuid-gen/package.json
 COPY crates/vector-similarity/package.json crates/vector-similarity/package.json
 RUN npm ci
 
-COPY middle/ .
-RUN npm run build
+COPY crates/data-engine/Cargo.toml crates/data-engine/Cargo.lock crates/data-engine/build.rs crates/data-engine/
+COPY crates/data-engine/src crates/data-engine/src
+RUN npm run build -w aurelius-data-engine
+
+COPY middle/ middle/
+RUN npm run build -w middle
 
 FROM node:22-alpine@sha256:8ea2348b068a9544dae7317b4f3aafcdc032df1647bb7d768a05a5cad1a7683f
 WORKDIR /app
@@ -27,10 +35,13 @@ WORKDIR /app
 RUN apk add --no-cache libc6-compat
 
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/package.json ./
-
-COPY crates/data-engine/aurelius-data-engine.*.node /app/node_modules/aurelius-data-engine/
+RUN mkdir -p ./crates/data-engine
+COPY --from=builder /app/crates/data-engine/package.json ./crates/data-engine/package.json
+COPY --from=builder /app/crates/data-engine/index.js ./crates/data-engine/index.js
+COPY --from=builder /app/crates/data-engine/index.d.ts ./crates/data-engine/index.d.ts
+COPY --from=builder /app/crates/data-engine/aurelius-data-engine.*.node ./crates/data-engine/
+COPY --from=builder /app/middle/dist ./dist
+COPY --from=builder /app/middle/package.json ./
 
 EXPOSE 3001
 
