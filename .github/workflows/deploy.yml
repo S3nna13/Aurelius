@@ -14,13 +14,35 @@ jobs:
   docker:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+    env:
+      # Non-secret placeholder used only so Docker Compose can interpolate
+      # deployment/compose.yaml during CI image build validation. Real runtime
+      # deployments must provide JWT_SECRET from the target environment.
+      JWT_SECRET: ci-build-placeholder-not-for-runtime
     steps:
       - uses: actions/checkout@v4
-      - run: |
+
+      - name: Build compose images
+        run: |
           docker compose -f deployment/compose.yaml build
           echo "Build complete — ready for registry push"
+
+      - name: Check registry push configuration
+        id: registry_config
+        env:
+          REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
+          REGISTRY_URL: ${{ secrets.REGISTRY_URL }}
+          REGISTRY_USERNAME: ${{ secrets.REGISTRY_USERNAME }}
+        run: |
+          if [ -z "$REGISTRY_PASSWORD" ] || [ -z "$REGISTRY_URL" ] || [ -z "$REGISTRY_USERNAME" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "Registry secrets are not configured; skipping compose push."
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Push to registry
-        if: ${{ github.event.workflow_run.head_branch == 'main' }}
+        if: ${{ github.event.workflow_run.head_branch == 'main' && steps.registry_config.outputs.enabled == 'true' }}
         env:
           REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD }}
           REGISTRY_URL: ${{ secrets.REGISTRY_URL }}
