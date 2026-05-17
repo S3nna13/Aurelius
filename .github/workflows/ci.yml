@@ -92,8 +92,7 @@ jobs:
 
       - name: Run Ruff format check
         run: |
-          # Report-only until the pre-existing repo-wide Ruff format backlog is normalized.
-          python -m ruff format --check src/ tests/ agent/ aurelius_cli/ gateway/ acp_adapter/ cron/ plugins/ tools/ || true
+          python -m ruff format --check src/ tests/ agent/ aurelius_cli/ gateway/ acp_adapter/ cron/ plugins/ tools/ scripts/
 
       - name: Run py_compile on all Python files
         run: |
