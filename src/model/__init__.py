@@ -183,6 +183,37 @@ from src.backends import (  # noqa: E402
     select_backend_for_manifest,
 )
 
+# ---------------------------------------------------------------------------
+# Modern architectures (Mamba, Lightning Attention, MLA, Jamba)
+# ---------------------------------------------------------------------------
+
+from .mamba import (
+    SelectiveSSM,
+    MambaBlock,
+    MambaLayer,
+)
+from .mamba2 import (
+    SSDLayer,
+    Mamba2Block,
+)
+from .lightning_attention import (
+    LightningLinearAttn,
+    LightningAttentionLayer,
+    LightningAttentionBlock,
+)
+from .mla import (
+    MultiHeadLatentAttention,
+    MLAConfig,
+    DownProjectKV,
+    UpProjectKV,
+    MLABlock,
+)
+from .jamba import (
+    JambaModel,
+    JambaMambaBlock,
+    JambaAttentionBlock,
+)
+
 __all__ = [
     "BACKEND_REGISTRY",
     "ENGINE_ADAPTER_REGISTRY",
@@ -364,6 +395,22 @@ __all__ = [
     "DiffusionDecoder",
     "architectures",
     "mod",
+    "SelectiveSSM",
+    "MambaBlock",
+    "MambaLayer",
+    "SSDLayer",
+    "Mamba2Block",
+    "LightningLinearAttn",
+    "LightningAttentionLayer",
+    "LightningAttentionBlock",
+    "MultiHeadLatentAttention",
+    "MLAConfig",
+    "DownProjectKV",
+    "UpProjectKV",
+    "MLABlock",
+    "JambaModel",
+    "JambaMambaBlock",
+    "JambaAttentionBlock",
 ]
 
 
