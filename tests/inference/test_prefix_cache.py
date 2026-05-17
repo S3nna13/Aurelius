@@ -11,6 +11,7 @@ from src.inference.prefix_cache import (
     PrefixCache,
     PrefixCacheConfig,
     compute_prefix_hash,
+    estimate_kv_cache_bytes,
     find_longest_prefix_match,
     merge_kv_caches,
     simulate_prefix_caching,
@@ -283,6 +284,37 @@ def test_prefix_cache_stats_keys():
     assert "hits" in s
     assert "misses" in s
     assert "hit_rate" in s
+    assert "lookup_tokens" in s
+    assert "reused_tokens" in s
+    assert "token_reuse_fraction" in s
+    assert "tokens_stored" in s
+    assert "avg_prefix_len" in s
+    assert "bytes_stored" in s
+
+
+def test_estimate_kv_cache_bytes_counts_tensor_payload():
+    kv = _make_kv(n_layers=2, n_heads=2, seq_len=3, head_dim=4)
+    expected = sum(k.numel() * k.element_size() + v.numel() * v.element_size() for k, v in kv)
+    assert estimate_kv_cache_bytes(kv) == expected
+
+
+def test_prefix_cache_token_and_byte_metrics():
+    cfg = PrefixCacheConfig(min_prefix_len=1)
+    cache = PrefixCache(cfg)
+
+    ids = list(range(6))
+    kv = _make_kv(n_layers=1, n_heads=2, seq_len=6, head_dim=4)
+    cache.put(ids, kv)
+    cache.get(ids + [99, 100])
+    cache.get([100, 101, 102])
+
+    s = cache.stats()
+    assert s["lookup_tokens"] == 11
+    assert s["reused_tokens"] == 6
+    assert abs(s["token_reuse_fraction"] - 6 / 11) < 1e-6
+    assert s["tokens_stored"] == 6
+    assert s["avg_prefix_len"] == 6
+    assert s["bytes_stored"] == estimate_kv_cache_bytes(kv)
 
 
 # ---------------------------------------------------------------------------

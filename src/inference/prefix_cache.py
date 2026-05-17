@@ -1,4 +1,11 @@
-"""Prefix caching: reuse KV cache across requests sharing common prefixes (system prompt caching)."""  # noqa: E501
+"""Prefix caching: reuse KV cache across requests sharing common prefixes.
+
+Recent inference work around external KV-cache layers and speculative decoding
+shows that cache hit rate alone is not enough to evaluate a prefix cache: long
+prefix hits matter more than short ones, and stored KV bytes determine whether a
+cache is viable on edge and serving hosts. This module therefore reports both
+request-level hits and token/byte-level reuse metrics.
+"""
 
 from __future__ import annotations
 
@@ -82,6 +89,15 @@ def merge_kv_caches(
     ]
 
 
+def estimate_kv_cache_bytes(kv_cache: list[tuple[Tensor, Tensor]]) -> int:
+    """Estimate tensor payload bytes held by a KV cache list.
+
+    Python container overhead is intentionally excluded because serving capacity
+    planning is dominated by tensor storage.
+    """
+    return sum(k.numel() * k.element_size() + v.numel() * v.element_size() for k, v in kv_cache)
+
+
 class PrefixCache:
     """LRU/LFU cache for prefix KV states."""
 
@@ -90,6 +106,8 @@ class PrefixCache:
         self._cache: dict[str, CacheEntry] = {}
         self._hits: int = 0
         self._misses: int = 0
+        self._lookup_tokens: int = 0
+        self._reused_tokens: int = 0
 
     def get(self, token_ids: list[int]) -> tuple[list[tuple[Tensor, Tensor]] | None, int]:
         """Look up longest matching prefix.
@@ -97,12 +115,14 @@ class PrefixCache:
         Returns (kv_cache, match_length).
         Updates hit_count and last_accessed. Returns (None, 0) on miss.
         """
+        self._lookup_tokens += len(token_ids)
         key, match_len = find_longest_prefix_match(token_ids, self._cache)
         if key is not None and match_len > 0:
             entry = self._cache[key]
             entry.hit_count += 1
             entry.last_accessed = time.time()
             self._hits += 1
+            self._reused_tokens += match_len
             return entry.kv_cache, match_len
         self._misses += 1
         return None, 0
@@ -171,16 +191,30 @@ class PrefixCache:
         self._cache.clear()
         self._hits = 0
         self._misses = 0
+        self._lookup_tokens = 0
+        self._reused_tokens = 0
 
     def stats(self) -> dict[str, int | float]:
-        """Return {"size", "hits", "misses", "hit_rate"}."""
+        """Return request, token-reuse, and tensor-byte cache metrics."""
         total = self._hits + self._misses
         hit_rate = self._hits / total if total > 0 else 0.0
+        token_reuse_fraction = (
+            self._reused_tokens / self._lookup_tokens if self._lookup_tokens > 0 else 0.0
+        )
+        tokens_stored = sum(len(entry.prefix_ids) for entry in self._cache.values())
+        avg_prefix_len = tokens_stored / len(self._cache) if self._cache else 0.0
+        bytes_stored = sum(estimate_kv_cache_bytes(entry.kv_cache) for entry in self._cache.values())
         return {
             "size": len(self._cache),
             "hits": self._hits,
             "misses": self._misses,
             "hit_rate": hit_rate,
+            "lookup_tokens": self._lookup_tokens,
+            "reused_tokens": self._reused_tokens,
+            "token_reuse_fraction": token_reuse_fraction,
+            "tokens_stored": tokens_stored,
+            "avg_prefix_len": avg_prefix_len,
+            "bytes_stored": bytes_stored,
         }
 
     def __len__(self) -> int:
