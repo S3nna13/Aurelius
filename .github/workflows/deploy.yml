@@ -20,7 +20,7 @@ jobs:
       # deployments must provide JWT_SECRET from the target environment.
       JWT_SECRET: ci-build-placeholder-not-for-runtime
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Build compose images
         run: |
